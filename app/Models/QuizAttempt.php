@@ -1,0 +1,118 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
+class QuizAttempt extends Model
+{
+    // Status constants
+    public const STATUS_STARTED = 'started';
+    public const STATUS_COMPLETED = 'completed';
+    public const STATUS_ABANDONED = 'abandoned';
+
+    protected $fillable = [
+        'user_id',
+        'questionnaire_id',
+        'started_at',
+        'completed_at',
+        'total_score',
+        'total_time_seconds',
+        'status',
+    ];
+
+    protected function casts(): array
+    {
+        return [
+            'started_at' => 'datetime',
+            'completed_at' => 'datetime',
+            'total_score' => 'integer',
+            'total_time_seconds' => 'integer',
+        ];
+    }
+
+    // Relationships
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    public function questionnaire(): BelongsTo
+    {
+        return $this->belongsTo(Questionnaire::class);
+    }
+
+    public function userAnswers(): HasMany
+    {
+        return $this->hasMany(UserAnswer::class);
+    }
+
+    // Scopes
+    public function scopeCompleted($query)
+    {
+        return $query->where('status', self::STATUS_COMPLETED);
+    }
+
+    public function scopeStarted($query)
+    {
+        return $query->where('status', self::STATUS_STARTED);
+    }
+
+    public function scopeForUser($query, $userId)
+    {
+        return $query->where('user_id', $userId);
+    }
+
+    // Helper methods
+    public function isCompleted(): bool
+    {
+        return $this->status === self::STATUS_COMPLETED;
+    }
+
+    public function isStarted(): bool
+    {
+        return $this->status === self::STATUS_STARTED;
+    }
+
+    public function isAbandoned(): bool
+    {
+        return $this->status === self::STATUS_ABANDONED;
+    }
+
+    public function getDurationInSeconds(): int
+    {
+        return $this->total_time_seconds;
+    }
+
+    public function getFormattedDuration(): string
+    {
+        $seconds = $this->total_time_seconds;
+        
+        if ($seconds < 60) {
+            return $seconds . ' seconds';
+        }
+        
+        $minutes = floor($seconds / 60);
+        $remainingSeconds = $seconds % 60;
+        
+        if ($minutes < 60) {
+            return $minutes . 'm ' . $remainingSeconds . 's';
+        }
+        
+        $hours = floor($minutes / 60);
+        $remainingMinutes = $minutes % 60;
+        
+        return $hours . 'h ' . $remainingMinutes . 'm ' . $remainingSeconds . 's';
+    }
+
+    public function getScorePercentage(): float
+    {
+        if (!$this->questionnaire || !$this->questionnaire->total_points) {
+            return 0;
+        }
+        
+        return round(($this->total_score / $this->questionnaire->total_points) * 100, 1);
+    }
+}

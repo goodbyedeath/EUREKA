@@ -122,5 +122,5 @@ return [
         'driver' => env('APP_MAINTENANCE_DRIVER', 'file'),
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
-
+    'QrCode' => SimpleSoftwareIO\QrCode\Facades\QrCode::class,
 ];
