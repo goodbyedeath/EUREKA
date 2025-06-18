@@ -4,7 +4,7 @@
         <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
             <div class="relative top-20 mx-auto p-5 border w-11/12 md:w-1/2 shadow-lg rounded-md bg-white">
                 <div class="mt-3">
-                    <h3 class="text-lg font-medium text-gray-900 mb-4">QR Code Scanner</h3>
+                    <h3 class="text-lg font-medium text-gray-900 mb-4">{{ __('quiz.scan_qr_code') }}</h3>
                     
                     @if($isScanning)
                         <div wire:ignore>
@@ -13,20 +13,20 @@
                                 <div id="qr-scanner-overlay" class="absolute inset-0 border-2 border-blue-500 rounded-lg pointer-events-none"></div>
                                 <div class="absolute bottom-2 left-2 right-2 text-center">
                                     <p class="text-white text-sm bg-black bg-opacity-50 rounded px-2 py-1">
-                                        Point your camera at a QR code
+                                        {{ __('quiz.point_camera_at_qr') }}
                                     </p>
                                 </div>
                             </div>
                         </div>
                         <div class="mt-4 text-center">
                             <button wire:click="stopScanning" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 transition-colors">
-                                Stop Scanning
+                                {{ __('quiz.stop_scanning') }}
                             </button>
                         </div>
                     @else
                         <div class="text-center">
                             <button wire:click="startScanning" class="bg-blue-500 text-white px-4 py-2 rounded mb-4 hover:bg-blue-600 transition-colors">
-                                Start Camera Scanner
+                                {{ __('quiz.start_scanning') }}
                             </button>
                             
                             <!-- Info Section -->
@@ -36,12 +36,12 @@
                                         <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
                                     </svg>
                                     <div>
-                                        <p class="font-medium">Tips for successful scanning:</p>
+                                        <p class="font-medium">{{ __('quiz.scanning_tips') }}</p>
                                         <ul class="list-disc list-inside mt-1 space-y-1 text-left">
-                                            <li>Allow camera access when prompted</li>
-                                            <li>Ensure good lighting</li>
-                                            <li>Hold the QR code steady and close to camera</li>
-                                            <li>Use manual entry if camera isn't working</li>
+                                            <li>{{ __('quiz.allow_camera_access') }}</li>
+                                            <li>{{ __('quiz.ensure_good_lighting') }}</li>
+                                            <li>{{ __('quiz.hold_qr_steady') }}</li>
+                                            <li>{{ __('quiz.use_manual_entry') }}</li>
                                         </ul>
                                     </div>
                                 </div>

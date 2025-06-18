@@ -34,20 +34,21 @@
                     <a href="/" class="text-xl font-bold text-gray-800">Eureka</a>
                 </div>
                 <div class="flex items-center space-x-4">
+                    @include('components.simple-language-switcher')
                     @auth
-                        <span class="text-gray-700">Hello, {{ auth()->user()->name }}</span>
+                        <span class="text-gray-700">{{ __('common.welcome') }}, {{ auth()->user()->name }}</span>
                         @if(auth()->user()->isAdmin())
-                            <a href="{{ route('admin.dashboard') }}" class="text-blue-600 hover:text-blue-800">Admin Dashboard</a>
+                            <a href="{{ route('admin.dashboard') }}" class="text-blue-600 hover:text-blue-800">{{ __('common.dashboard') }}</a>
                         @else
-                            <a href="{{ route('user.dashboard') }}" class="text-blue-600 hover:text-blue-800">Dashboard</a>
+                            <a href="{{ route('user.dashboard') }}" class="text-blue-600 hover:text-blue-800">{{ __('common.dashboard') }}</a>
                         @endif
                         <form method="POST" action="{{ route('logout') }}" class="inline">
                             @csrf
-                            <button type="submit" class="text-red-600 hover:text-red-800">Logout</button>
+                            <button type="submit" class="text-red-600 hover:text-red-800">{{ __('auth.logout') }}</button>
                         </form>
                     @else
-                        <a href="{{ route('login') }}" class="text-blue-600 hover:text-blue-800">Login</a>
-                        <a href="{{ route('register') }}" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Register</a>
+                        <a href="{{ route('login') }}" class="text-blue-600 hover:text-blue-800">{{ __('auth.login') }}</a>
+                        <a href="{{ route('register') }}" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">{{ __('auth.register') }}</a>
                     @endauth
                 </div>
             </div>

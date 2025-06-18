@@ -1,6 +1,6 @@
 {{-- resources/views/livewire/team-form.blade.php --}}
 <div class="max-w-4xl mx-auto p-6 bg-white rounded-lg shadow-lg">
-    <h2 class="text-2xl font-bold text-gray-800 mb-6">Form Pendaftaran Tim Building Korporat</h2>
+    <h2 class="text-2xl font-bold text-gray-800 mb-6">{{ __('common.team_registration') }}</h2>
     
     {{-- Success Message --}}
     @if($showSuccessMessage)
@@ -16,7 +16,7 @@
                     </svg>
                 </div>
                 <div class="ml-3">
-                    <p class="text-sm font-medium">Tim berhasil didaftarkan!</p>
+                    <p class="text-sm font-medium">{{ __('common.team_registered_successfully') }}</p>
                 </div>
             </div>
         </div>
@@ -25,7 +25,7 @@
     <form wire:submit.prevent="save">
         {{-- Informasi Tim --}}
         <div class="mb-8 p-4 bg-gray-50 rounded-lg">
-            <h3 class="text-lg font-semibold text-gray-700 mb-4">Informasi Tim</h3>
+            <h3 class="text-lg font-semibold text-gray-700 mb-4">{{ __('common.team_information') }}</h3>
             
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>

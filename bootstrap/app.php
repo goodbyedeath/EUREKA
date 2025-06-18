@@ -12,6 +12,11 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
+        // Register global middleware
+        $middleware->web(append: [
+            \App\Http\Middleware\SetLocale::class,
+        ]);
+        
         // Register middleware aliases
         $middleware->alias([
             // Legacy middleware (still functional)
@@ -22,6 +27,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'role' => \App\Http\Middleware\RoleBasedAccessMiddleware::class,
             'preventbackhistory' => \App\Http\Middleware\PreventBackHistory::class,
             'team' => \App\Http\Middleware\EnsureTeamRegistration::class,
+            'locale' => \App\Http\Middleware\SetLocale::class,
         ]);
 
         // Middleware groups

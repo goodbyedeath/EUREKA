@@ -15,10 +15,10 @@
 
     <!-- Header with Create Button -->
     <div class="flex justify-between items-center mb-6">
-        <h2 class="text-xl font-semibold">Questionnaire Management</h2>
+        <h2 class="text-xl font-semibold">{{ __('quiz.questionnaire_management') }}</h2>
         <button wire:click="openCreateModal" 
                 class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors duration-200">
-            Create New Questionnaire
+            {{ __('quiz.create_new_questionnaire') }}
         </button>
     </div>
 
@@ -37,7 +37,7 @@
                                         {{ $questionnaire->title }}
                                     </h3>
                                     <span class="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $questionnaire->is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800' }}">
-                                        {{ $questionnaire->is_active ? 'Active' : 'Inactive' }}
+                                        {{ $questionnaire->is_active ? __('common.active') : __('common.inactive') }}
                                     </span>
                                 </div>
                             </div>
@@ -53,7 +53,7 @@
                                     <svg class="w-4 h-4 mr-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                                     </svg>
-                                    <span class="truncate">{{ $questionnaire->questions_count }} questions</span>
+                                    <span class="truncate">{{ $questionnaire->questions_count }} {{ __('quiz.questions') }}</span>
                                 </div>
                                 
                                 <div class="flex items-center">

@@ -28,7 +28,7 @@ class DashboardContent extends Component
     {
         // Load user's team
         $user = auth()->user();
-        $this->team = $user->team;
+        $this->team = $user->createdTeam;
         
         // Check for active questionnaire
         $this->questionnaireId = session('active_questionnaire_id');
@@ -64,10 +64,10 @@ class DashboardContent extends Component
         $this->dispatch('tab-switched', ['tab' => 'quizzes']);
     }
 
-    public function switchToMap()
+    public function switchToMembers()
     {
-        $this->activeTab = 'quest';
-        $this->dispatch('tab-switched', ['tab' => 'quest']);
+        $this->activeTab = 'members';
+        $this->dispatch('tab-switched', ['tab' => 'members']);
     }
 
     public function render()

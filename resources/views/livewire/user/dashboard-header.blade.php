@@ -1,35 +1,28 @@
 {{-- resources/views/livewire/user/dashboard-header.blade.php --}}
 <div>
-    <div class="flex items-center space-x-4">
+    <div class="flex items-center space-x-2 sm:space-x-4">
         <button 
             wire:click="refreshData" 
             wire:loading.attr="disabled"
             wire:target="refreshData"
-            class="bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed px-4 py-2 rounded-lg transition-colors"
+            class="bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed px-2 sm:px-4 py-2 rounded-lg transition-colors text-xs sm:text-sm"
             title="Refresh data">
             <div wire:loading.remove wire:target="refreshData">
-                <i class="fas fa-sync-alt mr-2"></i>Refresh
+                <i class="fas fa-sync-alt mr-1 sm:mr-2"></i>
+                <span class="hidden sm:inline">{{ __('common.refresh') }}</span>
             </div>
             <div wire:loading wire:target="refreshData">
-                <i class="fas fa-spinner fa-spin mr-2"></i>Refreshing...
+                <i class="fas fa-spinner fa-spin mr-1 sm:mr-2"></i>
+                <span class="hidden sm:inline">{{ __('common.refreshing') }}...</span>
             </div>
         </button>
         
         <button 
             wire:click="openScanner" 
-            class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
+            class="bg-blue-600 hover:bg-blue-700 text-white px-2 sm:px-4 py-2 rounded-lg transition-colors text-xs sm:text-sm"
             title="Scan QR code">
-            <i class="fas fa-qr_code mr-2"></i>Scan QR
+            <i class="fas fa-qrcode mr-1 sm:mr-2"></i>
+            <span class="hidden sm:inline">{{ __('common.scan_qr') }}</span>
         </button>
-        
-        <form method="POST" action="{{ route('logout') }}">
-            @csrf
-            <button 
-                type="submit" 
-                class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors"
-                title="Logout">
-                <i class="fas fa-sign-out-alt mr-2"></i>Logout
-            </button>
-        </form>
     </div>
 </div>

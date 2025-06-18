@@ -5,7 +5,10 @@
       "Bash(ls:*)",
       "Bash(convert:*)",
       "Bash(npm install:*)",
-      "Bash(npm uninstall:*)"
+      "Bash(npm uninstall:*)",
+      "Bash(mkdir:*)",
+      "Bash(php artisan make:livewire:*)",
+      "Bash(rg \"alpine\" -i)"
     ],
     "deny": []
   }

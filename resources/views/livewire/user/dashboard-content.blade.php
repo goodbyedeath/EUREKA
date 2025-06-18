@@ -25,31 +25,31 @@
                     @livewire('user.recent-attempts')
                     
                     {{-- Quick Actions --}}
-                    <div class="bg-white rounded-lg shadow p-6">
-                        <h3 class="text-lg font-medium text-gray-900 mb-4">Quick Actions</h3>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div class="bg-white rounded-lg shadow p-4 sm:p-6">
+                        <h3 class="text-base sm:text-lg font-medium text-gray-900 mb-4">{{ __('common.quick_actions') }}</h3>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                             <button 
                                 wire:click="switchToQuizzes"
-                                class="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-left">
-                                <i class="fas fa-clipboard-list text-blue-500 text-xl mb-2"></i>
-                                <div class="font-medium text-gray-900">Browse Quizzes</div>
-                                <div class="text-sm text-gray-500">View available questionnaires</div>
+                                class="p-3 sm:p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-left">
+                                <i class="fas fa-clipboard-list text-blue-500 text-lg sm:text-xl mb-2"></i>
+                                <div class="font-medium text-gray-900 text-sm sm:text-base">{{ __('common.browse_quizzes') }}</div>
+                                <div class="text-xs sm:text-sm text-gray-500">{{ __('common.view_available_questionnaires') }}</div>
                             </button>
                             
                             <button 
                                 onclick="Livewire.dispatch('open-qr-scanner')"
-                                class="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-left">
-                                <i class="fas fa-qr_code text-green-500 text-xl mb-2"></i>
-                                <div class="font-medium text-gray-900">Scan QR Code</div>
-                                <div class="text-sm text-gray-500">Quick access to quizzes</div>
+                                class="p-3 sm:p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-left">
+                                <i class="fas fa-qrcode text-green-500 text-lg sm:text-xl mb-2"></i>
+                                <div class="font-medium text-gray-900 text-sm sm:text-base">{{ __('common.scan_qr') }}</div>
+                                <div class="text-xs sm:text-sm text-gray-500">{{ __('common.quick_access_to_quizzes') }}</div>
                             </button>
                             
                             <button 
                                 onclick="Livewire.dispatch('refresh-dashboard')"
-                                class="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-left">
-                                <i class="fas fa-sync-alt text-purple-500 text-xl mb-2"></i>
-                                <div class="font-medium text-gray-900">Refresh Data</div>
-                                <div class="text-sm text-gray-500">Update dashboard content</div>
+                                class="p-3 sm:p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-left">
+                                <i class="fas fa-sync-alt text-purple-500 text-lg sm:text-xl mb-2"></i>
+                                <div class="font-medium text-gray-900 text-sm sm:text-base">{{ __('common.refresh_data') }}</div>
+                                <div class="text-xs sm:text-sm text-gray-500">{{ __('common.update_dashboard_content') }}</div>
                             </button>
                         </div>
                     </div>
@@ -91,28 +91,28 @@
                 @livewire('user.team-member-view', ['team' => $team])
             @else
                 {{-- No team found --}}
-                <div class="text-center py-12 bg-white rounded-xl border border-gray-200">
-                    <div class="mx-auto w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                        <i class="fas fa-users text-gray-400 text-3xl"></i>
+                <div class="text-center py-8 sm:py-12 bg-white rounded-xl border border-gray-200">
+                    <div class="mx-auto w-20 h-20 sm:w-24 sm:h-24 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                        <i class="fas fa-users text-gray-400 text-2xl sm:text-3xl"></i>
                     </div>
-                    <h3 class="text-lg font-medium text-gray-900 mb-2">
-                        Belum Bergabung dalam Tim
+                    <h3 class="text-base sm:text-lg font-medium text-gray-900 mb-2 px-4">
+                        {{ __('common.not_joined_team') }}
                     </h3>
-                    <p class="text-gray-500 mb-6 max-w-md mx-auto">
-                        Anda belum bergabung dalam tim manapun. Hubungi administrator untuk bergabung dalam tim atau buat tim baru.
+                    <p class="text-gray-500 mb-6 max-w-md mx-auto text-sm sm:text-base px-4">
+                        {{ __('common.not_joined_team_desc') }}
                     </p>
-                    <div class="flex justify-center space-x-4">
+                    <div class="flex flex-col sm:flex-row justify-center space-y-3 sm:space-y-0 sm:space-x-4 px-4">
                         <button 
-                            class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg transition-colors inline-flex items-center"
-                            onclick="alert('Hubungi administrator untuk bergabung dalam tim')">
+                            class="bg-blue-600 hover:bg-blue-700 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg transition-colors inline-flex items-center justify-center text-sm sm:text-base"
+                            onclick="alert('{{ __('common.not_joined_team_desc') }}')">
                             <i class="fas fa-envelope mr-2"></i>
-                            Hubungi Admin
+                            {{ __('common.contact_admin') }}
                         </button>
                         <button 
                             onclick="Livewire.dispatch('refresh-dashboard')"
-                            class="bg-gray-600 hover:bg-gray-700 text-white px-6 py-3 rounded-lg transition-colors inline-flex items-center">
+                            class="bg-gray-600 hover:bg-gray-700 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg transition-colors inline-flex items-center justify-center text-sm sm:text-base">
                             <i class="fas fa-sync mr-2"></i>
-                            Refresh
+                            {{ __('common.refresh') }}
                         </button>
                     </div>
                 </div>

@@ -36,11 +36,12 @@
                         <h1 class="text-xl font-semibold text-gray-900">@yield('page-title', 'Admin Dashboard')</h1>
                     </div>
                     <div class="flex items-center space-x-4">
-                        <span class="text-gray-700">Hello, {{ auth()->user()->name }}</span>
-                        <a href="{{ route('user.dashboard') }}" class="text-blue-600 hover:text-blue-800">User Dashboard</a>
+                        @include('components.simple-language-switcher')
+                        <span class="text-gray-700">{{ __('common.welcome') }}, {{ auth()->user()->name }}</span>
+                        <a href="{{ route('user.dashboard') }}" class="text-blue-600 hover:text-blue-800">{{ __('common.dashboard') }}</a>
                         <form method="POST" action="{{ route('logout') }}" class="inline">
                             @csrf
-                            <button type="submit" class="text-red-600 hover:text-red-800">Logout</button>
+                            <button type="submit" class="text-red-600 hover:text-red-800">{{ __('auth.logout') }}</button>
                         </form>
                     </div>
                 </div>
@@ -49,6 +50,18 @@
 
         <div class="py-6">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <!-- Flash Messages -->
+                @if(session('message'))
+                    <div class="mb-4 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">
+                        {{ session('message') }}
+                    </div>
+                @endif
+                
+                @if(session('error'))
+                    <div class="mb-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+                        {{ session('error') }}
+                    </div>
+                @endif
                 <!-- Tab Navigation -->
                 <div class="mb-6">
                     <nav class="flex space-x-8" aria-label="Tabs">

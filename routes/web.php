@@ -56,6 +56,9 @@ Route::middleware(['auth', 'preventbackhistory'])->group(function () {
                 Route::get('/quiz/results/{attemptId}', QuizResults::class)->name('quiz.results');
             });
             Route::get('/quest-dashboard', QuestLocationDashboard::class)->name('user.quest-location-dashboard');
+            Route::get('/test-language', function () {
+                return view('test-language');
+            })->name('test.language');
         });
     });
 });

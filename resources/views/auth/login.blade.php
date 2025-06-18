@@ -5,23 +5,23 @@
     <div class="max-w-md w-full space-y-8">
         <div>
             <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900">
-                Sign in to your account
+                {{ __('auth.login') }}
             </h2>
         </div>
         <form class="mt-8 space-y-6" method="POST" action="{{ route('login') }}">
             @csrf
             <div class="rounded-md shadow-sm -space-y-px">
                 <div>
-                    <label for="email" class="sr-only">Email address</label>
+                    <label for="email" class="sr-only">{{ __('auth.email') }}</label>
                     <input id="email" name="email" type="email" required 
                            class="relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm" 
-                           placeholder="Email address" value="{{ old('email') }}">
+                           placeholder="{{ __('auth.email') }}" value="{{ old('email') }}">
                 </div>
                 <div>
-                    <label for="password" class="sr-only">Password</label>
+                    <label for="password" class="sr-only">{{ __('auth.password') }}</label>
                     <input id="password" name="password" type="password" required 
                            class="relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm" 
-                           placeholder="Password">
+                           placeholder="{{ __('auth.password') }}">
                 </div>
             </div>
 
