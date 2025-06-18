@@ -12,12 +12,14 @@
                     </div>
                     
                     @if($questionnaire->time_limit && $timeRemaining !== null)
-                        <div class="flex items-center space-x-2">
+                        <div class="flex items-center space-x-2" 
+                             x-data="countdownTimer({{ $timeRemaining }}, '{{ $questionnaire->id }}')" 
+                             x-init="init()">
                             <i class="fas fa-clock text-gray-500"></i>
-                            <span class="text-sm font-medium {{ $timeRemaining < 300 ? 'text-red-600' : 'text-gray-700' }}" 
-                                  id="timer-display">
-                                {{ $formattedTimeRemaining }}
-                            </span>
+                            <div class="countdown-display">
+                                <span x-text="displayTime" 
+                                      :class="isWarning ? 'text-sm font-bold text-red-600 animate-pulse' : 'text-sm font-medium text-gray-700'"></span>
+                            </div>
                         </div>
                     @endif
                 </div>
@@ -332,123 +334,124 @@
 
 @script
 <script>
-let timerInterval;
 let quizTimingData = @json($this->getQuizTimingData());
 let isCompleted = @json($isCompleted);
 
-function calculateTimeRemaining() {
-    if (!quizTimingData.hasTimeLimit || isCompleted) {
-        return null;
-    }
-    
-    const now = Math.floor(Date.now() / 1000); // Current timestamp in seconds
-    const elapsed = now - quizTimingData.startTimestamp;
-    const remaining = quizTimingData.timeLimitSeconds - elapsed;
-    
-    return Math.max(0, remaining);
-}
-
-function updateTimerDisplay(seconds) {
-    const timerDisplay = document.getElementById('timer-display');
-    if (!timerDisplay) return;
-    
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    const formattedTime = `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
-    
-    timerDisplay.textContent = formattedTime;
-    
-    // Change color when time is low
-    if (seconds < 300) { // Less than 5 minutes
-        timerDisplay.className = 'text-sm font-medium text-red-600';
-        timerDisplay.classList.add('timer-warning');
-    } else {
-        timerDisplay.className = 'text-sm font-medium text-gray-700';
-        timerDisplay.classList.remove('timer-warning');
-    }
-}
-
-function startTimer() {
-    if (!quizTimingData.hasTimeLimit || isCompleted) {
-        return;
-    }
-    
-    if (timerInterval) {
-        clearInterval(timerInterval);
-    }
-    
-    // Calculate and display current time remaining
-    let timeRemaining = calculateTimeRemaining();
-    
-    if (timeRemaining <= 0) {
-        updateTimerDisplay(0);
-        $wire.call('handleTimeExpiry');
-        return;
-    }
-    
-    updateTimerDisplay(timeRemaining);
-    
-    timerInterval = setInterval(function() {
-        // Always calculate from start time to ensure accuracy
-        timeRemaining = calculateTimeRemaining();
+// Alpine.js countdown timer component
+function countdownTimer(initialSeconds, questionnaireId) {
+    return {
+        timeRemaining: initialSeconds,
+        displayTime: '',
+        isWarning: false,
+        interval: null,
+        questionnaireId: questionnaireId,
         
-        if (timeRemaining <= 0) {
-            clearInterval(timerInterval);
-            timeRemaining = 0;
-            updateTimerDisplay(0);
+        init() {
+            this.updateDisplay();
+            this.startCountdown();
             
-            // Auto-submit quiz
-            $wire.call('handleTimeExpiry');
-            return;
-        }
-        
-        updateTimerDisplay(timeRemaining);
-        
-        // Sync with server every 30 seconds to get fresh timing data
-        if (timeRemaining % 30 === 0) {
-            $wire.call('getQuizTimingData').then(function(result) {
-                if (result && result.hasTimeLimit) {
-                    // Update our timing data with fresh server data
-                    quizTimingData = result;
-                    // Recalculate with new data
-                    timeRemaining = calculateTimeRemaining();
-                    updateTimerDisplay(timeRemaining);
+            // Handle page visibility changes
+            document.addEventListener('visibilitychange', () => {
+                if (!document.hidden && !isCompleted) {
+                    this.syncWithServer();
                 }
-            }).catch(function(error) {
+            });
+            
+            // Clean up on quiz completion
+            this.$wire.on('quizCompleted', () => {
+                this.stopCountdown();
+            });
+        },
+        
+        startCountdown() {
+            if (this.interval) {
+                clearInterval(this.interval);
+            }
+            
+            this.interval = setInterval(() => {
+                this.timeRemaining--;
+                this.updateDisplay();
+                
+                if (this.timeRemaining <= 0) {
+                    this.handleTimeExpiry();
+                    return;
+                }
+                
+                // Sync with server every 30 seconds
+                if (this.timeRemaining % 30 === 0) {
+                    this.syncWithServer();
+                }
+                
+                // Show warning at 1 minute
+                if (this.timeRemaining === 60 && !this.isWarning) {
+                    this.showTimeWarning();
+                }
+            }, 1000);
+        },
+        
+        updateDisplay() {
+            const minutes = Math.floor(this.timeRemaining / 60);
+            const seconds = this.timeRemaining % 60;
+            this.displayTime = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+            
+            // Update warning state
+            this.isWarning = this.timeRemaining < 300; // Less than 5 minutes
+        },
+        
+        syncWithServer() {
+            this.$wire.call('getQuizTimingData').then((result) => {
+                if (result && result.hasTimeLimit) {
+                    const now = Math.floor(Date.now() / 1000);
+                    const elapsed = now - result.startTimestamp;
+                    const remaining = Math.max(0, result.timeLimitSeconds - elapsed);
+                    
+                    // Update time remaining if server time differs significantly
+                    if (Math.abs(this.timeRemaining - remaining) > 2) {
+                        this.timeRemaining = remaining;
+                        this.updateDisplay();
+                    }
+                }
+            }).catch((error) => {
                 console.error('Timer sync error:', error);
             });
-        }
-    }, 1000);
-}
-
-// Start timer when component loads
-if (quizTimingData.hasTimeLimit && !isCompleted) {
-    startTimer();
-}
-
-// Handle Livewire navigation
-document.addEventListener('livewire:navigating', function() {
-    if (timerInterval) {
-        clearInterval(timerInterval);
-    }
-});
-
-// Handle page visibility changes
-document.addEventListener('visibilitychange', function() {
-    if (!document.hidden && quizTimingData.hasTimeLimit && !isCompleted) {
-        // Page became visible, sync with server and restart timer
-        $wire.call('getQuizTimingData').then(function(result) {
-            if (result && result.hasTimeLimit) {
-                quizTimingData = result;
-                
-                // Restart timer if needed
-                if (!timerInterval) {
-                    startTimer();
-                }
+        },
+        
+        handleTimeExpiry() {
+            this.stopCountdown();
+            this.timeRemaining = 0;
+            this.updateDisplay();
+            this.$wire.call('handleTimeExpiry');
+        },
+        
+        stopCountdown() {
+            if (this.interval) {
+                clearInterval(this.interval);
+                this.interval = null;
             }
-        });
+        },
+        
+        showTimeWarning() {
+            // Create a temporary notification
+            const notification = document.createElement('div');
+            notification.className = 'fixed top-4 right-4 bg-red-50 border border-red-200 rounded-md p-4 z-50 shadow-lg';
+            notification.innerHTML = `
+                <div class="flex items-center">
+                    <i class="fas fa-clock text-red-500 mr-2"></i>
+                    <span class="text-red-800 font-medium">1 minute remaining!</span>
+                </div>
+            `;
+            
+            document.body.appendChild(notification);
+            
+            // Remove notification after 3 seconds
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.parentNode.removeChild(notification);
+                }
+            }, 3000);
+        }
     }
-});
+}
 
 // Prevent accidental page refresh during quiz
 if (!isCompleted) {
@@ -458,15 +461,6 @@ if (!isCompleted) {
         return 'Are you sure you want to leave? Your progress may be lost.';
     });
 }
-
-// Clean up on quiz completion
-$wire.on('quizCompleted', function() {
-    isCompleted = true;
-    if (timerInterval) {
-        clearInterval(timerInterval);
-    }
-    window.removeEventListener('beforeunload', function() {});
-});
 
 // Auto-save functionality
 let saveTimeout;
@@ -535,14 +529,27 @@ document.addEventListener('keydown', function(e) {
         to { width: var(--progress-width); }
     }
     
-    /* Timer pulse animation when low */
-    .timer-warning {
-        animation: pulse 1s infinite;
+    /* Enhanced countdown display styles */
+    .countdown-display {
+        min-width: 60px;
+        text-align: center;
     }
     
+    /* Smooth animation for countdown */
+    .countdown-display span {
+        transition: all 0.3s ease;
+    }
+    
+    /* Pulse animation for warnings */
     @keyframes pulse {
-        0%, 100% { opacity: 1; }
-        50% { opacity: 0.7; }
+        0%, 100% { 
+            opacity: 1; 
+            transform: scale(1);
+        }
+        50% { 
+            opacity: 0.8; 
+            transform: scale(1.05);
+        }
     }
     
     /* Custom scrollbar */

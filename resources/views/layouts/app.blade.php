@@ -4,7 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Eureka</title>
-    @laravelPWA
+    
+    <!-- PWA Meta Tags -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#6777ef">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Eureka">
+    <link rel="apple-touch-icon" href="/logo.png">
+    
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"> 
     <script src="https://cdn.tailwindcss.com"></script>
     
@@ -12,6 +20,7 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     
     <!-- Alpine.js CDN -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
    
     <style>
         [x-cloak] { display: none !important; }
@@ -46,7 +55,7 @@
     </nav>
 
     <main>
-        {{ $slot }}
+        @yield('content')
 
         <footer class="bg-white border-t mt-12 text-center text-sm text-gray-500 py-6">
             &copy; {{ date('Y') }} {{ config('app.name', 'Laravel') }}. All rights reserved.
@@ -55,6 +64,21 @@
 
     <!-- PWA Install Prompt -->
     <livewire:pwa-install-prompt />
+ 
+    <!-- Service Worker Registration -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(function(registration) {
+                        console.log('ServiceWorker registration successful:', registration.scope);
+                    })
+                    .catch(function(error) {
+                        console.log('ServiceWorker registration failed:', error);
+                    });
+            });
+        }
+    </script>
  
     <!-- Add this stack for any additional scripts that might be pushed from other components -->
     @stack('scripts')

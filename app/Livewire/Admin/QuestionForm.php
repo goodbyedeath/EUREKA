@@ -12,6 +12,8 @@ use Illuminate\Validation\Rule;
 class QuestionForm extends Component
 {
     public Questionnaire $questionnaire;
+    public ?int $editingQuestionId = null;
+    public bool $isEditing = false;
 
     public array $newQuestion = [
         'question' => '',
@@ -19,6 +21,10 @@ class QuestionForm extends Component
         'options' => ['', '', '', ''],
         'correct_answer' => '',
         'points' => 1
+    ];
+
+    protected $listeners = [
+        'edit-question' => 'loadQuestionForEdit'
     ];
 
     public function mount(Questionnaire $questionnaire)
@@ -59,9 +65,16 @@ class QuestionForm extends Component
             'newQuestion.options' => [
                 'required',
                 'array',
+                'max:8',
                 function ($attribute, $value, $fail) use ($filteredOptions) {
                     if (count($filteredOptions) < 2) {
                         $fail('At least two non-empty options are required for multiple choice questions.');
+                    }
+                    
+                    // Check for duplicates
+                    $uniqueOptions = array_unique(array_map('trim', $filteredOptions));
+                    if (count($uniqueOptions) !== count($filteredOptions)) {
+                        $fail('All options must be unique.');
                     }
                 }
             ],
@@ -102,18 +115,67 @@ class QuestionForm extends Component
         $this->validate($this->newQuestionRules(), $this->newQuestionMessages());
 
         try {
-            $questionData = $this->prepareQuestionData();
-            Question::create($questionData);
-
-            $this->resetNewQuestion();
-            session()->flash('questions_message', 'Question added successfully!');
-            $this->dispatch('question-added');
-            
+            if ($this->isEditing) {
+                $this->updateQuestion();
+            } else {
+                $this->createQuestion();
+            }
         } catch (\Exception $e) {
-            session()->flash('questions_error', 'Failed to add question. Please try again.');
-            // Log the error for debugging
-            \Log::error('Failed to add question: ' . $e->getMessage());
+            session()->flash('questions_error', 'Failed to save question. Please try again.');
+            \Log::error('Failed to save question: ' . $e->getMessage());
         }
+    }
+
+    protected function createQuestion()
+    {
+        $questionData = $this->prepareQuestionData();
+        Question::create($questionData);
+
+        $this->resetNewQuestion();
+        session()->flash('questions_message', 'Question added successfully!');
+        $this->dispatch('question-added');
+    }
+
+    protected function updateQuestion()
+    {
+        $question = Question::findOrFail($this->editingQuestionId);
+        $questionData = $this->prepareQuestionData();
+        unset($questionData['questionnaire_id']); // Don't update questionnaire_id
+        unset($questionData['order']); // Don't update order during edit
+        
+        $question->update($questionData);
+
+        $this->resetNewQuestion();
+        session()->flash('questions_message', 'Question updated successfully!');
+        $this->dispatch('question-updated');
+    }
+
+    public function loadQuestionForEdit($questionId)
+    {
+        $question = Question::findOrFail($questionId);
+        
+        $this->editingQuestionId = $question->id;
+        $this->isEditing = true;
+        
+        $this->newQuestion = [
+            'question' => $question->question,
+            'type' => $question->type,
+            'options' => $question->options ?: ['', '', '', ''],
+            'correct_answer' => $question->correct_answer,
+            'points' => $question->points
+        ];
+
+        // Ensure we have at least 2 options for multiple choice
+        if ($question->type === 'multiple_choice' && count($this->newQuestion['options']) < 2) {
+            while (count($this->newQuestion['options']) < 4) {
+                $this->newQuestion['options'][] = '';
+            }
+        }
+    }
+
+    public function cancelEdit()
+    {
+        $this->resetNewQuestion();
     }
 
     protected function prepareQuestionData(): array
@@ -139,7 +201,7 @@ class QuestionForm extends Component
 
     public function resetNewQuestion()
     {
-        $this->reset('newQuestion');
+        $this->reset(['newQuestion', 'editingQuestionId', 'isEditing']);
         $this->newQuestion = [
             'question' => '',
             'type' => 'text',
@@ -147,6 +209,8 @@ class QuestionForm extends Component
             'correct_answer' => '',
             'points' => 1
         ];
+        $this->editingQuestionId = null;
+        $this->isEditing = false;
     }
 
     public function updatedNewQuestionType()
@@ -172,7 +236,7 @@ class QuestionForm extends Component
 
     public function addOption()
     {
-        if ($this->newQuestion['type'] === 'multiple_choice') {
+        if ($this->newQuestion['type'] === 'multiple_choice' && count($this->newQuestion['options']) < 8) {
             $this->newQuestion['options'][] = '';
         }
     }

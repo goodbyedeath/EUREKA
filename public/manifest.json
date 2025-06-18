@@ -1,17 +1,39 @@
 {
-    "name": "Laravel Package Tutorial",
-    "short_name": "LPT",
-    "start_url": "/index.php",
+    "name": "Eureka Quest Application",
+    "short_name": "Eureka",
+    "start_url": "/",
+    "scope": "/",
     "background_color": "#6777ef",
-    "description": "Tutorial of Laravel Package",
-    "display": "fullscreen",
+    "description": "Eureka Quest Application - Interactive Learning Platform",
+    "display": "standalone",
+    "orientation": "portrait-primary",
     "theme_color": "#6777ef",
+    "lang": "en",
+    "dir": "ltr",
     "icons": [
+        {
+            "src": "logo.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any"
+        },
         {
             "src": "logo.png",
             "sizes": "512x512",
             "type": "image/png",
-            "purpose": "any maskable"
+            "purpose": "any"
+        },
+        {
+            "src": "logo.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "maskable"
+        },
+        {
+            "src": "logo.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "maskable"
         }
     ]
 }

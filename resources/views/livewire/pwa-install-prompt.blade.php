@@ -19,7 +19,7 @@
         
         <div class="flex-1 min-w-0">
             <p class="text-sm font-medium text-gray-900">
-                Install Eureka App
+                Install Eureka
             </p>
             <p class="text-sm text-gray-500">
                 Add to your home screen for quick access

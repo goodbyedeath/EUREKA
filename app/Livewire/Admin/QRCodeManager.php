@@ -22,9 +22,13 @@ class QRCodeManager extends Component
         $this->questionnaire->refresh();
     }
 
-    public function generateQrCode()
+    public function generateQrCode($size = 200)
     {
-        return QrCode::size(150)->generate($this->getQrCodeContent());
+        return QrCode::size($size)
+                    ->margin(2)
+                    ->backgroundColor(255, 255, 255)
+                    ->color(0, 0, 0)
+                    ->generate($this->getQrCodeContent());
     }
 
     public function getQrCodeContent()
@@ -33,19 +37,22 @@ class QRCodeManager extends Component
         return $this->questionnaire->qr_code;
     }
 
-    public function downloadQrCode()
+    public function downloadQrCode($format = 'png', $size = 512)
     {
         try {
-            $qrCode = QrCode::format('png')
-                           ->size(300)
-                           ->margin(2)
+            $qrCode = QrCode::format($format)
+                           ->size($size)
+                           ->margin(4)
+                           ->backgroundColor(255, 255, 255)
+                           ->color(0, 0, 0)
+                           ->errorCorrection('M')
                            ->generate($this->getQrCodeContent());
 
-            $filename = 'qr-code-' . Str::slug($this->questionnaire->title) . '.png';
+            $filename = 'qr-code-' . Str::slug($this->questionnaire->title) . '.' . $format;
 
             return response()->streamDownload(function () use ($qrCode) {
                 echo $qrCode;
-            }, $filename, ['Content-Type' => 'image/png']);
+            }, $filename, ['Content-Type' => 'image/' . $format]);
         } catch (\Exception $e) {
             session()->flash('error', 'Failed to download QR code: ' . $e->getMessage());
             return null;
@@ -60,6 +67,25 @@ class QRCodeManager extends Component
         $this->questionnaire->refresh();
         session()->flash('message', 'QR Code regenerated successfully!');
     }
+
+    public function copyQrCode()
+    {
+        session()->flash('message', 'QR Code copied to clipboard!');
+    }
+
+    public function printQrCode()
+    {
+        $this->dispatch('print-qr-code');
+    }
+
+    public function shareQrCode()
+    {
+        $this->dispatch('share-qr-code', [
+            'title' => $this->questionnaire->title,
+            'code' => $this->questionnaire->qr_code
+        ]);
+    }
+
 
     public function render()
     {

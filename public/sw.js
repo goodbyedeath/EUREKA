@@ -5,10 +5,10 @@ const OFFLINE_URL = '/offline.html';
 // Files to cache for offline functionality
 const CACHE_URLS = [
     '/',
-    '/css/app.css',
-    '/js/app.js',
-    '/images/icons/icon-192x192.png',
-    '/images/icons/icon-512x512.png',
+    '/build/assets/app-DCRMsj8y.css',
+    '/build/assets/app-BHVf6n3-.js',
+    '/logo.png',
+    '/manifest.json',
     OFFLINE_URL
 ];
 

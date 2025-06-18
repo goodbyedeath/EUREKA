@@ -1,5 +1,11 @@
 <div class="bg-white border rounded-lg p-6 shadow-sm">
-    <h3 class="text-lg font-medium mb-4 text-gray-900">Add New Question</h3>
+    <h3 class="text-lg font-medium mb-4 text-gray-900">
+        @if($isEditing)
+            Edit Question
+        @else
+            Add New Question
+        @endif
+    </h3>
     
     <!-- Success/Error Messages -->
     @if (session()->has('questions_message'))
@@ -76,36 +82,51 @@
                 <div class="flex items-center justify-between mb-3">
                     <label class="block text-sm font-medium text-gray-700">
                         Answer Options <span class="text-red-500">*</span>
+                        <span class="text-xs text-gray-500 block mt-1">Minimum 2 options, maximum 8 options</span>
                     </label>
-                    <button 
-                        type="button" 
-                        wire:click="addOption"
-                        class="text-sm text-indigo-600 hover:text-indigo-500 font-medium transition-colors duration-200"
-                    >
-                        + Add Option
-                    </button>
+                    @if(count($newQuestion['options']) < 8)
+                        <button 
+                            type="button" 
+                            wire:click="addOption"
+                            class="inline-flex items-center px-3 py-1 text-xs font-medium text-indigo-600 bg-indigo-50 border border-indigo-200 rounded-md hover:bg-indigo-100 transition-colors duration-200"
+                        >
+                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                            </svg>
+                            Add Option
+                        </button>
+                    @endif
                 </div>
                 
-                <div class="space-y-2">
+                <div class="space-y-3">
                     @foreach($newQuestion['options'] as $index => $option)
-                        <div class="flex items-center space-x-2">
+                        <div class="flex items-center space-x-3">
                             <div class="flex-shrink-0 w-8 h-8 bg-white border border-gray-300 rounded-full flex items-center justify-center text-sm font-medium text-gray-600">
-                                {{ $index + 1 }}
+                                {{ chr(65 + $index) }}
                             </div>
                             <input 
                                 type="text" 
-                                wire:model="newQuestion.options.{{ $index }}" 
-                                placeholder="Option {{ $index + 1 }}"
-                                class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 transition-colors duration-200"
+                                wire:model.blur="newQuestion.options.{{ $index }}" 
+                                placeholder="Enter option {{ chr(65 + $index) }}"
+                                maxlength="255"
+                                class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 transition-colors duration-200 @if($newQuestion['correct_answer'] === $option && !empty(trim($option))) border-green-300 bg-green-50 @endif"
                             >
+                            @if($newQuestion['correct_answer'] === $option && !empty(trim($option)))
+                                <div class="flex-shrink-0 text-green-600" title="Correct Answer">
+                                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                                    </svg>
+                                </div>
+                            @endif
                             @if(count($newQuestion['options']) > 2)
                                 <button 
                                     type="button" 
                                     wire:click="removeOption({{ $index }})"
-                                    class="flex-shrink-0 text-red-500 hover:text-red-700 transition-colors duration-200"
+                                    class="flex-shrink-0 text-red-500 hover:text-red-700 transition-colors duration-200 p-1"
+                                    title="Remove option"
                                 >
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                                     </svg>
                                 </button>
                             @endif
@@ -114,8 +135,27 @@
                 </div>
                 
                 @error('newQuestion.options') 
-                    <span class="text-red-500 text-sm mt-2 block">{{ $message }}</span> 
+                    <div class="text-red-500 text-sm mt-2 flex items-center">
+                        <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+                        </svg>
+                        {{ $message }}
+                    </div>
                 @enderror
+                
+                @php
+                    $nonEmptyOptions = array_filter($newQuestion['options'], fn($opt) => !empty(trim($opt)));
+                    $duplicates = array_diff_assoc($nonEmptyOptions, array_unique($nonEmptyOptions));
+                @endphp
+                
+                @if(!empty($duplicates))
+                    <div class="text-orange-600 text-sm mt-2 flex items-center">
+                        <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+                        </svg>
+                        Warning: Duplicate options detected. Each option should be unique.
+                    </div>
+                @endif
             </div>
         @endif
 
@@ -171,26 +211,47 @@
 
         <!-- Form Actions -->
         <div class="flex justify-between items-center pt-4 border-t border-gray-200">
-            <button 
-                type="button" 
-                wire:click="resetNewQuestion"
-                class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors duration-200"
-            >
-                Reset Form
-            </button>
+            <div class="flex space-x-3">
+                @if($isEditing)
+                    <button 
+                        type="button" 
+                        wire:click="cancelEdit"
+                        class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors duration-200"
+                    >
+                        Cancel Edit
+                    </button>
+                @endif
+                <button 
+                    type="button" 
+                    wire:click="resetNewQuestion"
+                    class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors duration-200"
+                >
+                    Reset Form
+                </button>
+            </div>
             
             <button 
                 type="submit" 
                 class="px-6 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                 wire:loading.attr="disabled"
             >
-                <span wire:loading.remove>Add Question</span>
+                <span wire:loading.remove>
+                    @if($isEditing)
+                        Update Question
+                    @else
+                        Add Question
+                    @endif
+                </span>
                 <span wire:loading class="flex items-center">
                     <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    Adding...
+                    @if($isEditing)
+                        Updating...
+                    @else
+                        Adding...
+                    @endif
                 </span>
             </button>
         </div>

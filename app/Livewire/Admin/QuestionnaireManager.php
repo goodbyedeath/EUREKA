@@ -21,6 +21,7 @@ class QuestionnaireManager extends Component
     protected $listeners = [
         'questionnaire-created' => '$refresh',
         'questionnaire-updated' => '$refresh',
+        'close-create-modal' => 'closeCreateModal',
         'open-questions-modal' => 'openQuestionsModal',
         'close-questions-modal' => 'closeQuestionsModal',
         'open-qr-modal' => 'openQrModal',

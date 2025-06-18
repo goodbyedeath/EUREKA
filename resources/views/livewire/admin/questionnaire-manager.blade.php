@@ -145,20 +145,24 @@
 
     <!-- Create Modal -->
     @if($showCreateModal)
-        <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50" 
+        <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4" 
              wire:click.self="closeCreateModal">
-            <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-                <div class="flex justify-between items-center mb-4">
+            <div class="relative bg-white rounded-lg shadow-xl max-w-2xl w-full mx-auto max-h-[90vh] overflow-y-auto">
+                <!-- Modal Header -->
+                <div class="flex justify-between items-center p-6 border-b border-gray-200 sticky top-0 bg-white rounded-t-lg">
                     <h3 class="text-lg font-medium text-gray-900">Create New Questionnaire</h3>
                     <button wire:click="closeCreateModal" 
-                            class="text-gray-400 hover:text-gray-600 transition-colors duration-200">
+                            class="text-gray-400 hover:text-gray-600 transition-colors duration-200 p-1">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                         </svg>
                     </button>
                 </div>
                 
-                <livewire:admin.questionnaire-create-form />
+                <!-- Modal Body -->
+                <div class="p-6">
+                    <livewire:admin.questionnaire-create-form />
+                </div>
             </div>
         </div>
     @endif
@@ -191,12 +195,12 @@
     @if($showQrModal && $qrQuestionnaire)
         <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4" 
              wire:click.self="closeQrModal">
-            <div class="relative bg-white rounded-lg shadow-xl max-w-md w-full mx-auto">
+            <div class="relative bg-white rounded-lg shadow-xl max-w-lg w-full mx-auto max-h-[90vh] overflow-y-auto">
                 <!-- Modal Header -->
-                <div class="flex justify-between items-center p-6 border-b border-gray-200">
+                <div class="flex justify-between items-center p-6 border-b border-gray-200 sticky top-0 bg-white rounded-t-lg">
                     <div>
                         <h3 class="text-lg font-medium text-gray-900">QR Code</h3>
-                        <p class="text-sm text-gray-500 mt-1">{{ $qrQuestionnaire->title }}</p>
+                        <p class="text-sm text-gray-500 mt-1">{{ Str::limit($qrQuestionnaire->title, 30) }}</p>
                     </div>
                     <button wire:click="closeQrModal" 
                             class="text-gray-400 hover:text-gray-600 transition-colors duration-200 p-1">
@@ -207,14 +211,10 @@
                 </div>
                 
                 <!-- Modal Body -->
-                <div class="p-8">
-                    <div class="flex flex-col items-center justify-center text-center space-y-6">
-                        <div class="flex items-center justify-center w-full">
-                            <livewire:admin.q-r-code-manager 
-                                :questionnaire="$qrQuestionnaire" 
-                                :key="'qr-manager-'.$qrQuestionnaire->id" />
-                        </div>
-                    </div>
+                <div class="p-6">
+                    <livewire:admin.q-r-code-manager 
+                        :questionnaire="$qrQuestionnaire" 
+                        :key="'qr-manager-'.$qrQuestionnaire->id" />
                 </div>
             </div>
         </div>

@@ -20,7 +20,8 @@ class QuestionManager extends Component
 
     protected $listeners = [
         'question-added' => 'refreshQuestions',
-        'question-deleted' => 'refreshQuestions'
+        'question-deleted' => 'refreshQuestions',
+        'question-updated' => 'refreshQuestions'
     ];
 
     public function loadQuestions()
@@ -36,6 +37,11 @@ class QuestionManager extends Component
     {
         $this->questionnaire = $this->questionnaire->fresh();
         $this->loadQuestions();
+    }
+
+    public function editQuestion(int $questionId)
+    {
+        $this->dispatch('edit-question', questionId: $questionId);
     }
 
     public function deleteQuestion(int $questionId)
