@@ -11,6 +11,8 @@ use Exception;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\ValidationException as ValidationException;
+use App\Services\AnswerValidationService;
+use Illuminate\Support\Facades\DB;
 
 
 class QuizTake extends Component
@@ -54,8 +56,17 @@ class QuizTake extends Component
             $this->attempt = QuizAttempt::with(['questionnaire.questions', 'userAnswers'])
                 ->where('id', $attemptId)
                 ->where('user_id', auth()->id())
-                ->where('status', QuizAttempt::STATUS_STARTED)
                 ->firstOrFail();
+                
+            // Check if attempt is completed - redirect to results if so
+            if ($this->attempt->isCompleted()) {
+                return redirect()->route('quiz.results', ['attemptId' => $this->attempt->id]);
+            }
+            
+            // Only allow started attempts for editing
+            if (!$this->attempt->isStarted()) {
+                abort(403, 'This quiz attempt cannot be continued.');
+            }
             
             // Check if attempt hasn't expired - this is crucial for timer accuracy
             if ($this->attempt->questionnaire->time_limit) {
@@ -279,6 +290,12 @@ class QuizTake extends Component
 
     public function saveAnswer($questionId, $answer)
     {
+        // Prevent saving answers if quiz is completed
+        if (!$this->attempt->canEditAnswers()) {
+            session()->flash('error', 'Cannot edit answers - quiz has been submitted.');
+            return;
+        }
+        
         // Validate the answer before saving
         $question = collect($this->questions)->firstWhere('id', $questionId);
         if (!$question) {
@@ -326,84 +343,75 @@ class QuizTake extends Component
             return;
         }
         
-        $now = now();
-        $data = [];
-        
-        foreach ($this->pendingAnswers as $questionId => $answer) {
-            $question = collect($this->questions)->firstWhere('id', $questionId);
-            if (!$question) {
-                continue;
+        // Use database transaction with pessimistic locking to prevent race conditions
+        DB::transaction(function () {
+            // Lock the quiz attempt to prevent concurrent modifications
+            $lockedAttempt = QuizAttempt::where('id', $this->attempt->id)
+                ->lockForUpdate()
+                ->first();
+            
+            if (!$lockedAttempt || !$lockedAttempt->canEditAnswers()) {
+                $this->pendingAnswers = [];
+                return;
             }
+            
+            $now = now();
+            $data = [];
+            
+            foreach ($this->pendingAnswers as $questionId => $answer) {
+                $question = collect($this->questions)->firstWhere('id', $questionId);
+                if (!$question) {
+                    continue;
+                }
 
-            $isCorrect = $this->isAnswerCorrect($question, $answer);
-            $pointsEarned = $isCorrect ? $question['points'] : 0;
+                $isCorrect = $this->isAnswerCorrect($question, $answer);
+                $pointsEarned = $isCorrect ? $question['points'] : 0;
 
-            $data[] = [
-                'quiz_attempt_id' => $this->attempt->id,
-                'question_id' => $questionId,
-                'answer' => $answer,
-                'is_correct' => $isCorrect,
-                'points_earned' => $pointsEarned,
-                'created_at' => $now,
-                'updated_at' => $now,
-            ];
-        }
-        
-        if (!empty($data)) {
-            // Use upsert for better performance
-            UserAnswer::upsert(
-                $data,
-                ['quiz_attempt_id', 'question_id'],
-                ['answer', 'is_correct', 'points_earned', 'updated_at']
-            );
-        }
+                $data[] = [
+                    'quiz_attempt_id' => $this->attempt->id,
+                    'question_id' => $questionId,
+                    'answer' => $answer,
+                    'is_correct' => $isCorrect,
+                    'points_earned' => $pointsEarned,
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ];
+            }
+            
+            if (!empty($data)) {
+                // Use upsert for better performance
+                UserAnswer::upsert(
+                    $data,
+                    ['quiz_attempt_id', 'question_id'],
+                    ['answer', 'is_correct', 'points_earned', 'updated_at']
+                );
+            }
+        });
         
         $this->pendingAnswers = [];
     }
 
     protected function validateAnswer($question, $answer)
     {
-        // Add input sanitization
-        $answer = trim($answer);
+        // Sanitize input
+        $answer = AnswerValidationService::sanitizeAnswer($answer);
         
-        switch ($question['type']) {
-            case 'multiple_choice':
-                $validOptions = is_array($question['options']) 
-                    ? $question['options'] 
-                    : json_decode($question['options'], true);
-                    
-                if (!is_array($validOptions) || !in_array($answer, $validOptions)) {
-                    throw ValidationException::withMessages([
-                        'answer' => ['Invalid option selected']
-                    ]);
-                }
-                break;
-                
-            case 'true_false':
-                if (!in_array(strtolower($answer), ['true', 'false', '1', '0'])) {
-                    throw ValidationException::withMessages([
-                        'answer' => ['Invalid true/false value']
-                    ]);
-                }
-                break;
-                
-            case 'text':
-                if (strlen($answer) > 1000) {
-                    throw ValidationException::withMessages([
-                        'answer' => ['Answer exceeds maximum length']
-                    ]);
-                }
-                // Add XSS protection
-                $answer = htmlspecialchars($answer, ENT_QUOTES, 'UTF-8');
-                break;
-                
-            case 'number':
-                if (!is_numeric($answer)) {
-                    throw ValidationException::withMessages([
-                        'answer' => ['Answer must be a number']
-                    ]);
-                }
-                break;
+        // Create temporary Question model for validation
+        $questionModel = new \App\Models\Question([
+            'id' => $question['id'],
+            'type' => $question['type'],
+            'options' => $question['options'] ?? [],
+            'correct_answer' => '', // Not needed for format validation
+            'points' => $question['points']
+        ]);
+
+        // Validate format using the service
+        $errors = AnswerValidationService::validateAnswerFormat($questionModel, $answer);
+        
+        if (!empty($errors)) {
+            throw ValidationException::withMessages([
+                'answer' => $errors
+            ]);
         }
         
         return $answer;
@@ -447,39 +455,50 @@ class QuizTake extends Component
 
     public function submitQuiz()
     {
-        // Double-check timer before submission
-        if ($this->questionnaire->time_limit && !$this->autoSubmitted) {
-            $this->calculateTimeRemaining();
-            if ($this->timeRemaining <= 0) {
-                $this->autoSubmitted = true;
+        // Use database transaction with locking to prevent race conditions
+        DB::transaction(function () {
+            // Lock the quiz attempt to prevent concurrent submissions
+            $lockedAttempt = QuizAttempt::where('id', $this->attempt->id)
+                ->lockForUpdate()
+                ->first();
+            
+            if (!$lockedAttempt || !$lockedAttempt->canSubmit()) {
+                session()->flash('error', 'Quiz has already been submitted and cannot be resubmitted.');
+                return;
             }
-        }
-        
-        // Flush any pending answers before submission
-        $this->flushPendingAnswers();
-        
-        $this->endTime = now();
-        
-        // Verify this is a legitimate submission
-        if ($this->attempt->status === QuizAttempt::STATUS_COMPLETED) {
-            session()->flash('error', 'Quiz already completed.');
-            return;
-        }
+            
+            // Double-check timer before submission
+            if ($this->questionnaire->time_limit && !$this->autoSubmitted) {
+                $this->calculateTimeRemaining();
+                if ($this->timeRemaining <= 0) {
+                    $this->autoSubmitted = true;
+                }
+            }
+            
+            // Flush any pending answers before submission
+            $this->flushPendingAnswers();
+            
+            $this->endTime = now();
+            
+            // Verify this is a legitimate submission
+            if ($lockedAttempt->user_id !== auth()->id()) {
+                abort(403, 'Unauthorized quiz submission.');
+            }
 
-        if ($this->attempt->user_id !== auth()->id()) {
-            abort(403, 'Unauthorized quiz submission.');
-        }
+            // Calculate score
+            $this->calculateScore();
 
-        // Calculate score
-        $this->calculateScore();
+            // Update attempt with final scores
+            $lockedAttempt->update([
+                'status' => QuizAttempt::STATUS_COMPLETED,
+                'completed_at' => $this->endTime,
+                'total_score' => $this->earnedPoints,
+                'total_time_seconds' => $this->endTime->diffInSeconds($this->startTime),
+            ]);
 
-        // Update attempt with final scores
-        $this->attempt->update([
-            'status' => QuizAttempt::STATUS_COMPLETED,
-            'completed_at' => $this->endTime,
-            'total_score' => $this->earnedPoints,
-            'total_time_seconds' => $this->endTime->diffInSeconds($this->startTime),
-        ]);
+            // Update local attempt reference
+            $this->attempt = $lockedAttempt;
+        });
 
         $this->isCompleted = true;
         $this->showResults = true;
@@ -526,32 +545,16 @@ class QuizTake extends Component
             return false;
         }
 
-        switch ($question['type']) {
-            case 'multiple_choice':
-                return trim($userAnswer) === trim($correctAnswer);
-            
-            case 'true_false':
-                $userBool = in_array(strtolower(trim($userAnswer)), ['true', '1']);
-                $correctBool = in_array(strtolower(trim($correctAnswer)), ['true', '1']);
-                return $userBool === $correctBool;
-            
-            case 'text':
-                // Enhanced text matching with fuzzy comparison option
-                if (isset($question['exact_match']) && $question['exact_match']) {
-                    return strtolower(trim($userAnswer)) === strtolower(trim($correctAnswer));
-                } else {
-                    // Allow for multiple correct answers (comma-separated)
-                    $acceptableAnswers = array_map('trim', explode(',', strtolower($correctAnswer)));
-                    return in_array(strtolower(trim($userAnswer)), $acceptableAnswers);
-                }
-            
-            case 'number':
-                $tolerance = isset($question['tolerance']) ? $question['tolerance'] : 0;
-                return abs((float)$userAnswer - (float)$correctAnswer) <= $tolerance;
-            
-            default:
-                return false;
-        }
+        // Create a temporary Question model for validation
+        $questionModel = new \App\Models\Question([
+            'id' => $question['id'],
+            'type' => $question['type'],
+            'options' => $question['options'] ?? [],
+            'correct_answer' => $correctAnswer,
+            'points' => $question['points']
+        ]);
+
+        return AnswerValidationService::isAnswerCorrect($questionModel, $userAnswer);
     }
 
     public function getAnsweredQuestionsCount()
@@ -606,6 +609,12 @@ class QuizTake extends Component
 
     public function goToQuizList()
     {
+        // Clear any session data related to the current quiz
+        session()->forget(['active_questionnaire_id', 'scanned_qr_code']);
+        
+        // Set the active tab to quizzes so user goes directly to quiz list
+        session()->flash('active_tab', 'quizzes');
+        
         return redirect()->route('user.dashboard');
     }
 
@@ -613,6 +622,13 @@ class QuizTake extends Component
     public function updatedAnswers($value, $key)
     {
         if (is_numeric($key)) {
+            // Prevent editing if quiz is completed
+            if (!$this->attempt->canEditAnswers()) {
+                // Reset the answer to prevent frontend changes
+                $this->answers[$key] = $this->attempt->userAnswers()->where('question_id', $key)->first()->answer ?? '';
+                return;
+            }
+            
             // For text inputs, we might want to debounce
             $question = collect($this->questions)->firstWhere('id', $key);
             
@@ -661,6 +677,14 @@ class QuizTake extends Component
         $remainingQuestions = count($this->questions) - ($this->currentQuestionIndex + 1);
         
         return $avgTime * $remainingQuestions;
+    }
+    
+    /**
+     * Check if the current user can edit answers for this quiz
+     */
+    public function canEditAnswers()
+    {
+        return $this->attempt && $this->attempt->canEditAnswers();
     }
     
     public function render()

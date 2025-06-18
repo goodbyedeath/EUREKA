@@ -33,10 +33,22 @@
                             </span>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
-                            @if($attempt->status === 'completed' && $attempt->total_score !== null)
+                            @if($attempt->status === \App\Models\QuizAttempt::STATUS_COMPLETED && $attempt->total_score !== null)
                                 <span class="text-sm font-medium {{ $this->getScoreColor($attempt->total_score) }}">
                                     {{ $this->formatScore($attempt) }}
                                 </span>
+                            @elseif($attempt->status === \App\Models\QuizAttempt::STATUS_STARTED)
+                                @php
+                                    $progress = $this->getAttemptProgress($attempt);
+                                @endphp
+                                @if($progress)
+                                    <div class="text-sm text-gray-600">
+                                        {{ $progress['answered'] }}/{{ $progress['total'] }} answered
+                                    </div>
+                                    <div class="text-xs text-gray-500">{{ $progress['percentage'] }}% complete</div>
+                                @else
+                                    <span class="text-sm text-gray-500">In Progress</span>
+                                @endif
                             @else
                                 <span class="text-sm text-gray-500">-</span>
                             @endif
@@ -47,7 +59,7 @@
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                             <div class="flex space-x-2">
-                                @if($attempt->status === 'completed')
+                                @if($attempt->status === \App\Models\QuizAttempt::STATUS_COMPLETED)
                                     <button wire:click="viewQuizDetails({{ $attempt->id }})" 
                                             class="text-blue-600 hover:text-blue-900 focus:outline-none">
                                         View Results
@@ -61,13 +73,25 @@
                                         </button>
                                     @endif
 
-                                @elseif($attempt->status === 'started')
-                                    <button wire:click="continueQuiz({{ $attempt->id }})" 
-                                            class="text-blue-600 hover:text-blue-900 focus:outline-none">
-                                        Continue Quiz
-                                    </button>
+                                @elseif($attempt->status === \App\Models\QuizAttempt::STATUS_STARTED)
+                                    @if($this->canContinueAttempt($attempt))
+                                        <button wire:click="continueQuiz({{ $attempt->id }})" 
+                                                class="text-blue-600 hover:text-blue-900 focus:outline-none">
+                                            Continue Quiz
+                                        </button>
+                                        @if($this->getTimeRemaining($attempt))
+                                            <div class="text-xs text-orange-600 mt-1">
+                                                {{ $this->getTimeRemaining($attempt) }}
+                                            </div>
+                                        @endif
+                                    @else
+                                        <span class="text-gray-400 text-xs">Cannot continue</span>
+                                        @if($attempt->questionnaire && $attempt->questionnaire->time_limit)
+                                            <div class="text-xs text-red-600 mt-1">Time expired</div>
+                                        @endif
+                                    @endif
 
-                                @elseif(in_array($attempt->status, ['expired', 'abandoned']))
+                                @elseif(in_array($attempt->status, [\App\Models\QuizAttempt::STATUS_ABANDONED]))
                                     @if($attempt->questionnaire && $attempt->questionnaire->canUserAttempt(Auth::id()))
                                         <button wire:click="retakeQuiz({{ $attempt->questionnaire->id }})" 
                                                 class="text-green-600 hover:text-green-900 focus:outline-none">
@@ -106,4 +130,46 @@
             </div>
         @endif
     </div>
+
+    {{-- Error Messages --}}
+    @if(session()->has('error'))
+        <div class="mt-4 bg-red-50 border border-red-200 rounded-md p-4">
+            <div class="flex">
+                <div class="flex-shrink-0">
+                    <i class="fas fa-exclamation-circle text-red-400"></i>
+                </div>
+                <div class="ml-3">
+                    <p class="text-sm text-red-800">{{ session('error') }}</p>
+                </div>
+            </div>
+        </div>
+    @endif
+
+    {{-- Success Messages --}}
+    @if(session()->has('success'))
+        <div class="mt-4 bg-green-50 border border-green-200 rounded-md p-4">
+            <div class="flex">
+                <div class="flex-shrink-0">
+                    <i class="fas fa-check-circle text-green-400"></i>
+                </div>
+                <div class="ml-3">
+                    <p class="text-sm text-green-800">{{ session('success') }}</p>
+                </div>
+            </div>
+        </div>
+    @endif
+
+    {{-- Info Messages --}}
+    @if(session()->has('info'))
+        <div class="mt-4 bg-blue-50 border border-blue-200 rounded-md p-4">
+            <div class="flex">
+                <div class="flex-shrink-0">
+                    <i class="fas fa-info-circle text-blue-400"></i>
+                </div>
+                <div class="ml-3">
+                    <p class="text-sm text-blue-800">{{ session('info') }}</p>
+                </div>
+            </div>
+        </div>
+    @endif
 </div>

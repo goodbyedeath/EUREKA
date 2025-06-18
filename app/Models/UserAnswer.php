@@ -12,7 +12,6 @@ class UserAnswer extends Model
         'answer',
         'is_correct',
         'points_earned',
-        'time_taken_seconds',
     ];
 
     protected function casts(): array

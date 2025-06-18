@@ -8,7 +8,10 @@
       "Bash(npm uninstall:*)",
       "Bash(mkdir:*)",
       "Bash(php artisan make:livewire:*)",
-      "Bash(rg \"alpine\" -i)"
+      "Bash(rg \"alpine\" -i)",
+      "Bash(php artisan route:list:*)",
+      "Bash(grep:*)",
+      "Bash(find:*)"
     ],
     "deny": []
   }

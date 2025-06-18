@@ -29,8 +29,6 @@ class AvailableQuest extends Component
     #[On('qr-code-scanned')]
     public function handleScannedCode($qr_code)
     {
-        \Log::info('AvailableQuest: Received QR code scanned event', ['qr_code' => $qr_code]);
-        
         $this->scannedQr_code = $qr_code;
         $this->loadQuizzes();
         $this->dispatch('scanner-processed');
@@ -46,74 +44,22 @@ class AvailableQuest extends Component
 
     public function loadQuizzes()
     {
-        $this->recentAttempts = QuizAttempt::where('user_id', Auth::id())->get();
+        // DEBUG: Add logging to see what's happening
+        $userId = Auth::id();
+        $attempts = QuizAttempt::where('user_id', $userId)->get();
+        
+        \Log::info('DEBUG loadQuizzes', [
+            'userId' => $userId,
+            'attemptsFound' => $attempts->count(),
+            'attemptData' => $attempts->toArray()
+        ]);
+        
+        $this->recentAttempts = $attempts;
         
         if ($this->scannedQr_code) {
-            \Log::info('=== DETAILED QR CODE DEBUGGING ===');
-            \Log::info('Scanned QR Code: "' . $this->scannedQr_code . '"');
-            \Log::info('Current time: ' . now()->toDateTimeString());
-            
-            // Step 1: Raw database check
-            $questionnairesWithQr = Questionnaire::where('qr_code', $this->scannedQr_code)->get();
-            \Log::info('Step 1 - Raw questionnaires with QR: ' . $questionnairesWithQr->count());
-            
-            foreach ($questionnairesWithQr as $q) {
-                \Log::info("Raw Questionnaire: ID {$q->id}, Title: '{$q->title}'");
-                \Log::info("  - is_active: " . ($q->is_active ? 'true' : 'false'));
-                \Log::info("  - start_date: " . ($q->start_date ? $q->start_date->toDateTimeString() : 'null'));
-                \Log::info("  - end_date: " . ($q->end_date ? $q->end_date->toDateTimeString() : 'null'));
-                \Log::info("  - questions_count: " . $q->questions()->count());
-                
-                // Test isAvailable step by step
-                $now = now();
-                $isActiveCheck = $q->is_active;
-                $startDateCheck = !$q->start_date || $now->gte($q->start_date);
-                $endDateCheck = !$q->end_date || $now->lte($q->end_date);
-                $finalAvailable = $q->isAvailable();
-                
-                \Log::info("  - isActive check: " . ($isActiveCheck ? 'PASS' : 'FAIL'));
-                \Log::info("  - startDate check: " . ($startDateCheck ? 'PASS' : 'FAIL'));
-                \Log::info("  - endDate check: " . ($endDateCheck ? 'PASS' : 'FAIL'));
-                \Log::info("  - isAvailable() result: " . ($finalAvailable ? 'PASS' : 'FAIL'));
-            }
-            
-            if ($questionnairesWithQr->count() == 0) {
-                // No questionnaire found - check what QR codes exist
-                $allQrs = Questionnaire::select('id', 'title', 'qr_code')->get();
-                \Log::info('All QR codes in database:');
-                foreach ($allQrs as $q) {
-                    \Log::info("  QR: '{$q->qr_code}' (ID: {$q->id}, Title: {$q->title})");
-                }
-            }
-            
-            // Step 2: Active filter
-            $activeQuestionnaires = Questionnaire::where('qr_code', $this->scannedQr_code)
+            // Load questionnaires matching the scanned QR code
+            $this->availableQuestionnaires = Questionnaire::where('qr_code', $this->scannedQr_code)
                 ->active()
-                ->get();
-            \Log::info('Step 2 - After active() filter: ' . $activeQuestionnaires->count());
-            
-            // Step 3: WithQuestions filter
-            $questionnairesWithQuestions = Questionnaire::where('qr_code', $this->scannedQr_code)
-                ->active()
-                ->withQuestions()
-                ->withCount('questions')
-                ->get();
-            \Log::info('Step 3 - After withQuestions() filter: ' . $questionnairesWithQuestions->count());
-            
-            // Step 4: isAvailable filter
-            $availableOnes = $questionnairesWithQuestions->filter(function ($questionnaire) {
-                return $questionnaire->isAvailable();
-            });
-            \Log::info('Step 4 - After isAvailable() filter: ' . $availableOnes->count());
-            
-            $this->availableQuestionnaires = $availableOnes->values();
-            $this->showNoQuizMessage = $this->availableQuestionnaires->isEmpty();
-            
-            \Log::info('Final result: ' . ($this->showNoQuizMessage ? 'SHOWING NO QUIZ MESSAGE' : 'QUESTIONNAIRES AVAILABLE'));
-            \Log::info('=== END DETAILED DEBUGGING ===');
-        } else {
-            // Load all available questionnaires when no QR code is scanned
-            $this->availableQuestionnaires = Questionnaire::active()
                 ->withQuestions()
                 ->withCount('questions')
                 ->get()
@@ -122,51 +68,53 @@ class AvailableQuest extends Component
                 })
                 ->values();
             
+            $this->showNoQuizMessage = $this->availableQuestionnaires->isEmpty();
+        } else {
+            // Load all available questionnaires when no QR code is scanned
+            $this->availableQuestionnaires = Questionnaire::active()
+                ->withQuestions()
+                ->withCount('questions')
+                ->get()
+                ->filter(function ($questionnaire) {
+                    return $questionnaire->isAvailable() && $questionnaire->canUserAttempt(Auth::id());
+                })
+                ->values();
+            
             $this->showNoQuizMessage = false;
         }
     }
 
     public function startQuiz($questionnaireId)
-{
-    \Log::info('=== START QUIZ DEBUG ===');
-    \Log::info('Received questionnaireId: ' . $questionnaireId);
-    
-    $questionnaire = Questionnaire::find($questionnaireId);
-    
-    if (!$questionnaire) {
-        \Log::error('Questionnaire not found with ID: ' . $questionnaireId);
-        session()->flash('error', 'Questionnaire not found.');
-        return;
+    {
+        $questionnaire = Questionnaire::find($questionnaireId);
+        
+        if (!$questionnaire) {
+            session()->flash('error', 'Questionnaire not found.');
+            return;
+        }
+
+        if (!$questionnaire->isAvailable() || !$questionnaire->hasQuestions()) {
+            session()->flash('error', 'Questionnaire not found, inactive, or has no questions.');
+            return;
+        }
+
+        if ($this->scannedQr_code && $questionnaire->qr_code !== $this->scannedQr_code) {
+            session()->flash('error', 'This questionnaire does not match the scanned code.');
+            return;
+        }
+
+        if (!$questionnaire->canUserAttempt(Auth::id())) {
+            session()->flash('error', 'You have reached the maximum number of attempts for this quiz.');
+            return;
+        }
+
+        $existingAttempt = $questionnaire->getUserInProgressAttempt(Auth::id());
+        if ($existingAttempt) {
+            return redirect()->route('quiz.continue', $existingAttempt->id);
+        }
+
+        return redirect()->route('quiz.take', ['questionnaireId' => $questionnaire->id]);
     }
-
-    \Log::info('Questionnaire found: ' . $questionnaire->title);
-
-    if (!$questionnaire->isAvailable() || !$questionnaire->hasQuestions()) {
-        session()->flash('error', 'Questionnaire not found, inactive, or has no questions.');
-        return;
-    }
-
-    if ($this->scannedQr_code && $questionnaire->qr_code !== $this->scannedQr_code) {
-        session()->flash('error', 'This questionnaire does not match the scanned code.');
-        return;
-    }
-
-    if (!$questionnaire->canUserAttempt(Auth::id())) {
-        session()->flash('error', 'You have reached the maximum number of attempts for this quiz.');
-        return;
-    }
-
-    $existingAttempt = $questionnaire->getUserInProgressAttempt(Auth::id());
-    if ($existingAttempt) {
-        \Log::info('Found existing attempt, redirecting to continue...');
-        return redirect()->route('quiz.continue', $existingAttempt->id);
-    }
-
-    \Log::info('Starting new quiz attempt, redirecting to quiz.take...');
-    
-    // Direct redirect to quiz.take route with questionnaireId
-    return redirect()->route('quiz.take', ['questionnaireId' => $questionnaire->id]);
-}
 
     public function continueQuiz($attemptId)
     {
@@ -185,10 +133,21 @@ class AvailableQuest extends Component
 
     public function hasCompletedQuiz($questionnaireId)
     {
-        return $this->recentAttempts
+        $completedAttempts = $this->recentAttempts
             ->where('questionnaire_id', $questionnaireId)
-            ->where('status', QuizAttempt::STATUS_COMPLETED)
-            ->isNotEmpty();
+            ->where('status', QuizAttempt::STATUS_COMPLETED);
+            
+        // DEBUG: Log the attempts data
+        \Log::info('DEBUG hasCompletedQuiz', [
+            'questionnaireId' => $questionnaireId,
+            'totalRecentAttempts' => $this->recentAttempts->count(),
+            'attemptStatuses' => $this->recentAttempts->pluck('status', 'questionnaire_id')->toArray(),
+            'completedCount' => $completedAttempts->count(),
+            'completedAttempts' => $completedAttempts->toArray(),
+            'STATUS_COMPLETED' => QuizAttempt::STATUS_COMPLETED
+        ]);
+            
+        return $completedAttempts->isNotEmpty();
     }
 
     public function hasInProgressQuiz($questionnaireId)
@@ -230,6 +189,33 @@ class AvailableQuest extends Component
             'abandoned' => $this->hasAbandonedQuiz($questionnaireId),
         ];
     }
+
+    public function debugQuizData($questionnaireId)
+    {
+        // Get fresh data from database
+        $dbAttempts = QuizAttempt::where('user_id', Auth::id())
+            ->where('questionnaire_id', $questionnaireId)
+            ->get();
+            
+        $questionnaire = Questionnaire::find($questionnaireId);
+        $methodCount = $questionnaire ? $questionnaire->getUserAttemptCount(Auth::id()) : 0;
+        
+        // Also check what recentAttempts contains for this questionnaire
+        $recentForThisQuiz = $this->recentAttempts
+            ->where('questionnaire_id', $questionnaireId);
+            
+        session()->flash('success', 
+            "Debug Data for Q{$questionnaireId}: " .
+            "DB completed attempts: " . $dbAttempts->where('status', 'completed')->count() . " | " .
+            "recentAttempts total: " . $this->recentAttempts->count() . " | " .
+            "recentAttempts for this quiz: " . $recentForThisQuiz->count() . " | " .
+            "hasCompleted method: " . ($this->hasCompletedQuiz($questionnaireId) ? 'true' : 'false') . " | " .
+            "getUserAttemptCount: " . $methodCount . " | " .
+            "DB attempt statuses: " . $dbAttempts->pluck('status')->implode(',') . " | " .
+            "recentAttempts statuses for this quiz: " . $recentForThisQuiz->pluck('status')->implode(',')
+        );
+    }
+
 
     public function render()
     {

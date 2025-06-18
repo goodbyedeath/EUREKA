@@ -115,4 +115,20 @@ class QuizAttempt extends Model
         
         return round(($this->total_score / $this->questionnaire->total_points) * 100, 1);
     }
+
+    /**
+     * Check if answers can be edited (only allowed if quiz is not completed)
+     */
+    public function canEditAnswers(): bool
+    {
+        return $this->status === self::STATUS_STARTED;
+    }
+
+    /**
+     * Check if quiz can be submitted (only if started and not already completed)
+     */
+    public function canSubmit(): bool
+    {
+        return $this->status === self::STATUS_STARTED;
+    }
 }

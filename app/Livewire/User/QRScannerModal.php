@@ -66,6 +66,12 @@ class QRScannerModal extends Component
             // Success - questionnaire found and user can access it
             session()->flash('success', 'Questionnaire unlocked successfully!');
             
+            // Dispatch event to show the questionnaire in available quizzes
+            $this->dispatch('qr-code-scanned', qr_code: $code);
+            
+            // Close the modal after successful scan
+            $this->closeModal();
+            
         } catch (\Exception $e) {
             $this->error = 'Error looking up questionnaire: ' . $e->getMessage();
         }

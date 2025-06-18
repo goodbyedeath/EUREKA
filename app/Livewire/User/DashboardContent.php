@@ -22,6 +22,12 @@ class DashboardContent extends Component
     public function mount()
     {
         $this->loadUserData();
+        
+        // Check if we should switch to a specific tab (e.g., after completing a quiz)
+        if (session()->has('active_tab')) {
+            $this->activeTab = session('active_tab');
+            session()->forget('active_tab');
+        }
     }
 
     public function loadUserData()

@@ -1,4 +1,5 @@
 <div>
+
     {{-- QR Code Status Info --}}
     @if($scannedQr_code)
         <div class="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
@@ -17,8 +18,31 @@
         </div>
     @endif
 
+    {{-- DEBUG SECTION - Always visible --}}
+    <div class="mb-4 p-4 bg-yellow-100 border border-yellow-300 rounded">
+        <h4 class="font-bold text-yellow-800 mb-2">DEBUG INFO</h4>
+        <div class="text-xs text-yellow-800">
+            Current User ID: {{ Auth::id() }}<br>
+            Scanned QR Code: {{ $scannedQr_code ?? 'None' }}<br>
+            Recent Attempts Count: {{ $this->recentAttempts ? $this->recentAttempts->count() : 'NULL' }}<br>
+            @if($this->recentAttempts && $this->recentAttempts->count() > 0)
+                Attempts: 
+                @foreach($this->recentAttempts as $attempt)
+                    [Q{{ $attempt->questionnaire_id }}:{{ $attempt->status }}:U{{ $attempt->user_id }}] 
+                @endforeach
+            @else
+                NO ATTEMPTS FOUND
+            @endif
+            <br>
+            <button wire:click="debugQuizData(1)" class="mt-2 bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-xs">
+                Debug Quiz Data (ID: 1)
+            </button>
+        </div>
+    </div>
+
     {{-- Available Quizzes Grid --}}
     @if($scannedQr_code)
+
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             @forelse($availableQuestionnaires as $questionnaire)
             @php
@@ -82,6 +106,28 @@
                     </div>
                 @endif
                 
+
+                {{-- DEBUG: Show actual values --}}
+                <div class="mb-2 p-2 bg-yellow-100 text-xs text-yellow-800 rounded">
+                    DEBUG: hasCompleted={{ $hasCompleted ? 'true' : 'false' }} | 
+                    canTakeQuiz={{ $canTakeQuiz ? 'true' : 'false' }} | 
+                    hasInProgress={{ $hasInProgress ? 'true' : 'false' }}
+                    <br>recentAttempts count: {{ $this->recentAttempts->count() }}
+                    <br>questionnaire_id: {{ $questionnaire->id }}
+                    <br>current user_id: {{ Auth::id() }}
+                    @if($this->recentAttempts->count() > 0)
+                        <br>attempt statuses: 
+                        @foreach($this->recentAttempts as $attempt)
+                            [Q{{ $attempt->questionnaire_id }}:{{ $attempt->status }}:U{{ $attempt->user_id }}]
+                        @endforeach
+                    @else
+                        <br>NO RECENT ATTEMPTS FOUND
+                    @endif
+                    <br><button wire:click="debugQuizData({{ $questionnaire->id }})" class="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-xs">
+                        Debug Quiz Data
+                    </button>
+                </div>
+
                 {{-- Action Buttons --}}
                 @if($hasInProgress)
                     <button wire:click="continueQuiz({{ $hasInProgress->id }})" 
@@ -185,6 +231,8 @@
                 To take a quiz, you need to scan the QR code provided with each questionnaire. 
                 Each QR code contains a unique identifier that unlocks the specific quiz.
             </p>
+            
+            
             <div class="flex flex-col sm:flex-row gap-3 justify-center items-center">
                 <div class="flex items-center text-sm text-gray-500">
                     <i class="fas fa-info-circle mr-2"></i>

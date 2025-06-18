@@ -30,17 +30,49 @@ class RecentAttempts extends Component
 
     public function continueQuiz($attemptId)
     {
+        // First check if the attempt exists and belongs to the user
         $attempt = QuizAttempt::where('id', $attemptId)
             ->where('user_id', Auth::id())
-            ->where('status', 'started') // Fixed: changed from 'in_progress' to 'started'
             ->first();
 
-        if ($attempt) {
-            return redirect()->route('quiz.continue', $attempt->id);
+        if (!$attempt) {
+            session()->flash('error', 'Quiz attempt not found.');
+            $this->loadAttempts();
+            return;
         }
 
-        session()->flash('error', 'Quiz attempt not found or already completed.');
-        $this->loadAttempts();
+        // Check if the attempt can be continued
+        if (!$attempt->isStarted()) {
+            if ($attempt->isCompleted()) {
+                session()->flash('error', 'This quiz has already been completed. Use "View Results" to see your score.');
+            } else {
+                session()->flash('error', 'This quiz attempt cannot be continued.');
+            }
+            $this->loadAttempts();
+            return;
+        }
+
+        // Check if questionnaire is still available
+        if ($attempt->questionnaire && !$attempt->questionnaire->isAvailable()) {
+            session()->flash('error', 'This quiz is no longer available.');
+            $this->loadAttempts();
+            return;
+        }
+
+        // Check for timer expiry if it's a timed quiz
+        if ($attempt->questionnaire && $attempt->questionnaire->time_limit) {
+            $elapsed = now()->diffInSeconds($attempt->started_at);
+            $timeLimit = $attempt->questionnaire->time_limit * 60;
+            
+            if ($elapsed >= $timeLimit) {
+                session()->flash('error', 'This quiz attempt has expired due to time limit.');
+                $this->loadAttempts();
+                return;
+            }
+        }
+
+        // All checks passed, continue the quiz
+        return redirect()->route('quiz.continue', $attempt->id);
     }
 
     public function retakeQuiz($questionnaireId)
@@ -50,20 +82,30 @@ class RecentAttempts extends Component
         
         if (!$questionnaire) {
             session()->flash('error', 'Quiz not found.');
-            return;
-        }
-
-        if (!$questionnaire->canUserAttempt(Auth::id())) {
-            session()->flash('error', 'You have reached the maximum number of attempts for this quiz.');
+            $this->loadAttempts();
             return;
         }
 
         if (!$questionnaire->isAvailable()) {
             session()->flash('error', 'This quiz is not currently available.');
+            $this->loadAttempts();
             return;
         }
 
-        return redirect()->route('quiz.continue', ['code' => $questionnaire->qr_code]);
+        if (!$questionnaire->canUserAttempt(Auth::id())) {
+            session()->flash('error', 'You have reached the maximum number of attempts for this quiz.');
+            $this->loadAttempts();
+            return;
+        }
+
+        // Check if user has an existing in-progress attempt for this quiz
+        $existingAttempt = $questionnaire->getUserInProgressAttempt(Auth::id());
+        if ($existingAttempt) {
+            session()->flash('info', 'You have an unfinished attempt for this quiz. Continuing where you left off.');
+            return redirect()->route('quiz.continue', $existingAttempt->id);
+        }
+
+        return redirect()->route('quiz.take', ['questionnaireId' => $questionnaire->id]);
     }
 
     public function canRetakeQuiz($questionnaire)
@@ -77,7 +119,7 @@ class RecentAttempts extends Component
     {
         $attempt = QuizAttempt::where('id', $attemptId)
             ->where('user_id', Auth::id())
-            ->where('status', 'completed') // Only allow viewing completed attempts
+            ->where('status', QuizAttempt::STATUS_COMPLETED) // Only allow viewing completed attempts
             ->first();
 
         if ($attempt) {
@@ -125,9 +167,80 @@ class RecentAttempts extends Component
         return $statusTexts[$status] ?? ucfirst($status);
     }
 
+    public function canContinueAttempt($attempt)
+    {
+        // Check if attempt can be continued
+        if (!$attempt->isStarted()) {
+            return false;
+        }
+
+        // Check if questionnaire is still available
+        if ($attempt->questionnaire && !$attempt->questionnaire->isAvailable()) {
+            return false;
+        }
+
+        // Check for timer expiry if it's a timed quiz
+        if ($attempt->questionnaire && $attempt->questionnaire->time_limit) {
+            $elapsed = now()->diffInSeconds($attempt->started_at);
+            $timeLimit = $attempt->questionnaire->time_limit * 60;
+            
+            if ($elapsed >= $timeLimit) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    public function getTimeRemaining($attempt)
+    {
+        if (!$attempt->questionnaire || !$attempt->questionnaire->time_limit || !$attempt->isStarted()) {
+            return null;
+        }
+
+        $elapsed = now()->diffInSeconds($attempt->started_at);
+        $timeLimit = $attempt->questionnaire->time_limit * 60;
+        $remaining = $timeLimit - $elapsed;
+
+        if ($remaining <= 0) {
+            return 'Expired';
+        }
+
+        $minutes = floor($remaining / 60);
+        $seconds = $remaining % 60;
+
+        if ($minutes > 0) {
+            return "{$minutes}m {$seconds}s remaining";
+        } else {
+            return "{$seconds}s remaining";
+        }
+    }
+
+    public function getAttemptProgress($attempt)
+    {
+        if (!$attempt->isStarted() || !$attempt->questionnaire) {
+            return null;
+        }
+
+        $totalQuestions = $attempt->questionnaire->questions()->count();
+        $answeredQuestions = $attempt->userAnswers()->count();
+
+        if ($totalQuestions === 0) {
+            return null;
+        }
+
+        $percentage = round(($answeredQuestions / $totalQuestions) * 100);
+        
+        return [
+            'answered' => $answeredQuestions,
+            'total' => $totalQuestions,
+            'percentage' => $percentage
+        ];
+    }
+
     public function formatScore($attempt)
     {
-        if ($attempt->status !== 'completed' || is_null($attempt->total_score)) {
+        if ($attempt->status !== QuizAttempt::STATUS_COMPLETED || is_null($attempt->total_score)) {
             return '-';
         }
 

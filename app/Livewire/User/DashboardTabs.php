@@ -15,13 +15,21 @@ class DashboardTabs extends Component
     
     public function mount()
     {
-        // Check if there's a scanned QR code in session
+        // Always load scanned QR code from session
         $this->scannedqr_code = session('scanned_qr_code');
         
-        // If there's a scanned QR code, switch to quizzes tab
-        if ($this->scannedqr_code) {
+        // Check if there's a specific tab requested (e.g., after quiz completion)
+        $requestedTab = session('active_tab');
+        if ($requestedTab) {
+            $this->activeTab = $requestedTab;
+            session()->forget('active_tab');
+        } elseif ($this->scannedqr_code) {
+            // If there's a scanned QR code, switch to quizzes tab
             $this->activeTab = 'quizzes';
         }
+        
+        // Ensure the content component knows about the active tab
+        $this->dispatch('active-tab-changed', tab: $this->activeTab);
     }
 
     public function switchTab($tab)
@@ -51,6 +59,12 @@ class DashboardTabs extends Component
     public function handleTabSwitch($tab)
     {
         $this->switchTab($tab);
+    }
+    
+    #[On('clear-qr-code')]
+    public function handleClearqr_code()
+    {
+        $this->clearqr_code();
     }
 
     public function clearqr_code()

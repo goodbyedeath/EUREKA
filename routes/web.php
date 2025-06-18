@@ -52,7 +52,7 @@ Route::middleware(['auth', 'preventbackhistory'])->group(function () {
             Route::middleware('quiz')->group(function () {
                 Route::get('/quiz/start/{questionnaireId}', QuizTake::class)->name('quiz.start');
                 Route::get('/quiz/take/{questionnaireId}', QuizTake::class)->name('quiz.take');
-                Route::get('/quiz/continue/{attemptId}', [QuizTake::class, 'mount'])->name('quiz.continue');
+                Route::get('/quiz/continue/{attemptId}', QuizTake::class)->name('quiz.continue');
                 Route::get('/quiz/results/{attemptId}', QuizResults::class)->name('quiz.results');
             });
             Route::get('/quest-dashboard', QuestLocationDashboard::class)->name('user.quest-location-dashboard');

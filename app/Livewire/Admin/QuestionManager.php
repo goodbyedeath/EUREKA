@@ -46,7 +46,25 @@ class QuestionManager extends Component
 
     public function deleteQuestion(int $questionId)
     {
-        Question::findOrFail($questionId)->delete();
+        // Find the question and ensure it belongs to the current questionnaire
+        $question = Question::where('id', $questionId)
+            ->where('questionnaire_id', $this->questionnaire->id)
+            ->firstOrFail();
+
+        // Additional authorization check - ensure user can modify this questionnaire
+        if ($this->questionnaire->created_by !== auth()->id() && !auth()->user()->isAdmin()) {
+            abort(403, 'Unauthorized to delete questions from this questionnaire.');
+        }
+
+        // Check if there are any user answers for this question
+        $hasAnswers = $question->userAnswers()->exists();
+        
+        if ($hasAnswers) {
+            session()->flash('questions_error', 'Cannot delete question - it has existing user answers. Consider disabling the questionnaire instead.');
+            return;
+        }
+
+        $question->delete();
         $this->refreshQuestions();
         session()->flash('questions_message', 'Question deleted successfully!');
     }

@@ -8,6 +8,7 @@ use App\Models\Questionnaire;
 use App\Models\Question;
 use Livewire\Attributes\Validate;
 use Illuminate\Validation\Rule;
+use App\Enums\QuestionType;
 
 class QuestionForm extends Component
 {
@@ -37,58 +38,30 @@ class QuestionForm extends Component
     {
         $rules = [
             'newQuestion.question' => 'required|string|max:1000',
-            'newQuestion.type' => ['required', Rule::in(['text', 'multiple_choice', 'true_false'])],
+            'newQuestion.type' => ['required', Rule::in(QuestionType::values())],
             'newQuestion.points' => 'required|integer|min:1',
         ];
 
         // Type-specific validation
         switch ($this->newQuestion['type']) {
             case 'multiple_choice':
-                $rules = array_merge($rules, $this->getMultipleChoiceRules());
+                $rules = array_merge($rules, [
+                    'newQuestion.options' => 'required|array|min:2|max:8',
+                    'newQuestion.options.*' => 'nullable|string|max:200',
+                    'newQuestion.correct_answer' => 'required|string',
+                ]);
                 break;
             case 'true_false':
-                $rules['newQuestion.correct_answer'] = ['required', Rule::in(['true', 'false'])];
+                $rules['newQuestion.correct_answer'] = 'required|in:true,false';
                 break;
-            default:
-                $rules['newQuestion.correct_answer'] = 'required|string|max:255';
+            case 'text':
+                $rules['newQuestion.correct_answer'] = 'required|string|max:1000';
                 break;
         }
 
         return $rules;
     }
 
-    protected function getMultipleChoiceRules(): array
-    {
-        $filteredOptions = $this->getFilteredOptions();
-        
-        return [
-            'newQuestion.options' => [
-                'required',
-                'array',
-                'max:8',
-                function ($attribute, $value, $fail) use ($filteredOptions) {
-                    if (count($filteredOptions) < 2) {
-                        $fail('At least two non-empty options are required for multiple choice questions.');
-                    }
-                    
-                    // Check for duplicates
-                    $uniqueOptions = array_unique(array_map('trim', $filteredOptions));
-                    if (count($uniqueOptions) !== count($filteredOptions)) {
-                        $fail('All options must be unique.');
-                    }
-                }
-            ],
-            'newQuestion.options.*' => 'nullable|string|max:255',
-            'newQuestion.correct_answer' => [
-                'required',
-                function ($attribute, $value, $fail) use ($filteredOptions) {
-                    if (!in_array($value, $filteredOptions)) {
-                        $fail('The correct answer must be one of the provided non-empty options.');
-                    }
-                }
-            ]
-        ];
-    }
 
     protected function getFilteredOptions(): array
     {
@@ -114,6 +87,15 @@ class QuestionForm extends Component
     {
         $this->validate($this->newQuestionRules(), $this->newQuestionMessages());
 
+        // Additional validation for data integrity
+        if ($this->newQuestion['type'] === 'multiple_choice') {
+            $validationErrors = $this->validateMultipleChoiceData();
+            if (!empty($validationErrors)) {
+                session()->flash('questions_error', implode(' ', $validationErrors));
+                return;
+            }
+        }
+
         try {
             if ($this->isEditing) {
                 $this->updateQuestion();
@@ -128,6 +110,11 @@ class QuestionForm extends Component
 
     protected function createQuestion()
     {
+        // Authorization check - ensure user can modify this questionnaire
+        if ($this->questionnaire->created_by !== auth()->id() && !auth()->user()->isAdmin()) {
+            abort(403, 'Unauthorized to add questions to this questionnaire.');
+        }
+
         $questionData = $this->prepareQuestionData();
         Question::create($questionData);
 
@@ -138,10 +125,37 @@ class QuestionForm extends Component
 
     protected function updateQuestion()
     {
-        $question = Question::findOrFail($this->editingQuestionId);
+        // Find question and ensure it belongs to the current questionnaire
+        $question = Question::where('id', $this->editingQuestionId)
+            ->where('questionnaire_id', $this->questionnaire->id)
+            ->firstOrFail();
+
+        // Authorization check - ensure user can modify this questionnaire
+        if ($this->questionnaire->created_by !== auth()->id() && !auth()->user()->isAdmin()) {
+            abort(403, 'Unauthorized to update questions in this questionnaire.');
+        }
+
+        // Check if question has existing answers - restrict certain updates
+        $hasAnswers = $question->userAnswers()->exists();
+        if ($hasAnswers) {
+            // Don't allow changing question type or correct answer if there are existing answers
+            $originalType = $question->type;
+            $originalCorrectAnswer = $question->correct_answer;
+        }
+
         $questionData = $this->prepareQuestionData();
         unset($questionData['questionnaire_id']); // Don't update questionnaire_id
         unset($questionData['order']); // Don't update order during edit
+        
+        // Prevent type/answer changes if there are existing answers
+        if ($hasAnswers) {
+            $questionData['type'] = $originalType;
+            $questionData['correct_answer'] = $originalCorrectAnswer;
+            
+            if ($originalType !== $this->newQuestion['type']) {
+                session()->flash('questions_warning', 'Question type cannot be changed as it has existing answers.');
+            }
+        }
         
         $question->update($questionData);
 
@@ -152,7 +166,15 @@ class QuestionForm extends Component
 
     public function loadQuestionForEdit($questionId)
     {
-        $question = Question::findOrFail($questionId);
+        // Find question and ensure it belongs to the current questionnaire
+        $question = Question::where('id', $questionId)
+            ->where('questionnaire_id', $this->questionnaire->id)
+            ->firstOrFail();
+
+        // Authorization check - ensure user can modify this questionnaire
+        if ($this->questionnaire->created_by !== auth()->id() && !auth()->user()->isAdmin()) {
+            abort(403, 'Unauthorized to edit questions in this questionnaire.');
+        }
         
         $this->editingQuestionId = $question->id;
         $this->isEditing = true;
@@ -253,6 +275,32 @@ class QuestionForm extends Component
             unset($this->newQuestion['options'][$index]);
             $this->newQuestion['options'] = array_values($this->newQuestion['options']);
         }
+    }
+
+    protected function validateMultipleChoiceData(): array
+    {
+        $errors = [];
+        
+        // Get filtered options (non-empty)
+        $filteredOptions = $this->getFilteredOptions();
+        
+        // Check minimum options
+        if (count($filteredOptions) < 2) {
+            $errors[] = 'Please provide at least 2 non-empty options.';
+        }
+        
+        // Check if correct answer exists in options
+        if (!empty($this->newQuestion['correct_answer']) && 
+            !in_array($this->newQuestion['correct_answer'], $filteredOptions)) {
+            $errors[] = 'The correct answer must be one of the provided options.';
+        }
+        
+        // Check for duplicate options
+        if (count($filteredOptions) !== count(array_unique($filteredOptions))) {
+            $errors[] = 'All options must be unique.';
+        }
+        
+        return $errors;
     }
 
     public function getAvailableOptionsProperty()

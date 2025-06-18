@@ -21,7 +21,7 @@ class QuizResults extends Component
         $this->attempt = QuizAttempt::with(['questionnaire.questions'])
             ->where('id', $attemptId)
             ->where('user_id', Auth::id())
-            ->where('status', 'completed')
+            ->where('status', QuizAttempt::STATUS_COMPLETED)
             ->firstOrFail();
 
         $this->questionnaire = $this->attempt->questionnaire;
@@ -151,7 +151,7 @@ class QuizResults extends Component
         if (isset($this->questionnaire->max_attempts) && $this->questionnaire->max_attempts) {
             $attemptCount = QuizAttempt::where('questionnaire_id', $this->questionnaire->id)
                 ->where('user_id', Auth::id())
-                ->where('status', 'completed')
+                ->where('status', QuizAttempt::STATUS_COMPLETED)
                 ->count();
                 
             if ($attemptCount >= $this->questionnaire->max_attempts) {
@@ -172,16 +172,15 @@ class QuizResults extends Component
             return;
         }
 
-        // Check if qr_code exists
-        if (isset($this->questionnaire->qr_code)) {
-            return redirect()->route('quiz.continue', ['code' => $this->questionnaire->qr_code]);
-        } else {
-            return redirect()->route('quiz.take', ['questionnaireId' => $this->questionnaire->id]);
-        }
+        // Always use quiz.take for retaking a quiz
+        return redirect()->route('quiz.take', ['questionnaireId' => $this->questionnaire->id]);
     }
 
     public function backToDashboard()
     {
+        // Set the active tab to quizzes so user goes directly to quiz list
+        session()->flash('active_tab', 'quizzes');
+        
         return redirect()->route('user.dashboard');
     }
 

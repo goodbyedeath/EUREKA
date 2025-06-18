@@ -61,12 +61,13 @@
                             <div class="space-y-3">
                                 @foreach($currentQuestion['options'] as $index => $option)
                                     @if(!empty(trim($option)))
-                                        <label class="flex items-center p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors">
+                                        <label class="flex items-center p-3 border border-gray-200 rounded-lg {{ $attempt->canEditAnswers() ? 'hover:bg-gray-50 cursor-pointer' : 'bg-gray-100 cursor-not-allowed' }} transition-colors">
                                             <input type="radio" 
                                                    wire:model.live="answers.{{ $currentQuestion['id'] }}" 
                                                    value="{{ $option }}"
-                                                   class="mr-3 text-blue-600 focus:ring-blue-500">
-                                            <span class="text-gray-700">{{ $option }}</span>
+                                                   {{ $attempt->canEditAnswers() ? '' : 'disabled' }}
+                                                   class="mr-3 text-blue-600 focus:ring-blue-500 {{ $attempt->canEditAnswers() ? '' : 'opacity-50' }}">
+                                            <span class="text-gray-700 {{ $attempt->canEditAnswers() ? '' : 'opacity-50' }}">{{ $option }}</span>
                                         </label>
                                     @endif
                                 @endforeach
@@ -74,28 +75,31 @@
                         
                         @elseif($currentQuestion['type'] === 'true_false')
                             <div class="space-y-3">
-                                <label class="flex items-center p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors">
+                                <label class="flex items-center p-3 border border-gray-200 rounded-lg {{ $attempt->canEditAnswers() ? 'hover:bg-gray-50 cursor-pointer' : 'bg-gray-100 cursor-not-allowed' }} transition-colors">
                                     <input type="radio" 
                                            wire:model.live="answers.{{ $currentQuestion['id'] }}" 
                                            value="true"
-                                           class="mr-3 text-blue-600 focus:ring-blue-500">
-                                    <span class="text-gray-700">True</span>
+                                           {{ $attempt->canEditAnswers() ? '' : 'disabled' }}
+                                           class="mr-3 text-blue-600 focus:ring-blue-500 {{ $attempt->canEditAnswers() ? '' : 'opacity-50' }}">
+                                    <span class="text-gray-700 {{ $attempt->canEditAnswers() ? '' : 'opacity-50' }}">True</span>
                                 </label>
-                                <label class="flex items-center p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors">
+                                <label class="flex items-center p-3 border border-gray-200 rounded-lg {{ $attempt->canEditAnswers() ? 'hover:bg-gray-50 cursor-pointer' : 'bg-gray-100 cursor-not-allowed' }} transition-colors">
                                     <input type="radio" 
                                            wire:model.live="answers.{{ $currentQuestion['id'] }}" 
                                            value="false"
-                                           class="mr-3 text-blue-600 focus:ring-blue-500">
-                                    <span class="text-gray-700">False</span>
+                                           {{ $attempt->canEditAnswers() ? '' : 'disabled' }}
+                                           class="mr-3 text-blue-600 focus:ring-blue-500 {{ $attempt->canEditAnswers() ? '' : 'opacity-50' }}">
+                                    <span class="text-gray-700 {{ $attempt->canEditAnswers() ? '' : 'opacity-50' }}">False</span>
                                 </label>
                             </div>
                         
                         @elseif($currentQuestion['type'] === 'text')
                             <div>
                                 <textarea wire:model.blur="answers.{{ $currentQuestion['id'] }}" 
-                                          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent {{ $attempt->canEditAnswers() ? '' : 'bg-gray-100 opacity-50' }}"
                                           rows="4"
-                                          placeholder="Enter your answer here..."></textarea>
+                                          {{ $attempt->canEditAnswers() ? '' : 'readonly' }}
+                                          placeholder="{{ $attempt->canEditAnswers() ? 'Enter your answer here...' : 'Quiz has been submitted - answers cannot be edited' }}"></textarea>
                             </div>
                         @endif
                     </div>
@@ -104,7 +108,15 @@
                     @if($this->isQuestionAnswered($currentQuestion['id']))
                         <div class="flex items-center text-green-600 text-sm mb-4">
                             <i class="fas fa-check-circle mr-2"></i>
-                            Answer saved
+                            {{ $attempt->canEditAnswers() ? 'Answer saved' : 'Answer submitted' }}
+                        </div>
+                    @endif
+                    
+                    {{-- Quiz Status Warning --}}
+                    @if(!$attempt->canEditAnswers())
+                        <div class="flex items-center text-orange-600 text-sm mb-4 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                            <i class="fas fa-lock mr-2"></i>
+                            This quiz has been submitted and cannot be edited. You can review your answers below.
                         </div>
                     @endif
                 </div>
@@ -113,7 +125,7 @@
                 <div class="flex items-center justify-between mb-6">
                     <button wire:click="goToPreviousQuestion" 
                             class="flex items-center px-4 py-2 text-gray-600 hover:text-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
-                            {{ !$this->canGoPrevious() ? 'disabled' : '' }}>
+                            {{ !$this->canGoPrevious() || !$attempt->canEditAnswers() ? 'disabled' : '' }}>
                         <i class="fas fa-chevron-left mr-2"></i>
                         Previous
                     </button>
@@ -121,18 +133,25 @@
                     <div class="flex space-x-2">
                         @if(!$this->isLastQuestion())
                             <button wire:click="goToNextQuestion" 
-                                    class="flex items-center px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-                                    {{ !$this->canGoNext() ? 'disabled' : '' }}>
+                                    class="flex items-center px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                    {{ !$this->canGoNext() || !$attempt->canEditAnswers() ? 'disabled' : '' }}>
                                 Next
                                 <i class="fas fa-chevron-right ml-2"></i>
                             </button>
                         @else
-                            <button wire:click="submitQuiz"
-                                    wire:confirm="Are you sure you want to submit your quiz? This action cannot be undone."
-                                    class="flex items-center px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors">
-                                <i class="fas fa-check mr-2"></i>
-                                Submit Quiz
-                            </button>
+                            @if($attempt->canSubmit())
+                                <button wire:click="submitQuiz"
+                                        wire:confirm="Are you sure you want to submit your quiz? This action cannot be undone."
+                                        class="flex items-center px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors">
+                                    <i class="fas fa-check mr-2"></i>
+                                    Submit Quiz
+                                </button>
+                            @else
+                                <div class="flex items-center px-6 py-2 bg-gray-400 text-white rounded-md cursor-not-allowed">
+                                    <i class="fas fa-check-circle mr-2"></i>
+                                    Quiz Submitted
+                                </div>
+                            @endif
                         @endif
                     </div>
                 </div>
@@ -143,7 +162,7 @@
                     <div class="grid grid-cols-10 gap-2">
                         @foreach($questions as $index => $question)
                             <button wire:click="goToQuestion({{ $index }})"
-                                    class="w-8 h-8 text-xs rounded-md font-medium transition-colors
+                                    class="w-8 h-8 text-xs rounded-md font-medium transition-colors {{ !$attempt->canEditAnswers() ? 'cursor-not-allowed' : '' }}
                                            {{ $index === $currentQuestionIndex 
                                               ? 'bg-blue-600 text-white' 
                                               : ($this->isQuestionAnswered($question['id']) 
@@ -245,14 +264,6 @@
                         <i class="fas fa-list mr-2"></i>
                         Back to Quiz List
                     </button>
-                    
-                    @if($questionnaire->max_attempts && $questionnaire->max_attempts > 1)
-                        <a href="{{ route('user.quiz-take', ['questionnaireId' => $questionnaire->id]) }}" 
-                           class="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors inline-flex items-center">
-                            <i class="fas fa-redo mr-2"></i>
-                            Try Again
-                        </a>
-                    @endif
                 </div>
             </div>
         </div>
@@ -454,12 +465,15 @@ function countdownTimer(initialSeconds, questionnaireId) {
 }
 
 // Prevent accidental page refresh during quiz
+let beforeUnloadHandler = function(e) {
+    e.preventDefault();
+    e.returnValue = 'Are you sure you want to leave? Your progress may be lost.';
+    return 'Are you sure you want to leave? Your progress may be lost.';
+};
+
+// Add the warning if quiz is not completed
 if (!isCompleted) {
-    window.addEventListener('beforeunload', function(e) {
-        e.preventDefault();
-        e.returnValue = 'Are you sure you want to leave? Your progress may be lost.';
-        return 'Are you sure you want to leave? Your progress may be lost.';
-    });
+    window.addEventListener('beforeunload', beforeUnloadHandler);
 }
 
 // Auto-save functionality
@@ -473,16 +487,18 @@ document.addEventListener('input', function(e) {
     }
 });
 
-// Keyboard shortcuts
+// Keyboard shortcuts and prevention
+let quizCompleted = isCompleted;
+
 document.addEventListener('keydown', function(e) {
-    // Prevent F5 refresh during quiz
-    if (!isCompleted && (e.key === 'F5' || (e.ctrlKey && e.key === 'r'))) {
+    // Prevent F5 refresh during quiz (but allow after completion)
+    if (!quizCompleted && (e.key === 'F5' || (e.ctrlKey && e.key === 'r'))) {
         e.preventDefault();
         return false;
     }
     
-    // Arrow key navigation
-    if (e.altKey) {
+    // Arrow key navigation (only during quiz)
+    if (!quizCompleted && e.altKey) {
         if (e.key === 'ArrowLeft') {
             e.preventDefault();
             $wire.call('goToPreviousQuestion');
@@ -492,11 +508,21 @@ document.addEventListener('keydown', function(e) {
         }
     }
     
-    // Submit with Ctrl+Enter
-    if (e.ctrlKey && e.key === 'Enter') {
+    // Submit with Ctrl+Enter (only during quiz)
+    if (!quizCompleted && e.ctrlKey && e.key === 'Enter') {
         e.preventDefault();
         $wire.call('submitQuiz');
     }
+});
+
+// Listen for quiz completion to remove warnings and restrictions
+document.addEventListener('livewire:initialized', () => {
+    Livewire.on('quizCompleted', () => {
+        // Remove the beforeunload warning when quiz is completed
+        window.removeEventListener('beforeunload', beforeUnloadHandler);
+        // Update completion status
+        quizCompleted = true;
+    });
 });
 </script>
 @endscript

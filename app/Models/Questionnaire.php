@@ -105,6 +105,7 @@ class Questionnaire extends Model
     {
         return $this->quizAttempts()
             ->where('user_id', $userId)
+            ->where('status', QuizAttempt::STATUS_COMPLETED)
             ->count();
     }
 
