@@ -49,7 +49,7 @@ return [
 
     // Validation Messages
     'failed' => 'These credentials do not match our records.',
-    'password' => 'The provided password is incorrect.',
+    'password' => 'Password',
     'throttle' => 'Too many login attempts. Please try again in :seconds seconds.',
     'email_required' => 'Email address is required.',
     'email_invalid' => 'Please enter a valid email address.',

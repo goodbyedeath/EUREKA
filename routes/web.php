@@ -28,9 +28,19 @@ Route::middleware('auth')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 });
 
+// Public landing page
+Route::get('/', function () {
+    if (auth()->check()) {
+        return redirect()->route(auth()->user()->isAdmin() ? 'admin.dashboard' : 'user.dashboard');
+    }
+    
+    $heroSlides = \App\Models\HeroSlide::getActiveSlides();
+    return view('landing-dynamic', compact('heroSlides'));
+})->name('home');
+
 // Authenticated routes
 Route::middleware(['auth', 'preventbackhistory'])->group(function () {
-    Route::get('/', function () {
+    Route::get('/dashboard', function () {
         return redirect()->route(auth()->user()->isAdmin() ? 'admin.dashboard' : 'user.dashboard');
     });
     
@@ -40,6 +50,7 @@ Route::middleware(['auth', 'preventbackhistory'])->group(function () {
         Route::get('/users', [DashboardController::class, 'usersManagement'])->name('users');
         Route::get('/quest-locations', [DashboardController::class,'mapManagement'])->name('quest-locations');
         Route::get('/user-progress', [DashboardController::class, 'userProgress'])->name('user-progress');
+        Route::get('/hero-slides', [DashboardController::class, 'heroSlides'])->name('hero-slides');
     });
     
     // User-only routes

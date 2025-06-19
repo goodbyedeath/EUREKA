@@ -35,4 +35,9 @@ class DashboardController extends Controller
     {
         return view('admin.user-progress');
     }
+
+    public function heroSlides()
+    {
+        return view('admin.hero-slides');
+    }
 }
