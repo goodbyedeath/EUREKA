@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ config('app.name', 'EUREKA') }} - Interactive Learning Platform</title>
+    <title>{{ config('app.name', 'EUREKA') }} Indonesia</title>
     
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.bunny.net">
@@ -89,17 +89,17 @@
                                         Welcome to EUREKA
                                     </h1>
                                     <p class="text-xl md:text-2xl text-blue-100 mb-8 leading-relaxed">
-                                        Interactive Learning Platform - Configure your hero slides in the admin panel.
+                                        Interactive Team Building Platform for Modern Education.
                                     </p>
                                     <div class="flex flex-col sm:flex-row gap-4 justify-center">
-                                        <a href="{{ route('register') }}" class="inline-flex items-center px-8 py-4 border border-transparent text-lg font-medium rounded-lg text-blue-600 bg-white hover:bg-gray-50 transition duration-300 shadow-lg">
+                                        <a href="{{ route('login') }}" class="inline-flex items-center px-8 py-4 border border-transparent text-lg font-medium rounded-lg text-blue-600 bg-white hover:bg-gray-50 transition duration-300 shadow-lg">
                                             Get Started
                                             <svg class="ml-2 w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path>
                                             </svg>
                                         </a>
-                                        <a href="{{ route('login') }}" class="inline-flex items-center px-8 py-4 border-2 border-white text-lg font-medium rounded-lg text-white hover:bg-white hover:text-blue-600 transition duration-300">
-                                            Sign In
+                                        <a href="https://wa.me/6281380999992?text=Saya%20ingin%20tahu%20lebih%20lanjut%20tentang%20EUREKA%20" class="inline-flex items-center px-8 py-4 border-2 border-white text-lg font-medium rounded-lg text-white hover:bg-white hover:text-blue-600 transition duration-300">
+                                            Contact Us
                                         </a>
                                     </div>
                                 </div>
@@ -183,8 +183,8 @@
             <h2 class="text-3xl md:text-4xl font-bold text-white mb-6">Ready to Start Your Learning Journey?</h2>
             <p class="text-xl text-blue-100 mb-8">Join thousands of learners who are already exploring knowledge with EUREKA.</p>
             <div class="flex flex-col sm:flex-row gap-4 justify-center">
-                <a href="{{ route('register') }}" class="inline-flex items-center px-8 py-4 border border-transparent text-lg font-medium rounded-lg text-blue-600 bg-white hover:bg-gray-50 transition duration-300 shadow-lg">
-                    Create Free Account
+                <a href="https://wa.me/6281380999992?text=Saya%20ingin%20tahu%20lebih%20lanjut%20tentang%20EUREKA%20" class="inline-flex items-center px-8 py-4 border border-transparent text-lg font-medium rounded-lg text-blue-600 bg-white hover:bg-gray-50 transition duration-300 shadow-lg">
+                    Contact Us
                     <svg class="ml-2 w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path>
                     </svg>
