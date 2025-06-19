@@ -5,6 +5,7 @@ use Livewire\Component;
 use Livewire\Attributes\On;
 use App\Models\Questionnaire;
 use App\Models\QuizAttempt;
+use App\Models\QrCodeScan;
 use Illuminate\Support\Facades\Auth;
 
 class AvailableQuest extends Component
@@ -103,8 +104,12 @@ class AvailableQuest extends Component
             return;
         }
 
-        if (!$questionnaire->canUserAttempt(Auth::id())) {
-            session()->flash('error', 'You have reached the maximum number of attempts for this quiz.');
+        // Use QrCodeScan model for more accurate validation
+        if (!QrCodeScan::canUserScanQuestionnaire(Auth::id(), $questionnaire)) {
+            // Only set session flash if one doesn't already exist to prevent duplicates
+            if (!session()->has('error')) {
+                session()->flash('error', 'You have reached the maximum number of attempts for this quiz.');
+            }
             return;
         }
 
@@ -137,15 +142,6 @@ class AvailableQuest extends Component
             ->where('questionnaire_id', $questionnaireId)
             ->where('status', QuizAttempt::STATUS_COMPLETED);
             
-        // DEBUG: Log the attempts data
-        \Log::info('DEBUG hasCompletedQuiz', [
-            'questionnaireId' => $questionnaireId,
-            'totalRecentAttempts' => $this->recentAttempts->count(),
-            'attemptStatuses' => $this->recentAttempts->pluck('status', 'questionnaire_id')->toArray(),
-            'completedCount' => $completedAttempts->count(),
-            'completedAttempts' => $completedAttempts->toArray(),
-            'STATUS_COMPLETED' => QuizAttempt::STATUS_COMPLETED
-        ]);
             
         return $completedAttempts->isNotEmpty();
     }

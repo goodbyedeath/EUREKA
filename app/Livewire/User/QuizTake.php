@@ -5,6 +5,7 @@ namespace App\Livewire\User;
 use App\Models\Questionnaire;
 use App\Models\QuizAttempt;
 use App\Models\UserAnswer;
+use App\Models\QrCodeScan;
 use Livewire\Component;
 use Illuminate\Support\Str;
 use Exception;
@@ -101,7 +102,10 @@ class QuizTake extends Component
                     ->count();
                     
                 if ($attemptCount >= $this->questionnaire->max_attempts) {
-                    session()->flash('error', 'You have reached the maximum number of attempts for this quiz.');
+                    // Only set session flash if one doesn't already exist to prevent duplicates
+                    if (!session()->has('error')) {
+                        session()->flash('error', 'You have reached the maximum number of attempts for this quiz.');
+                    }
                     return redirect()->route('user.available-quest');
                 }
             }
@@ -498,6 +502,9 @@ class QuizTake extends Component
 
             // Update local attempt reference
             $this->attempt = $lockedAttempt;
+            
+            // Deactivate QR code scan since quiz is completed
+            QrCodeScan::deactivateScan(auth()->id(), $this->questionnaire->id);
         });
 
         $this->isCompleted = true;

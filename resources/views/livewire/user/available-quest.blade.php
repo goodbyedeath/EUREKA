@@ -116,10 +116,21 @@
                     <br>questionnaire_id: {{ $questionnaire->id }}
                     <br>current user_id: {{ Auth::id() }}
                     @if($this->recentAttempts->count() > 0)
-                        <br>attempt statuses: 
+                        <br>ALL attempt statuses: 
                         @foreach($this->recentAttempts as $attempt)
                             [Q{{ $attempt->questionnaire_id }}:{{ $attempt->status }}:U{{ $attempt->user_id }}]
                         @endforeach
+                        <br>THIS questionnaire ({{ $questionnaire->id }}) attempts: 
+                        @php
+                            $thisQuestionnaireAttempts = $this->recentAttempts->where('questionnaire_id', $questionnaire->id);
+                        @endphp
+                        @if($thisQuestionnaireAttempts->count() > 0)
+                            @foreach($thisQuestionnaireAttempts as $attempt)
+                                [Q{{ $attempt->questionnaire_id }}:{{ $attempt->status }}:U{{ $attempt->user_id }}]
+                            @endforeach
+                        @else
+                            NONE
+                        @endif
                     @else
                         <br>NO RECENT ATTEMPTS FOUND
                     @endif

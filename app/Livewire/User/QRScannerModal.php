@@ -4,6 +4,7 @@ namespace App\Livewire\User;
 
 use Livewire\Component;
 use App\Models\Questionnaire;
+use App\Models\QrCodeScan;
 
 class QRScannerModal extends Component
 {
@@ -57,14 +58,26 @@ class QRScannerModal extends Component
                 return;
             }
 
-            // Check if user can attempt this questionnaire
-            if (!$this->questionnaire->canUserAttempt(auth()->id())) {
+            // Check if user can scan this questionnaire (using new QrCodeScan model)
+            if (!QrCodeScan::canUserScanQuestionnaire(auth()->id(), $this->questionnaire)) {
+                // Only set session flash if one doesn't already exist to prevent duplicates
+                if (!session()->has('error')) {
+                    session()->flash('error', 'You have reached the maximum number of attempts for this questionnaire');
+                }
                 $this->error = 'You have reached the maximum number of attempts for this questionnaire';
+                
+                // Set questionnaire to null to prevent showing the start quiz button
+                $this->questionnaire = null;
                 return;
             }
 
+            // Record the QR code scan
+            QrCodeScan::recordScan(auth()->id(), $this->questionnaire->id, $code);
+
             // Success - questionnaire found and user can access it
-            session()->flash('success', 'Questionnaire unlocked successfully!');
+            if (!session()->has('success') && !session()->has('error')) {
+                session()->flash('success', 'Questionnaire unlocked successfully!');
+            }
             
             // Dispatch event to show the questionnaire in available quizzes
             $this->dispatch('qr-code-scanned', qr_code: $code);
