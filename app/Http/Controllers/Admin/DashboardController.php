@@ -30,4 +30,9 @@ class DashboardController extends Controller
     {
         return view('admin.map-management');
     }
+
+    public function userProgress()
+    {
+        return view('admin.user-progress');
+    }
 }

@@ -39,6 +39,7 @@ Route::middleware(['auth', 'preventbackhistory'])->group(function () {
         Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
         Route::get('/users', [DashboardController::class, 'usersManagement'])->name('users');
         Route::get('/quest-locations', [DashboardController::class,'mapManagement'])->name('quest-locations');
+        Route::get('/user-progress', [DashboardController::class, 'userProgress'])->name('user-progress');
     });
     
     // User-only routes

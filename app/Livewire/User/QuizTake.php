@@ -127,12 +127,16 @@ class QuizTake extends Component
             "questions_safe_{$this->questionnaire->id}",
             3600,
             function () {
-                return $this->questionnaire->questions()
+                $questions = $this->questionnaire->questions()
                     ->select('id', 'question', 'type', 'options', 'points', 'order')
-                    // Remove correct_answer from client-side data
                     ->orderBy('order', 'asc')
-                    ->get()
-                    ->toArray();
+                    ->get();
+                
+                if ($questions->isEmpty()) {
+                    throw new \Exception('No questions found for this questionnaire');
+                }
+                
+                return $questions->toArray();
             }
         );
     }
@@ -278,11 +282,20 @@ class QuizTake extends Component
 
     public function calculateTotalPoints()
     {
+        if (!is_array($this->questions) || empty($this->questions)) {
+            $this->totalPoints = 0;
+            return;
+        }
+        
         $this->totalPoints = collect($this->questions)->sum('points');
     }
 
     public function initializeAnswers()
     {
+        if (!is_array($this->questions) || empty($this->questions)) {
+            throw new \Exception('Questions not properly loaded');
+        }
+        
         foreach ($this->questions as $question) {
             if (!isset($this->answers[$question['id']])) {
                 $this->answers[$question['id']] = '';
@@ -566,6 +579,10 @@ class QuizTake extends Component
 
     public function getAnsweredQuestionsCount()
     {
+        if (!is_array($this->answers) || empty($this->answers)) {
+            return 0;
+        }
+        
         return collect($this->answers)->filter(function ($answer) {
             return !empty(trim($answer));
         })->count();

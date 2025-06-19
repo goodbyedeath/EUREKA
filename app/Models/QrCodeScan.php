@@ -99,9 +99,16 @@ class QrCodeScan extends Model
             return false;
         }
 
-        // If questionnaire has max attempts = 1, check if user has already scanned
+        // For questionnaires with max attempts = 1, allow scanning if:
+        // 1. User hasn't completed any attempts yet, OR
+        // 2. User hasn't scanned yet (first time)
         if ($questionnaire->max_attempts === 1) {
-            return !self::hasUserScannedQuestionnaire($userId, $questionnaire->id);
+            // If no completed attempts, allow scanning (even if they scanned before but didn't complete)
+            if ($completedAttempts === 0) {
+                return true;
+            }
+            // If they have completed attempts, don't allow more scans
+            return false;
         }
 
         return true;

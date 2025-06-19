@@ -18,7 +18,11 @@
       "Bash(/mnt/c/laragon/bin/php/php-8.3.11-Win32-vs16-x64/php.exe artisan migrate --path=database/migrations/2025_06_19_120000_create_qr_code_scans_table.php)",
       "Bash(/mnt/c/laragon/bin/php/php-8.3.11-Win32-vs16-x64/php.exe artisan tinker --execute=\"echo App\\Models\\Questionnaire::where('qr_code', '4992985f-0950-4403-9116-5f956b82d478')->first(['id', 'title', 'max_attempts'])->toJson();\")",
       "Bash(/mnt/c/laragon/bin/php/php-8.3.11-Win32-vs16-x64/php.exe artisan tinker --execute=\"echo App\\Models\\QuizAttempt::where('user_id', 2)->where('questionnaire_id', 3)->get(['id', 'status', 'questionnaire_id'])->toJson();\")",
-      "Bash(/mnt/c/laragon/bin/php/php-8.3.11-Win32-vs16-x64/php.exe artisan tinker --execute=\"echo App\\Models\\QrCodeScan::where('user_id', 2)->where('questionnaire_id', 3)->get()->toJson();\")"
+      "Bash(/mnt/c/laragon/bin/php/php-8.3.11-Win32-vs16-x64/php.exe artisan tinker --execute=\"echo App\\Models\\QrCodeScan::where('user_id', 2)->where('questionnaire_id', 3)->get()->toJson();\")",
+      "Bash(/mnt/c/laragon/bin/php/php-8.3.11-Win32-vs16-x64/php.exe artisan tinker --execute=\"echo App\\Models\\TeamMember::first()->toJson();\")",
+      "Bash(/mnt/c/laragon/bin/php/php-8.3.11-Win32-vs16-x64/php.exe artisan tinker --execute=\"echo App\\Models\\User::where('team_id', 1)->get(['id', 'name', 'email', 'team_id'])->toJson();\")",
+      "Bash(/mnt/c/laragon/bin/php/php-8.3.11-Win32-vs16-x64/php.exe artisan tinker --execute=\"echo App\\Models\\User::first(['id', 'name', 'role', 'user_type'])->toJson();\")",
+      "Bash(/mnt/c/laragon/bin/php/php-8.3.11-Win32-vs16-x64/php.exe artisan tinker --execute=\"echo App\\Models\\User::first()->toJson();\")"
     ],
     "deny": []
   }

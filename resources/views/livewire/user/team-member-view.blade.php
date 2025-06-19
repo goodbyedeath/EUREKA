@@ -277,6 +277,4 @@
     @endif
 </div>
 
-@push('scripts')
-<script src="https://unpkg.com/alpinejs@3.4.0/dist/cdn.min.js" defer></script>
-@endpush
+{{-- Alpine.js is already included with Livewire v3 --}}

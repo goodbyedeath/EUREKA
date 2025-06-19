@@ -21,6 +21,11 @@ class Team extends Model
         return $this->hasMany(TeamMember::class);
     }
 
+    public function users()
+    {
+        return $this->hasMany(User::class, 'team_id');
+    }
+
     public function leader()
     {
         return $this->hasOne(TeamMember::class)->where('is_leader', true);

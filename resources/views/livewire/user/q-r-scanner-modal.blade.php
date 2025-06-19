@@ -226,7 +226,7 @@ async function initializeQRScanner() {
             video,
             result => {
                 console.log('QR Code detected:', result.data);
-                $wire.call('handleQRScanned', result.data);
+                $wire.handleQRScanned(result.data);
             },
             {
                 returnDetailedScanResult: true,

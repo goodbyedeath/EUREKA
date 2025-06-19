@@ -15,7 +15,6 @@ class QRScannerModal extends Component
     public $isScanning = false;
 
     protected $listeners = [
-        'qr-scanned' => 'handleQRScanned',
         'open-qr-scanner' => 'openModal'
     ];
 
@@ -31,6 +30,7 @@ class QRScannerModal extends Component
         $this->isScanning = false;
         $this->dispatch('stop-qr-scanner');
     }
+
 
     public function handleQRScanned($qrCode)
     {
