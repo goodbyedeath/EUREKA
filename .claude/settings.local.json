@@ -23,7 +23,22 @@
       "Bash(/mnt/c/laragon/bin/php/php-8.3.11-Win32-vs16-x64/php.exe artisan tinker --execute=\"echo App\\Models\\User::where('team_id', 1)->get(['id', 'name', 'email', 'team_id'])->toJson();\")",
       "Bash(/mnt/c/laragon/bin/php/php-8.3.11-Win32-vs16-x64/php.exe artisan tinker --execute=\"echo App\\Models\\User::first(['id', 'name', 'role', 'user_type'])->toJson();\")",
       "Bash(/mnt/c/laragon/bin/php/php-8.3.11-Win32-vs16-x64/php.exe artisan tinker --execute=\"echo App\\Models\\User::first()->toJson();\")",
-      "Bash(rm:*)"
+      "Bash(rm:*)",
+      "Bash(npm info:*)",
+      "Bash(sed:*)",
+      "Bash(awk:*)",
+      "Bash(php artisan make:migration:*)",
+      "Bash(php artisan:*)",
+      "Bash(/mnt/c/laragon/bin/php/php-8.3.11-Win32-vs16-x64/php.exe artisan migrate)",
+      "Bash(/mnt/c/laragon/bin/php/php-8.3.11-Win32-vs16-x64/php.exe artisan optimize:clear)",
+      "Bash(/mnt/c/laragon/bin/php/php-8.3.11-Win32-vs16-x64/php.exe artisan make:model GameLocation -m)",
+      "Bash(/mnt/c/laragon/bin/php/php-8.3.11-Win32-vs16-x64/php.exe artisan make:migration remove_game_fields_from_quest_locations_table)",
+      "Bash(/mnt/c/laragon/bin/php/php-8.3.11-Win32-vs16-x64/php.exe artisan make:migration simplify_game_locations_table_schema)",
+      "Bash(/mnt/c/laragon/bin/php/php-8.3.11-Win32-vs16-x64/php.exe artisan tinker --execute=\"Schema::getIndexes('game_locations')\")",
+      "Bash(/mnt/c/laragon/bin/php/php-8.3.11-Win32-vs16-x64/php.exe artisan migrate:rollback --step=1)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "WebFetch(domain:interactjs.io)"
     ],
     "deny": []
   }

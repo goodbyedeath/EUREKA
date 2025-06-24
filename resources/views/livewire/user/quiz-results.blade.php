@@ -170,7 +170,7 @@
                         <button wire:click="setCurrentQuestion({{ $index }})" 
                                 class="w-10 h-10 rounded-full text-sm font-medium border-2 
                                 {{ $currentQuestionIndex === $index ? 'border-blue-500 bg-blue-500 text-white' : 
-                                   ($isCorrect ? 'border-green-500 bg-green-100 text-green-700' : 'border-red-500 bg-red-100 text-red-700') }}">
+                                   ($isCorrect ? 'border-green-500 bg-green-100 text-green-700' : 'border-red-500 bg-red-100 text-red-700') }}"
                             {{ $index + 1 }}
                         </button>
                     @endforeach

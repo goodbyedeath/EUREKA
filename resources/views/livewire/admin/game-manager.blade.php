@@ -464,6 +464,11 @@
         .map-container-enhanced {
             cursor: crosshair;
             user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            touch-action: none;
+            -ms-touch-action: none;
         }
         
         .map-container-enhanced.dragging {
@@ -473,8 +478,12 @@
         #admin-location-marker {
             cursor: grab;
             touch-action: none;
+            -ms-touch-action: none;  /* Better browser support */
             pointer-events: auto;
             user-select: none;
+            -webkit-user-select: none;  /* Better browser support */
+            -moz-user-select: none;
+            -ms-user-select: none;
             transition: box-shadow 0.2s ease;
         }
         
@@ -499,146 +508,397 @@
         }
     </style>
 
-    <!-- Interactive Map Positioning Script with InteractJS -->
-    <script>
+
+
+<!-- Replace your existing script section with this fixed version -->
+ <script>
+    // Wait for InteractJS to be available from your build
+    function waitForInteract(callback) {
+        if (typeof window.interact !== 'undefined') {
+            callback();
+        } else {
+            console.log('⏳ Waiting for InteractJS to load...');
+            setTimeout(() => waitForInteract(callback), 100);
+        }
+    }
+
+    // Global variables to prevent conflicts
+    window.mapInteractionInitialized = false;
+    window.currentInteractInstance = null;
+
+    // Initialize when everything is ready
     document.addEventListener('DOMContentLoaded', function() {
-        initializeAdminMapInteraction();
-        
-        // Re-initialize when Livewire updates the DOM
-        document.addEventListener('livewire:navigated', function() {
-            setTimeout(initializeAdminMapInteraction, 200);
+        console.log('📄 DOM loaded, waiting for InteractJS...');
+        waitForInteract(() => {
+            console.log('✅ InteractJS loaded, checking for map...');
+            initializeMapWhenReady();
         });
     });
 
-    // Re-initialize when modal is opened/updated
-    if (typeof Livewire !== 'undefined') {
-        Livewire.hook('morph.updated', ({ el }) => {
-            // Check if the map image or marker was added/updated
-            if (el.querySelector('#admin-map-image') || el.querySelector('#admin-location-marker')) {
-                setTimeout(initializeAdminMapInteraction, 200);
+    // Livewire v3 hooks - more reliable approach
+    document.addEventListener('livewire:init', () => {
+        console.log('🔄 Livewire initialized');
+        
+        // Listen for component updates
+        Livewire.hook('morph.updated', ({ el, component }) => {
+            // Check if modal is now visible
+            const modal = el.querySelector('[role="dialog"]');
+            if (modal) {
+                const isVisible = modal.offsetParent !== null;
+                if (isVisible) {
+                    console.log('✅ Modal appeared, initializing map interaction...');
+                    waitForInteract(() => {
+                        setTimeout(initializeMapWhenReady, 150);
+                    });
+                }
             }
         });
-        
-        // Also listen for Livewire component updates
-        Livewire.hook('component.updated', ({ component, el }) => {
-            if (el.querySelector('#admin-map-image')) {
-                setTimeout(initializeAdminMapInteraction, 200);
-            }
-        });
-        
-        // Listen for custom map interaction ready event
-        document.addEventListener('livewire:map-interaction-ready', function() {
-            setTimeout(initializeAdminMapInteraction, 100);
-        });
-    }
+    });
 
-    function initializeAdminMapInteraction() {
-        console.log('Attempting to initialize admin map interaction...');
+    function initializeMapWhenReady() {
+        // Check if elements exist
+        const mapImage = document.getElementById('admin-map-image');
+        const marker = document.getElementById('admin-location-marker');
+        const mapContainer = document.querySelector('.map-container-enhanced');
         
-        // Check if InteractJS is available
-        if (typeof window.AdminMapManager === 'undefined') {
-            console.warn('AdminMapManager not available, skipping InteractJS initialization');
+        if (!mapImage || !marker || !mapContainer) {
+            console.log('⏳ Map elements not ready yet, retrying...');
+            setTimeout(initializeMapWhenReady, 200);
             return;
         }
         
-        // Look for existing map elements
+        if (window.mapInteractionInitialized) {
+            console.log('✅ Map interaction already initialized, reinitializing...');
+            // Reset flag to allow reinitialization
+            window.mapInteractionInitialized = false;
+        }
+        
+        console.log('🎯 Initializing InteractJS map interaction...');
+        initializeInteractiveMap();
+    }
+
+    function initializeInteractiveMap() {
         const mapImage = document.getElementById('admin-map-image');
         const marker = document.getElementById('admin-location-marker');
+        const mapContainer = document.querySelector('.map-container-enhanced');
         
-        console.log('Map elements found:', { mapImage: !!mapImage, marker: !!marker });
+        if (!mapImage || !marker || !mapContainer) {
+            console.log('❌ Required elements not found');
+            return;
+        }
+
+        // Check if InteractJS is available
+        if (typeof window.interact === 'undefined') {
+            console.error('❌ InteractJS not found! Make sure it\'s imported in your build.');
+            return;
+        }
         
-        if (!mapImage || !marker) {
-            // Elements don't exist yet (probably creating new location or no map uploaded)
-            // Set up a MutationObserver to initialize when elements are added
-            const observer = new MutationObserver(function(mutations) {
-                mutations.forEach(function(mutation) {
-                    if (mutation.type === 'childList') {
-                        const newMapImage = document.getElementById('admin-map-image');
-                        const newMarker = document.getElementById('admin-location-marker');
+        // Destroy existing interact instance if it exists
+        if (window.currentInteractInstance) {
+            try {
+                window.currentInteractInstance.unset();
+                console.log('🧹 Cleaned up existing interact instance');
+            } catch (e) {
+                console.log('🧹 No existing instance to clean up');
+            }
+        }
+        
+        // Remove existing click handlers to avoid duplicates
+        if (window.mapClickHandler) {
+            mapContainer.removeEventListener('click', window.mapClickHandler);
+        }
+        
+        // 1. Set up click positioning on map container
+        window.mapClickHandler = function(event) {
+            // Don't handle clicks on the marker itself
+            if (event.target === marker || marker.contains(event.target)) {
+                return;
+            }
+            
+            const rect = mapImage.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            const y = event.clientY - rect.top;
+            
+            // Keep within bounds
+            const clampedX = Math.max(0, Math.min(x, rect.width));
+            const clampedY = Math.max(0, Math.min(y, rect.height));
+            
+            console.log('📍 Map clicked at:', { x: Math.round(clampedX), y: Math.round(clampedY) });
+            
+            // Position marker
+            positionMarker(Math.round(clampedX), Math.round(clampedY));
+            
+            // Update coordinates
+            updateLivewireCoordinates(Math.round(clampedX), Math.round(clampedY));
+            
+            // Add visual feedback
+            createClickFeedback(clampedX, clampedY);
+        };
+        
+        mapContainer.addEventListener('click', window.mapClickHandler);
+        console.log('✅ Click handler attached');
+        
+        // 2. Set up InteractJS draggable on marker
+        try {
+            window.currentInteractInstance = window.interact('#admin-location-marker')
+                .draggable({
+                    // Restrict movement to the map image bounds
+                    modifiers: [
+                        window.interact.modifiers.restrict({
+                            restriction: function() {
+                                const rect = mapImage.getBoundingClientRect();
+                                const containerRect = mapContainer.getBoundingClientRect();
+                                return {
+                                    x: 0,
+                                    y: 0,
+                                    width: rect.width,
+                                    height: rect.height
+                                };
+                            },
+                            elementRect: { top: 0.5, left: 0.5, bottom: 0.5, right: 0.5 }
+                        })
+                    ],
+                    listeners: {
+                        start(event) {
+                            console.log('🎯 Started dragging marker');
+                            event.target.classList.add('dragging');
+                            mapContainer.classList.add('dragging');
+                        },
                         
-                        if (newMapImage && newMarker) {
-                            // Elements now exist, initialize InteractJS
-                            initializeInteractJS(newMapImage, newMarker);
-                            observer.disconnect(); // Stop observing
+                        move(event) {
+                            const target = event.target;
+                            
+                            // Get current position
+                            const x = (parseFloat(target.getAttribute('data-x')) || 0) + event.dx;
+                            const y = (parseFloat(target.getAttribute('data-y')) || 0) + event.dy;
+                            
+                            // Update the element's position
+                            target.style.transform = `translate(${x}px, ${y}px) translate(-50%, -50%)`;
+                            
+                            // Store the position
+                            target.setAttribute('data-x', x);
+                            target.setAttribute('data-y', y);
+                            
+                            // Calculate absolute coordinates relative to map image
+                            const rect = mapImage.getBoundingClientRect();
+                            const markerRect = target.getBoundingClientRect();
+                            const centerX = markerRect.left + markerRect.width / 2 - rect.left;
+                            const centerY = markerRect.top + markerRect.height / 2 - rect.top;
+                            
+                            // Update coordinates in real-time
+                            updateLivewireCoordinates(Math.round(centerX), Math.round(centerY));
+                        },
+                        
+                        end(event) {
+                            console.log('✅ Finished dragging marker');
+                            event.target.classList.remove('dragging');
+                            mapContainer.classList.remove('dragging');
+                            
+                            // Final coordinate update
+                            const target = event.target;
+                            const rect = mapImage.getBoundingClientRect();
+                            const markerRect = target.getBoundingClientRect();
+                            const centerX = markerRect.left + markerRect.width / 2 - rect.left;
+                            const centerY = markerRect.top + markerRect.height / 2 - rect.top;
+                            
+                            updateLivewireCoordinates(Math.round(centerX), Math.round(centerY));
                         }
                     }
                 });
-            });
             
-            // Start observing the modal content for changes
-            const modalContent = document.querySelector('.bg-white.px-4.pt-5.pb-4');
-            if (modalContent) {
-                observer.observe(modalContent, {
-                    childList: true,
-                    subtree: true
-                });
-            }
+            console.log('✅ InteractJS draggable initialized');
+        } catch (error) {
+            console.error('❌ Error initializing InteractJS:', error);
             return;
         }
         
-        // Elements exist, initialize immediately
-        initializeInteractJS(mapImage, marker);
-    }
-    
-    function initializeInteractJS(mapImage, marker) {
-        console.log('Initializing InteractJS for elements:', { mapImage: mapImage.id, marker: marker.id });
-        
-        // Clean up any existing instance first
-        if (window.AdminMapManager && typeof window.AdminMapManager.destroy === 'function') {
-            window.AdminMapManager.destroy('admin-location-marker');
-        }
-        
-        // Initialize InteractJS drag and drop
-        const instance = window.AdminMapManager.initialize('admin-map-image', 'admin-location-marker', {
-            onEnd: function(event, marker, container) {
-                // Calculate coordinates relative to image
-                const rect = container.getBoundingClientRect();
-                const markerRect = marker.getBoundingClientRect();
-                const x = markerRect.left - rect.left + (markerRect.width / 2);
-                const y = markerRect.top - rect.top + (markerRect.height / 2);
-                
-                // Update Livewire component
-                updateCoordinates(Math.round(x), Math.round(y));
+        // 3. Initialize marker position if coordinates exist
+        try {
+            // Use Livewire v3 syntax to get component data
+            const component = Livewire.find(document.querySelector('[wire\\:id]').getAttribute('wire:id'));
+            const currentX = parseInt(component.get('coordinate_x')) || 0;
+            const currentY = parseInt(component.get('coordinate_y')) || 0;
+            
+            if (currentX > 0 || currentY > 0) {
+                positionMarker(currentX, currentY);
+                console.log('📍 Initialized marker at existing coordinates:', { x: currentX, y: currentY });
             }
-        });
-        
-        if (instance) {
-            console.log('InteractJS initialized successfully');
-        } else {
-            console.warn('InteractJS initialization failed');
-        }
-    }
-    
-    function updateCoordinates(x, y) {
-        // Update the Livewire component properties
-        if (typeof Livewire !== 'undefined') {
-            @this.set('coordinate_x', x);
-            @this.set('coordinate_y', y);
+        } catch (error) {
+            console.log('⚠️ Could not get initial coordinates, that\'s okay');
         }
         
-        // Update visual feedback
-        updateCoordinateDisplay(x, y);
-        showCoordinateUpdate(x, y);
+        window.mapInteractionInitialized = true;
+        console.log('✅ InteractJS map interaction initialized successfully');
     }
-    
-    function updateCoordinateDisplay(x, y) {
-        // Update the real-time coordinate display
+
+    function positionMarker(x, y) {
+        const marker = document.getElementById('admin-location-marker');
+        if (!marker) return;
+        
+        // Reset any transform from dragging
+        marker.style.transform = 'translate(-50%, -50%)';
+        marker.setAttribute('data-x', 0);
+        marker.setAttribute('data-y', 0);
+        
+        // Set absolute position
+        marker.style.left = x + 'px';
+        marker.style.top = y + 'px';
+        
+        // Add animation
+        marker.style.transition = 'transform 0.3s ease-out';
+        marker.style.transform = 'translate(-50%, -50%) scale(1.2)';
+        
+        setTimeout(() => {
+            marker.style.transform = 'translate(-50%, -50%) scale(1)';
+            setTimeout(() => {
+                marker.style.transition = '';
+            }, 300);
+        }, 150);
+    }
+
+    function updateLivewireCoordinates(x, y) {
+        // Update Livewire component using v3 syntax
+        try {
+            const component = Livewire.find(document.querySelector('[wire\\:id]').getAttribute('wire:id'));
+            component.set('coordinate_x', x);
+            component.set('coordinate_y', y);
+        } catch (error) {
+            console.log('⚠️ Could not update Livewire coordinates:', error);
+        }
+        
+        // Update visual display
         const coordinateDisplay = document.getElementById('coordinate-display');
         if (coordinateDisplay) {
             coordinateDisplay.textContent = `${x}, ${y}`;
-            coordinateDisplay.parentElement.style.color = '#10b981'; // Green color
+            coordinateDisplay.style.color = '#10b981';
+            
+            // Add flash animation
+            coordinateDisplay.style.animation = 'none';
+            coordinateDisplay.offsetHeight; // Trigger reflow
+            coordinateDisplay.style.animation = 'coordinateFlash 0.5s ease-out';
+        }
+        
+        console.log('📊 Updated coordinates:', { x, y });
+    }
+
+    function createClickFeedback(x, y) {
+        const mapContainer = document.querySelector('.map-container-enhanced');
+        if (!mapContainer) return;
+        
+        const ripple = document.createElement('div');
+        ripple.className = 'ripple-effect';
+        ripple.style.cssText = `
+            position: absolute;
+            left: ${x}px;
+            top: ${y}px;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: rgba(59, 130, 246, 0.5);
+            transform: translate(-50%, -50%) scale(0);
+            pointer-events: none;
+            z-index: 100;
+        `;
+        
+        mapContainer.appendChild(ripple);
+        
+        setTimeout(() => {
+            ripple.remove();
+        }, 600);
+    }
+
+    // Function to manually reinitialize (useful for debugging)
+    window.reinitializeMap = function() {
+        console.log('🔄 Manual reinitialization requested');
+        window.mapInteractionInitialized = false;
+        if (window.currentInteractInstance) {
+            window.currentInteractInstance.unset();
+            window.currentInteractInstance = null;
+        }
+        waitForInteract(() => {
+            initializeMapWhenReady();
+        });
+    };
+
+    // Clean up on page unload
+    window.addEventListener('beforeunload', function() {
+        if (window.currentInteractInstance) {
+            window.currentInteractInstance.unset();
+        }
+    });
+    </script>
+
+    <!-- Keep your existing CSS -->
+    <style>
+    @keyframes coordinateFlash {
+        0% { background-color: transparent; }
+        50% { background-color: rgba(16, 185, 129, 0.2); }
+        100% { background-color: transparent; }
+    }
+    
+    /* Your existing styles stay the same */
+    @keyframes ripple {
+        0% {
+            transform: translate(-50%, -50%) scale(0);
+            opacity: 1;
+        }
+        100% {
+            transform: translate(-50%, -50%) scale(4);
+            opacity: 0;
         }
     }
     
-    function showCoordinateUpdate(x, y) {
-        // Add brief flash animation to coordinate display
-        const coordinateDisplay = document.getElementById('coordinate-display');
-        if (coordinateDisplay) {
-            coordinateDisplay.style.animation = 'coordinateFlash 0.5s ease-out';
-            setTimeout(() => {
-                coordinateDisplay.style.animation = '';
-            }, 500);
-        }
+    @keyframes successPulse {
+        0% { transform: translate(-50%, -50%) scale(1); }
+        50% { transform: translate(-50%, -50%) scale(1.3); }
+        100% { transform: translate(-50%, -50%) scale(1); }
     }
-    </script>
+    
+    .map-container-enhanced {
+        cursor: crosshair;
+        user-select: none;
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+        touch-action: none;
+        -ms-touch-action: none;
+    }
+    
+    .map-container-enhanced.dragging {
+        cursor: grabbing !important;
+    }
+    
+    #admin-location-marker {
+        cursor: grab;
+        touch-action: none;
+        -ms-touch-action: none;
+        pointer-events: auto;
+        user-select: none;
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+        transition: box-shadow 0.2s ease;
+    }
+    
+    #admin-location-marker:hover {
+        box-shadow: 0 6px 20px rgba(239, 68, 68, 0.4);
+    }
+    
+    #admin-location-marker.dragging {
+        cursor: grabbing;
+        z-index: 1000;
+        box-shadow: 0 8px 25px rgba(239, 68, 68, 0.5);
+    }
+    
+    #admin-location-marker > div {
+        pointer-events: none;
+    }
+    
+    .ripple-effect {
+        pointer-events: none;
+        animation: ripple 0.6s ease-out;
+    }
+    </style>
 </div>
+
+

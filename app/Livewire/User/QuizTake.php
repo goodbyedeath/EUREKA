@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\ValidationException as ValidationException;
 use App\Services\AnswerValidationService;
 use Illuminate\Support\Facades\DB;
+use App\Models\GameAssessment;
 
 
 class QuizTake extends Component
@@ -33,6 +34,8 @@ class QuizTake extends Component
     public $autoSubmitted = false;
     public $earnedPoints = 0;
     public $timerExpired = false;
+    public $quizLocked = false;
+    public $preventNavigation = true;
 
     protected $listeners = [
         'timeExpired' => 'handleTimeExpiry',
@@ -40,7 +43,8 @@ class QuizTake extends Component
         'previousQuestion' => 'goToPreviousQuestion',
         'submitQuiz' => 'submitQuiz',
         'syncTimer' => 'syncTimer',
-        'checkTimer' => 'checkTimer'
+        'checkTimer' => 'checkTimer',
+        'confirmExit' => 'handleExitAttempt'
     ];
 
     public function mount($attemptId = null, $questionnaireId = null)
@@ -119,6 +123,9 @@ class QuizTake extends Component
         $this->calculateTimeRemaining();
         $this->calculateTotalPoints();
         $this->initializeAnswers();
+        
+        // Lock the quiz once mounted to prevent navigation
+        $this->quizLocked = true;
     }
 
     public function loadQuestions()
@@ -522,6 +529,8 @@ class QuizTake extends Component
 
         $this->isCompleted = true;
         $this->showResults = true;
+        $this->quizLocked = false; // Unlock quiz after completion
+        $this->preventNavigation = false; // Allow navigation after completion
 
         session()->flash('success', $this->autoSubmitted 
             ? 'Quiz submitted automatically due to time limit.'
@@ -633,6 +642,12 @@ class QuizTake extends Component
 
     public function goToQuizList()
     {
+        // Prevent navigation if quiz is in progress and not completed
+        if ($this->quizLocked && !$this->isCompleted) {
+            session()->flash('error', 'You cannot leave the quiz until all answers are submitted.');
+            return;
+        }
+        
         // Clear any session data related to the current quiz
         session()->forget(['active_questionnaire_id', 'scanned_qr_code']);
         
@@ -640,6 +655,37 @@ class QuizTake extends Component
         session()->flash('active_tab', 'quizzes');
         
         return redirect()->route('user.dashboard');
+    }
+    
+    public function handleExitAttempt()
+    {
+        if ($this->quizLocked && !$this->isCompleted) {
+            session()->flash('warning', 'Quiz is in progress. Please complete all questions before leaving.');
+            return false;
+        }
+        return true;
+    }
+    
+    public function canExitQuiz()
+    {
+        return !$this->quizLocked || $this->isCompleted;
+    }
+    
+    public function forceExit()
+    {
+        // Only allow force exit in specific circumstances
+        if ($this->attempt && $this->attempt->canEditAnswers()) {
+            // Mark attempt as abandoned
+            $this->attempt->update([
+                'status' => QuizAttempt::STATUS_ABANDONED,
+            ]);
+            
+            $this->quizLocked = false;
+            session()->flash('warning', 'Quiz has been abandoned. Your progress was not saved.');
+            return redirect()->route('user.dashboard');
+        }
+        
+        session()->flash('error', 'Cannot exit quiz at this time.');
     }
 
     // Watch for answer changes and auto-save
@@ -709,6 +755,59 @@ class QuizTake extends Component
     public function canEditAnswers()
     {
         return $this->attempt && $this->attempt->canEditAnswers();
+    }
+
+    /**
+     * Complete a fun game and create assessment record
+     */
+    public function completeGame($questionId)
+    {
+        // Prevent completing if quiz is locked or completed
+        if (!$this->attempt->canEditAnswers()) {
+            session()->flash('error', 'Cannot complete game - quiz has been submitted.');
+            return;
+        }
+
+        // Find the question
+        $question = collect($this->questions)->firstWhere('id', $questionId);
+        if (!$question || $question['type'] !== 'fun_game') {
+            session()->flash('error', 'Invalid game question.');
+            return;
+        }
+
+        // Check if already completed
+        if ($this->isGameCompleted($questionId)) {
+            session()->flash('info', 'Game already completed.');
+            return;
+        }
+
+        // Create game assessment record
+        GameAssessment::create([
+            'quiz_attempt_id' => $this->attempt->id,
+            'question_id' => $questionId,
+            'user_id' => auth()->id(),
+            'deposit' => 0,
+            'penalty' => 0,
+            'total_deposit' => 0,
+            'is_assessed' => false
+        ]);
+
+        // Mark as "answered" in the quiz system
+        $this->answers[$questionId] = 'completed';
+        $this->saveAnswer($questionId, 'completed');
+
+        session()->flash('success', 'Game completed! Waiting for assessment.');
+    }
+
+    /**
+     * Check if a fun game is completed
+     */
+    public function isGameCompleted($questionId)
+    {
+        return GameAssessment::where('quiz_attempt_id', $this->attempt->id)
+            ->where('question_id', $questionId)
+            ->where('user_id', auth()->id())
+            ->exists();
     }
     
     public function render()

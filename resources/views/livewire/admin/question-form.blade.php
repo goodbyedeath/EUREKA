@@ -52,6 +52,7 @@
                     <option value="text">Text Answer</option>
                     <option value="multiple_choice">Multiple Choice</option>
                     <option value="true_false">True/False</option>
+                    <option value="fun_game">Fun Game</option>
                 </select>
                 @error('newQuestion.type') 
                     <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> 
@@ -159,11 +160,130 @@
             </div>
         @endif
 
+        <!-- Fun Game Fields -->
+        @if($newQuestion['type'] === 'fun_game')
+            <div class="bg-purple-50 p-4 rounded-lg border border-purple-200">
+                <h4 class="text-sm font-medium text-purple-900 mb-4 flex items-center">
+                    <i class="fas fa-gamepad mr-2"></i>
+                    Fun Game Configuration
+                </h4>
+                
+                <!-- Game Name -->
+                <div class="mb-4">
+                    <label for="game-name" class="block text-sm font-medium text-gray-700 mb-1">
+                        Game Name <span class="text-red-500">*</span>
+                    </label>
+                    <input 
+                        type="text" 
+                        id="game-name"
+                        wire:model="newQuestion.game_name" 
+                        placeholder="Enter the name of the fun game..."
+                        maxlength="200"
+                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 transition-colors duration-200"
+                    >
+                    @error('newQuestion.game_name') 
+                        <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> 
+                    @enderror
+                </div>
+
+                <!-- Game Description -->
+                <div class="mb-4">
+                    <label for="game-description" class="block text-sm font-medium text-gray-700 mb-1">
+                        Game Instructions/Description <span class="text-red-500">*</span>
+                    </label>
+                    <textarea 
+                        id="game-description"
+                        wire:model="newQuestion.description" 
+                        rows="4"
+                        placeholder="Enter detailed instructions for the game..."
+                        maxlength="2000"
+                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 transition-colors duration-200"
+                    ></textarea>
+                    @error('newQuestion.description') 
+                        <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> 
+                    @enderror
+                </div>
+
+                <!-- Game Images -->
+                <div>
+                    <div class="flex items-center justify-between mb-3">
+                        <label class="block text-sm font-medium text-gray-700">
+                            Game Images
+                            <span class="text-xs text-gray-500 block mt-1">Optional - Add up to 10 image URLs</span>
+                        </label>
+                        @if(count($newQuestion['images']) < 10)
+                            <button 
+                                type="button" 
+                                wire:click="addImage"
+                                class="inline-flex items-center px-3 py-1 text-xs font-medium text-purple-600 bg-purple-50 border border-purple-200 rounded-md hover:bg-purple-100 transition-colors duration-200"
+                            >
+                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                                </svg>
+                                Add Image
+                            </button>
+                        @endif
+                    </div>
+                    
+                    @if(count($newQuestion['images']) > 0)
+                        <div class="space-y-3">
+                            @foreach($newQuestion['images'] as $index => $image)
+                                <div class="flex items-center space-x-3">
+                                    <div class="flex-shrink-0 w-8 h-8 bg-purple-100 border border-purple-300 rounded-full flex items-center justify-center text-sm font-medium text-purple-600">
+                                        {{ $index + 1 }}
+                                    </div>
+                                    <input 
+                                        type="url" 
+                                        wire:model="newQuestion.images.{{ $index }}" 
+                                        placeholder="Enter image URL (e.g., https://example.com/image.jpg)"
+                                        class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 transition-colors duration-200"
+                                    >
+                                    <button 
+                                        type="button" 
+                                        wire:click="removeImage({{ $index }})"
+                                        class="flex-shrink-0 text-red-500 hover:text-red-700 transition-colors duration-200 p-1"
+                                        title="Remove image"
+                                    >
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                        </svg>
+                                    </button>
+                                </div>
+                            @endforeach
+                        </div>
+                    @else
+                        <p class="text-sm text-gray-500 italic">No images added yet. Click "Add Image" to include visual content for your game.</p>
+                    @endif
+                    
+                    @error('newQuestion.images') 
+                        <div class="text-red-500 text-sm mt-2 flex items-center">
+                            <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+                            </svg>
+                            {{ $message }}
+                        </div>
+                    @enderror
+                </div>
+
+                <div class="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                    <div class="flex items-start">
+                        <svg class="w-5 h-5 text-blue-400 mt-0.5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+                        </svg>
+                        <div class="text-sm text-blue-800">
+                            <strong>Note:</strong> Fun games don't require correct answers. Users complete the activity and are assessed manually by administrators using deposit/penalty scoring.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        @endif
+
         <!-- Correct Answer -->
-        <div>
-            <label for="correct-answer" class="block text-sm font-medium text-gray-700 mb-1">
-                Correct Answer <span class="text-red-500">*</span>
-            </label>
+        @if($newQuestion['type'] !== 'fun_game')
+            <div>
+                <label for="correct-answer" class="block text-sm font-medium text-gray-700 mb-1">
+                    Correct Answer <span class="text-red-500">*</span>
+                </label>
             
             @if($newQuestion['type'] === 'true_false')
                 <select 
@@ -204,10 +324,11 @@
                 >
             @endif
             
-            @error('newQuestion.correct_answer') 
-                <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> 
-            @enderror
-        </div>
+                @error('newQuestion.correct_answer') 
+                    <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> 
+                @enderror
+            </div>
+        @endif
 
         <!-- Form Actions -->
         <div class="flex justify-between items-center pt-4 border-t border-gray-200">

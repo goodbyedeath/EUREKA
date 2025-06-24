@@ -54,7 +54,7 @@
                         <label class="block text-sm font-medium text-gray-700">Manual Entry</label>
                         <div class="flex mt-1">
                             <input type="text" wire:model="scannedCode" class="flex-1 border rounded px-3 py-2" placeholder="Enter QR code manually">
-                            <button wire:click="manualEntry($wire.scannedCode)" class="ml-2 bg-green-500 text-white px-4 py-2 rounded">
+                            <button wire:click="manualEntry(scannedCode)" class="ml-2 bg-green-500 text-white px-4 py-2 rounded">
                                 Submit
                             </button>
                         </div>
@@ -147,7 +147,7 @@ async function checkCameraSupport() {
 
         return true;
     } catch (error) {
-        console.error('Camera support check failed:', error);
+        // Camera support check failed
         return false;
     }
 }
@@ -170,7 +170,7 @@ async function requestCameraPermission() {
         
         return true;
     } catch (error) {
-        console.error('Camera permission request failed:', error);
+        // Camera permission request failed
         return false;
     }
 }
@@ -181,7 +181,7 @@ async function initializeQRScanner() {
             await qrScanner.stop();
             await qrScanner.destroy();
         } catch (e) {
-            console.warn('Error cleaning up previous scanner:', e);
+            // Previous scanner cleanup failed
         }
         qrScanner = null;
     }
@@ -215,7 +215,7 @@ async function initializeQRScanner() {
         const video = document.getElementById('qr-video');
         
         if (!video) {
-            console.error('Video element not found');
+            // Video element not found
             $wire.set('error', 'Video element not found');
             $wire.set('isScanning', false);
             return;
@@ -225,7 +225,7 @@ async function initializeQRScanner() {
         qrScanner = new QrScanner(
             video,
             result => {
-                console.log('QR Code detected:', result.data);
+                // QR Code detected
                 $wire.handleQRScanned(result.data);
             },
             {
@@ -240,10 +240,10 @@ async function initializeQRScanner() {
         // Start scanner
         await qrScanner.start();
         isInitialized = true;
-        console.log('QR Scanner initialized successfully');
+        // QR Scanner initialized successfully
         
     } catch (error) {
-        console.error('QR Scanner initialization failed:', error);
+        // QR Scanner initialization failed
         
         // Provide detailed error messages
         let errorMessage = 'Camera access failed';
@@ -272,9 +272,9 @@ async function cleanupQRScanner() {
         try {
             await qrScanner.stop();
             await qrScanner.destroy();
-            console.log('QR Scanner cleaned up successfully');
+            // QR Scanner cleaned up successfully
         } catch (error) {
-            console.error('Error cleaning up QR Scanner:', error);
+            // Error cleaning up QR Scanner
         }
         qrScanner = null;
     }
@@ -283,24 +283,23 @@ async function cleanupQRScanner() {
 
 // Listen for Livewire events
 $wire.on('start-qr-scanner', () => {
-    console.log('Starting QR Scanner...');
-    console.log('QrScanner available:', !!window.QrScanner);
+    // Starting QR Scanner
     setTimeout(initializeQRScanner, 300); // Small delay to ensure DOM is ready
 });
 
 $wire.on('stop-qr-scanner', () => {
-    console.log('Stopping QR Scanner...');
+    // Stopping QR Scanner
     cleanupQRScanner();
 });
 
 $wire.on('cleanup-qr-scanner', () => {
-    console.log('Cleaning up QR Scanner...');
+    // Cleaning up QR Scanner
     cleanupQRScanner();
 });
 
 // Cleanup on navigation
 document.addEventListener('livewire:navigating', () => {
-    console.log('Navigating - cleaning up QR Scanner');
+    // Navigating - cleaning up QR Scanner
     cleanupQRScanner();
 });
 

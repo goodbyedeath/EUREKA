@@ -14,6 +14,13 @@ class AvailableQuest extends Component
     public $recentAttempts;
     public $scannedQr_code = null;
     public $showNoQuizMessage = false;
+    
+    // Countdown timer properties
+    public $showCountdown = false;
+    public $countdownSeconds = 10;
+    public $selectedQuestionnaire = null;
+    public $countdownActive = false;
+    public $initialCountdownSeconds = 10;
 
     public function mount($qr_code = null)
     {
@@ -118,7 +125,58 @@ class AvailableQuest extends Component
             return redirect()->route('quiz.continue', $existingAttempt->id);
         }
 
-        return redirect()->route('quiz.take', ['questionnaireId' => $questionnaire->id]);
+        // Start countdown instead of directly going to quiz
+        $this->selectedQuestionnaire = $questionnaire;
+        $this->showCountdown = true;
+        $this->countdownActive = true;
+        
+        // Set countdown based on questionnaire's time limit
+        if ($questionnaire->time_limit) {
+            // If questionnaire has time limit, use it as countdown (in seconds)
+            $this->countdownSeconds = $questionnaire->time_limit * 60; // Convert minutes to seconds
+            $this->initialCountdownSeconds = $questionnaire->time_limit * 60;
+        } else {
+            // If no time limit, use default 10 seconds for preparation
+            $this->countdownSeconds = 10;
+            $this->initialCountdownSeconds = 10;
+        }
+    }
+    
+    public function startCountdownQuiz()
+    {
+        if (!$this->selectedQuestionnaire) {
+            session()->flash('error', 'No questionnaire selected.');
+            return;
+        }
+        
+        // Final validation before starting
+        if (!$this->selectedQuestionnaire->isAvailable() || !$this->selectedQuestionnaire->hasQuestions()) {
+            session()->flash('error', 'Questionnaire is no longer available.');
+            $this->cancelCountdown();
+            return;
+        }
+        
+        return redirect()->route('quiz.take', ['questionnaireId' => $this->selectedQuestionnaire->id]);
+    }
+    
+    public function cancelCountdown()
+    {
+        $this->showCountdown = false;
+        $this->countdownActive = false;
+        $this->selectedQuestionnaire = null;
+        $this->countdownSeconds = 10;
+        $this->initialCountdownSeconds = 10;
+    }
+    
+    public function updateCountdown()
+    {
+        if ($this->countdownActive && $this->countdownSeconds > 0) {
+            $this->countdownSeconds--;
+            
+            if ($this->countdownSeconds <= 0) {
+                $this->startCountdownQuiz();
+            }
+        }
     }
 
     public function continueQuiz($attemptId)

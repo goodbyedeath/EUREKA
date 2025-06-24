@@ -7,6 +7,7 @@ enum QuestionType: string
     case TEXT = 'text';
     case MULTIPLE_CHOICE = 'multiple_choice';
     case TRUE_FALSE = 'true_false';
+    case FUN_GAME = 'fun_game';
 
     /**
      * Get all question type values
@@ -25,6 +26,7 @@ enum QuestionType: string
             self::TEXT => 'Text Answer',
             self::MULTIPLE_CHOICE => 'Multiple Choice',
             self::TRUE_FALSE => 'True/False',
+            self::FUN_GAME => 'Fun Game',
         };
     }
 
@@ -37,6 +39,7 @@ enum QuestionType: string
             self::TEXT => 'Users type their answer in a text field',
             self::MULTIPLE_CHOICE => 'Users select from predefined options',
             self::TRUE_FALSE => 'Users choose between True and False',
+            self::FUN_GAME => 'Interactive game activity with manual assessment',
         };
     }
 
@@ -65,6 +68,12 @@ enum QuestionType: string
             self::TRUE_FALSE => [
                 'correct_answer' => 'required|in:true,false',
             ],
+            self::FUN_GAME => [
+                'game_name' => 'required|string|max:200',
+                'description' => 'required|string|max:2000',
+                'images' => 'nullable|array|max:10',
+                'images.*' => 'nullable|string',
+            ],
         };
     }
 
@@ -86,6 +95,13 @@ enum QuestionType: string
                 'options' => null,
                 'correct_answer' => 'true',
             ],
-        };
+            self::FUN_GAME => [
+                'options' => null,
+                'correct_answer' => '',
+                'game_name' => '',
+                'description' => '',
+                'images' => [],
+            ],
+        ];
     }
 }

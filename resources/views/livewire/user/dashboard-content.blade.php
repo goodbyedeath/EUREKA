@@ -37,6 +37,14 @@
                             </button>
                             
                             <button 
+                                wire:click="switchToGames"
+                                class="p-3 sm:p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-left">
+                                <i class="fas fa-map-marked-alt text-orange-500 text-lg sm:text-xl mb-2"></i>
+                                <div class="font-medium text-gray-900 text-sm sm:text-base">Outdoor Games</div>
+                                <div class="text-xs sm:text-sm text-gray-500">Explore outdoor locations</div>
+                            </button>
+                            
+                            <button 
                                 onclick="Livewire.dispatch('open-qr-scanner')"
                                 class="p-3 sm:p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-left">
                                 <i class="fas fa-qrcode text-green-500 text-lg sm:text-xl mb-2"></i>
@@ -117,6 +125,13 @@
                     </div>
                 </div>
             @endif
+        </div>
+    @endif
+
+    {{-- Games Tab --}}
+    @if($activeTab === 'games')
+        <div class="fade-in" role="tabpanel">
+            @livewire('user.game-dashboard')
         </div>
     @endif
 </div>

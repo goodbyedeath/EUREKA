@@ -18,6 +18,6 @@ export default defineConfig({
         },
     },
     optimizeDeps: {
-        include: ['qr-scanner'],
+        include: ['qr-scanner', '@panzoom/panzoom']
     },
 });

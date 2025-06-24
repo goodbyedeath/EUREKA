@@ -11,15 +11,20 @@
                         </p>
                     </div>
                     
-                    @if($questionnaire->time_limit && $timeRemaining !== null)
-                        <div class="flex items-center space-x-2" 
+                    @if($questionnaire->time_limit && $timeRemaining !== null && $timeRemaining > 0)
+                        <div class="flex items-center space-x-3 bg-white rounded-lg px-4 py-2 shadow-sm border" 
                              x-data="countdownTimer({{ $timeRemaining }}, '{{ $questionnaire->id }}')" 
                              x-init="init()">
-                            <i class="fas fa-clock text-gray-500"></i>
+                            <i class="fas fa-clock text-blue-500"></i>
                             <div class="countdown-display">
                                 <span x-text="displayTime" 
-                                      :class="isWarning ? 'text-sm font-bold text-red-600 animate-pulse' : 'text-sm font-medium text-gray-700'"></span>
+                                      :class="isWarning ? 'text-lg font-bold text-red-600 animate-pulse' : 'text-lg font-bold text-gray-800'"></span>
                             </div>
+                        </div>
+                    @elseif($questionnaire->time_limit && $timeRemaining <= 0)
+                        <div class="flex items-center space-x-3 bg-red-50 rounded-lg px-4 py-2 border border-red-200">
+                            <i class="fas fa-clock text-red-500"></i>
+                            <span class="text-sm font-bold text-red-800">Time's Up!</span>
                         </div>
                     @endif
                 </div>
@@ -101,6 +106,81 @@
                                           {{ $attempt->canEditAnswers() ? '' : 'readonly' }}
                                           placeholder="{{ $attempt->canEditAnswers() ? 'Enter your answer here...' : 'Quiz has been submitted - answers cannot be edited' }}"></textarea>
                             </div>
+                        
+                        @elseif($currentQuestion['type'] === 'fun_game')
+                            <div class="fun-game-container">
+                                {{-- Game Header --}}
+                                <div class="bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg p-6 mb-6">
+                                    <div class="flex items-center justify-between mb-4">
+                                        <h2 class="text-2xl font-bold">{{ $currentQuestion['game_name'] ?? 'Fun Game' }}</h2>
+                                        <div class="flex items-center space-x-2">
+                                            <i class="fas fa-gamepad text-2xl"></i>
+                                        </div>
+                                    </div>
+                                    
+                                    {{-- Timer for fun game --}}
+                                    @if($questionnaire->time_limit)
+                                        <div class="flex items-center text-sm opacity-90">
+                                            <i class="fas fa-clock mr-2"></i>
+                                            <span>Time Limit: {{ $questionnaire->time_limit }} minutes</span>
+                                        </div>
+                                    @endif
+                                </div>
+
+                                {{-- Game Images --}}
+                                @if(!empty($currentQuestion['images']))
+                                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+                                        @foreach($currentQuestion['images'] as $image)
+                                            <div class="bg-white rounded-lg shadow-md overflow-hidden">
+                                                <img src="{{ asset('storage/' . $image) }}" 
+                                                     alt="Game Image" 
+                                                     class="w-full h-48 object-cover hover:scale-105 transition-transform cursor-pointer"
+                                                     onclick="openImageModal('{{ asset('storage/' . $image) }}')">
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                @endif
+
+                                {{-- Game Instructions --}}
+                                @if(!empty($currentQuestion['description']))
+                                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-6">
+                                        <h3 class="text-lg font-semibold text-blue-900 mb-3 flex items-center">
+                                            <i class="fas fa-info-circle mr-2"></i>
+                                            Game Instructions
+                                        </h3>
+                                        <div class="text-blue-800 whitespace-pre-line">{{ $currentQuestion['description'] }}</div>
+                                    </div>
+                                @endif
+
+                                {{-- Game Status --}}
+                                <div class="bg-white rounded-lg border-2 border-dashed border-gray-300 p-8 text-center">
+                                    @if(!$this->isGameCompleted($currentQuestion['id']))
+                                        <div class="mb-6">
+                                            <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                                <i class="fas fa-play text-green-600 text-2xl"></i>
+                                            </div>
+                                            <h3 class="text-xl font-semibold text-gray-900 mb-2">Game in Progress</h3>
+                                            <p class="text-gray-600 mb-6">Follow the instructions above to complete this fun game!</p>
+                                            
+                                            @if($attempt->canEditAnswers())
+                                                <button wire:click="completeGame({{ $currentQuestion['id'] }})"
+                                                        class="bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-lg font-medium transition-colors duration-200">
+                                                    <i class="fas fa-flag-checkered mr-2"></i>
+                                                    Complete Game
+                                                </button>
+                                            @endif
+                                        </div>
+                                    @else
+                                        <div class="mb-6">
+                                            <div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                                <i class="fas fa-check text-blue-600 text-2xl"></i>
+                                            </div>
+                                            <h3 class="text-xl font-semibold text-gray-900 mb-2">Game Completed!</h3>
+                                            <p class="text-gray-600">Waiting for assessment...</p>
+                                        </div>
+                                    @endif
+                                </div>
+                            </div>
                         @endif
                     </div>
 
@@ -167,7 +247,7 @@
                                               ? 'bg-blue-600 text-white' 
                                               : ($this->isQuestionAnswered($question['id']) 
                                                  ? 'bg-green-100 text-green-800 hover:bg-green-200' 
-                                                 : 'bg-white text-gray-600 hover:bg-gray-100') }}">
+                                                 : 'bg-white text-gray-600 hover:bg-gray-100') }}"
                                 {{ $index + 1 }}
                             </button>
                         @endforeach
@@ -341,6 +421,37 @@
             </div>
         </div>
     @endif
+
+    {{-- Navigation Prevention Warning Modal --}}
+    @if($quizLocked && !$isCompleted)
+        <div class="fixed bottom-4 left-4 bg-yellow-50 border border-yellow-200 rounded-lg p-4 shadow-lg z-40 max-w-sm" 
+             x-data="{ show: true }" 
+             x-show="show"
+             x-transition>
+            <div class="flex items-start">
+                <div class="flex-shrink-0">
+                    <i class="fas fa-lock text-yellow-600"></i>
+                </div>
+                <div class="ml-3">
+                    <p class="text-sm text-yellow-800 font-medium">Quiz in Progress</p>
+                    <p class="text-xs text-yellow-700 mt-1">Navigation is locked until you complete all questions and submit your answers.</p>
+                </div>
+                <button @click="show = false" class="ml-auto text-yellow-600 hover:text-yellow-800">
+                    <i class="fas fa-times text-xs"></i>
+                </button>
+            </div>
+        </div>
+    @endif
+
+    {{-- Image Modal for Fun Games --}}
+    <div id="imageModal" class="fixed inset-0 bg-black bg-opacity-75 z-50 hidden flex items-center justify-center" onclick="closeImageModal()">
+        <div class="max-w-4xl max-h-full p-4">
+            <img id="modalImage" src="" alt="Game Image" class="max-w-full max-h-full object-contain rounded-lg">
+            <button onclick="closeImageModal()" class="absolute top-4 right-4 text-white text-2xl hover:text-gray-300">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    </div>
 </div>
 
 @script
@@ -349,7 +460,7 @@ let quizTimingData = @json($this->getQuizTimingData());
 let isCompleted = @json($isCompleted);
 
 // Alpine.js countdown timer component
-function countdownTimer(initialSeconds, questionnaireId) {
+window.countdownTimer = function(initialSeconds, questionnaireId) {
     return {
         timeRemaining: initialSeconds,
         displayTime: '',
@@ -466,14 +577,68 @@ function countdownTimer(initialSeconds, questionnaireId) {
 
 // Prevent accidental page refresh during quiz
 let beforeUnloadHandler = function(e) {
-    e.preventDefault();
-    e.returnValue = 'Are you sure you want to leave? Your progress may be lost.';
-    return 'Are you sure you want to leave? Your progress may be lost.';
+    if (!@json($isCompleted) && @json($quizLocked)) {
+        e.preventDefault();
+        e.returnValue = 'Quiz in progress! You cannot leave until all questions are completed and submitted.';
+        return 'Quiz in progress! You cannot leave until all questions are completed and submitted.';
+    }
 };
 
 // Add the warning if quiz is not completed
-if (!isCompleted) {
+if (!isCompleted && @json($quizLocked)) {
     window.addEventListener('beforeunload', beforeUnloadHandler);
+}
+
+// Block back button navigation during quiz
+let isNavigationBlocked = @json($quizLocked) && !@json($isCompleted);
+
+if (isNavigationBlocked) {
+    // Push a dummy state to prevent back button navigation
+    history.pushState(null, '', location.href);
+    
+    window.addEventListener('popstate', function(event) {
+        if (isNavigationBlocked) {
+            // Push state again to prevent going back
+            history.pushState(null, '', location.href);
+            
+            // Show warning
+            if (confirm('Quiz in progress! Are you sure you want to abandon this quiz? Your progress will be lost.')) {
+                // Allow exit if user confirms
+                $wire.call('forceExit');
+            }
+        }
+    });
+}
+
+// Block common keyboard shortcuts that could navigate away
+document.addEventListener('keydown', function(e) {
+    if (isNavigationBlocked) {
+        // Block Alt+Left (back), Alt+Right (forward)
+        if (e.altKey && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+            e.preventDefault();
+            return false;
+        }
+        
+        // Block Ctrl+W (close tab), but allow Ctrl+Shift+W
+        if (e.ctrlKey && e.key === 'w' && !e.shiftKey) {
+            e.preventDefault();
+            return false;
+        }
+        
+        // Block F1-F12 function keys that might cause navigation
+        if (e.key.startsWith('F') && e.key.length <= 3) {
+            e.preventDefault();
+            return false;
+        }
+    }
+});
+
+// Disable right-click context menu during quiz
+if (isNavigationBlocked) {
+    document.addEventListener('contextmenu', function(e) {
+        e.preventDefault();
+        return false;
+    });
 }
 
 // Auto-save functionality
@@ -522,8 +687,47 @@ document.addEventListener('livewire:initialized', () => {
         window.removeEventListener('beforeunload', beforeUnloadHandler);
         // Update completion status
         quizCompleted = true;
+        isNavigationBlocked = false;
+        
+        // Re-enable right-click context menu
+        document.removeEventListener('contextmenu', function(e) {
+            e.preventDefault();
+            return false;
+        });
+        
+        // Show completion notification
+        const notification = document.createElement('div');
+        notification.className = 'fixed top-4 right-4 bg-green-50 border border-green-200 rounded-md p-4 z-50 shadow-lg';
+        notification.innerHTML = `
+            <div class="flex items-center">
+                <i class="fas fa-check-circle text-green-500 mr-2"></i>
+                <span class="text-green-800 font-medium">Quiz completed! Navigation unlocked.</span>
+            </div>
+        `;
+        
+        document.body.appendChild(notification);
+        
+        // Remove notification after 3 seconds
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.parentNode.removeChild(notification);
+            }
+        }, 3000);
     });
 });
+
+// Image modal functions for fun games
+function openImageModal(imageSrc) {
+    const modal = document.getElementById('imageModal');
+    const modalImage = document.getElementById('modalImage');
+    modalImage.src = imageSrc;
+    modal.classList.remove('hidden');
+}
+
+function closeImageModal() {
+    const modal = document.getElementById('imageModal');
+    modal.classList.add('hidden');
+}
 </script>
 @endscript
 

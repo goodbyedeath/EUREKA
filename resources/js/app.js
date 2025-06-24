@@ -288,8 +288,18 @@ window.AdminMapManager = {
     instances: new Map(),
     
     initialize(containerId, markerId, options = {}) {
+        console.log('=== AdminMapManager.initialize called ===');
+        console.log('Params:', { containerId, markerId, options });
+        
         const container = document.getElementById(containerId);
         const marker = document.getElementById(markerId);
+        
+        console.log('Found elements:', {
+            container: !!container,
+            marker: !!marker,
+            containerElement: container,
+            markerElement: marker
+        });
         
         if (!container || !marker) {
             console.warn(`Container or marker not found: ${containerId}, ${markerId}`);
@@ -299,52 +309,98 @@ window.AdminMapManager = {
         // Clean up existing instance
         this.destroy(markerId);
         
-        // Default options
-        const defaultOptions = {
-            onMove: null,
-            onEnd: null,
-            restrictToParent: true,
-            ...options
-        };
+        // Initialize position tracking - use consistent positioning approach
+        if (!marker.hasAttribute('data-x')) {
+            // Get initial position from current left/top styles or default to current position
+            const initialX = parseFloat(marker.style.left) || 0;
+            const initialY = parseFloat(marker.style.top) || 0;
+            marker.setAttribute('data-x', initialX);
+            marker.setAttribute('data-y', initialY);
+        }
         
-        console.log('Setting up InteractJS for marker:', marker, 'in container:', container);
+        console.log('Setting up InteractJS for marker:', marker.id);
+        console.log('interact function available:', typeof interact);
+        console.log('marker element:', marker);
         
-        // Make marker draggable with InteractJS
+        // Make marker draggable with InteractJS using proper patterns
+        console.log('Calling interact(marker)...');
         const instance = interact(marker)
             .draggable({
                 // Restrict movement to parent container
-                modifiers: defaultOptions.restrictToParent ? [
+                modifiers: [
                     interact.modifiers.restrictRect({
                         restriction: container,
                         endOnly: false
                     })
-                ] : [],
+                ],
                 
-                // Enable inertia
-                inertia: {
-                    resistance: 30,
-                    minSpeed: 200,
-                    endSpeed: 100
-                },
+                // Disable inertia for precise positioning
+                inertia: false,
                 
                 // Auto scroll when dragging near edge
                 autoScroll: false,
                 
-                // Event listeners
+                // Event listeners following InteractJS patterns
                 listeners: {
-                    start: (event) => {
-                        this.onDragStart(event, marker);
+                    start(event) {
+                        console.log('Drag started on marker:', event.target.id);
+                        
+                        // Add dragging visual feedback
+                        event.target.style.boxShadow = '0 8px 25px rgba(239, 68, 68, 0.6)';
+                        event.target.style.zIndex = '1000';
+                        event.target.classList.add('dragging');
+                        
+                        // Prevent text selection during drag
+                        document.body.style.userSelect = 'none';
                     },
-                    move: (event) => {
-                        this.onDragMove(event, marker, container);
-                        if (defaultOptions.onMove) {
-                            defaultOptions.onMove(event, marker, container);
-                        }
+                    
+                    move(event) {
+                        // Get the current position from data attributes (InteractJS best practice)
+                        const x = (parseFloat(event.target.getAttribute('data-x')) || 0) + event.dx;
+                        const y = (parseFloat(event.target.getAttribute('data-y')) || 0) + event.dy;
+                        
+                        // Use simple transform following InteractJS best practices
+                        // Keep the centering separate from the dragging transform
+                        event.target.style.left = x + 'px';
+                        event.target.style.top = y + 'px';
+                        event.target.style.transform = 'translate(-50%, -50%) scale(1.1)';
+                        
+                        // Update position in data attributes
+                        event.target.setAttribute('data-x', x);
+                        event.target.setAttribute('data-y', y);
+                        
+                        // Update coordinate display with current position
+                        AdminMapManager.updateCoordinateDisplay(Math.round(x), Math.round(y));
                     },
-                    end: (event) => {
-                        this.onDragEnd(event, marker, container);
-                        if (defaultOptions.onEnd) {
-                            defaultOptions.onEnd(event, marker, container);
+                    
+                    end(event) {
+                        console.log('Drag ended on marker:', event.target.id);
+                        
+                        // Get final position from data attributes
+                        const x = parseFloat(event.target.getAttribute('data-x')) || 0;
+                        const y = parseFloat(event.target.getAttribute('data-y')) || 0;
+                        
+                        // Reset visual feedback - keep positioning simple
+                        event.target.style.transform = 'translate(-50%, -50%)';
+                        event.target.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
+                        event.target.style.zIndex = '10';
+                        event.target.classList.remove('dragging');
+                        
+                        // Reset body styles
+                        document.body.style.userSelect = '';
+                        
+                        // Update coordinates with final position
+                        AdminMapManager.updateCoordinates(Math.round(x), Math.round(y));
+                        
+                        // Add success animation
+                        event.target.style.animation = 'successPulse 0.6s ease-out';
+                        setTimeout(() => {
+                            event.target.style.animation = '';
+                        }, 600);
+                        
+                        // Call custom end callback if provided
+                        if (options.onEnd) {
+                            options.onEnd(event, event.target, container);
                         }
                     }
                 }
@@ -352,7 +408,7 @@ window.AdminMapManager = {
             
         // Make container clickable to position marker
         const clickHandler = (event) => {
-            if (event.target === marker) return; // Don't trigger on marker clicks
+            if (event.target === marker || event.target.closest('#admin-location-marker')) return;
             
             const rect = container.getBoundingClientRect();
             const x = event.clientX - rect.left;
@@ -360,15 +416,8 @@ window.AdminMapManager = {
             
             this.positionMarker(marker, x, y, container);
             
-            // Trigger the end callback for click positioning
-            if (defaultOptions.onEnd) {
-                const mockEvent = {
-                    clientX: event.clientX,
-                    clientY: event.clientY,
-                    target: marker
-                };
-                defaultOptions.onEnd(mockEvent, marker, container);
-            }
+            // Update coordinates
+            this.updateCoordinates(Math.round(x), Math.round(y));
         };
         
         container.addEventListener('click', clickHandler);
@@ -379,100 +428,28 @@ window.AdminMapManager = {
             clickHandler: clickHandler,
             container: container,
             marker: marker,
-            options: defaultOptions
+            options: options
         });
+        
+        console.log('✅ AdminMapManager.initialize completed successfully');
+        console.log('Instance stored for markerId:', markerId);
+        console.log('=== AdminMapManager.initialize finished ===');
         
         return instance;
     },
     
-    onDragStart(event, marker) {
-        console.log('Drag started on marker:', marker.id);
-        
-        // Add dragging visual feedback
-        marker.style.transform = 'translate(-50%, -50%) scale(1.2)';
-        marker.style.boxShadow = '0 8px 25px rgba(239, 68, 68, 0.5)';
-        marker.style.zIndex = '1000';
-        marker.classList.add('dragging');
-        
-        // Prevent text selection during drag
-        document.body.style.userSelect = 'none';
-        document.body.style.cursor = 'grabbing';
-    },
-    
-    onDragMove(event, marker, container) {
-        // Get current position using InteractJS delta
-        const x = (parseFloat(marker.getAttribute('data-x')) || 0) + event.dx;
-        const y = (parseFloat(marker.getAttribute('data-y')) || 0) + event.dy;
-        
-        // Apply position with InteractJS transform
-        marker.style.transform = `translate(${x}px, ${y}px) translate(-50%, -50%) scale(1.2)`;
-        
-        // Store position in data attributes
+    positionMarker(marker, x, y, container) {
+        // Update data attributes to maintain consistency with InteractJS
         marker.setAttribute('data-x', x);
         marker.setAttribute('data-y', y);
         
-        // Calculate the final absolute position relative to the container
-        // We need to account for the original position plus the drag offset
-        const originalLeft = parseFloat(marker.style.left) || 0;
-        const originalTop = parseFloat(marker.style.top) || 0;
-        const finalX = originalLeft + x;
-        const finalY = originalTop + y;
-        
-        // Update coordinate display with the final position
-        this.updateCoordinateDisplay(Math.round(finalX), Math.round(finalY));
-    },
-    
-    onDragEnd(event, marker, container) {
-        // Get the drag offset
-        const dragX = parseFloat(marker.getAttribute('data-x')) || 0;
-        const dragY = parseFloat(marker.getAttribute('data-y')) || 0;
-        
-        // Calculate the new absolute position
-        const originalLeft = parseFloat(marker.style.left) || 0;
-        const originalTop = parseFloat(marker.style.top) || 0;
-        const newLeft = originalLeft + dragX;
-        const newTop = originalTop + dragY;
-        
-        // Update the marker's actual position
-        marker.style.left = newLeft + 'px';
-        marker.style.top = newTop + 'px';
-        
-        // Reset the transform and data attributes
-        marker.style.transform = 'translate(-50%, -50%)';
-        marker.setAttribute('data-x', 0);
-        marker.setAttribute('data-y', 0);
-        
-        // Reset visual feedback
-        marker.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
-        marker.style.zIndex = '10';
-        marker.classList.remove('dragging');
-        
-        // Reset body styles
-        document.body.style.userSelect = '';
-        document.body.style.cursor = '';
-        
-        // Update coordinates with the final position
-        this.updateCoordinates(Math.round(newLeft), Math.round(newTop));
-        
-        // Add success animation
-        marker.style.animation = 'successPulse 0.6s ease-out';
-        setTimeout(() => {
-            marker.style.animation = '';
-        }, 600);
-    },
-    
-    positionMarker(marker, x, y, container) {
-        // Reset any transform data
-        marker.setAttribute('data-x', 0);
-        marker.setAttribute('data-y', 0);
-        
-        // Position marker directly
+        // Position marker using left/top (consistent with drag implementation)
         marker.style.left = x + 'px';
         marker.style.top = y + 'px';
         marker.style.transform = 'translate(-50%, -50%)';
         
         // Add click animation
-        marker.style.transition = 'all 0.3s ease-out';
+        marker.style.transition = 'transform 0.3s ease-out';
         marker.style.transform = 'translate(-50%, -50%) scale(1.2)';
         
         setTimeout(() => {
@@ -480,31 +457,17 @@ window.AdminMapManager = {
             marker.style.transition = '';
         }, 300);
         
-        // Update coordinates
-        this.updateCoordinates(Math.round(x), Math.round(y));
-        
         // Add ripple effect
         this.createRippleEffect(x, y, container);
     },
     
     updateCoordinates(x, y) {
-        // Update Livewire component properties
-        if (typeof Livewire !== 'undefined') {
-            try {
-                // Find the Livewire component and update coordinates
-                const component = Livewire.find(document.querySelector('[wire\\:id]'));
-                if (component) {
-                    component.set('coordinate_x', x);
-                    component.set('coordinate_y', y);
-                }
-            } catch (error) {
-                console.warn('Could not update Livewire coordinates:', error);
-            }
-        }
-        
-        // Also try direct property update
+        // Update Livewire component properties by calling the global updateCoordinates function
+        // This function is defined in the Blade template and has access to @this
         if (typeof window.updateCoordinates === 'function') {
             window.updateCoordinates(x, y);
+        } else {
+            console.warn('Global updateCoordinates function not found. Make sure the modal/blade template is loaded.');
         }
     },
     
@@ -554,12 +517,12 @@ window.AdminMapManager = {
             
             // Clean up marker styles
             if (instance.marker) {
-                instance.marker.style.transform = '';
+                instance.marker.style.transform = 'translate(-50%, -50%)';
                 instance.marker.style.boxShadow = '';
                 instance.marker.style.zIndex = '';
                 instance.marker.classList.remove('dragging');
-                instance.marker.removeAttribute('data-x');
-                instance.marker.removeAttribute('data-y');
+                instance.marker.setAttribute('data-x', 0);
+                instance.marker.setAttribute('data-y', 0);
             }
             
             this.instances.delete(markerId);
@@ -703,6 +666,149 @@ window.handleFullscreen = function() {
     }
 };
 
+// Direct fullscreen handler with comprehensive browser support
+window.handleFullscreenClick = function() {
+    const mapContainer = document.getElementById('map-container');
+    if (mapContainer) {
+        toggleFullscreenDirect(mapContainer);
+    }
+};
+
+// Direct zoom handlers for immediate response
+window.handleZoomInClick = function() {
+    try {
+        if (window.GameMapManager && typeof window.GameMapManager.zoomIn === 'function') {
+            window.GameMapManager.zoomIn('map-wrapper');
+        } else {
+            manualZoomIn();
+        }
+    } catch (error) {
+        manualZoomIn();
+    }
+};
+
+window.handleZoomOutClick = function() {
+    try {
+        if (window.GameMapManager && typeof window.GameMapManager.zoomOut === 'function') {
+            window.GameMapManager.zoomOut('map-wrapper');
+        } else {
+            manualZoomOut();
+        }
+    } catch (error) {
+        manualZoomOut();
+    }
+};
+
+window.handleResetClick = function() {
+    try {
+        if (window.GameMapManager && typeof window.GameMapManager.reset === 'function') {
+            window.GameMapManager.reset('map-wrapper');
+        } else {
+            manualReset();
+        }
+    } catch (error) {
+        manualReset();
+    }
+};
+
+// Fallback manual zoom functions
+function manualZoomIn() {
+    const mapWrapper = document.getElementById('map-wrapper');
+    if (mapWrapper) {
+        let currentScale = getCurrentScale(mapWrapper);
+        const newScale = Math.min(currentScale * 1.3, 5);
+        applyScale(mapWrapper, newScale);
+        updateZoomDisplay(newScale);
+    }
+}
+
+function manualZoomOut() {
+    const mapWrapper = document.getElementById('map-wrapper');
+    if (mapWrapper) {
+        let currentScale = getCurrentScale(mapWrapper);
+        const newScale = Math.max(currentScale / 1.3, 0.2);
+        applyScale(mapWrapper, newScale);
+        updateZoomDisplay(newScale);
+    }
+}
+
+function manualReset() {
+    const mapWrapper = document.getElementById('map-wrapper');
+    if (mapWrapper) {
+        applyScale(mapWrapper, 1);
+        updateZoomDisplay(1);
+        // Also reset position
+        mapWrapper.style.transform = 'scale(1)';
+        mapWrapper.style.left = '0px';
+        mapWrapper.style.top = '0px';
+    }
+}
+
+function getCurrentScale(element) {
+    const transform = element.style.transform || '';
+    const scaleMatch = transform.match(/scale\(([^)]+)\)/);
+    return scaleMatch ? parseFloat(scaleMatch[1]) : 1;
+}
+
+function applyScale(element, scale) {
+    element.style.transform = `scale(${scale})`;
+    element.style.transformOrigin = 'center center';
+    element.style.transition = 'transform 0.2s ease-out';
+    
+    // Remove transition after animation
+    setTimeout(() => {
+        element.style.transition = '';
+    }, 200);
+}
+
+function updateZoomDisplay(scale) {
+    const zoomLevel = document.getElementById('zoom-level');
+    if (zoomLevel) {
+        const percentage = Math.round(scale * 100);
+        zoomLevel.textContent = percentage + '%';
+        
+        // Show zoom indicator temporarily
+        const zoomIndicator = document.getElementById('zoom-indicator');
+        if (zoomIndicator) {
+            zoomIndicator.style.opacity = '1';
+            zoomIndicator.style.visibility = 'visible';
+            setTimeout(() => {
+                zoomIndicator.style.opacity = '0';
+                zoomIndicator.style.visibility = 'hidden';
+            }, 2000);
+        }
+    }
+}
+
+// Direct fullscreen toggle function
+function toggleFullscreenDirect(element) {
+    if (!element) return;
+
+    const isCurrentlyFullscreen = !!(document.fullscreenElement || 
+        document.webkitFullscreenElement || 
+        document.mozFullScreenElement);
+
+    if (!isCurrentlyFullscreen) {
+        // Enter fullscreen
+        if (element.requestFullscreen) {
+            element.requestFullscreen().catch(() => {});
+        } else if (element.webkitRequestFullscreen) {
+            element.webkitRequestFullscreen();
+        } else if (element.mozRequestFullScreen) {
+            element.mozRequestFullScreen();
+        }
+    } else {
+        // Exit fullscreen
+        if (document.exitFullscreen) {
+            document.exitFullscreen().catch(() => {});
+        } else if (document.webkitExitFullscreen) {
+            document.webkitExitFullscreen();
+        } else if (document.mozCancelFullScreen) {
+            document.mozCancelFullScreen();
+        }
+    }
+}
+
 // Test function to verify all handlers are loaded
 window.testHandlers = function() {
     console.log('Testing all handler functions:');
@@ -745,52 +851,12 @@ window.testMapControls = function() {
     console.log('=== END TEST ===');
 };
 
-// Test function to check fullscreen state and CSS
-window.debugFullscreen = function() {
-    const mapContainer = document.getElementById('map-container');
-    const floatingControls = document.getElementById('floating-controls');
-    const fullscreenButton = document.querySelector('button[onclick*="handleFullscreen"]');
-    
-    console.log('=== FULLSCREEN DEBUG ===');
-    console.log('Document fullscreen element:', document.fullscreenElement);
-    console.log('Is map container in fullscreen:', mapContainer === document.fullscreenElement);
-    console.log('Map container element:', mapContainer);
-    console.log('Floating controls element:', floatingControls);
-    console.log('Fullscreen button element:', fullscreenButton);
-    
-    if (floatingControls) {
-        const styles = window.getComputedStyle(floatingControls);
-        console.log('Floating controls computed styles:');
-        console.log('- display:', styles.display);
-        console.log('- opacity:', styles.opacity);
-        console.log('- position:', styles.position);
-        console.log('- z-index:', styles.zIndex);
-        console.log('- pointer-events:', styles.pointerEvents);
-    }
-    
-    if (fullscreenButton) {
-        const styles = window.getComputedStyle(fullscreenButton);
-        console.log('Fullscreen button computed styles:');
-        console.log('- display:', styles.display);
-        console.log('- opacity:', styles.opacity);
-        console.log('- position:', styles.position);
-        console.log('- z-index:', styles.zIndex);
-    }
-};
 
 // Global fullscreen change listener
 document.addEventListener('fullscreenchange', function() {
     if (typeof window.GameMapManager !== 'undefined') {
         const isFullscreen = !!document.fullscreenElement;
-        console.log('Fullscreen change detected:', isFullscreen);
         window.GameMapManager.updateFullscreenControls(isFullscreen);
-        
-        // Run debug after a short delay to let CSS settle
-        setTimeout(() => {
-            if (typeof window.debugFullscreen === 'function') {
-                window.debugFullscreen();
-            }
-        }, 100);
     }
 });
 

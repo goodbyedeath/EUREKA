@@ -21,7 +21,10 @@ class QuestionForm extends Component
         'type' => 'text',
         'options' => ['', '', '', ''],
         'correct_answer' => '',
-        'points' => 1
+        'points' => 1,
+        'game_name' => '',
+        'description' => '',
+        'images' => []
     ];
 
     protected $listeners = [
@@ -56,6 +59,14 @@ class QuestionForm extends Component
                 break;
             case 'text':
                 $rules['newQuestion.correct_answer'] = 'required|string|max:1000';
+                break;
+            case 'fun_game':
+                $rules = array_merge($rules, [
+                    'newQuestion.game_name' => 'required|string|max:200',
+                    'newQuestion.description' => 'required|string|max:2000',
+                    'newQuestion.images' => 'nullable|array|max:10',
+                    'newQuestion.images.*' => 'nullable|string',
+                ]);
                 break;
         }
 
@@ -184,7 +195,10 @@ class QuestionForm extends Component
             'type' => $question->type,
             'options' => $question->options ?: ['', '', '', ''],
             'correct_answer' => $question->correct_answer,
-            'points' => $question->points
+            'points' => $question->points,
+            'game_name' => $question->game_name ?? '',
+            'description' => $question->description ?? '',
+            'images' => $question->images ?? []
         ];
 
         // Ensure we have at least 2 options for multiple choice
@@ -229,7 +243,10 @@ class QuestionForm extends Component
             'type' => 'text',
             'options' => ['', '', '', ''],
             'correct_answer' => '',
-            'points' => 1
+            'points' => 1,
+            'game_name' => '',
+            'description' => '',
+            'images' => []
         ];
         $this->editingQuestionId = null;
         $this->isEditing = false;
@@ -245,6 +262,13 @@ class QuestionForm extends Component
             $this->newQuestion['options'] = ['', '', '', ''];
         }
         
+        // Reset fun game fields for non-fun-game types
+        if ($this->newQuestion['type'] !== 'fun_game') {
+            $this->newQuestion['game_name'] = '';
+            $this->newQuestion['description'] = '';
+            $this->newQuestion['images'] = [];
+        }
+        
         // Clear related validation errors
         $this->resetValidation([
             'newQuestion.correct_answer',
@@ -252,7 +276,10 @@ class QuestionForm extends Component
             'newQuestion.options.0',
             'newQuestion.options.1',
             'newQuestion.options.2',
-            'newQuestion.options.3'
+            'newQuestion.options.3',
+            'newQuestion.game_name',
+            'newQuestion.description',
+            'newQuestion.images'
         ]);
     }
 
@@ -301,6 +328,21 @@ class QuestionForm extends Component
         }
         
         return $errors;
+    }
+
+    public function addImage()
+    {
+        if ($this->newQuestion['type'] === 'fun_game' && count($this->newQuestion['images']) < 10) {
+            $this->newQuestion['images'][] = '';
+        }
+    }
+
+    public function removeImage($index)
+    {
+        if ($this->newQuestion['type'] === 'fun_game' && isset($this->newQuestion['images'][$index])) {
+            unset($this->newQuestion['images'][$index]);
+            $this->newQuestion['images'] = array_values($this->newQuestion['images']);
+        }
     }
 
     public function getAvailableOptionsProperty()

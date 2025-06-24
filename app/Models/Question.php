@@ -12,6 +12,9 @@ class Question extends Model
         'questionnaire_id',
         'question',
         'type',
+        'description',
+        'game_name',
+        'images',
         'options',
         'correct_answer',
         'points',
@@ -22,6 +25,7 @@ class Question extends Model
     {
         return [
             'options' => 'array',
+            'images' => 'array',
         ];
     }
 
@@ -33,6 +37,11 @@ class Question extends Model
     public function userAnswers(): HasMany
     {
         return $this->hasMany(UserAnswer::class);
+    }
+
+    public function gameAssessments(): HasMany
+    {
+        return $this->hasMany(GameAssessment::class);
     }
 
     /**

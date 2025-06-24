@@ -280,4 +280,112 @@
             </div>
         </div>
     @endif
+
+    {{-- Countdown Modal --}}
+    @if($showCountdown && $selectedQuestionnaire)
+        <div class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+            <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+                <!-- Background overlay -->
+                <div class="fixed inset-0 bg-gray-900 bg-opacity-75 transition-opacity"></div>
+
+                <!-- Modal panel -->
+                <div class="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6">
+                    <div class="sm:flex sm:items-start">
+                        <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 sm:mx-0 sm:h-10 sm:w-10">
+                            <i class="fas fa-play text-blue-600"></i>
+                        </div>
+                        <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left flex-1">
+                            <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-title">
+                                Starting Quiz
+                            </h3>
+                            <div class="mt-4">
+                                <h4 class="text-md font-semibold text-gray-800 mb-2">{{ $selectedQuestionnaire->title }}</h4>
+                                @if($selectedQuestionnaire->description)
+                                    <p class="text-sm text-gray-600 mb-4 bg-gray-50 p-3 rounded-lg">
+                                        {{ $selectedQuestionnaire->description }}
+                                    </p>
+                                @endif
+                                
+                                <!-- Quiz Info -->
+                                <div class="space-y-2 text-sm text-gray-600 mb-4">
+                                    <div class="flex items-center">
+                                        <i class="fas fa-question-circle w-4 mr-2"></i>
+                                        <span>{{ $selectedQuestionnaire->questions_count }} questions</span>
+                                    </div>
+                                    @if($selectedQuestionnaire->time_limit)
+                                    <div class="flex items-center">
+                                        <i class="fas fa-clock w-4 mr-2"></i>
+                                        <span>{{ $selectedQuestionnaire->time_limit }} minutes time limit</span>
+                                    </div>
+                                    @endif
+                                    @if($selectedQuestionnaire->max_attempts)
+                                    <div class="flex items-center">
+                                        <i class="fas fa-redo w-4 mr-2"></i>
+                                        <span>{{ $selectedQuestionnaire->max_attempts }} attempts allowed</span>
+                                    </div>
+                                    @endif
+                                </div>
+
+                                <!-- Countdown Display -->
+                                <div class="text-center py-6">
+                                    <div x-data="{ count: @entangle('countdownSeconds'), initialCount: @entangle('initialCountdownSeconds') }" 
+                                         x-init="
+                                             const interval = setInterval(() => {
+                                                 if (count > 0) {
+                                                     count--;
+                                                     $wire.updateCountdown();
+                                                 } else {
+                                                     clearInterval(interval);
+                                                 }
+                                             }, 1000);
+                                         ">
+                                        @if($selectedQuestionnaire->time_limit)
+                                            <!-- For timed quizzes, show time in minutes:seconds -->
+                                            <div class="text-4xl font-bold text-blue-600 mb-2">
+                                                <span x-text="Math.floor(count / 60) + ':' + (count % 60).toString().padStart(2, '0')"></span>
+                                            </div>
+                                            <p class="text-sm text-gray-600 mb-2">Time limit: {{ $selectedQuestionnaire->time_limit }} minutes</p>
+                                            <p class="text-sm text-gray-500">Quiz will start automatically when time begins...</p>
+                                        @else
+                                            <!-- For non-timed quizzes, show simple countdown -->
+                                            <div class="text-6xl font-bold text-blue-600 mb-2">
+                                                <span x-text="count"></span>
+                                            </div>
+                                            <p class="text-sm text-gray-600">Quiz will start automatically...</p>
+                                        @endif
+                                    </div>
+                                </div>
+
+                                <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                                    <div class="flex items-center">
+                                        <i class="fas fa-exclamation-triangle text-yellow-600 mr-2"></i>
+                                        <div class="text-sm text-yellow-800">
+                                            <strong>Important:</strong> 
+                                            @if($selectedQuestionnaire->time_limit)
+                                                Once the quiz starts, you will have exactly {{ $selectedQuestionnaire->time_limit }} minutes to complete all questions. You cannot pause, go back, or close it until all questions are submitted.
+                                            @else
+                                                Once the quiz starts, you cannot go back or close it until all questions are completed and submitted.
+                                            @endif
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-5 sm:mt-4 sm:flex sm:flex-row-reverse">
+                        <button type="button" 
+                                wire:click="startCountdownQuiz"
+                                class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm">
+                            Start Now
+                        </button>
+                        <button type="button" 
+                                wire:click="cancelCountdown"
+                                class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:w-auto sm:text-sm">
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    @endif
 </div>

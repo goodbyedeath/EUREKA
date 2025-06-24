@@ -8,6 +8,7 @@ use App\Http\Controllers\User\UserDashboardController;
 
 use App\Livewire\User\QuizTake;
 use App\Livewire\User\QuestLocationDashboard;
+use App\Livewire\User\GameDashboard;
 use App\Livewire\User\QuizResults;
 use Ladumor\LaravelPwa\LaravelPwa;
 use App\Livewire\Forms\TeamForm;
@@ -49,6 +50,7 @@ Route::middleware(['auth', 'preventbackhistory'])->group(function () {
         Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
         Route::get('/users', [DashboardController::class, 'usersManagement'])->name('users');
         Route::get('/quest-locations', [DashboardController::class,'mapManagement'])->name('quest-locations');
+        Route::get('/games', [DashboardController::class, 'gameManagement'])->name('games');
         Route::get('/user-progress', [DashboardController::class, 'userProgress'])->name('user-progress');
         Route::get('/hero-slides', [DashboardController::class, 'heroSlides'])->name('hero-slides');
     });
@@ -68,6 +70,7 @@ Route::middleware(['auth', 'preventbackhistory'])->group(function () {
                 Route::get('/quiz/results/{attemptId}', QuizResults::class)->name('quiz.results');
             });
             Route::get('/quest-dashboard', QuestLocationDashboard::class)->name('user.quest-location-dashboard');
+            Route::get('/game-dashboard', GameDashboard::class)->name('user.game-dashboard');
             Route::get('/test-language', function () {
                 return view('test-language');
             })->name('test.language');

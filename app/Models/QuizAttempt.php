@@ -49,6 +49,11 @@ class QuizAttempt extends Model
         return $this->hasMany(UserAnswer::class);
     }
 
+    public function gameAssessments(): HasMany
+    {
+        return $this->hasMany(GameAssessment::class);
+    }
+
     // Scopes
     public function scopeCompleted($query)
     {

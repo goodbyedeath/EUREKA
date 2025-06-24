@@ -31,6 +31,11 @@ class DashboardController extends Controller
         return view('admin.map-management');
     }
 
+    public function gameManagement()
+    {
+        return view('admin.game-management');
+    }
+
     public function userProgress()
     {
         return view('admin.user-progress');

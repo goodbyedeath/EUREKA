@@ -47,7 +47,7 @@ class DashboardContent extends Component
 {
     $tabValue = is_array($tab) ? $tab['tab'] : $tab;
 
-    if (in_array($tabValue, ['dashboard', 'quizzes', 'members'])) {
+    if (in_array($tabValue, ['dashboard', 'quizzes', 'members', 'games'])) {
         $this->activeTab = $tabValue;
     }
 }
@@ -74,6 +74,12 @@ class DashboardContent extends Component
     {
         $this->activeTab = 'members';
         $this->dispatch('tab-switched', ['tab' => 'members']);
+    }
+
+    public function switchToGames()
+    {
+        $this->activeTab = 'games';
+        $this->dispatch('tab-switched', ['tab' => 'games']);
     }
 
     public function render()
