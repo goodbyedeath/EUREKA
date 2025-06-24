@@ -18,7 +18,9 @@
         "vite": "^6.2.4"
     },
     "dependencies": {
-        "alpinejs": "^3.14.9",
+        "@panzoom/panzoom": "^4.6.0",
+        "interactjs": "^1.10.27",
+        "panzoom": "^9.4.3",
         "qr-scanner": "^1.4.2"
     }
 }
