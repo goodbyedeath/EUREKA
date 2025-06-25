@@ -48,7 +48,7 @@ return [
     'reset_password_action'          => 'Reset Kata Sandi',
     'reset_password_expire'          => 'Link reset kata sandi ini akan kedaluwarsa dalam :count menit.',
     'reset_password_notification'    => 'Anda menerima email ini karena kami menerima permintaan reset kata sandi untuk akun Anda.',
-    'reset_password_trouble'         => 'Jika Anda mengalami masalah dengan tombol \\\"Reset Kata Sandi\\\", salin dan tempel URL di bawah ini ke browser web Anda:',
+    'reset_password_trouble'         => 'Jika Anda mengalami masalah dengan tombol \\\\\"Reset Kata Sandi\\\\\", salin dan tempel URL di bawah ini ke browser web Anda:',
     'send_password_reset_link'       => 'Kirim Link Reset Kata Sandi',
     'session_expired'                => 'Sesi Anda telah kedaluwarsa. Silakan login lagi.',
     'throttle'                       => 'Terlalu banyak upaya masuk. Silahkan coba lagi dalam :seconds detik.',

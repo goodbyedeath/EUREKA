@@ -1,4 +1,4 @@
-<div class="bg-white border rounded-lg p-6 shadow-sm">
+<div class="bg-white border rounded-lg p-4 sm:p-6 shadow-sm">
     <h3 class="text-lg font-medium mb-4 text-gray-900">
         @if($isEditing)
             Edit Question
@@ -209,53 +209,102 @@
                     <div class="flex items-center justify-between mb-3">
                         <label class="block text-sm font-medium text-gray-700">
                             Game Images
-                            <span class="text-xs text-gray-500 block mt-1">Optional - Add up to 10 image URLs</span>
+                            <span class="text-xs text-gray-500 block mt-1">Optional - Upload up to 10 images (JPEG, PNG, WebP, max 2MB each)</span>
                         </label>
-                        @if(count($newQuestion['images']) < 10)
-                            <button 
-                                type="button" 
-                                wire:click="addImage"
-                                class="inline-flex items-center px-3 py-1 text-xs font-medium text-purple-600 bg-purple-50 border border-purple-200 rounded-md hover:bg-purple-100 transition-colors duration-200"
-                            >
+                        @if(count($uploadedImages) + count($newQuestion['images'] ?? []) < 10)
+                            <label class="inline-flex items-center px-3 py-1 text-xs font-medium text-purple-600 bg-purple-50 border border-purple-200 rounded-md hover:bg-purple-100 transition-colors duration-200 cursor-pointer">
                                 <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
                                 </svg>
-                                Add Image
-                            </button>
+                                Upload Image
+                                <input type="file" wire:model="newImage" accept="image/jpeg,image/png,image/jpg,image/webp" class="hidden">
+                            </label>
                         @endif
                     </div>
                     
-                    @if(count($newQuestion['images']) > 0)
-                        <div class="space-y-3">
-                            @foreach($newQuestion['images'] as $index => $image)
-                                <div class="flex items-center space-x-3">
-                                    <div class="flex-shrink-0 w-8 h-8 bg-purple-100 border border-purple-300 rounded-full flex items-center justify-center text-sm font-medium text-purple-600">
-                                        {{ $index + 1 }}
+                    <!-- Display existing images (for editing mode) -->
+                    @if(!empty($newQuestion['images']))
+                        <div class="mb-4">
+                            <h5 class="text-sm font-medium text-gray-700 mb-2">Current Images:</h5>
+                            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                                @foreach($newQuestion['images'] as $index => $imagePath)
+                                    <div class="relative group">
+                                        <div class="aspect-square bg-gray-100 rounded-lg overflow-hidden">
+                                            <img src="{{ asset('storage/' . $imagePath) }}" alt="Game image {{ $index + 1 }}" class="w-full h-full object-cover">
+                                        </div>
+                                        <button 
+                                            type="button" 
+                                            wire:click="removeExistingImage({{ $index }})"
+                                            class="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors duration-200 opacity-0 group-hover:opacity-100"
+                                            title="Remove image"
+                                        >
+                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                            </svg>
+                                        </button>
                                     </div>
-                                    <input 
-                                        type="url" 
-                                        wire:model="newQuestion.images.{{ $index }}" 
-                                        placeholder="Enter image URL (e.g., https://example.com/image.jpg)"
-                                        class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 transition-colors duration-200"
-                                    >
-                                    <button 
-                                        type="button" 
-                                        wire:click="removeImage({{ $index }})"
-                                        class="flex-shrink-0 text-red-500 hover:text-red-700 transition-colors duration-200 p-1"
-                                        title="Remove image"
-                                    >
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                                        </svg>
-                                    </button>
-                                </div>
-                            @endforeach
+                                @endforeach
+                            </div>
                         </div>
-                    @else
-                        <p class="text-sm text-gray-500 italic">No images added yet. Click "Add Image" to include visual content for your game.</p>
                     @endif
                     
-                    @error('newQuestion.images') 
+                    <!-- Display newly uploaded images -->
+                    @if(count($uploadedImages) > 0)
+                        <div class="mb-4">
+                            <h5 class="text-sm font-medium text-gray-700 mb-2">{{ !empty($newQuestion['images']) ? 'New Images:' : 'Uploaded Images:' }}</h5>
+                            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                                @foreach($uploadedImages as $index => $uploadedImage)
+                                    @if($uploadedImage)
+                                        <div class="relative group">
+                                            <div class="aspect-square bg-gray-100 rounded-lg overflow-hidden">
+                                                <img src="{{ $uploadedImage->temporaryUrl() }}" alt="Uploaded image {{ $index + 1 }}" class="w-full h-full object-cover">
+                                            </div>
+                                            <button 
+                                                type="button" 
+                                                wire:click="removeUploadedImage({{ $index }})"
+                                                class="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors duration-200 opacity-0 group-hover:opacity-100"
+                                                title="Remove image"
+                                            >
+                                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                                </svg>
+                                            </button>
+                                        </div>
+                                    @endif
+                                @endforeach
+                            </div>
+                        </div>
+                    @endif
+                    
+                    @if(empty($newQuestion['images']) && count($uploadedImages) === 0)
+                        <div class="text-center py-8 border-2 border-dashed border-gray-300 rounded-lg">
+                            <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
+                                <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                            </svg>
+                            <p class="mt-2 text-sm text-gray-500">No images uploaded yet</p>
+                            <p class="text-xs text-gray-400">Click "Upload Image" to add visual content for your game</p>
+                        </div>
+                    @endif
+                    
+                    @error('uploadedImages') 
+                        <div class="text-red-500 text-sm mt-2 flex items-center">
+                            <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+                            </svg>
+                            {{ $message }}
+                        </div>
+                    @enderror
+                    
+                    @error('uploadedImages.*') 
+                        <div class="text-red-500 text-sm mt-2 flex items-center">
+                            <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+                            </svg>
+                            {{ $message }}
+                        </div>
+                    @enderror
+                    
+                    @error('newImage') 
                         <div class="text-red-500 text-sm mt-2 flex items-center">
                             <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
                                 <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>

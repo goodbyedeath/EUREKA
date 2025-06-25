@@ -127,6 +127,12 @@ return [
     'get_help' => 'Get Help',
     'data_recovery' => 'Data Recovery',
 
+    // Admin
+    'user_management' => 'User Management',
+    'map_management' => 'Map Management',
+    'user_progress' => 'User Progress',
+    'hero_slides' => 'Hero Slides',
+
     // Forms
     'required_field' => 'This field is required',
     'invalid_format' => 'Invalid format',

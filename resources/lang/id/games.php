@@ -4,6 +4,7 @@ return [
     // Page titles and headers
     'title' => 'Lokasi Permainan',
     'management' => 'Manajemen Permainan',
+    'game_management' => 'Manajemen Permainan',
     'create' => 'Buat Lokasi Permainan',
     'edit' => 'Edit Lokasi Permainan',
     'view' => 'Lihat Lokasi Permainan',

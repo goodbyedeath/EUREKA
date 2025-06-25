@@ -9,9 +9,12 @@ use App\Models\Question;
 use Livewire\Attributes\Validate;
 use Illuminate\Validation\Rule;
 use App\Enums\QuestionType;
+use Livewire\WithFileUploads;
+use Illuminate\Support\Facades\Storage;
 
 class QuestionForm extends Component
 {
+    use WithFileUploads;
     public Questionnaire $questionnaire;
     public ?int $editingQuestionId = null;
     public bool $isEditing = false;
@@ -26,6 +29,9 @@ class QuestionForm extends Component
         'description' => '',
         'images' => []
     ];
+
+    public array $uploadedImages = [];
+    public $newImage;
 
     protected $listeners = [
         'edit-question' => 'loadQuestionForEdit'
@@ -64,8 +70,9 @@ class QuestionForm extends Component
                 $rules = array_merge($rules, [
                     'newQuestion.game_name' => 'required|string|max:200',
                     'newQuestion.description' => 'required|string|max:2000',
-                    'newQuestion.images' => 'nullable|array|max:10',
-                    'newQuestion.images.*' => 'nullable|string',
+                    'uploadedImages' => 'nullable|array|max:10',
+                    'uploadedImages.*' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
+                    'newImage' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
                 ]);
                 break;
         }
@@ -227,6 +234,11 @@ class QuestionForm extends Component
             $questionData['options'] = null;
         }
 
+        // Handle image uploads for fun_game type
+        if ($questionData['type'] === 'fun_game') {
+            $questionData['images'] = $this->storeUploadedImages();
+        }
+
         return $questionData;
     }
 
@@ -237,7 +249,7 @@ class QuestionForm extends Component
 
     public function resetNewQuestion()
     {
-        $this->reset(['newQuestion', 'editingQuestionId', 'isEditing']);
+        $this->reset(['newQuestion', 'editingQuestionId', 'isEditing', 'uploadedImages', 'newImage']);
         $this->newQuestion = [
             'question' => '',
             'type' => 'text',
@@ -248,6 +260,8 @@ class QuestionForm extends Component
             'description' => '',
             'images' => []
         ];
+        $this->uploadedImages = [];
+        $this->newImage = null;
         $this->editingQuestionId = null;
         $this->isEditing = false;
     }
@@ -267,6 +281,8 @@ class QuestionForm extends Component
             $this->newQuestion['game_name'] = '';
             $this->newQuestion['description'] = '';
             $this->newQuestion['images'] = [];
+            $this->uploadedImages = [];
+            $this->newImage = null;
         }
         
         // Clear related validation errors
@@ -330,19 +346,56 @@ class QuestionForm extends Component
         return $errors;
     }
 
-    public function addImage()
+    public function updatedNewImage()
     {
-        if ($this->newQuestion['type'] === 'fun_game' && count($this->newQuestion['images']) < 10) {
-            $this->newQuestion['images'][] = '';
+        if ($this->newImage && $this->newQuestion['type'] === 'fun_game' && count($this->uploadedImages) < 10) {
+            $this->uploadedImages[] = $this->newImage;
+            $this->newImage = null;
         }
     }
 
-    public function removeImage($index)
+    public function removeUploadedImage($index)
+    {
+        if ($this->newQuestion['type'] === 'fun_game' && isset($this->uploadedImages[$index])) {
+            unset($this->uploadedImages[$index]);
+            $this->uploadedImages = array_values($this->uploadedImages);
+        }
+    }
+
+    public function removeExistingImage($index)
     {
         if ($this->newQuestion['type'] === 'fun_game' && isset($this->newQuestion['images'][$index])) {
+            // Delete the file from storage if it exists
+            $imagePath = $this->newQuestion['images'][$index];
+            if ($imagePath && Storage::disk('public')->exists($imagePath)) {
+                Storage::disk('public')->delete($imagePath);
+            }
+            
             unset($this->newQuestion['images'][$index]);
             $this->newQuestion['images'] = array_values($this->newQuestion['images']);
         }
+    }
+
+    protected function storeUploadedImages(): array
+    {
+        $storedImagePaths = [];
+        
+        // Keep existing images (for editing mode)
+        if (!empty($this->newQuestion['images'])) {
+            $storedImagePaths = $this->newQuestion['images'];
+        }
+        
+        // Store new uploaded images
+        if (!empty($this->uploadedImages)) {
+            foreach ($this->uploadedImages as $uploadedImage) {
+                if ($uploadedImage) {
+                    $path = $uploadedImage->store('games/question-images', 'public');
+                    $storedImagePaths[] = $path;
+                }
+            }
+        }
+        
+        return $storedImagePaths;
     }
 
     public function getAvailableOptionsProperty()

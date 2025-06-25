@@ -48,7 +48,7 @@ return [
     'reset_password_action'          => 'Reset Password',
     'reset_password_expire'          => 'This password reset link will expire in :count minutes.',
     'reset_password_notification'    => 'You are receiving this email because we received a password reset request for your account.',
-    'reset_password_trouble'         => 'If you\'re having trouble clicking the \"Reset Password\" button, copy and paste the URL below into your web browser:',
+    'reset_password_trouble'         => 'If you\'re having trouble clicking the \\\"Reset Password\\\" button, copy and paste the URL below into your web browser:',
     'send_password_reset_link'       => 'Send Password Reset Link',
     'session_expired'                => 'Your session has expired. Please login again.',
     'throttle'                       => 'Too many login attempts. Please try again in :seconds seconds.',

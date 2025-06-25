@@ -1,5 +1,5 @@
 // Service Worker for Laravel PWA
-const CACHE_NAME = 'eureka-pwa-v2';
+const CACHE_NAME = 'eureka-pwa-v3';
 const OFFLINE_URL = '/offline.html';
 
 // Essential files to cache (only files that definitely exist)

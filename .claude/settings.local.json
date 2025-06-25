@@ -38,7 +38,16 @@
       "Bash(/mnt/c/laragon/bin/php/php-8.3.11-Win32-vs16-x64/php.exe artisan migrate:rollback --step=1)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "WebFetch(domain:interactjs.io)"
+      "WebFetch(domain:interactjs.io)",
+      "Bash(./vendor/bin/sail artisan lang:publish)",
+      "Bash(composer install:*)",
+      "Bash(cp:*)",
+      "Bash(for size in 72x72 96x96 128x128 144x144 152x152 384x384)",
+      "Bash(do cp ../../logo/icon.png icon-$size.png)",
+      "Bash(done)",
+      "Bash(npm run dev:*)",
+      "Bash(pkill:*)",
+      "Bash(true)"
     ],
     "deny": []
   }

@@ -3,7 +3,8 @@
 @section('content')
 <div class="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
     <div class="max-w-md w-full space-y-8">
-        <div>
+        <div class="text-center">
+            <img src="/logo/fulllogo.png" alt="Eureka! Performa" class="mx-auto h-60 w-auto mb-6">
             <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900">
                 {{ __('auth.login') }}
             </h2>

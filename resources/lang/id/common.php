@@ -127,6 +127,12 @@ return [
     'get_help' => 'Dapatkan Bantuan',
     'data_recovery' => 'Pemulihan Data',
 
+    // Admin
+    'user_management' => 'Manajemen Pengguna',
+    'map_management' => 'Manajemen Peta',
+    'user_progress' => 'Progres Pengguna',
+    'hero_slides' => 'Slide Hero',
+
     // Forms
     'required_field' => 'Bidang ini wajib diisi',
     'invalid_format' => 'Format tidak valid',

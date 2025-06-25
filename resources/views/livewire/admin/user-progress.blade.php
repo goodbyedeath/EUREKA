@@ -138,58 +138,124 @@
 
     <!-- Detailed User Progress Table -->
     <div class="bg-white rounded-lg shadow">
-        <div class="px-6 py-4 border-b border-gray-200">
+        <div class="px-4 lg:px-6 py-4 border-b border-gray-200">
             <h3 class="text-lg font-medium text-gray-900">User Progress Details</h3>
         </div>
-        <div class="overflow-x-auto">
+        
+        <!-- Mobile Card View (Hidden on Desktop) -->
+        <div class="block lg:hidden">
+            @foreach($userProgressData as $user)
+                <div class="border-b border-gray-200 p-4">
+                    <div class="flex items-center space-x-3 mb-3">
+                        <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                            <span class="text-sm font-medium text-blue-600">{{ substr($user['name'], 0, 1) }}</span>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <div class="text-sm font-medium text-gray-900 truncate">{{ $user['name'] }}</div>
+                            <div class="text-xs text-gray-500 truncate">{{ $user['email'] }}</div>
+                            <div class="text-xs text-gray-500">{{ $user['team'] }}</div>
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-3 text-sm mb-3">
+                        <div>
+                            <span class="font-medium text-gray-500">Attempts:</span>
+                            <div class="text-gray-900">
+                                <span class="font-medium">{{ $user['completed_attempts'] }}</span> / {{ $user['total_attempts'] }}
+                            </div>
+                        </div>
+                        <div>
+                            <span class="font-medium text-gray-500">Completion:</span>
+                            <div class="text-gray-900">{{ $user['completion_rate'] }}%</div>
+                        </div>
+                        <div>
+                            <span class="font-medium text-gray-500">Avg Score:</span>
+                            <div>
+                                @if($user['average_score'] > 0)
+                                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium 
+                                        {{ $user['average_score'] >= 70 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' }}">
+                                        {{ $user['average_score'] }}%
+                                    </span>
+                                @else
+                                    <span class="text-gray-400 dark:text-gray-500">N/A</span>
+                                @endif
+                            </div>
+                        </div>
+                        <div>
+                            <span class="font-medium text-gray-500">Last Activity:</span>
+                            <div class="text-xs text-gray-900">
+                                @if($user['last_activity'])
+                                    {{ \Carbon\Carbon::parse($user['last_activity'])->diffForHumans() }}
+                                @else
+                                    <span class="text-gray-400">Never</span>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <span class="text-xs font-medium text-gray-500 mb-1 block">Progress:</span>
+                        <div class="flex items-center">
+                            <div class="w-full bg-gray-200 rounded-full h-2 mr-2">
+                                <div class="bg-blue-600 h-2 rounded-full" style="width: {{ $user['completion_rate'] }}%"></div>
+                            </div>
+                            <span class="text-xs text-gray-900 whitespace-nowrap">{{ $user['completion_rate'] }}%</span>
+                        </div>
+                    </div>
+                </div>
+            @endforeach
+        </div>
+
+        <!-- Desktop Table View (Hidden on Mobile) -->
+        <div class="hidden lg:block overflow-x-auto">
             <table class="min-w-full divide-y divide-gray-200">
                 <thead class="bg-gray-50">
                     <tr>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Team</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Attempts</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Completion Rate</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Average Score</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Activity</th>
+                        <th class="px-4 xl:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
+                        <th class="px-4 xl:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Team</th>
+                        <th class="px-4 xl:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Attempts</th>
+                        <th class="px-4 xl:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Completion Rate</th>
+                        <th class="px-4 xl:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Average Score</th>
+                        <th class="px-4 xl:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden xl:table-cell">Last Activity</th>
                     </tr>
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
                     @foreach($userProgressData as $user)
                         <tr>
-                            <td class="px-6 py-4 whitespace-nowrap">
+                            <td class="px-4 xl:px-6 py-4 whitespace-nowrap">
                                 <div class="flex items-center">
                                     <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
                                         <span class="text-sm font-medium text-blue-600">{{ substr($user['name'], 0, 1) }}</span>
                                     </div>
-                                    <div class="ml-3">
-                                        <div class="text-sm font-medium text-gray-900">{{ $user['name'] }}</div>
-                                        <div class="text-sm text-gray-500">{{ $user['email'] }}</div>
+                                    <div class="ml-3 min-w-0">
+                                        <div class="text-sm font-medium text-gray-900 truncate">{{ $user['name'] }}</div>
+                                        <div class="text-xs xl:text-sm text-gray-500 truncate">{{ $user['email'] }}</div>
                                     </div>
                                 </div>
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $user['team'] }}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            <td class="px-4 xl:px-6 py-4 whitespace-nowrap text-xs xl:text-sm text-gray-900 dark:text-gray-100">{{ $user['team'] }}</td>
+                            <td class="px-4 xl:px-6 py-4 whitespace-nowrap text-xs xl:text-sm text-gray-900 dark:text-gray-100">
                                 <span class="font-medium">{{ $user['completed_attempts'] }}</span> / {{ $user['total_attempts'] }}
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
+                            <td class="px-4 xl:px-6 py-4 whitespace-nowrap">
                                 <div class="flex items-center">
-                                    <div class="w-16 bg-gray-200 rounded-full h-2 mr-2">
+                                    <div class="w-12 xl:w-16 bg-gray-200 rounded-full h-2 mr-2">
                                         <div class="bg-blue-600 h-2 rounded-full" style="width: {{ $user['completion_rate'] }}%"></div>
                                     </div>
-                                    <span class="text-sm text-gray-900">{{ $user['completion_rate'] }}%</span>
+                                    <span class="text-xs xl:text-sm text-gray-900 whitespace-nowrap">{{ $user['completion_rate'] }}%</span>
                                 </div>
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            <td class="px-4 xl:px-6 py-4 whitespace-nowrap text-xs xl:text-sm text-gray-900 dark:text-gray-100">
                                 @if($user['average_score'] > 0)
-                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 
+                                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium 
                                         {{ $user['average_score'] >= 70 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' }}">
                                         {{ $user['average_score'] }}%
                                     </span>
                                 @else
-                                    <span class="text-gray-400">N/A</span>
+                                    <span class="text-gray-400 dark:text-gray-500">N/A</span>
                                 @endif
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            <td class="px-4 xl:px-6 py-4 whitespace-nowrap text-xs xl:text-sm text-gray-500 hidden xl:table-cell">
                                 @if($user['last_activity'])
                                     {{ \Carbon\Carbon::parse($user['last_activity'])->diffForHumans() }}
                                 @else

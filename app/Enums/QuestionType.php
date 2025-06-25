@@ -102,6 +102,6 @@ enum QuestionType: string
                 'description' => '',
                 'images' => [],
             ],
-        ];
+        };
     }
 }

@@ -53,6 +53,7 @@ Route::middleware(['auth', 'preventbackhistory'])->group(function () {
         Route::get('/games', [DashboardController::class, 'gameManagement'])->name('games');
         Route::get('/user-progress', [DashboardController::class, 'userProgress'])->name('user-progress');
         Route::get('/hero-slides', [DashboardController::class, 'heroSlides'])->name('hero-slides');
+        
     });
     
     // User-only routes

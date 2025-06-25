@@ -1,28 +1,60 @@
 {{-- resources/views/livewire/user/dashboard-header.blade.php --}}
 <div>
-    <div class="flex items-center space-x-2 sm:space-x-4">
+    <!-- Enhanced Action Buttons Layout -->
+    <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+        <!-- Primary QR Scanner Button - Most Important Action -->
+        <button 
+            wire:click="openScanner" 
+            class="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-4 py-3 rounded-lg transition-all duration-200 transform hover:scale-105 shadow-lg hover:shadow-xl group flex items-center justify-center sm:justify-start"
+            title="Scan QR code">
+            <div class="flex items-center">
+                <div class="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center mr-3">
+                    <i class="fas fa-qrcode text-white"></i>
+                </div>
+                <div class="text-left">
+                    <div class="font-semibold">{{ __('common.scan_qr') }}</div>
+                    <div class="text-xs opacity-90">Quick Access</div>
+                </div>
+            </div>
+        </button>
+        
+        <!-- Secondary Refresh Button -->
         <button 
             wire:click="refreshData" 
             wire:loading.attr="disabled"
             wire:target="refreshData"
-            class="bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed px-2 sm:px-4 py-2 rounded-lg transition-colors text-xs sm:text-sm"
+            class="bg-white hover:bg-gray-50 border border-gray-200 hover:border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed px-4 py-3 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md group flex items-center justify-center sm:justify-start"
             title="Refresh data">
-            <div wire:loading.remove wire:target="refreshData">
-                <i class="fas fa-sync-alt mr-1 sm:mr-2"></i>
-                <span class="hidden sm:inline">{{ __('common.refresh') }}</span>
+            
+            <!-- Normal State -->
+            <div wire:loading.remove wire:target="refreshData" class="flex items-center">
+                <div class="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center mr-3 group-hover:bg-gray-200 transition-colors">
+                    <i class="fas fa-sync-alt text-gray-600"></i>
+                </div>
+                <div class="text-left">
+                    <div class="font-semibold text-gray-900">{{ __('common.refresh') }}</div>
+                    <div class="text-xs text-gray-500">Update Data</div>
+                </div>
             </div>
-            <div wire:loading wire:target="refreshData">
-                <i class="fas fa-spinner fa-spin mr-1 sm:mr-2"></i>
-                <span class="hidden sm:inline">{{ __('common.refreshing') }}...</span>
+            
+            <!-- Loading State -->
+            <div wire:loading wire:target="refreshData" class="flex items-center">
+                <div class="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
+                    <i class="fas fa-spinner fa-spin text-blue-600"></i>
+                </div>
+                <div class="text-left">
+                    <div class="font-semibold text-gray-900">{{ __('common.refreshing') }}...</div>
+                    <div class="text-xs text-gray-500">Please wait</div>
+                </div>
             </div>
         </button>
-        
-        <button 
-            wire:click="openScanner" 
-            class="bg-blue-600 hover:bg-blue-700 text-white px-2 sm:px-4 py-2 rounded-lg transition-colors text-xs sm:text-sm"
-            title="Scan QR code">
-            <i class="fas fa-qrcode mr-1 sm:mr-2"></i>
-            <span class="hidden sm:inline">{{ __('common.scan_qr') }}</span>
-        </button>
+    </div>
+    
+    <!-- Quick Action Hint for Mobile -->
+    <div class="mt-3 sm:hidden">
+        <p class="text-xs text-gray-500 text-center">
+            <i class="fas fa-info-circle mr-1"></i>
+            Tap QR Scanner for quick quiz access
+        </p>
     </div>
 </div>

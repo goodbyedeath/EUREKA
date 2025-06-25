@@ -115,66 +115,127 @@
 
     <!-- Users Table -->
     <div class="bg-white rounded-lg shadow-md overflow-hidden">
-        <div class="overflow-x-auto">
+        <!-- Mobile Card View (Hidden on Desktop) -->
+        <div class="block md:hidden">
+            @forelse($users as $user)
+                <div class="border-b border-gray-200 p-4">
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0 h-10 w-10">
+                                <div class="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center">
+                                    <span class="text-sm font-medium text-gray-700">
+                                        {{ strtoupper(substr($user->name, 0, 2)) }}
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="ml-3">
+                                <div class="text-sm font-medium text-gray-900">{{ $user->name }}</div>
+                                <div class="text-sm text-gray-500">{{ $user->email }}</div>
+                            </div>
+                        </div>
+                        <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full 
+                            {{ $user->role === 'admin' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800' }}">
+                            {{ ucfirst($user->role) }}
+                        </span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3 text-sm">
+                        <div>
+                            <span class="font-medium text-gray-500">Team:</span>
+                            <span class="text-gray-900">{{ $user->team ? $user->team->name : '-' }}</span>
+                        </div>
+                        <div>
+                            <span class="font-medium text-gray-500">Created Team:</span>
+                            <span class="text-gray-900">{{ $user->createdTeam ? $user->createdTeam->name : '-' }}</span>
+                        </div>
+                        <div>
+                            <span class="font-medium text-gray-500">Joined:</span>
+                            <span class="text-gray-900">{{ $user->created_at->format('d M Y') }}</span>
+                        </div>
+                        <div class="flex space-x-2">
+                            <button wire:click="edit({{ $user->id }})" 
+                                    class="text-indigo-600 hover:text-indigo-900 text-sm">
+                                <i class="fas fa-edit mr-1"></i>Edit
+                            </button>
+                            <button wire:click="delete({{ $user->id }})" 
+                                    onclick="return confirm('Yakin ingin menghapus user ini?')"
+                                    class="text-red-600 hover:text-red-900 text-sm">
+                                <i class="fas fa-trash mr-1"></i>Hapus
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            @empty
+                <div class="p-6 text-center text-gray-500">
+                    Tidak ada user yang ditemukan
+                </div>
+            @endforelse
+        </div>
+
+        <!-- Desktop Table View (Hidden on Mobile) -->
+        <div class="hidden md:block overflow-x-auto">
             <table class="min-w-full divide-y divide-gray-200">
                 <thead class="bg-gray-50">
                     <tr>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Team</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created Team</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Joined</th>
-                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                        <th class="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
+                        <th class="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
+                        <th class="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden lg:table-cell">Team</th>
+                        <th class="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden xl:table-cell">Created Team</th>
+                        <th class="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden lg:table-cell">Joined</th>
+                        <th class="px-4 lg:px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                     </tr>
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
                     @forelse($users as $user)
                         <tr class="hover:bg-gray-50">
-                            <td class="px-6 py-4 whitespace-nowrap">
+                            <td class="px-4 lg:px-6 py-4 whitespace-nowrap">
                                 <div class="flex items-center">
-                                    <div class="flex-shrink-0 h-10 w-10">
-                                        <div class="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center">
-                                            <span class="text-sm font-medium text-gray-700">
+                                    <div class="flex-shrink-0 h-8 w-8 lg:h-10 lg:w-10">
+                                        <div class="h-8 w-8 lg:h-10 lg:w-10 rounded-full bg-gray-300 flex items-center justify-center">
+                                            <span class="text-xs lg:text-sm font-medium text-gray-700">
                                                 {{ strtoupper(substr($user->name, 0, 2)) }}
                                             </span>
                                         </div>
                                     </div>
-                                    <div class="ml-4">
+                                    <div class="ml-3 lg:ml-4">
                                         <div class="text-sm font-medium text-gray-900">{{ $user->name }}</div>
-                                        <div class="text-sm text-gray-500">{{ $user->email }}</div>
+                                        <div class="text-xs lg:text-sm text-gray-500">{{ $user->email }}</div>
                                     </div>
                                 </div>
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
+                            <td class="px-4 lg:px-6 py-4 whitespace-nowrap">
                                 <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full 
                                     {{ $user->role === 'admin' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800' }}">
                                     {{ ucfirst($user->role) }}
                                 </span>
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            <td class="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-900 hidden lg:table-cell">
                                 {{ $user->team ? $user->team->name : '-' }}
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            <td class="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-900 hidden xl:table-cell">
                                 {{ $user->createdTeam ? $user->createdTeam->name : '-' }}
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            <td class="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-500 hidden lg:table-cell">
                                 {{ $user->created_at->format('d M Y') }}
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                <button wire:click="edit({{ $user->id }})" 
-                                        class="text-indigo-600 hover:text-indigo-900 mr-3">
-                                    Edit
-                                </button>
-                                <button wire:click="delete({{ $user->id }})" 
-                                        onclick="return confirm('Yakin ingin menghapus user ini?')"
-                                        class="text-red-600 hover:text-red-900">
-                                    Hapus
-                                </button>
+                            <td class="px-4 lg:px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                <div class="flex justify-end space-x-2">
+                                    <button wire:click="edit({{ $user->id }})" 
+                                            class="text-indigo-600 hover:text-indigo-900 p-1">
+                                        <i class="fas fa-edit"></i>
+                                        <span class="hidden lg:inline ml-1">Edit</span>
+                                    </button>
+                                    <button wire:click="delete({{ $user->id }})" 
+                                            onclick="return confirm('Yakin ingin menghapus user ini?')"
+                                            class="text-red-600 hover:text-red-900 p-1">
+                                        <i class="fas fa-trash"></i>
+                                        <span class="hidden lg:inline ml-1">Hapus</span>
+                                    </button>
+                                </div>
                             </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6" class="px-6 py-4 text-center text-gray-500">
+                            <td colspan="6" class="px-4 lg:px-6 py-4 text-center text-gray-500">
                                 Tidak ada user yang ditemukan
                             </td>
                         </tr>
@@ -184,7 +245,7 @@
         </div>
 
         <!-- Pagination -->
-        <div class="px-6 py-4 border-t border-gray-200">
+        <div class="px-4 lg:px-6 py-4 border-t border-gray-200">
             {{ $users->links() }}
         </div>
     </div>

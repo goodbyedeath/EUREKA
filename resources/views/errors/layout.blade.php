@@ -42,7 +42,7 @@
         }
     </style>
 </head>
-<body class="font-sans antialiased bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen">
+<body class="font-sans antialiased bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 min-h-screen text-gray-900 dark:text-gray-100">
     <div class="min-h-screen flex items-center justify-center px-4 sm:px-6 lg:px-8">
         <div class="max-w-lg w-full space-y-8">
             <!-- Error Icon and Code -->
@@ -50,17 +50,17 @@
                 <div class="error-animation">
                     @yield('icon')
                 </div>
-                <h1 class="text-6xl sm:text-8xl font-bold text-gray-300 mb-2">
+                <h1 class="text-6xl sm:text-8xl font-bold text-gray-300 dark:text-gray-600 mb-2">
                     @yield('code')
                 </h1>
             </div>
             
             <!-- Error Content -->
             <div class="text-center space-y-4 fade-in">
-                <h2 class="text-2xl sm:text-3xl font-bold text-gray-900">
+                <h2 class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100">
                     @yield('title')
                 </h2>
-                <p class="text-gray-600 text-base sm:text-lg max-w-md mx-auto">
+                <p class="text-gray-600 dark:text-gray-400 text-base sm:text-lg max-w-md mx-auto">
                     @yield('message')
                 </p>
             </div>
@@ -73,13 +73,13 @@
                 <div class="flex flex-col sm:flex-row justify-center space-y-3 sm:space-y-0 sm:space-x-4">
                     <button 
                         onclick="window.history.back()" 
-                        class="inline-flex items-center justify-center px-6 py-3 border border-gray-300 rounded-lg text-base font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors duration-200">
+                        class="inline-flex items-center justify-center px-6 py-3 border border-gray-300 dark:border-gray-600 rounded-lg text-base font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors duration-200">
                         <i class="fas fa-arrow-left mr-2"></i>
                         {{ __('common.back') }}
                     </button>
                     
                     <a href="{{ route('user.dashboard') }}" 
-                       class="inline-flex items-center justify-center px-6 py-3 border border-transparent rounded-lg text-base font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors duration-200">
+                       class="inline-flex items-center justify-center px-6 py-3 border border-transparent rounded-lg text-base font-medium text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800 transition-colors duration-200">
                         <i class="fas fa-home mr-2"></i>
                         {{ __('common.home') }}
                     </a>
@@ -90,12 +90,12 @@
             <div class="text-center fade-in">
                 @yield('additional-info')
                 
-                <div class="mt-8 pt-6 border-t border-gray-200">
-                    <p class="text-sm text-gray-500">
+                <div class="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
+                    <p class="text-sm text-gray-500 dark:text-gray-400">
                         {{ __('common.error') }} ID: {{ Str::random(8) }} | 
-                        <span class="text-gray-400">{{ now()->format('Y-m-d H:i:s') }}</span>
+                        <span class="text-gray-400 dark:text-gray-500">{{ now()->format('Y-m-d H:i:s') }}</span>
                     </p>
-                    <p class="text-xs text-gray-400 mt-2">
+                    <p class="text-xs text-gray-400 dark:text-gray-500 mt-2">
                         &copy; {{ date('Y') }} {{ config('app.name', 'Laravel') }}. All rights reserved.
                     </p>
                 </div>

@@ -4,6 +4,7 @@ return [
     // Page titles and headers
     'title' => 'Game Locations',
     'management' => 'Game Management',
+    'game_management' => 'Game Management',
     'create' => 'Create Game Location',
     'edit' => 'Edit Game Location',
     'view' => 'View Game Location',

@@ -12,9 +12,9 @@ export default defineConfig({
         }),
     ],
     server: {
-        host: '0.0.0.0', // Listen on all interfaces
+        host: '127.0.0.1',
         hmr: {
-            host: 'eureka.test', // Replace with your dev domain if needed
+            host: '127.0.0.1',
         },
     },
     optimizeDeps: {
