@@ -5,6 +5,7 @@ namespace App\Livewire\User;
 use Livewire\Component;
 use App\Models\QuizAttempt;
 use App\Models\UserAnswer;
+use App\Models\GameAssessment;
 use Illuminate\Support\Facades\Auth;
 
 class QuizResults extends Component
@@ -13,6 +14,7 @@ class QuizResults extends Component
     public $userAnswers;
     public $questionnaire;
     public $questions;
+    public $assessments;
     public $showDetails = false;
     public $currentQuestionIndex = 0;
 
@@ -28,12 +30,21 @@ class QuizResults extends Component
         $this->questions = $this->questionnaire->questions;
         
         $this->loadUserAnswers();
+        $this->loadAssessments();
     }
 
     public function loadUserAnswers()
     {
         $this->userAnswers = UserAnswer::with(['question'])
             ->where('quiz_attempt_id', $this->attempt->id)
+            ->get()
+            ->keyBy('question_id');
+    }
+
+    public function loadAssessments()
+    {
+        $this->assessments = GameAssessment::where('quiz_attempt_id', $this->attempt->id)
+            ->where('user_id', Auth::id())
             ->get()
             ->keyBy('question_id');
     }
@@ -66,13 +77,81 @@ class QuizResults extends Component
 
     public function getScorePercentage()
     {
-        $totalPoints = $this->questionnaire->questions->sum('points');
+        $totalPoints = $this->getTotalPossiblePoints();
         
         if (!$totalPoints) {
             return 0;
         }
         
-        return round(($this->attempt->total_score / $totalPoints) * 100, 1);
+        $finalScore = $this->getFinalScore();
+        return round(($finalScore / $totalPoints) * 100, 1);
+    }
+
+    public function getFinalScore()
+    {
+        // New scoring system: Regular questions + Game assessments
+        $regularScore = $this->getRegularQuestionsScore();
+        $assessmentScore = $this->getAssessmentScore();
+        return $regularScore + $assessmentScore;
+    }
+
+    public function getRegularQuestionsScore()
+    {
+        // Score from non-fun_game questions
+        $regularQuestions = $this->questions->where('type', '!=', 'fun_game');
+        $totalRegularScore = 0;
+        
+        foreach ($regularQuestions as $question) {
+            $userAnswer = $this->userAnswers->get($question->id);
+            if ($userAnswer && $userAnswer->is_correct) {
+                $totalRegularScore += $question->points;
+            }
+        }
+        
+        return $totalRegularScore;
+    }
+
+    public function getAssessmentScore()
+    {
+        return $this->assessments->where('is_assessed', true)->sum('total_deposit');
+    }
+
+    public function getTotalPossiblePoints()
+    {
+        // Total possible points = Regular questions + Maximum possible from assessments
+        $regularPoints = $this->questions->where('type', '!=', 'fun_game')->sum('points');
+        $maxAssessmentPoints = $this->getMaxAssessmentPoints();
+        return $regularPoints + $maxAssessmentPoints;
+    }
+
+    public function getMaxAssessmentPoints()
+    {
+        // For fun games, max possible = team base points + questionnaire total points
+        $user = auth()->user();
+        $teamBasePoints = $user->team ? $user->team->initial_points : 1000;
+        $questionnaireTotalPoints = $this->questionnaire->questions->sum('points');
+        
+        return $this->questions->where('type', 'fun_game')->count() * ($teamBasePoints + $questionnaireTotalPoints);
+    }
+
+    public function getAssessmentStatus()
+    {
+        $totalAssessments = $this->assessments->count();
+        $completedAssessments = $this->assessments->where('is_assessed', true)->count();
+        
+        if ($totalAssessments == 0) {
+            return 'none';
+        }
+        
+        if ($completedAssessments == 0) {
+            return 'pending';
+        }
+        
+        if ($completedAssessments == $totalAssessments) {
+            return 'complete';
+        }
+        
+        return 'partial';
     }
 
     public function getScoreColor()
@@ -114,6 +193,45 @@ class QuizResults extends Component
     public function getTotalQuestionsCount()
     {
         return $this->questions->count();
+    }
+
+    public function getRegularQuestionsCount()
+    {
+        return $this->questions->where('type', '!=', 'fun_game')->count();
+    }
+
+    public function getFunGameQuestionsCount()
+    {
+        return $this->questions->where('type', 'fun_game')->count();
+    }
+
+    public function getScoreBreakdown()
+    {
+        return [
+            'regular_score' => $this->getRegularQuestionsScore(),
+            'regular_possible' => $this->questions->where('type', '!=', 'fun_game')->sum('points'),
+            'assessment_score' => $this->getAssessmentScore(),
+            'assessment_possible' => $this->getMaxAssessmentPoints(),
+            'total_score' => $this->getFinalScore(),
+            'total_possible' => $this->getTotalPossiblePoints()
+        ];
+    }
+
+    public function getAssessmentDetails()
+    {
+        return $this->assessments->map(function ($assessment) {
+            $question = $this->questions->firstWhere('id', $assessment->question_id);
+            return [
+                'question_name' => $question->game_name ?? 'Fun Game',
+                'question_text' => $question->question,
+                'is_assessed' => $assessment->is_assessed,
+                'base_points' => $assessment->deposit ?? 0,
+                'additional_points' => $assessment->additional_points ?? 0,
+                'penalty_points' => $assessment->penalty ?? 0,
+                'total_score' => $assessment->total_deposit ?? 0,
+                'notes' => $assessment->notes
+            ];
+        });
     }
 
     public function formatDuration($seconds)

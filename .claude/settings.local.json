@@ -47,7 +47,13 @@
       "Bash(done)",
       "Bash(npm run dev:*)",
       "Bash(pkill:*)",
-      "Bash(true)"
+      "Bash(true)",
+      "Bash(php /mnt/c/laragon/www/EUREKA/artisan make:migration add_photo_to_questionnaires_table)",
+      "Bash(/usr/bin/php artisan:*)",
+      "Bash(php:*)",
+      "WebFetch(domain:www.edureka.co)",
+      "Bash(sudo apt:*)",
+      "Bash(composer --version)"
     ],
     "deny": []
   }

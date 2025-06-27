@@ -4,6 +4,8 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use App\Models\QuestLocation;
+use App\Models\User;
 
 class QuestLocationSeeder extends Seeder
 {
@@ -12,7 +14,14 @@ class QuestLocationSeeder extends Seeder
      */
     public function run(): void
     {
-       $locations = [
+        // Get the first admin user to assign as creator
+        $adminUser = User::where('role', 'admin')->first();
+        
+        if (!$adminUser) {
+            $this->command->warn('No admin user found. Creating locations without creator.');
+        }
+
+        $locations = [
             [
                 'name' => 'Monumen Nasional (Monas)',
                 'description' => 'Monumen kemerdekaan Indonesia yang terletak di pusat Jakarta.',
@@ -21,7 +30,10 @@ class QuestLocationSeeder extends Seeder
                 'latitude' => -6.1754,
                 'longitude' => 106.8271,
                 'radius' => 50,
+                'quest_points' => 10,
+                'max_check_ins_per_user' => 1,
                 'is_active' => true,
+                'created_by' => $adminUser ? $adminUser->id : null,
             ],
             [
                 'name' => 'Kota Tua Jakarta',
@@ -31,7 +43,10 @@ class QuestLocationSeeder extends Seeder
                 'latitude' => -6.1344,
                 'longitude' => 106.8133,
                 'radius' => 75,
+                'quest_points' => 15,
+                'max_check_ins_per_user' => 1,
                 'is_active' => true,
+                'created_by' => $adminUser ? $adminUser->id : null,
             ],
             [
                 'name' => 'Ancol Dreamland',
@@ -41,7 +56,10 @@ class QuestLocationSeeder extends Seeder
                 'latitude' => -6.1233,
                 'longitude' => 106.8420,
                 'radius' => 100,
+                'quest_points' => 20,
+                'max_check_ins_per_user' => 1,
                 'is_active' => true,
+                'created_by' => $adminUser ? $adminUser->id : null,
             ],
             [
                 'name' => 'Grand Indonesia Mall',
@@ -51,8 +69,18 @@ class QuestLocationSeeder extends Seeder
                 'latitude' => -6.1944,
                 'longitude' => 106.8209,
                 'radius' => 30,
+                'quest_points' => 12,
+                'max_check_ins_per_user' => 1,
                 'is_active' => true,
+                'created_by' => $adminUser ? $adminUser->id : null,
             ]
         ];
+
+        // Insert all locations
+        foreach ($locations as $location) {
+            QuestLocation::create($location);
+        }
+        
+        $this->command->info('Quest locations seeded successfully!');
     }
 }

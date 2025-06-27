@@ -45,6 +45,55 @@
         <p class="mt-1 text-xs text-gray-500">{{ strlen($description) }}/1000 characters</p>
     </div>
 
+    <!-- Photo Upload Field -->
+    <div>
+        <label for="photo" class="block text-sm font-medium text-gray-700 mb-1">Photo</label>
+        <div class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md hover:border-indigo-400 transition-colors">
+            <div class="space-y-1 text-center">
+                @if($photo)
+                    <div class="mb-4">
+                        @php
+                            $showPreview = true;
+                            try {
+                                $tempUrl = $photo->temporaryUrl();
+                            } catch (\Exception $e) {
+                                $showPreview = false;
+                            }
+                        @endphp
+                        
+                        @if($showPreview)
+                            <img src="{{ $tempUrl }}" class="mx-auto h-32 w-32 object-cover rounded-lg">
+                            <p class="mt-2 text-sm text-gray-600">{{ $photo->getClientOriginalName() }}</p>
+                        @else
+                            <div class="text-center">
+                                <i class="fas fa-image text-gray-400 text-2xl"></i>
+                                <p class="mt-2 text-sm text-gray-600">Photo selected: {{ $photo->getClientOriginalName() }}</p>
+                            </div>
+                        @endif
+                        
+                        <button type="button" wire:click="$set('photo', null)" class="mt-2 text-sm text-red-600 hover:text-red-800">
+                            Remove Photo
+                        </button>
+                    </div>
+                @else
+                    <i class="fas fa-cloud-upload-alt text-gray-400 text-3xl"></i>
+                    <div class="text-sm text-gray-600">
+                        <label for="photo" class="relative cursor-pointer bg-white rounded-md font-medium text-indigo-600 hover:text-indigo-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-indigo-500">
+                            <span>Upload a photo</span>
+                            <input wire:model="photo" id="photo" name="photo" type="file" class="sr-only" accept="image/*">
+                        </label>
+                        <p class="pl-1">or drag and drop</p>
+                    </div>
+                    <p class="text-xs text-gray-500">PNG, JPG up to 2MB</p>
+                @endif
+            </div>
+        </div>
+        @error('photo') 
+            <p class="mt-2 text-sm text-red-600">{{ $message }}</p> 
+        @enderror
+        <p class="mt-1 text-xs text-gray-500">Optional: Add a photo that will be displayed when users view this questionnaire</p>
+    </div>
+
     <!-- Time Limit and Max Attempts Row -->
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>

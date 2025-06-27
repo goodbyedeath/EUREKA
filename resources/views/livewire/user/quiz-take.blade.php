@@ -1,4 +1,17 @@
 <div>
+    {{-- DEBUG: Show all questions data --}}
+    <div class="bg-red-100 border border-red-300 rounded p-3 m-4">
+        <strong>DEBUG - All Questions:</strong><br>
+        Total questions: {{ count($questions ?? []) }}<br>
+        @if(isset($questions))
+            @foreach($questions as $index => $q)
+                Question {{ $index + 1 }}: Type={{ $q['type'] ?? 'N/A' }}, 
+                Images={{ !empty($q['images']) ? 'YES(' . count($q['images']) . ')' : 'NO' }}<br>
+            @endforeach
+        @endif
+        Current Question Index: {{ $currentQuestionIndex ?? 'N/A' }}
+    </div>
+
     @if(!$isCompleted)
         {{-- Quiz Header --}}
         <div class="bg-white shadow-sm border-b border-gray-200 p-4 mb-6">
@@ -11,20 +24,24 @@
                         </p>
                     </div>
                     
-                    @if($questionnaire->time_limit && $timeRemaining !== null && $timeRemaining > 0)
-                        <div class="flex items-center space-x-3 bg-white rounded-lg px-4 py-2 shadow-sm border" 
-                             x-data="countdownTimer({{ $timeRemaining }}, '{{ $questionnaire->id }}')" 
+                    @php
+                        $showTimer = $questionnaire->time_limit && isset($timeRemaining) && $timeRemaining > 0;
+                        $showTimeUp = $questionnaire->time_limit && isset($timeRemaining) && $timeRemaining <= 0;
+                        $safeTimeRemaining = isset($timeRemaining) ? max(0, (int) $timeRemaining) : 0;
+                    @endphp
+                    
+                    @if($showTimer)
+                        <div class="flex items-center space-x-2 bg-white rounded-lg px-3 py-2 shadow-sm border" 
+                             x-data="countdownTimer({{ $safeTimeRemaining }}, '{{ $questionnaire->id }}')" 
                              x-init="init()">
-                            <i class="fas fa-clock text-blue-500"></i>
-                            <div class="countdown-display">
-                                <span x-text="displayTime" 
-                                      :class="isWarning ? 'text-lg font-bold text-red-600 animate-pulse' : 'text-lg font-bold text-gray-800'"></span>
-                            </div>
+                            <i class="fas fa-clock" :class="isWarning ? 'text-red-500' : 'text-blue-500'"></i>
+                            <span x-text="displayTime" 
+                                  :class="isWarning ? 'font-bold text-red-600' : 'font-semibold text-gray-800'"></span>
                         </div>
-                    @elseif($questionnaire->time_limit && $timeRemaining <= 0)
-                        <div class="flex items-center space-x-3 bg-red-50 rounded-lg px-4 py-2 border border-red-200">
+                    @elseif($showTimeUp)
+                        <div class="flex items-center space-x-2 bg-red-50 rounded-lg px-3 py-2 border border-red-200">
                             <i class="fas fa-clock text-red-500"></i>
-                            <span class="text-sm font-bold text-red-800">Time's Up!</span>
+                            <span class="font-bold text-red-800">Time's Up!</span>
                         </div>
                     @endif
                 </div>
@@ -108,6 +125,19 @@
                             </div>
                         
                         @elseif($currentQuestion['type'] === 'fun_game')
+                            {{-- DEBUG: Show current question data --}}
+                            <div class="mb-4 p-3 bg-yellow-100 border border-yellow-300 rounded">
+                                <strong>DEBUG - Current Question Data:</strong><br>
+                                Type: {{ $currentQuestion['type'] ?? 'N/A' }}<br>
+                                Images: {{ !empty($currentQuestion['images']) ? 'YES (' . count($currentQuestion['images']) . ')' : 'NO' }}<br>
+                                @if(!empty($currentQuestion['images']))
+                                    Image paths: 
+                                    @foreach($currentQuestion['images'] as $img)
+                                        <br>- {{ $img }}
+                                    @endforeach
+                                @endif
+                            </div>
+                            
                             <div class="fun-game-container">
                                 {{-- Game Header --}}
                                 <div class="bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg p-6 mb-6">
@@ -131,11 +161,24 @@
                                 @if(!empty($currentQuestion['images']))
                                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
                                         @foreach($currentQuestion['images'] as $image)
+                                            @php
+                                                // The image path already includes the full path like 'games/question-images/filename.jpg'
+                                                $imageUrl = asset('storage/' . $image);
+                                            @endphp
                                             <div class="bg-white rounded-lg shadow-md overflow-hidden">
-                                                <img src="{{ asset('storage/' . $image) }}" 
+                                                <img src="{{ $imageUrl }}" 
                                                      alt="Game Image" 
                                                      class="w-full h-48 object-cover hover:scale-105 transition-transform cursor-pointer"
-                                                     onclick="openImageModal('{{ asset('storage/' . $image) }}')">
+                                                     onclick="console.log('Image clicked:', '{{ $imageUrl }}'); openImageModal('{{ $imageUrl }}')"
+                                                     onerror="console.log('Image failed to load:', '{{ $imageUrl }}'); this.style.display='none'; this.nextElementSibling.style.display='block';"
+                                                     onload="console.log('Image loaded successfully:', '{{ $imageUrl }}')">
+                                                <div style="display:none;" class="w-full h-48 bg-gray-200 flex items-center justify-center text-gray-500">
+                                                    <div class="text-center">
+                                                        <i class="fas fa-image text-4xl mb-2"></i>
+                                                        <p class="text-sm">Image not found</p>
+                                                        <p class="text-xs">{{ $image }}</p>
+                                                    </div>
+                                                </div>
                                             </div>
                                         @endforeach
                                     </div>
@@ -171,12 +214,64 @@
                                             @endif
                                         </div>
                                     @else
+                                        @php
+                                            $assessment = App\Models\GameAssessment::where('quiz_attempt_id', $attempt->id)
+                                                ->where('question_id', $currentQuestion['id'])
+                                                ->where('user_id', auth()->id())
+                                                ->first();
+                                        @endphp
+                                        
                                         <div class="mb-6">
-                                            <div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                                                <i class="fas fa-check text-blue-600 text-2xl"></i>
-                                            </div>
-                                            <h3 class="text-xl font-semibold text-gray-900 mb-2">Game Completed!</h3>
-                                            <p class="text-gray-600">Waiting for assessment...</p>
+                                            @if($assessment && $assessment->is_assessed)
+                                                <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                                    <i class="fas fa-trophy text-green-600 text-2xl"></i>
+                                                </div>
+                                                <h3 class="text-xl font-semibold text-gray-900 mb-2">Game Assessed!</h3>
+                                                <div class="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+                                                    <div class="grid grid-cols-2 gap-4 text-sm">
+                                                        <div>
+                                                            <span class="font-medium text-green-800">Deposit:</span>
+                                                            <span class="text-green-700">{{ $assessment->deposit ?? 0 }} points</span>
+                                                        </div>
+                                                        <div>
+                                                            <span class="font-medium text-red-800">Penalty:</span>
+                                                            <span class="text-red-700">{{ $assessment->penalty ?? 0 }} points</span>
+                                                        </div>
+                                                        <div class="col-span-2 border-t border-green-300 pt-2 mt-2">
+                                                            <span class="font-bold text-green-800">Total Score:</span>
+                                                            <span class="font-bold text-green-700">{{ $assessment->total_deposit ?? 0 }} points</span>
+                                                        </div>
+                                                    </div>
+                                                    @if($assessment->notes)
+                                                        <div class="mt-3 pt-3 border-t border-green-300">
+                                                            <p class="text-sm text-green-800"><strong>Assessor Notes:</strong></p>
+                                                            <p class="text-sm text-green-700 mt-1">{{ $assessment->notes }}</p>
+                                                        </div>
+                                                    @endif
+                                                </div>
+                                            @else
+                                                <div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                                    <i class="fas fa-clock text-blue-600 text-2xl"></i>
+                                                </div>
+                                                <h3 class="text-xl font-semibold text-gray-900 mb-2">Game Completed!</h3>
+                                                <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                                                    <div class="flex items-center text-yellow-800">
+                                                        <i class="fas fa-hourglass-half mr-2"></i>
+                                                        <span class="font-medium">Waiting for assessment...</span>
+                                                    </div>
+                                                    <p class="text-yellow-700 text-sm mt-2">Your game performance will be evaluated by an assessor. Assessment results will show your final score for this game.</p>
+                                                    
+                                                    @if($assessment && !$assessment->is_assessed)
+                                                        <div class="mt-4 pt-3 border-t border-yellow-300">
+                                                            <a href="{{ route('game.assessment', ['assessmentId' => $assessment->id]) }}" 
+                                                               class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors">
+                                                                <i class="fas fa-clipboard-list mr-2"></i>
+                                                                Continue Assessment
+                                                            </a>
+                                                        </div>
+                                                    @endif
+                                                </div>
+                                            @endif
                                         </div>
                                     @endif
                                 </div>
@@ -219,18 +314,43 @@
                                 <i class="fas fa-chevron-right ml-2"></i>
                             </button>
                         @else
-                            @if($attempt->canSubmit())
-                                <button wire:click="submitQuiz"
-                                        wire:confirm="Are you sure you want to submit your quiz? This action cannot be undone."
-                                        class="flex items-center px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors">
-                                    <i class="fas fa-check mr-2"></i>
-                                    Submit Quiz
-                                </button>
+                            {{-- For fun-game-only quizzes, show completion status instead of submit button --}}
+                            @php
+                                $isFunGameOnly = collect($questions)->every(fn($q) => $q['type'] === 'fun_game');
+                            @endphp
+                            
+                            @if($isFunGameOnly)
+                                {{-- Fun-game quiz auto-completes, show status --}}
+                                @php
+                                    $allGamesCompleted = collect($questions)->every(fn($q) => $q['type'] !== 'fun_game' || $this->isGameCompleted($q['id']));
+                                @endphp
+                                
+                                @if($allGamesCompleted)
+                                    <div class="flex items-center px-6 py-2 bg-green-600 text-white rounded-md">
+                                        <i class="fas fa-check-circle mr-2"></i>
+                                        All Games Completed
+                                    </div>
+                                @else
+                                    <div class="flex items-center px-6 py-2 bg-yellow-600 text-white rounded-md">
+                                        <i class="fas fa-gamepad mr-2"></i>
+                                        Complete All Games
+                                    </div>
+                                @endif
                             @else
-                                <div class="flex items-center px-6 py-2 bg-gray-400 text-white rounded-md cursor-not-allowed">
-                                    <i class="fas fa-check-circle mr-2"></i>
-                                    Quiz Submitted
-                                </div>
+                                {{-- Regular quiz with submit button --}}
+                                @if($attempt->canSubmit())
+                                    <button wire:click="submitQuiz"
+                                            wire:confirm="Are you sure you want to submit your quiz? This action cannot be undone."
+                                            class="flex items-center px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors">
+                                        <i class="fas fa-check mr-2"></i>
+                                        Submit Quiz
+                                    </button>
+                                @else
+                                    <div class="flex items-center px-6 py-2 bg-gray-400 text-white rounded-md cursor-not-allowed">
+                                        <i class="fas fa-check-circle mr-2"></i>
+                                        Quiz Submitted
+                                    </div>
+                                @endif
                             @endif
                         @endif
                     </div>
@@ -402,25 +522,6 @@
         </div>
     </div>
 
-    {{-- Timer Warning Modal --}}
-    @if($questionnaire->time_limit && $timeRemaining !== null && $timeRemaining <= 60 && $timeRemaining > 0 && !$isCompleted)
-        <div class="fixed inset-0 bg-gray-500 bg-opacity-75 z-50 flex items-center justify-center" 
-             x-data="{ show: true }" 
-             x-show="show"
-             x-transition>
-            <div class="bg-white rounded-lg p-6 text-center max-w-sm">
-                <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <i class="fas fa-exclamation-triangle text-red-600 text-2xl"></i>
-                </div>
-                <h3 class="text-lg font-semibold text-gray-900 mb-2">Time Warning!</h3>
-                <p class="text-gray-600 mb-4">You have less than 1 minute remaining!</p>
-                <button @click="show = false" 
-                        class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors">
-                    Continue
-                </button>
-            </div>
-        </div>
-    @endif
 
     {{-- Navigation Prevention Warning Modal --}}
     @if($quizLocked && !$isCompleted)
@@ -444,140 +545,179 @@
     @endif
 
     {{-- Image Modal for Fun Games --}}
-    <div id="imageModal" class="fixed inset-0 bg-black bg-opacity-75 z-50 hidden flex items-center justify-center" onclick="closeImageModal()">
-        <div class="max-w-4xl max-h-full p-4">
-            <img id="modalImage" src="" alt="Game Image" class="max-w-full max-h-full object-contain rounded-lg">
-            <button onclick="closeImageModal()" class="absolute top-4 right-4 text-white text-2xl hover:text-gray-300">
-                <i class="fas fa-times"></i>
-            </button>
+    <div id="imageModal" class="fixed inset-0 bg-black bg-opacity-75 z-50 hidden" style="display: none;">
+        <div class="flex items-center justify-center min-h-screen p-4" onclick="closeImageModal()">
+            <div class="relative max-w-4xl max-h-full" onclick="event.stopPropagation()">
+                <img id="modalImage" src="" alt="Game Image" class="max-w-full max-h-full object-contain rounded-lg">
+                <button onclick="closeImageModal()" class="absolute top-2 right-2 bg-black bg-opacity-50 text-white w-8 h-8 rounded-full flex items-center justify-center hover:bg-opacity-75 transition-all">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
         </div>
     </div>
 </div>
 
-@script
+@push('scripts')
 <script>
-let quizTimingData = @json($this->getQuizTimingData());
-let isCompleted = @json($isCompleted);
+// Simple and reliable countdown timer based on Edureka best practices
+@php
+    $timerStartTime = isset($attempt) && $attempt && $attempt->started_at ? $attempt->started_at->getTimestamp() : null;
+    $timerLimitSeconds = isset($questionnaire) && $questionnaire->time_limit ? $questionnaire->time_limit * 60 : null;
+    $timerCompleted = isset($isCompleted) ? $isCompleted : false;
+@endphp
 
-// Alpine.js countdown timer component
+// Define these as global variables before Alpine initializes
+window.quizStartTime = {{ $timerStartTime ?? 'null' }};
+window.timeLimitSeconds = {{ $timerLimitSeconds ?? 'null' }};
+window.isQuizCompleted = {{ $timerCompleted ? 'true' : 'false' }};
+
+// Debug timer data
+console.log('Timer initialization:', {
+    quizStartTime: window.quizStartTime,
+    timeLimitSeconds: window.timeLimitSeconds,
+    isQuizCompleted: window.isQuizCompleted
+});
+
+// Compact countdown timer component - define globally before Alpine loads
 window.countdownTimer = function(initialSeconds, questionnaireId) {
     return {
         timeRemaining: initialSeconds,
         displayTime: '',
         isWarning: false,
-        interval: null,
-        questionnaireId: questionnaireId,
+        timerInterval: null,
         
         init() {
-            this.updateDisplay();
-            this.startCountdown();
+            // Validate timer data before starting
+            if (!window.timeLimitSeconds || !window.quizStartTime || window.isQuizCompleted) {
+                console.warn('Timer initialization skipped:', {
+                    timeLimitSeconds: window.timeLimitSeconds,
+                    quizStartTime: window.quizStartTime,
+                    isQuizCompleted: window.isQuizCompleted
+                });
+                // Set fallback display
+                this.displayTime = this.timeRemaining > 0 ? this.formatTime(this.timeRemaining) : '0:00';
+                return;
+            }
             
-            // Handle page visibility changes
+            this.updateDisplay();
+            this.startTimer();
+            
+            // Sync on page visibility change
             document.addEventListener('visibilitychange', () => {
-                if (!document.hidden && !isCompleted) {
-                    this.syncWithServer();
+                if (!document.hidden && !window.isQuizCompleted) {
+                    this.syncTime();
                 }
             });
             
-            // Clean up on quiz completion
-            this.$wire.on('quizCompleted', () => {
-                this.stopCountdown();
-            });
+            // Cleanup on completion - use wire instead of $wire for better compatibility
+            if (this.$wire) {
+                this.$wire.on('quizCompleted', () => {
+                    this.stopTimer();
+                });
+            }
         },
         
-        startCountdown() {
-            if (this.interval) {
-                clearInterval(this.interval);
+        formatTime(seconds) {
+            const minutes = Math.floor(Math.max(0, seconds) / 60);
+            const secs = Math.max(0, seconds) % 60;
+            return `${minutes}:${secs.toString().padStart(2, '0')}`;
+        },
+        
+        startTimer() {
+            if (this.timerInterval) {
+                clearInterval(this.timerInterval);
             }
             
-            this.interval = setInterval(() => {
-                this.timeRemaining--;
+            this.timerInterval = setInterval(() => {
+                if (window.isQuizCompleted) {
+                    this.stopTimer();
+                    return;
+                }
+                
+                // Calculate actual time remaining based on server time
+                this.calculateTimeRemaining();
                 this.updateDisplay();
                 
                 if (this.timeRemaining <= 0) {
                     this.handleTimeExpiry();
-                    return;
                 }
                 
-                // Sync with server every 30 seconds
-                if (this.timeRemaining % 30 === 0) {
-                    this.syncWithServer();
-                }
-                
-                // Show warning at 1 minute
-                if (this.timeRemaining === 60 && !this.isWarning) {
-                    this.showTimeWarning();
+                // Show warning at 5 minutes and 1 minute
+                if ((this.timeRemaining === 300 || this.timeRemaining === 60) && !this.isWarning) {
+                    this.showWarning();
                 }
             }, 1000);
         },
         
-        updateDisplay() {
-            const minutes = Math.floor(this.timeRemaining / 60);
-            const seconds = this.timeRemaining % 60;
-            this.displayTime = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+        calculateTimeRemaining() {
+            if (!window.timeLimitSeconds || !window.quizStartTime || typeof window.timeLimitSeconds !== 'number' || typeof window.quizStartTime !== 'number') {
+                console.warn('Invalid timer data:', { timeLimitSeconds: window.timeLimitSeconds, quizStartTime: window.quizStartTime });
+                return;
+            }
             
-            // Update warning state
-            this.isWarning = this.timeRemaining < 300; // Less than 5 minutes
-        },
-        
-        syncWithServer() {
-            this.$wire.call('getQuizTimingData').then((result) => {
-                if (result && result.hasTimeLimit) {
-                    const now = Math.floor(Date.now() / 1000);
-                    const elapsed = now - result.startTimestamp;
-                    const remaining = Math.max(0, result.timeLimitSeconds - elapsed);
-                    
-                    // Update time remaining if server time differs significantly
-                    if (Math.abs(this.timeRemaining - remaining) > 2) {
-                        this.timeRemaining = remaining;
-                        this.updateDisplay();
-                    }
-                }
-            }).catch((error) => {
-                console.error('Timer sync error:', error);
-            });
-        },
-        
-        handleTimeExpiry() {
-            this.stopCountdown();
-            this.timeRemaining = 0;
-            this.updateDisplay();
-            this.$wire.call('handleTimeExpiry');
-        },
-        
-        stopCountdown() {
-            if (this.interval) {
-                clearInterval(this.interval);
-                this.interval = null;
+            const currentTime = Math.floor(Date.now() / 1000);
+            const elapsed = currentTime - window.quizStartTime;
+            this.timeRemaining = Math.max(0, window.timeLimitSeconds - elapsed);
+            
+            // Debug log every 30 seconds
+            if (elapsed % 30 === 0) {
+                console.log('Timer sync:', {
+                    currentTime,
+                    quizStartTime: window.quizStartTime,
+                    elapsed,
+                    timeLimitSeconds: window.timeLimitSeconds,
+                    timeRemaining: this.timeRemaining
+                });
             }
         },
         
-        showTimeWarning() {
-            // Create a temporary notification
-            const notification = document.createElement('div');
-            notification.className = 'fixed top-4 right-4 bg-red-50 border border-red-200 rounded-md p-4 z-50 shadow-lg';
-            notification.innerHTML = `
-                <div class="flex items-center">
-                    <i class="fas fa-clock text-red-500 mr-2"></i>
-                    <span class="text-red-800 font-medium">1 minute remaining!</span>
-                </div>
-            `;
+        updateDisplay() {
+            this.displayTime = this.formatTime(this.timeRemaining);
             
-            document.body.appendChild(notification);
+            // Warning when less than 5 minutes
+            this.isWarning = this.timeRemaining <= 300 && this.timeRemaining > 0;
+        },
+        
+        syncTime() {
+            // Simple sync - recalculate from server start time
+            this.calculateTimeRemaining();
+            this.updateDisplay();
+        },
+        
+        handleTimeExpiry() {
+            this.stopTimer();
+            this.timeRemaining = 0;
+            this.updateDisplay();
             
-            // Remove notification after 3 seconds
-            setTimeout(() => {
-                if (notification.parentNode) {
-                    notification.parentNode.removeChild(notification);
-                }
-            }, 3000);
+            // Auto-submit quiz
+            if (this.$wire) {
+                this.$wire.call('handleTimeExpiry').then(() => {
+                    alert('Time is up! Your quiz has been submitted automatically.');
+                });
+            }
+        },
+        
+        stopTimer() {
+            if (this.timerInterval) {
+                clearInterval(this.timerInterval);
+                this.timerInterval = null;
+            }
+        },
+        
+        showWarning() {
+            const timeText = this.timeRemaining === 300 ? '5 minutes' : '1 minute';
+            
+            // Simple alert for time warning
+            if (confirm(`${timeText} remaining! Click OK to continue.`)) {
+                this.isWarning = true;
+            }
         }
     }
 }
 
 // Prevent accidental page refresh during quiz
 let beforeUnloadHandler = function(e) {
-    if (!@json($isCompleted) && @json($quizLocked)) {
+    if (!window.isQuizCompleted && @json($quizLocked)) {
         e.preventDefault();
         e.returnValue = 'Quiz in progress! You cannot leave until all questions are completed and submitted.';
         return 'Quiz in progress! You cannot leave until all questions are completed and submitted.';
@@ -585,12 +725,12 @@ let beforeUnloadHandler = function(e) {
 };
 
 // Add the warning if quiz is not completed
-if (!isCompleted && @json($quizLocked)) {
+if (!window.isQuizCompleted && @json($quizLocked)) {
     window.addEventListener('beforeunload', beforeUnloadHandler);
 }
 
 // Block back button navigation during quiz
-let isNavigationBlocked = @json($quizLocked) && !@json($isCompleted);
+let isNavigationBlocked = @json($quizLocked) && !window.isQuizCompleted;
 
 if (isNavigationBlocked) {
     // Push a dummy state to prevent back button navigation
@@ -604,7 +744,9 @@ if (isNavigationBlocked) {
             // Show warning
             if (confirm('Quiz in progress! Are you sure you want to abandon this quiz? Your progress will be lost.')) {
                 // Allow exit if user confirms
-                $wire.call('forceExit');
+                if (window.Livewire && typeof $wire !== 'undefined') {
+                    $wire.call('forceExit');
+                }
             }
         }
     });
@@ -647,13 +789,15 @@ document.addEventListener('input', function(e) {
     if (e.target.tagName === 'TEXTAREA') {
         clearTimeout(saveTimeout);
         saveTimeout = setTimeout(() => {
-            $wire.call('flushPendingAnswers');
+            if (window.Livewire && typeof $wire !== 'undefined') {
+                $wire.call('flushPendingAnswers');
+            }
         }, 2000);
     }
 });
 
 // Keyboard shortcuts and prevention
-let quizCompleted = isCompleted;
+let quizCompleted = window.isQuizCompleted;
 
 document.addEventListener('keydown', function(e) {
     // Prevent F5 refresh during quiz (but allow after completion)
@@ -663,20 +807,26 @@ document.addEventListener('keydown', function(e) {
     }
     
     // Arrow key navigation (only during quiz)
-    if (!quizCompleted && e.altKey) {
+    if (!window.isQuizCompleted && e.altKey) {
         if (e.key === 'ArrowLeft') {
             e.preventDefault();
-            $wire.call('goToPreviousQuestion');
+            if (window.Livewire) {
+                $wire.call('goToPreviousQuestion');
+            }
         } else if (e.key === 'ArrowRight') {
             e.preventDefault();
-            $wire.call('goToNextQuestion');
+            if (window.Livewire) {
+                $wire.call('goToNextQuestion');
+            }
         }
     }
     
     // Submit with Ctrl+Enter (only during quiz)
-    if (!quizCompleted && e.ctrlKey && e.key === 'Enter') {
+    if (!window.isQuizCompleted && e.ctrlKey && e.key === 'Enter') {
         e.preventDefault();
-        $wire.call('submitQuiz');
+        if (window.Livewire) {
+            $wire.call('submitQuiz');
+        }
     }
 });
 
@@ -686,7 +836,7 @@ document.addEventListener('livewire:initialized', () => {
         // Remove the beforeunload warning when quiz is completed
         window.removeEventListener('beforeunload', beforeUnloadHandler);
         // Update completion status
-        quizCompleted = true;
+        window.isQuizCompleted = true;
         isNavigationBlocked = false;
         
         // Re-enable right-click context menu
@@ -716,20 +866,42 @@ document.addEventListener('livewire:initialized', () => {
     });
 });
 
-// Image modal functions for fun games
-function openImageModal(imageSrc) {
+// Image modal functions for fun games - make them globally available
+window.openImageModal = function(imageSrc) {
     const modal = document.getElementById('imageModal');
     const modalImage = document.getElementById('modalImage');
-    modalImage.src = imageSrc;
-    modal.classList.remove('hidden');
+    if (modal && modalImage) {
+        modalImage.src = imageSrc;
+        modal.classList.remove('hidden');
+        modal.style.display = 'block';
+        document.body.style.overflow = 'hidden'; // Prevent scrolling
+        console.log('Opening image modal with:', imageSrc);
+    } else {
+        console.error('Image modal elements not found');
+    }
 }
 
-function closeImageModal() {
+window.closeImageModal = function() {
     const modal = document.getElementById('imageModal');
-    modal.classList.add('hidden');
+    if (modal) {
+        modal.classList.add('hidden');
+        modal.style.display = 'none';
+        document.body.style.overflow = ''; // Restore scrolling
+        console.log('Closing image modal');
+    }
 }
+
+// Also add keyboard support for closing modal
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        const modal = document.getElementById('imageModal');
+        if (modal && !modal.classList.contains('hidden')) {
+            closeImageModal();
+        }
+    }
+});
 </script>
-@endscript
+@endpush
 
 @push('styles')
 <style>

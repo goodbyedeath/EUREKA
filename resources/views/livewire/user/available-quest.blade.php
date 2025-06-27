@@ -77,6 +77,15 @@
                 <h3 class="text-lg font-medium text-gray-900 mb-2">{{ $questionnaire->title }}</h3>
                 <p class="text-sm text-gray-600 mb-4">{{ $questionnaire->description }}</p>
                 
+                {{-- Questionnaire Photo --}}
+                @if($questionnaire->photo_path)
+                    <div class="mb-4">
+                        <img src="{{ asset('storage/' . $questionnaire->photo_path) }}" 
+                             alt="{{ $questionnaire->title }}"
+                             class="w-full h-48 object-cover rounded-lg border border-gray-200">
+                    </div>
+                @endif
+                
                 <div class="flex items-center justify-between text-sm text-gray-500 mb-4">
                     @if($questionnaire->time_limit)
                         <span><i class="fas fa-clock mr-1"></i>{{ $questionnaire->time_limit }} min</span>
@@ -280,6 +289,7 @@
             </div>
         </div>
     @endif
+
 
     {{-- Countdown Modal --}}
     @if($showCountdown && $selectedQuestionnaire)

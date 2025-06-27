@@ -27,7 +27,7 @@
                             <div class="flex items-center justify-between mb-2">
                                 <span class="font-medium text-gray-900">{{ $attempt->user->name }}</span>
                                 <span class="text-xs text-gray-500">
-                                    {{ $attempt->completed_at->format('M d, Y') }}
+                                    {{ $attempt->completed_at ? $attempt->completed_at->format('M d, Y') : 'In Progress' }}
                                 </span>
                             </div>
                             <div class="text-sm text-gray-600 mb-1">{{ $attempt->questionnaire->title }}</div>
@@ -71,9 +71,9 @@
                                 <p class="text-gray-600">{{ $selectedAttempt->questionnaire->title }}</p>
                             </div>
                             <div class="text-right">
-                                <div class="text-sm text-gray-500">Completed</div>
+                                <div class="text-sm text-gray-500">{{ $selectedAttempt->completed_at ? 'Completed' : 'In Progress' }}</div>
                                 <div class="text-lg font-semibold text-gray-900">
-                                    {{ $selectedAttempt->completed_at->format('M d, Y H:i') }}
+                                    {{ $selectedAttempt->completed_at ? $selectedAttempt->completed_at->format('M d, Y H:i') : 'Ongoing' }}
                                 </div>
                             </div>
                         </div>
@@ -166,9 +166,17 @@
                                                     @if($assessment->question->images)
                                                         <div class="grid grid-cols-3 gap-2">
                                                             @foreach($assessment->question->images as $image)
-                                                                <img src="{{ asset('storage/' . $image) }}" 
+                                                                @php
+                                                                    $imageUrl = asset('storage/' . $image);
+                                                                @endphp
+                                                                <img src="{{ $imageUrl }}" 
                                                                      alt="Game Image" 
-                                                                     class="w-full h-20 object-cover rounded">
+                                                                     class="w-full h-20 object-cover rounded cursor-pointer hover:opacity-75 transition-opacity"
+                                                                     onclick="openImageModal('{{ $imageUrl }}')"
+                                                                     onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                                                                <div style="display:none;" class="w-full h-20 bg-gray-200 flex items-center justify-center text-gray-500 rounded">
+                                                                    <i class="fas fa-image"></i>
+                                                                </div>
                                                             @endforeach
                                                         </div>
                                                     @endif
@@ -327,4 +335,28 @@
             </div>
         </div>
     @endif
+
+    {{-- Image Modal --}}
+    <div id="imageModal" class="fixed inset-0 bg-black bg-opacity-75 z-50 hidden flex items-center justify-center" onclick="closeImageModal()">
+        <div class="max-w-4xl max-h-full p-4">
+            <img id="modalImage" src="" alt="Game Image" class="max-w-full max-h-full object-contain rounded-lg">
+            <button onclick="closeImageModal()" class="absolute top-4 right-4 text-white text-2xl hover:text-gray-300">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    </div>
 </div>
+
+<script>
+function openImageModal(imageSrc) {
+    const modal = document.getElementById('imageModal');
+    const modalImage = document.getElementById('modalImage');
+    modalImage.src = imageSrc;
+    modal.classList.remove('hidden');
+}
+
+function closeImageModal() {
+    const modal = document.getElementById('imageModal');
+    modal.classList.add('hidden');
+}
+</script>

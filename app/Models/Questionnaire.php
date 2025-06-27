@@ -10,6 +10,7 @@ class Questionnaire extends Model
     protected $fillable = [
         'title',
         'description',
+        'photo_path',
         'qr_code',
         'is_active',
         'time_limit',

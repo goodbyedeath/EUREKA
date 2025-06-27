@@ -11,9 +11,9 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // Call the UserSeeder to seed admin and user
-        $this->call(QuestLocationSeeder::class);
+        // Call the UserSeeder first to create admin user, then quest locations
         $this->call(UserSeeder::class);
+        $this->call(QuestLocationSeeder::class);
         
 
         // Optionally, seed a test user using factory

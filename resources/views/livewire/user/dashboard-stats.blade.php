@@ -1,4 +1,4 @@
-<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
     {{-- Total Attempts --}}
     <div class="bg-white rounded-lg shadow hover:shadow-lg transition-shadow p-6">
         <div class="flex items-center">
@@ -57,4 +57,33 @@
             </div>
         </div>
     </div>
+
+    {{-- Team Points --}}
+    @if($teamName)
+        <div class="bg-white rounded-lg shadow hover:shadow-lg transition-shadow p-6">
+            <div class="flex items-center">
+                <div class="p-3 bg-purple-100 rounded-full">
+                    <i class="fas fa-coins text-purple-600 text-xl"></i>
+                </div>
+                <div class="ml-4">
+                    <p class="text-sm font-medium text-gray-600">Team Points</p>
+                    <p class="text-3xl font-bold text-gray-900 {{ $teamPoints >= 1000 ? 'text-green-600' : ($teamPoints >= 500 ? 'text-yellow-600' : 'text-red-600') }}">{{ number_format($teamPoints, 0) }}</p>
+                    <p class="text-xs text-gray-500 mt-1">{{ $teamName }}</p>
+                </div>
+            </div>
+        </div>
+    @else
+        <div class="bg-white rounded-lg shadow hover:shadow-lg transition-shadow p-6">
+            <div class="flex items-center">
+                <div class="p-3 bg-gray-100 rounded-full">
+                    <i class="fas fa-users text-gray-600 text-xl"></i>
+                </div>
+                <div class="ml-4">
+                    <p class="text-sm font-medium text-gray-600">Team Status</p>
+                    <p class="text-lg font-bold text-gray-500">No Team</p>
+                    <p class="text-xs text-gray-500 mt-1">Join a team to earn points</p>
+                </div>
+            </div>
+        </div>
+    @endif
 </div>

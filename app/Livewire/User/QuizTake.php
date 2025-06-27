@@ -130,22 +130,23 @@ class QuizTake extends Component
 
     public function loadQuestions()
     {
-        $this->questions = Cache::remember(
-            "questions_safe_{$this->questionnaire->id}",
-            3600,
-            function () {
-                $questions = $this->questionnaire->questions()
-                    ->select('id', 'question', 'type', 'options', 'points', 'order')
-                    ->orderBy('order', 'asc')
-                    ->get();
-                
-                if ($questions->isEmpty()) {
-                    throw new \Exception('No questions found for this questionnaire');
-                }
-                
-                return $questions->toArray();
-            }
-        );
+        // Temporarily disable cache for debugging
+        $questions = $this->questionnaire->questions()
+            ->select('id', 'question', 'type', 'options', 'points', 'order', 'description', 'game_name', 'images')
+            ->orderBy('order', 'asc')
+            ->get();
+        
+        if ($questions->isEmpty()) {
+            throw new \Exception('No questions found for this questionnaire');
+        }
+        
+        $this->questions = $questions->toArray();
+        
+        // Log for debugging
+        \Log::info('Loaded questions for questionnaire ' . $this->questionnaire->id, [
+            'count' => count($this->questions),
+            'questions' => $this->questions
+        ]);
     }
     
     private function getCorrectAnswers()
@@ -161,41 +162,34 @@ class QuizTake extends Component
         );
     }
 
-    // Enhanced timer sync method that handles all timer-related logic
-    public function syncTimer()
+    // Simple timer calculation based on server time
+    public function calculateTimeRemaining()
     {
-        if (!$this->questionnaire->time_limit || $this->isCompleted) {
-            return ['timeRemaining' => null, 'isExpired' => false];
+        if (!$this->questionnaire->time_limit || $this->isCompleted || !$this->attempt) {
+            $this->timeRemaining = null;
+            return;
         }
 
-        // Always calculate from database to prevent client manipulation
-        $elapsed = now()->diffInSeconds($this->attempt->started_at);
+        // Simple calculation from start time
+        $startTime = $this->attempt->started_at;
+        if (!$startTime) {
+            $this->timeRemaining = null;
+            return;
+        }
+        
+        $now = now();
+        $elapsed = $now->getTimestamp() - $startTime->getTimestamp();
         $totalTime = $this->questionnaire->time_limit * 60;
-        $remaining = max(0, $totalTime - $elapsed);
         
-        $this->timeRemaining = $remaining;
+        $this->timeRemaining = max(0, $totalTime - $elapsed);
         
-        // Auto-submit with buffer to prevent race conditions
-        if ($remaining <= 5 && !$this->isCompleted && !$this->timerExpired) {
+        // Auto-submit if time is up
+        if ($this->timeRemaining <= 0 && !$this->isCompleted && !$this->timerExpired) {
             $this->timerExpired = true;
             $this->handleTimeExpiry();
-            return ['timeRemaining' => 0, 'isExpired' => true, 'autoSubmitted' => true];
         }
-
-        return [
-            'timeRemaining' => $remaining,
-            'formattedTime' => $this->getFormattedTimeRemaining(),
-            'isExpired' => $remaining <= 0,
-            'serverTime' => now()->timestamp,
-            'warningThreshold' => $remaining <= 60 // 1-minute warning
-        ];
     }
 
-    // New method specifically for frontend timer checks
-    public function checkTimer()
-    {
-        return $this->syncTimer();
-    }
     
     public function createNewAttempt()
     {
@@ -223,31 +217,6 @@ class QuizTake extends Component
         $this->startTime = $this->attempt->started_at;
     }
 
-    public function calculateTimeRemaining()
-    {
-        if (!$this->questionnaire->time_limit || $this->isCompleted) {
-            $this->timeRemaining = null;
-            return;
-        }
-
-        // Always calculate from database time to ensure accuracy and persistence
-        $startTime = $this->attempt->started_at;
-        $now = now();
-        $elapsed = $now->diffInSeconds($startTime);
-        $totalTime = $this->questionnaire->time_limit * 60; // Convert minutes to seconds
-        
-        // Calculate remaining time
-        $remaining = $totalTime - $elapsed;
-        
-        // Ensure we don't go below 0
-        $this->timeRemaining = max(0, (int) $remaining);
-        
-        // Auto-submit if time is up and not already completed
-        if ($this->timeRemaining <= 0 && !$this->isCompleted && !$this->timerExpired) {
-            $this->timerExpired = true;
-            $this->handleTimeExpiry();
-        }
-    }
 
     // Enhanced method to get formatted time display
     public function getFormattedTimeRemaining()
@@ -262,28 +231,16 @@ class QuizTake extends Component
         return sprintf('%d:%02d', $minutes, $seconds);
     }
 
-    // Get quiz timing data for JavaScript (callable from frontend)
+    // Get basic timing data for JavaScript initialization
     public function getQuizTimingData()
     {
-        // Recalculate time remaining to ensure accuracy
         $this->calculateTimeRemaining();
         
-        if (!$this->questionnaire->time_limit || $this->isCompleted) {
-            return [
-                'hasTimeLimit' => false,
-                'timeRemaining' => null,
-                'startTimestamp' => null,
-                'timeLimitSeconds' => null,
-                'serverTimestamp' => now()->timestamp,
-            ];
-        }
-
         return [
-            'hasTimeLimit' => true,
+            'hasTimeLimit' => (bool) $this->questionnaire->time_limit,
             'timeRemaining' => $this->timeRemaining,
-            'startTimestamp' => $this->attempt->started_at->timestamp,
-            'timeLimitSeconds' => $this->questionnaire->time_limit * 60,
-            'serverTimestamp' => now()->timestamp,
+            'startTime' => $this->attempt->started_at->getTimestamp(),
+            'timeLimitSeconds' => $this->questionnaire->time_limit ? $this->questionnaire->time_limit * 60 : null,
         ];
     }
 
@@ -294,7 +251,13 @@ class QuizTake extends Component
             return;
         }
         
-        $this->totalPoints = collect($this->questions)->sum('points');
+        // Only count points from regular questions (not fun_game)
+        $this->totalPoints = 0;
+        foreach ($this->questions as $question) {
+            if ($question['type'] !== 'fun_game') {
+                $this->totalPoints += $question['points'];
+            }
+        }
     }
 
     public function initializeAnswers()
@@ -388,8 +351,14 @@ class QuizTake extends Component
                     continue;
                 }
 
-                $isCorrect = $this->isAnswerCorrect($question, $answer);
-                $pointsEarned = $isCorrect ? $question['points'] : 0;
+                // For fun_game questions, don't calculate traditional correctness/points
+                if ($question['type'] === 'fun_game') {
+                    $isCorrect = ($answer === 'completed');
+                    $pointsEarned = 0; // Points are handled via game assessments
+                } else {
+                    $isCorrect = $this->isAnswerCorrect($question, $answer);
+                    $pointsEarned = $isCorrect ? $question['points'] : 0;
+                }
 
                 $data[] = [
                     'quiz_attempt_id' => $this->attempt->id,
@@ -479,6 +448,12 @@ class QuizTake extends Component
 
     public function submitQuiz()
     {
+        // Check if this is a fun-game-only quiz
+        if ($this->isFunGameOnlyQuiz()) {
+            $this->autoCompleteQuiz();
+            return;
+        }
+
         // Use database transaction with locking to prevent race conditions
         DB::transaction(function () {
             // Lock the quiz attempt to prevent concurrent submissions
@@ -544,11 +519,81 @@ class QuizTake extends Component
         ]);
     }
 
+    public function isFunGameOnlyQuiz()
+    {
+        foreach ($this->questions as $question) {
+            if ($question['type'] !== 'fun_game') {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public function autoCompleteQuiz()
+    {
+        // For fun-game-only quizzes, auto-complete when all games are done
+        $allGamesCompleted = true;
+        foreach ($this->questions as $question) {
+            if ($question['type'] === 'fun_game' && !$this->isGameCompleted($question['id'])) {
+                $allGamesCompleted = false;
+                break;
+            }
+        }
+
+        if (!$allGamesCompleted) {
+            session()->flash('info', 'Please complete all games before finishing the quiz.');
+            return;
+        }
+
+        // Auto-complete the quiz
+        DB::transaction(function () {
+            $lockedAttempt = QuizAttempt::where('id', $this->attempt->id)
+                ->lockForUpdate()
+                ->first();
+            
+            if (!$lockedAttempt || !$lockedAttempt->canSubmit()) {
+                return;
+            }
+
+            $this->endTime = now();
+
+            // For fun-game quizzes, score is 0 as it comes from assessments
+            $lockedAttempt->update([
+                'status' => QuizAttempt::STATUS_COMPLETED,
+                'completed_at' => $this->endTime,
+                'total_score' => 0, // Score comes from assessments
+                'total_time_seconds' => $this->endTime->diffInSeconds($this->startTime),
+            ]);
+
+            $this->attempt = $lockedAttempt;
+            QrCodeScan::deactivateScan(auth()->id(), $this->questionnaire->id);
+        });
+
+        $this->isCompleted = true;
+        $this->showResults = true;
+        $this->quizLocked = false;
+        $this->preventNavigation = false;
+
+        session()->flash('success', 'All games completed! Results will be available after assessment.');
+
+        $this->dispatch('quizCompleted', [
+            'score' => 0,
+            'totalPoints' => 0,
+            'earnedPoints' => 0,
+            'attemptId' => $this->attempt->id
+        ]);
+    }
+
     public function calculateScore()
     {
         $this->earnedPoints = 0;
 
         foreach ($this->questions as $question) {
+            // Skip fun_game questions - they are scored via assessments
+            if ($question['type'] === 'fun_game') {
+                continue;
+            }
+            
             $userAnswer = $this->answers[$question['id']] ?? '';
             
             if ($this->isAnswerCorrect($question, $userAnswer)) {
@@ -556,9 +601,22 @@ class QuizTake extends Component
             }
         }
 
-        $this->score = $this->totalPoints > 0 
-            ? round(($this->earnedPoints / $this->totalPoints) * 100, 2)
+        // Calculate score only based on regular questions
+        $regularQuestionsPoints = $this->getRegularQuestionsPoints();
+        $this->score = $regularQuestionsPoints > 0 
+            ? round(($this->earnedPoints / $regularQuestionsPoints) * 100, 2)
             : 0;
+    }
+
+    public function getRegularQuestionsPoints()
+    {
+        $totalRegularPoints = 0;
+        foreach ($this->questions as $question) {
+            if ($question['type'] !== 'fun_game') {
+                $totalRegularPoints += $question['points'];
+            }
+        }
+        return $totalRegularPoints;
     }
 
     public function isAnswerCorrect($question, $userAnswer)
@@ -777,12 +835,24 @@ class QuizTake extends Component
 
         // Check if already completed
         if ($this->isGameCompleted($questionId)) {
-            session()->flash('info', 'Game already completed.');
-            return;
+            // Find the existing assessment
+            $existingAssessment = GameAssessment::where('quiz_attempt_id', $this->attempt->id)
+                ->where('question_id', $questionId)
+                ->where('user_id', auth()->id())
+                ->first();
+            
+            if ($existingAssessment && !$existingAssessment->is_assessed) {
+                // Redirect to assessment page if not yet assessed
+                session()->flash('info', 'Game already completed. Please complete the assessment.');
+                return $this->redirect(route('game.assessment', ['assessmentId' => $existingAssessment->id]), navigate: true);
+            } else {
+                session()->flash('info', 'Game already completed and assessed.');
+                return;
+            }
         }
 
         // Create game assessment record
-        GameAssessment::create([
+        $assessment = GameAssessment::create([
             'quiz_attempt_id' => $this->attempt->id,
             'question_id' => $questionId,
             'user_id' => auth()->id(),
@@ -796,7 +866,28 @@ class QuizTake extends Component
         $this->answers[$questionId] = 'completed';
         $this->saveAnswer($questionId, 'completed');
 
-        session()->flash('success', 'Game completed! Waiting for assessment.');
+        // Check if this is a fun-game-only quiz and if all games are completed
+        if ($this->isFunGameOnlyQuiz()) {
+            $allGamesCompleted = true;
+            foreach ($this->questions as $question) {
+                if ($question['type'] === 'fun_game' && !$this->isGameCompleted($question['id'])) {
+                    $allGamesCompleted = false;
+                    break;
+                }
+            }
+
+            if ($allGamesCompleted) {
+                // Auto-complete the quiz
+                $this->autoCompleteQuiz();
+                // Still redirect to assessment page for the current game
+                return $this->redirect(route('game.assessment', ['assessmentId' => $assessment->id]), navigate: true);
+            }
+        }
+
+        session()->flash('success', 'Game completed! Please fill out the assessment form.');
+        
+        // Redirect to assessment page
+        return $this->redirect(route('game.assessment', ['assessmentId' => $assessment->id]), navigate: true);
     }
 
     /**

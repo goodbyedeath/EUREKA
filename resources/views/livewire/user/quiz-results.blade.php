@@ -30,7 +30,7 @@
         </div>
 
         <!-- Score Overview -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-{{ $assessments->count() > 0 ? '5' : '4' }} gap-6 mb-6">
             <!-- Overall Score -->
             <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
                 <div class="flex items-center">
@@ -44,9 +44,15 @@
                     <div class="ml-4">
                         <div class="text-sm font-medium text-gray-500">Overall Score</div>
                         <div class="text-2xl font-bold {{ $this->getScoreColor() }}">
-                            {{ $attempt->total_score }}/{{ $questionnaire->total_points }}
+                            {{ number_format($this->getFinalScore(), 1) }}/{{ number_format($this->getTotalPossiblePoints(), 1) }}
                         </div>
                         <div class="text-sm text-gray-600">{{ $this->getScorePercentage() }}%</div>
+                        @php $breakdown = $this->getScoreBreakdown(); @endphp
+                        @if($breakdown['assessment_score'] != 0 || $breakdown['regular_score'] != 0)
+                            <div class="text-xs text-blue-600">
+                                Regular: {{ number_format($breakdown['regular_score'], 1) }} + Games: {{ number_format($breakdown['assessment_score'], 1) }}
+                            </div>
+                        @endif
                     </div>
                 </div>
             </div>
@@ -79,7 +85,7 @@
                 </div>
             </div>
 
-            <!-- Correct Answers -->
+            <!-- Question Breakdown -->
             <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
                 <div class="flex items-center">
                     <div class="flex-shrink-0">
@@ -90,12 +96,18 @@
                         </div>
                     </div>
                     <div class="ml-4">
-                        <div class="text-sm font-medium text-gray-500">Correct Answers</div>
+                        <div class="text-sm font-medium text-gray-500">Questions</div>
                         <div class="text-2xl font-bold text-green-600">
-                            {{ $this->getCorrectAnswersCount() }}/{{ $this->getTotalQuestionsCount() }}
+                            {{ $this->getTotalQuestionsCount() }} Total
                         </div>
                         <div class="text-sm text-gray-600">
-                            {{ round(($this->getCorrectAnswersCount() / $this->getTotalQuestionsCount()) * 100, 1) }}%
+                            @if($this->getRegularQuestionsCount() > 0)
+                                {{ $this->getRegularQuestionsCount() }} Regular
+                            @endif
+                            @if($this->getFunGameQuestionsCount() > 0)
+                                @if($this->getRegularQuestionsCount() > 0) • @endif
+                                {{ $this->getFunGameQuestionsCount() }} Games
+                            @endif
                         </div>
                     </div>
                 </div>
@@ -124,6 +136,140 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Assessment Status -->
+            @if($assessments->count() > 0)
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            @php
+                                $status = $this->getAssessmentStatus();
+                                $statusConfig = [
+                                    'complete' => ['bg' => 'bg-green-100', 'text' => 'text-green-600', 'icon' => 'M5 13l4 4L19 7'],
+                                    'partial' => ['bg' => 'bg-yellow-100', 'text' => 'text-yellow-600', 'icon' => 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z'],
+                                    'pending' => ['bg' => 'bg-orange-100', 'text' => 'text-orange-600', 'icon' => 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z']
+                                ][$status] ?? ['bg' => 'bg-gray-100', 'text' => 'text-gray-600', 'icon' => 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z'];
+                            @endphp
+                            <div class="w-8 h-8 {{ $statusConfig['bg'] }} rounded-full flex items-center justify-center">
+                                <svg class="w-5 h-5 {{ $statusConfig['text'] }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="{{ $statusConfig['icon'] }}"/>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="ml-4">
+                            <div class="text-sm font-medium text-gray-500">Assessments</div>
+                            <div class="text-2xl font-bold {{ $statusConfig['text'] }}">
+                                @if($status === 'complete')
+                                    Completed
+                                @elseif($status === 'partial')
+                                    Partial
+                                @elseif($status === 'pending')
+                                    Pending
+                                @else
+                                    None
+                                @endif
+                            </div>
+                            <div class="text-sm text-gray-600">
+                                {{ $assessments->where('is_assessed', true)->count() }}/{{ $assessments->count() }} assessed
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            @endif
+        </div>
+
+        <!-- Score Breakdown -->
+        @php $breakdown = $this->getScoreBreakdown(); @endphp
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+            <h2 class="text-lg font-semibold text-gray-900 mb-4">Score Breakdown</h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Regular Questions Score -->
+                @if($breakdown['regular_possible'] > 0)
+                    <div class="p-4 bg-blue-50 rounded-lg">
+                        <h3 class="text-sm font-semibold text-blue-900 mb-3">Regular Questions</h3>
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-sm text-blue-700">Score:</span>
+                            <span class="font-medium text-blue-900">{{ number_format($breakdown['regular_score'], 1) }}/{{ number_format($breakdown['regular_possible'], 1) }}</span>
+                        </div>
+                        <div class="w-full bg-blue-200 rounded-full h-2">
+                            <div class="bg-blue-600 h-2 rounded-full" style="width: {{ $breakdown['regular_possible'] > 0 ? round(($breakdown['regular_score'] / $breakdown['regular_possible']) * 100) : 0 }}%"></div>
+                        </div>
+                        <div class="text-xs text-blue-600 mt-1">
+                            {{ $breakdown['regular_possible'] > 0 ? round(($breakdown['regular_score'] / $breakdown['regular_possible']) * 100, 1) : 0 }}% accuracy
+                        </div>
+                    </div>
+                @endif
+
+                <!-- Game Assessment Score -->
+                @if($breakdown['assessment_possible'] > 0)
+                    <div class="p-4 bg-green-50 rounded-lg">
+                        <h3 class="text-sm font-semibold text-green-900 mb-3">Fun Game Assessments</h3>
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-sm text-green-700">Score:</span>
+                            <span class="font-medium text-green-900">{{ number_format($breakdown['assessment_score'], 1) }}/{{ number_format($breakdown['assessment_possible'], 1) }}</span>
+                        </div>
+                        <div class="w-full bg-green-200 rounded-full h-2">
+                            <div class="bg-green-600 h-2 rounded-full" style="width: {{ $breakdown['assessment_possible'] > 0 ? round(($breakdown['assessment_score'] / $breakdown['assessment_possible']) * 100) : 0 }}%"></div>
+                        </div>
+                        <div class="text-xs text-green-600 mt-1">
+                            {{ $breakdown['assessment_possible'] > 0 ? round(($breakdown['assessment_score'] / $breakdown['assessment_possible']) * 100, 1) : 0 }}% of maximum possible
+                        </div>
+                    </div>
+                @endif
+            </div>
+
+            <!-- Assessment Details -->
+            @if($assessments->count() > 0)
+                <div class="mt-6">
+                    <h4 class="text-sm font-medium text-gray-900 mb-3">Game Assessment Details</h4>
+                    <div class="space-y-3">
+                        @foreach($this->getAssessmentDetails() as $detail)
+                            <div class="border border-gray-200 rounded-lg p-3">
+                                <div class="flex items-center justify-between mb-2">
+                                    <h5 class="font-medium text-gray-900">{{ $detail['question_name'] }}</h5>
+                                    @if($detail['is_assessed'])
+                                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                            Assessed
+                                        </span>
+                                    @else
+                                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                            Pending
+                                        </span>
+                                    @endif
+                                </div>
+                                @if($detail['is_assessed'])
+                                    <div class="grid grid-cols-4 gap-2 text-xs">
+                                        <div>
+                                            <span class="text-gray-500">Base:</span>
+                                            <span class="font-medium">{{ number_format($detail['base_points'], 1) }}</span>
+                                        </div>
+                                        <div>
+                                            <span class="text-gray-500">Additional:</span>
+                                            <span class="font-medium text-green-600">+{{ number_format($detail['additional_points'], 1) }}</span>
+                                        </div>
+                                        <div>
+                                            <span class="text-gray-500">Penalty:</span>
+                                            <span class="font-medium text-red-600">-{{ number_format($detail['penalty_points'], 1) }}</span>
+                                        </div>
+                                        <div>
+                                            <span class="text-gray-500">Total:</span>
+                                            <span class="font-bold {{ $detail['total_score'] >= 0 ? 'text-green-600' : 'text-red-600' }}">{{ number_format($detail['total_score'], 1) }}</span>
+                                        </div>
+                                    </div>
+                                    @if($detail['notes'])
+                                        <div class="mt-2 text-xs text-gray-600">
+                                            <strong>Notes:</strong> {{ $detail['notes'] }}
+                                        </div>
+                                    @endif
+                                @else
+                                    <p class="text-xs text-gray-500">Assessment pending - game completed but not yet evaluated.</p>
+                                @endif
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+            @endif
         </div>
 
         <!-- Quiz Summary -->
@@ -154,6 +300,90 @@
                 </div>
             </div>
         </div>
+
+        <!-- Assessment Results -->
+        @if($assessments->count() > 0)
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-lg font-semibold text-gray-900">Fun Game Assessment Results</h2>
+                    @php
+                        $assessmentStatus = $this->getAssessmentStatus();
+                    @endphp
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium
+                        {{ $assessmentStatus === 'complete' ? 'bg-green-100 text-green-800' : 
+                           ($assessmentStatus === 'partial' ? 'bg-yellow-100 text-yellow-800' : 'bg-orange-100 text-orange-800') }}">
+                        @if($assessmentStatus === 'complete')
+                            <i class="fas fa-check-circle mr-1"></i>All Assessed
+                        @elseif($assessmentStatus === 'partial')
+                            <i class="fas fa-clock mr-1"></i>Partially Assessed
+                        @else
+                            <i class="fas fa-hourglass-half mr-1"></i>Pending Assessment
+                        @endif
+                    </span>
+                </div>
+                
+                <div class="space-y-4">
+                    @foreach($assessments as $assessment)
+                        @php
+                            $question = $questions->firstWhere('id', $assessment->question_id);
+                        @endphp
+                        <div class="border rounded-lg p-4 {{ $assessment->is_assessed ? 'bg-green-50 border-green-200' : 'bg-yellow-50 border-yellow-200' }}">
+                            <div class="flex items-center justify-between mb-2">
+                                <div>
+                                    <h4 class="font-medium text-gray-900">{{ $question->game_name ?? 'Fun Game' }}</h4>
+                                    <p class="text-sm text-gray-600">{{ $question->question }}</p>
+                                </div>
+                                <div class="text-right">
+                                    @if($assessment->is_assessed)
+                                        <div class="text-lg font-bold {{ $assessment->total_deposit >= 0 ? 'text-green-600' : 'text-red-600' }}">
+                                            {{ $assessment->total_deposit >= 0 ? '+' : '' }}{{ number_format($assessment->total_deposit, 1) }} pts
+                                        </div>
+                                        <div class="text-xs text-gray-500">
+                                            Deposit: {{ $assessment->deposit }} | Penalty: {{ $assessment->penalty }}
+                                        </div>
+                                    @else
+                                        <div class="text-sm text-yellow-600 font-medium">
+                                            <i class="fas fa-clock mr-1"></i>Pending Assessment
+                                        </div>
+                                    @endif
+                                </div>
+                            </div>
+                            
+                            @if($assessment->is_assessed && $assessment->notes)
+                                <div class="mt-3 p-3 bg-white rounded border">
+                                    <p class="text-sm text-gray-600"><strong>Assessor Notes:</strong></p>
+                                    <p class="text-sm text-gray-800 mt-1">{{ $assessment->notes }}</p>
+                                </div>
+                            @endif
+                        </div>
+                    @endforeach
+                </div>
+                
+                <!-- Assessment Summary -->
+                <div class="mt-6 p-4 bg-gray-50 rounded-lg">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                        <div>
+                            <span class="text-gray-500 font-medium">Assessment Progress:</span>
+                            <div class="text-lg font-semibold text-gray-900">
+                                {{ $assessments->where('is_assessed', true)->count() }}/{{ $assessments->count() }} Completed
+                            </div>
+                        </div>
+                        <div>
+                            <span class="text-gray-500 font-medium">Total Assessment Score:</span>
+                            <div class="text-lg font-semibold {{ $this->getAssessmentScore() >= 0 ? 'text-green-600' : 'text-red-600' }}">
+                                {{ $this->getAssessmentScore() >= 0 ? '+' : '' }}{{ number_format($this->getAssessmentScore(), 1) }} points
+                            </div>
+                        </div>
+                        <div>
+                            <span class="text-gray-500 font-medium">Final Quiz Score:</span>
+                            <div class="text-lg font-semibold {{ $this->getScoreColor() }}">
+                                {{ number_format($this->getFinalScore(), 1) }}/{{ $questionnaire->total_points }} ({{ $this->getScorePercentage() }}%)
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        @endif
 
         <!-- Detailed Results -->
         @if($showDetails)

@@ -4,6 +4,7 @@
 namespace App\Livewire\Admin;
 
 use Livewire\Component;
+use Livewire\WithFileUploads;
 use App\Models\Questionnaire;
 use Illuminate\Support\Str;
 use Livewire\Attributes\Validate;
@@ -11,11 +12,14 @@ use Carbon\Carbon;
 
 class QuestionnaireCreateForm extends Component
 {
+    use WithFileUploads;
     #[Validate('required|string|max:255')]
     public string $title = '';
 
     #[Validate('nullable|string|max:1000')]
     public string $description = '';
+
+    public $photo = null;
 
     #[Validate('required|integer|min:1|max:300')]
     public int $time_limit = 30;
@@ -45,11 +49,32 @@ class QuestionnaireCreateForm extends Component
         $this->isSubmitting = true;
         
         try {
-            $this->validate();
+            $this->validate([
+                'title' => 'required|string|max:255',
+                'description' => 'nullable|string|max:1000',
+                'photo' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+                'time_limit' => 'required|integer|min:1|max:300',
+                'start_date' => 'required|date|after_or_equal:today',
+                'end_date' => 'required|date|after:start_date',
+                'max_attempts' => 'required|integer|min:1|max:10',
+                'is_active' => 'boolean'
+            ]);
+
+            $photoPath = null;
+            if ($this->photo) {
+                try {
+                    $photoPath = $this->photo->store('questionnaire-photos', 'public');
+                } catch (\Exception $e) {
+                    \Log::error('Photo upload failed: ' . $e->getMessage());
+                    session()->flash('message', 'Photo upload failed, but questionnaire was created without photo.');
+                    session()->flash('message_type', 'warning');
+                }
+            }
 
             $questionnaire = Questionnaire::create([
                 'title' => trim($this->title),
                 'description' => trim($this->description),
+                'photo_path' => $photoPath,
                 'time_limit' => $this->time_limit,
                 'qr_code' => (string) Str::uuid(),
                 'created_by' => auth()->id(),
@@ -83,6 +108,7 @@ class QuestionnaireCreateForm extends Component
         $this->reset([
             'title', 
             'description', 
+            'photo',
             'time_limit', 
             'start_date', 
             'end_date', 
@@ -101,8 +127,25 @@ class QuestionnaireCreateForm extends Component
 
     public function updated($propertyName)
     {
-        // Real-time validation for better UX
-        $this->validateOnly($propertyName);
+        // Validate photo separately with custom logic
+        if ($propertyName === 'photo' && $this->photo) {
+            if (!in_array($this->photo->getClientOriginalExtension(), ['jpg', 'jpeg', 'png', 'gif'])) {
+                $this->addError('photo', 'The photo must be a valid image file (jpg, jpeg, png, gif).');
+                $this->photo = null;
+                return;
+            }
+            
+            if ($this->photo->getSize() > 2048 * 1024) { // 2MB in bytes
+                $this->addError('photo', 'The photo must not be larger than 2MB.');
+                $this->photo = null;
+                return;
+            }
+        }
+        
+        // Skip other validation for photo uploads due to temporary file issues
+        if ($propertyName !== 'photo') {
+            $this->validateOnly($propertyName);
+        }
         
         // Auto-adjust end date if start date changes
         if ($propertyName === 'start_date' && $this->start_date) {

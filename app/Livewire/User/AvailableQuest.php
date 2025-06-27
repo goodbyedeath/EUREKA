@@ -271,6 +271,7 @@ class AvailableQuest extends Component
     }
 
 
+
     public function render()
     {
         return view('livewire.user.available-quest');

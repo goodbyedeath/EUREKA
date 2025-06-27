@@ -4,6 +4,7 @@ namespace App\Livewire\User;
 
 use Livewire\Component;
 use App\Models\QuizAttempt;
+use App\Models\Team;
 use Illuminate\Support\Facades\Auth;
 
 class DashboardStats extends Component
@@ -12,6 +13,8 @@ class DashboardStats extends Component
     public $completedAttempts = 0;
     public $averageScore = 0;
     public $completionRate = 0;
+    public $teamPoints = 0;
+    public $teamName = '';
 
     protected $listeners = [
         'refresh-stats' => 'loadStats'
@@ -44,6 +47,18 @@ class DashboardStats extends Component
         $this->completionRate = $this->totalAttempts > 0 
             ? round(($this->completedAttempts / $this->totalAttempts) * 100, 0) 
             : 0;
+            
+        // Load team information
+        if ($user->team_id) {
+            $team = Team::find($user->team_id);
+            if ($team) {
+                $this->teamPoints = $team->points;
+                $this->teamName = $team->name;
+            }
+        } else {
+            $this->teamPoints = 0;
+            $this->teamName = '';
+        }
     }
 
     public function getScoreColor($score)

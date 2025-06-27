@@ -13,8 +13,18 @@ class Team extends Model
         'name',
         'description',
         'department',
+        'points',
+        'initial_points',
         'created_by'
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'points' => 'decimal:2',
+            'initial_points' => 'decimal:2',
+        ];
+    }
 
     public function members()
     {
@@ -47,5 +57,55 @@ class Team extends Model
             // Promote new leader
             $newLeader->update(['is_leader' => true]);
         });
+    }
+
+    /**
+     * Add points to the team
+     */
+    public function addPoints($amount, $reason = null)
+    {
+        $this->increment('points', $amount);
+        
+        // Log the transaction if logging is needed
+        // This can be expanded later for audit trail
+        return $this;
+    }
+
+    /**
+     * Deduct points from the team
+     */
+    public function deductPoints($amount, $reason = null)
+    {
+        $this->decrement('points', $amount);
+        
+        // Ensure points don't go below 0
+        if ($this->points < 0) {
+            $this->update(['points' => 0]);
+        }
+        
+        return $this;
+    }
+
+    /**
+     * Set initial points for the team
+     */
+    public function setInitialPoints($amount)
+    {
+        $this->update([
+            'initial_points' => $amount,
+            'points' => $amount
+        ]);
+        
+        return $this;
+    }
+
+    /**
+     * Reset points to initial amount
+     */
+    public function resetPoints()
+    {
+        $this->update(['points' => $this->initial_points]);
+        
+        return $this;
     }
 }

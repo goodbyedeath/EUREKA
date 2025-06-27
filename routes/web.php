@@ -10,6 +10,7 @@ use App\Livewire\User\QuizTake;
 use App\Livewire\User\QuestLocationDashboard;
 use App\Livewire\User\GameDashboard;
 use App\Livewire\User\QuizResults;
+use App\Livewire\User\GameAssessmentForm;
 use Ladumor\LaravelPwa\LaravelPwa;
 use App\Livewire\Forms\TeamForm;
 
@@ -69,6 +70,7 @@ Route::middleware(['auth', 'preventbackhistory'])->group(function () {
                 Route::get('/quiz/take/{questionnaireId}', QuizTake::class)->name('quiz.take');
                 Route::get('/quiz/continue/{attemptId}', QuizTake::class)->name('quiz.continue');
                 Route::get('/quiz/results/{attemptId}', QuizResults::class)->name('quiz.results');
+                Route::get('/game/assessment/{assessmentId}', GameAssessmentForm::class)->name('game.assessment');
             });
             Route::get('/quest-dashboard', QuestLocationDashboard::class)->name('user.quest-location-dashboard');
             Route::get('/game-dashboard', GameDashboard::class)->name('user.game-dashboard');

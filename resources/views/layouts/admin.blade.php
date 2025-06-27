@@ -246,6 +246,11 @@
                                 <i class="fas fa-images mr-2"></i>
                                 Slides
                             </a>
+                            <a href="/livewire/admin/team-manager" 
+                               class="nav-item {{ request()->is('livewire/admin/team-manager*') ? 'active bg-gradient-to-r from-indigo-500 to-purple-600 text-white' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50' }} flex-1 px-4 py-3 text-center font-medium text-sm transition-all duration-200 border-l border-gray-100">
+                                <i class="fas fa-users-cog mr-2"></i>
+                                Teams
+                            </a>
                         </nav>
                     </div>
                     
@@ -258,6 +263,7 @@
                             <option value="{{ route('admin.games') }}" {{ request()->routeIs('admin.games') ? 'selected' : '' }}>🎮 Game Management</option>
                             <option value="{{ route('admin.user-progress') }}" {{ request()->routeIs('admin.user-progress') ? 'selected' : '' }}>📈 User Progress</option>
                             <option value="{{ route('admin.hero-slides') }}" {{ request()->routeIs('admin.hero-slides') ? 'selected' : '' }}>🖼️ Hero Slides</option>
+                            <option value="/livewire/admin/team-manager" {{ request()->is('livewire/admin/team-manager*') ? 'selected' : '' }}>👥 Team Management</option>
                         </select>
                     </div>
                 </div>
