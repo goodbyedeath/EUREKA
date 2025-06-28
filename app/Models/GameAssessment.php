@@ -23,9 +23,9 @@ class GameAssessment extends Model
     protected function casts(): array
     {
         return [
-            'deposit' => 'decimal:2',
-            'penalty' => 'decimal:2', 
-            'total_deposit' => 'decimal:2',
+            'deposit' => 'integer',
+            'penalty' => 'integer', 
+            'total_deposit' => 'integer',
             'is_assessed' => 'boolean',
             'assessed_at' => 'datetime'
         ];

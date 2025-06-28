@@ -50,18 +50,18 @@ class TeamManager extends Component
         'name' => 'required|string|max:255',
         'description' => 'nullable|string|max:1000',
         'department' => 'nullable|string|max:255',
-        'points' => 'required|numeric|min:0|max:999999.99',
-        'initial_points' => 'required|numeric|min:0|max:999999.99',
+        'points' => 'required|integer|min:0|max:999999',
+        'initial_points' => 'required|integer|min:0|max:999999',
     ];
 
     protected $messages = [
         'name.required' => 'Team name is required.',
         'name.max' => 'Team name cannot exceed 255 characters.',
         'points.required' => 'Points are required.',
-        'points.numeric' => 'Points must be a valid number.',
+        'points.integer' => 'Points must be a whole number.',
         'points.min' => 'Points cannot be negative.',
         'initial_points.required' => 'Initial points are required.',
-        'initial_points.numeric' => 'Initial points must be a valid number.',
+        'initial_points.integer' => 'Initial points must be a whole number.',
         'initial_points.min' => 'Initial points cannot be negative.',
     ];
 
@@ -154,7 +154,7 @@ class TeamManager extends Component
     public function updatePoints()
     {
         $this->validate([
-            'pointsAmount' => 'required|numeric|min:0|max:999999.99',
+            'pointsAmount' => 'required|integer|min:0|max:999999',
             'pointsReason' => 'nullable|string|max:255',
         ]);
 
@@ -229,7 +229,7 @@ class TeamManager extends Component
     public function executeBulkPoints()
     {
         $this->validate([
-            'bulkAmount' => 'required|numeric|min:0|max:999999.99',
+            'bulkAmount' => 'required|integer|min:0|max:999999',
             'bulkReason' => 'required|string|max:255',
         ]);
         

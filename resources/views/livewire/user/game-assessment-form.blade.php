@@ -90,10 +90,10 @@
                         </div>
                         <input type="number" 
                                wire:model.live="additionalPoints" 
-                               step="0.01" 
+                               step="1" 
                                min="0"
                                class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                               placeholder="0.00">
+                               placeholder="0">
                         @error('additionalPoints') 
                             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                         @enderror
@@ -111,10 +111,10 @@
                         </div>
                         <input type="number" 
                                wire:model.live="penalty" 
-                               step="0.01" 
+                               step="1" 
                                min="0"
                                class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                               placeholder="0.00">
+                               placeholder="0">
                         @error('penalty') 
                             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                         @enderror

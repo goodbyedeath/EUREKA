@@ -53,27 +53,32 @@ class QrCodeScan extends Model
     /**
      * Record a QR code scan for a user and questionnaire.
      */
-    public static function recordScan(int $userId, int $questionnaireId, string $qrCode): self
+    public static function recordScan(int $userId, int $questionnaireId, string $qrCode): ?self
     {
-        // Check if there's already an active scan for this user and questionnaire
-        $existingScan = self::where('user_id', $userId)
-            ->where('questionnaire_id', $questionnaireId)
-            ->where('is_active', true)
-            ->first();
+        try {
+            // Check if there's already an active scan for this user and questionnaire
+            $existingScan = self::where('user_id', $userId)
+                ->where('questionnaire_id', $questionnaireId)
+                ->where('is_active', true)
+                ->first();
 
-        if ($existingScan) {
-            // Update the existing scan timestamp
-            $existingScan->update(['scanned_at' => now()]);
-            return $existingScan;
+            if ($existingScan) {
+                // Update the existing scan timestamp
+                $existingScan->update(['scanned_at' => now()]);
+                return $existingScan;
+            }
+
+            return self::create([
+                'user_id' => $userId,
+                'questionnaire_id' => $questionnaireId,
+                'qr_code' => $qrCode,
+                'scanned_at' => now(),
+                'is_active' => true
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Failed to record QR scan: ' . $e->getMessage());
+            return null;
         }
-
-        return self::create([
-            'user_id' => $userId,
-            'questionnaire_id' => $questionnaireId,
-            'qr_code' => $qrCode,
-            'scanned_at' => now(),
-            'is_active' => true
-        ]);
     }
 
     /**
@@ -82,7 +87,7 @@ class QrCodeScan extends Model
     public static function canUserScanQuestionnaire(int $userId, Questionnaire $questionnaire): bool
     {
         // If questionnaire has no max attempts limit, user can always scan
-        if (!$questionnaire->max_attempts) {
+        if (!$questionnaire->max_attempts || $questionnaire->max_attempts <= 0) {
             return true;
         }
 
@@ -96,18 +101,6 @@ class QrCodeScan extends Model
         if ($completedAttempts >= $questionnaire->max_attempts) {
             // Auto-deactivate any active scans for completed questionnaires
             self::deactivateScan($userId, $questionnaire->id);
-            return false;
-        }
-
-        // For questionnaires with max attempts = 1, allow scanning if:
-        // 1. User hasn't completed any attempts yet, OR
-        // 2. User hasn't scanned yet (first time)
-        if ($questionnaire->max_attempts === 1) {
-            // If no completed attempts, allow scanning (even if they scanned before but didn't complete)
-            if ($completedAttempts === 0) {
-                return true;
-            }
-            // If they have completed attempts, don't allow more scans
             return false;
         }
 

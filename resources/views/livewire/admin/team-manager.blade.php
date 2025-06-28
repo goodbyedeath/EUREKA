@@ -293,14 +293,14 @@
                                 <div class="grid grid-cols-2 gap-4">
                                     <div>
                                         <label class="block text-sm font-medium text-gray-700 mb-1">Initial Points</label>
-                                        <input type="number" wire:model="initial_points" step="0.01" min="0"
+                                        <input type="number" wire:model="initial_points" step="1" min="0"
                                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
                                         @error('initial_points') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
                                     </div>
 
                                     <div>
                                         <label class="block text-sm font-medium text-gray-700 mb-1">Current Points</label>
-                                        <input type="number" wire:model="points" step="0.01" min="0"
+                                        <input type="number" wire:model="points" step="1" min="0"
                                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
                                         @error('points') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
                                     </div>
@@ -367,7 +367,7 @@
                                         @if($pointsAction === 'add') Points to Add @endif
                                         @if($pointsAction === 'deduct') Points to Deduct @endif
                                     </label>
-                                    <input type="number" wire:model="pointsAmount" step="0.01" min="0"
+                                    <input type="number" wire:model="pointsAmount" step="1" min="0"
                                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
                                 </div>
 
@@ -492,7 +492,7 @@
                                         @if($bulkAction === 'add') Points to Add @endif
                                         @if($bulkAction === 'deduct') Points to Deduct @endif
                                     </label>
-                                    <input type="number" wire:model="bulkAmount" step="0.01" min="0"
+                                    <input type="number" wire:model="bulkAmount" step="1" min="0"
                                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500">
                                     @error('bulkAmount') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
                                 </div>

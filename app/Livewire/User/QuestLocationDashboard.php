@@ -498,53 +498,5 @@ class QuestLocationDashboard extends Component
         ]);
     }
 
-    // Delete all sample locations (for development/testing)
-    public function clearAllLocations()
-    {
-        try {
-            // Only allow if user is admin or in development
-            if (!Auth::user() || Auth::user()->role !== 'admin') {
-                $this->dispatch('showAlert', [
-                    'type' => 'error',
-                    'message' => 'Unauthorized: Admin access required.'
-                ]);
-                return;
-            }
-
-            $deletedCount = QuestLocation::count();
-            QuestLocation::truncate();
-            
-            // Clear user checkpoints as well
-            \App\Models\UserQuestCheckpoint::truncate();
-            
-            // Reset component data
-            $this->questLocations = collect([]);
-            $this->checkedInStatus = [];
-            $this->checkInCounts = [];
-            $this->locationDistances = [];
-            $this->withinRadiusStatus = [];
-            
-            Log::info('All quest locations cleared', [
-                'user_id' => Auth::id(),
-                'deleted_count' => $deletedCount
-            ]);
-            
-            $this->dispatch('showAlert', [
-                'type' => 'success',
-                'message' => "All quest locations cleared ({$deletedCount} locations removed)."
-            ]);
-            
-        } catch (\Exception $e) {
-            Log::error('Failed to clear quest locations', [
-                'user_id' => Auth::id(),
-                'error' => $e->getMessage()
-            ]);
-            
-            $this->dispatch('showAlert', [
-                'type' => 'error',
-                'message' => 'Failed to clear locations. Please try again.'
-            ]);
-        }
-    }
 
 }

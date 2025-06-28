@@ -286,7 +286,7 @@
                             <!-- Quest Points -->
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Quest Points *</label>
-                                <input type="number" wire:model="quest_points" min="0"
+                                <input type="number" wire:model="quest_points" min="0" step="1"
                                        class="w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
                                 @error('quest_points') 
                                     <span class="text-red-500 text-xs">{{ $errors->first('quest_points') }}</span> 
@@ -296,7 +296,7 @@
                             <!-- Max Check-ins -->
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Max Check-ins per User</label>
-                                <input type="number" wire:model="max_check_ins_per_user" min="1" 
+                                <input type="number" wire:model="max_check_ins_per_user" min="1" step="1" 
                                        placeholder="Leave empty for unlimited"
                                        class="w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
                                 @error('max_check_ins_per_user') 

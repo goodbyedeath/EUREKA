@@ -18,6 +18,7 @@ class UserAnswer extends Model
     {
         return [
             'is_correct' => 'boolean',
+            'points_earned' => 'integer',
         ];
     }
 

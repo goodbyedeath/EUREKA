@@ -170,7 +170,6 @@ async function requestCameraPermission() {
         
         return true;
     } catch (error) {
-        // Camera permission request failed
         return false;
     }
 }
@@ -181,7 +180,7 @@ async function initializeQRScanner() {
             await qrScanner.stop();
             await qrScanner.destroy();
         } catch (e) {
-            // Previous scanner cleanup failed
+            // Ignore cleanup errors
         }
         qrScanner = null;
     }
@@ -225,7 +224,6 @@ async function initializeQRScanner() {
         qrScanner = new QrScanner(
             video,
             result => {
-                // QR Code detected
                 $wire.handleQRScanned(result.data);
             },
             {
@@ -237,15 +235,10 @@ async function initializeQRScanner() {
             }
         );
 
-        // Start scanner
         await qrScanner.start();
         isInitialized = true;
-        // QR Scanner initialized successfully
         
     } catch (error) {
-        // QR Scanner initialization failed
-        
-        // Provide detailed error messages
         let errorMessage = 'Camera access failed';
         
         if (error.message.includes('HTTPS')) {
@@ -272,43 +265,34 @@ async function cleanupQRScanner() {
         try {
             await qrScanner.stop();
             await qrScanner.destroy();
-            // QR Scanner cleaned up successfully
         } catch (error) {
-            // Error cleaning up QR Scanner
+            // Ignore cleanup errors
         }
         qrScanner = null;
     }
     isInitialized = false;
 }
 
-// Listen for Livewire events
 $wire.on('start-qr-scanner', () => {
-    // Starting QR Scanner
-    setTimeout(initializeQRScanner, 300); // Small delay to ensure DOM is ready
+    setTimeout(initializeQRScanner, 300);
 });
 
 $wire.on('stop-qr-scanner', () => {
-    // Stopping QR Scanner
     cleanupQRScanner();
 });
 
 $wire.on('cleanup-qr-scanner', () => {
-    // Cleaning up QR Scanner
     cleanupQRScanner();
 });
 
-// Cleanup on navigation
 document.addEventListener('livewire:navigating', () => {
-    // Navigating - cleaning up QR Scanner
     cleanupQRScanner();
 });
 
-// Cleanup on page unload
 window.addEventListener('beforeunload', () => {
     cleanupQRScanner();
 });
 
-// Handle visibility changes (mobile browser backgrounding)
 document.addEventListener('visibilitychange', () => {
     if (document.hidden && qrScanner) {
         cleanupQRScanner();

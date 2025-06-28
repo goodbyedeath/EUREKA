@@ -200,28 +200,6 @@
                                 </div>
                                 <div class="stat-glow"></div>
                             </div>
-                            
-                            <div class="stat-card stat-warning">
-                                <div class="stat-icon">
-                                    <i class="fas fa-clock"></i>
-                                </div>
-                                <div class="stat-content">
-                                    <div class="stat-value">{{ $team->pending_quests ?? '0' }}</div>
-                                    <div class="stat-label">Pending</div>
-                                </div>
-                                <div class="stat-glow"></div>
-                            </div>
-                            
-                            <div class="stat-card stat-info">
-                                <div class="stat-icon">
-                                    <i class="fas fa-users"></i>
-                                </div>
-                                <div class="stat-content">
-                                    <div class="stat-value">{{ $team->members_count ?? '1' }}</div>
-                                    <div class="stat-label">Members</div>
-                                </div>
-                                <div class="stat-glow"></div>
-                            </div>
                         </div>
                     </div>
                     
@@ -232,10 +210,6 @@
                 </div>
             </div>
 
-            <!-- Advanced Stats Section -->
-            <div class="stats-section">
-                @livewire('user.dashboard-stats')
-            </div>
 
             <!-- Tab Navigation -->
             <div class="tab-navigation">

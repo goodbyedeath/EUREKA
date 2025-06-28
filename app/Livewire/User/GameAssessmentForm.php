@@ -22,17 +22,17 @@ class GameAssessmentForm extends Component
     public $totalDeposit = 0;
 
     protected $rules = [
-        'penalty' => 'required|numeric|min:0|max:999999.99',
-        'additionalPoints' => 'required|numeric|min:0|max:999999.99', 
+        'penalty' => 'required|integer|min:0|max:999999',
+        'additionalPoints' => 'required|integer|min:0|max:999999', 
         'notes' => 'nullable|string|max:1000'
     ];
 
     protected $messages = [
         'penalty.required' => 'Penalty amount is required.',
-        'penalty.numeric' => 'Penalty must be a valid number.',
+        'penalty.integer' => 'Penalty must be a whole number.',
         'penalty.min' => 'Penalty cannot be negative.',
         'additionalPoints.required' => 'Additional points amount is required.',
-        'additionalPoints.numeric' => 'Additional points must be a valid number.',
+        'additionalPoints.integer' => 'Additional points must be a whole number.',
         'additionalPoints.min' => 'Additional points cannot be negative.',
         'notes.max' => 'Notes cannot exceed 1000 characters.'
     ];
@@ -58,19 +58,19 @@ class GameAssessmentForm extends Component
         // Set deposit to team's initial points (always read-only)
         $user = auth()->user();
         if ($user->team) {
-            $this->deposit = (float)($user->team->initial_points ?? 1000);
+            $this->deposit = (int)($user->team->initial_points ?? 1000);
         } else {
-            $this->deposit = 1000.0; // Default fallback
+            $this->deposit = 1000; // Default fallback
         }
 
         // Load existing values if already assessed
         if ($this->assessment->is_assessed) {
-            $this->penalty = (float)($this->assessment->penalty ?? 0);
-            $this->additionalPoints = (float)($this->assessment->additional_points ?? 0);
+            $this->penalty = (int)($this->assessment->penalty ?? 0);
+            $this->additionalPoints = (int)($this->assessment->additional_points ?? 0);
             $this->notes = $this->assessment->notes ?? '';
         } else {
             // Set additional points to questionnaire total points for new assessments
-            $questionnaireTotalPoints = (float)($this->attempt->questionnaire->questions()->sum('points') ?? 0);
+            $questionnaireTotalPoints = (int)($this->attempt->questionnaire->questions()->sum('points') ?? 0);
             $this->additionalPoints = $questionnaireTotalPoints;
         }
         
@@ -89,9 +89,9 @@ class GameAssessmentForm extends Component
 
     public function calculateTotalDeposit()
     {
-        $deposit = (float)($this->deposit ?? 0);
-        $additionalPoints = (float)($this->additionalPoints ?? 0);
-        $penalty = (float)($this->penalty ?? 0);
+        $deposit = (int)($this->deposit ?? 0);
+        $additionalPoints = (int)($this->additionalPoints ?? 0);
+        $penalty = (int)($this->penalty ?? 0);
         $this->totalDeposit = $deposit + $additionalPoints - $penalty;
     }
 

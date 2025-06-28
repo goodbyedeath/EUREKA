@@ -21,8 +21,8 @@ class Team extends Model
     protected function casts(): array
     {
         return [
-            'points' => 'decimal:2',
-            'initial_points' => 'decimal:2',
+            'points' => 'integer',
+            'initial_points' => 'integer',
         ];
     }
 
@@ -107,5 +107,24 @@ class Team extends Model
         $this->update(['points' => $this->initial_points]);
         
         return $this;
+    }
+
+    /**
+     * Get total score (team points achievement)
+     */
+    public function getTotalScoreAttribute()
+    {
+        return $this->points ?? 0;
+    }
+
+    /**
+     * Get count of completed quests/quiz attempts by team members
+     */
+    public function getCompletedQuestsAttribute()
+    {
+        return $this->users()
+            ->join('quiz_attempts', 'users.id', '=', 'quiz_attempts.user_id')
+            ->where('quiz_attempts.status', 'completed')
+            ->count() ?? 0;
     }
 }

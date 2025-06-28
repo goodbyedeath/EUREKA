@@ -1,26 +1,6 @@
 <div class="container mx-auto px-4 py-8">
     <h1 class="text-2xl font-bold text-gray-800 mb-6">Quest Locations</h1>
 
-    <!-- DEBUG INFO - Remove this after testing -->
-    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-        <h3 class="font-semibold text-blue-800 mb-2">Debug Info:</h3>
-        <p><strong>Location Permission:</strong> {{ $locationPermissionGranted ? 'Yes' : 'No' }}</p>
-        <p><strong>User Latitude:</strong> {{ $userLatitude ?? 'Not set' }}</p>
-        <p><strong>User Longitude:</strong> {{ $userLongitude ?? 'Not set' }}</p>
-        <p><strong>Quest Locations Count:</strong> {{ $questLocations ? count($questLocations) : 'No data' }}</p>
-        
-        @auth
-            @if(auth()->user()->role === 'admin' && $questLocations && count($questLocations) > 0)
-                <div class="mt-3">
-                    <button wire:click="clearAllLocations" 
-                            onclick="return confirm('Are you sure you want to delete ALL quest locations? This cannot be undone!')"
-                            class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded text-sm">
-                        Clear All Sample Locations
-                    </button>
-                </div>
-            @endif
-        @endauth
-    </div>
 
     <!-- Location Permission -->
     @if(!$locationPermissionGranted)
@@ -61,10 +41,6 @@
         @if($questLocations && count($questLocations) > 0)
             @foreach($questLocations as $location)
                 <div class="bg-white rounded-lg shadow-md overflow-hidden">
-                    <!-- DEBUG: Show location ID -->
-                    <div class="bg-gray-100 px-4 py-2 text-sm text-gray-600">
-                        Location ID: {{ $location->id }}
-                    </div>
 
                     <div class="flex flex-col md:flex-row">
                         <!-- Map Section -->
@@ -78,8 +54,7 @@
                                     allowfullscreen="" 
                                     loading="lazy"
                                     referrerpolicy="no-referrer-when-downgrade"
-                                    onload="console.log('Map loaded successfully for location {{ $location->id }}')"
-                                    onerror="console.error('Map failed to load for location {{ $location->id }}'); this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                    onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
                                 </iframe>
                                 <!-- Fallback div that shows when iframe fails -->
                                 <div class="h-full flex items-center justify-center text-gray-500 absolute inset-0" style="display: none;">
@@ -89,7 +64,6 @@
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
                                         </svg>
                                         <p class="text-sm">Map temporarily unavailable</p>
-                                        <p class="text-xs text-gray-400">Location ID: {{ $location->id }}</p>
                                     </div>
                                 </div>
                             @else
@@ -100,7 +74,6 @@
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
                                         </svg>
                                         <p class="text-sm">No map available</p>
-                                        <p class="text-xs text-gray-400">Location ID: {{ $location->id }}</p>
                                     </div>
                                 </div>
                             @endif
@@ -151,13 +124,6 @@
                                         }
                                     @endphp
                                     
-                                    <!-- DEBUG: Show computed values -->
-                                    <div class="bg-gray-50 p-2 rounded text-xs text-gray-600 mb-3">
-                                        Distance: {{ $distance ?? 'null' }} | 
-                                        Within Radius: {{ $withinRadius ? 'true' : 'false' }} | 
-                                        Checked In: {{ $checkedIn ? 'true' : 'false' }} |
-                                        Location Enabled: {{ $locationEnabled ? 'true' : 'false' }}
-                                    </div>
                                     
                                     <!-- Distance Info -->
                                     <div class="flex items-center justify-between text-sm mb-3">
@@ -209,12 +175,6 @@
                                         {{ $checkInText }}
                                     </button>
 
-                                    <!-- TEST BUTTON -->
-                                    <button 
-                                        onclick="alert('Test button clicked for location {{ $location->id }}')"
-                                        class="w-full py-2 px-4 rounded text-sm font-medium bg-purple-500 hover:bg-purple-600 text-white">
-                                        Test Button (ID: {{ $location->id }})
-                                    </button>
 
                                     <!-- Status Helper Text -->
                                     @if(!$locationEnabled)
@@ -259,7 +219,6 @@
                 </svg>
                 <h3 class="text-lg font-medium text-gray-700 mb-2">No Quest Locations</h3>
                 <p class="text-gray-500">There are no active quest locations available at the moment.</p>
-                <p class="text-gray-400 text-sm mt-2">Quest Locations variable: {{ var_export($questLocations, true) }}</p>
             </div>
         @endif
     </div>
@@ -268,16 +227,6 @@
 <script>
 let watchId = null;
 
-// Error handling for the page
-window.addEventListener('error', function(e) {
-    console.warn('JavaScript error detected:', e.error);
-    // Don't let map errors break the entire page
-    if (e.filename && (e.filename.includes('maps') || e.filename.includes('google'))) {
-        console.log('Google Maps related error - continuing with fallback');
-        e.preventDefault();
-        return false;
-    }
-});
 
 function requestLocation() {
     if (!navigator.geolocation) {
@@ -288,11 +237,9 @@ function requestLocation() {
     // Get current position
     navigator.geolocation.getCurrentPosition(
         position => {
-            console.log('Location obtained:', position.coords.latitude, position.coords.longitude);
             @this.call('locationUpdated', position.coords.latitude, position.coords.longitude);
         },
         error => {
-            console.error('Location error:', error);
             alert('Unable to get your location. Please check your GPS settings.');
         },
         {
@@ -305,10 +252,9 @@ function requestLocation() {
     // Watch position for updates
     watchId = navigator.geolocation.watchPosition(
         position => {
-            console.log('Location updated:', position.coords.latitude, position.coords.longitude);
             @this.call('locationUpdated', position.coords.latitude, position.coords.longitude);
         },
-        error => console.error('Location watch error:', error),
+        error => {},
         {
             enableHighAccuracy: true,
             timeout: 10000,
@@ -317,45 +263,14 @@ function requestLocation() {
     );
 }
 
-// Initialize location on page load
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('DOM loaded, initializing location...');
     requestLocation();
-    
-    // Monitor iframe errors
-    const iframes = document.querySelectorAll('iframe');
-    iframes.forEach((iframe, index) => {
-        iframe.addEventListener('load', () => {
-            console.log(`Iframe ${index} loaded successfully`);
-        });
-        
-        iframe.addEventListener('error', () => {
-            console.error(`Iframe ${index} failed to load`);
-        });
-    });
 });
 
-// Cleanup on page unload
 window.addEventListener('beforeunload', () => {
     if (watchId) {
         navigator.geolocation.clearWatch(watchId);
     }
 });
 
-// Debug function to check what's causing the error
-function debugMapError() {
-    const iframes = document.querySelectorAll('iframe');
-    console.log('Found', iframes.length, 'iframes');
-    
-    iframes.forEach((iframe, index) => {
-        console.log(`Iframe ${index}:`, {
-            src: iframe.src,
-            loaded: iframe.contentDocument !== null,
-            display: window.getComputedStyle(iframe).display
-        });
-    });
-}
-
-// Call debug function after a short delay
-setTimeout(debugMapError, 2000);
 </script>

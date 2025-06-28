@@ -68,8 +68,8 @@ class GameAssessment extends Component
     public function saveAssessment()
     {
         $this->validate([
-            'deposit' => 'required|numeric|min:0',
-            'penalty' => 'required|numeric|min:0',
+            'deposit' => 'required|integer|min:0',
+            'penalty' => 'required|integer|min:0',
             'notes' => 'nullable|string|max:1000'
         ]);
 

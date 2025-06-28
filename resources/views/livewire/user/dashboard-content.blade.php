@@ -18,8 +18,6 @@
                 {{-- Normal Dashboard Content --}}
                 <div class="space-y-8">
                     @livewire('user.quest-location-dashboard')
-                    {{-- Stats Cards --}}
-                    @livewire('user.dashboard-stats')
 
                     {{-- Recent Activity --}}
                     @livewire('user.recent-attempts')
@@ -27,21 +25,12 @@
                     {{-- Quick Actions --}}
                     <div class="bg-white rounded-lg shadow p-4 sm:p-6">
                         <h3 class="text-base sm:text-lg font-medium text-gray-900 mb-4">{{ __('common.quick_actions') }}</h3>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                             <button 
                                 wire:click="switchToQuizzes"
                                 class="p-3 sm:p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-left">
                                 <i class="fas fa-clipboard-list text-blue-500 text-lg sm:text-xl mb-2"></i>
                                 <div class="font-medium text-gray-900 text-sm sm:text-base">{{ __('common.browse_quizzes') }}</div>
-                                <div class="text-xs sm:text-sm text-gray-500">{{ __('common.view_available_questionnaires') }}</div>
-                            </button>
-                            
-                            <button 
-                                wire:click="switchToGames"
-                                class="p-3 sm:p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-left">
-                                <i class="fas fa-map-marked-alt text-orange-500 text-lg sm:text-xl mb-2"></i>
-                                <div class="font-medium text-gray-900 text-sm sm:text-base">Outdoor Games</div>
-                                <div class="text-xs sm:text-sm text-gray-500">Explore outdoor locations</div>
                             </button>
                             
                             <button 
@@ -49,15 +38,6 @@
                                 class="p-3 sm:p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-left">
                                 <i class="fas fa-qrcode text-green-500 text-lg sm:text-xl mb-2"></i>
                                 <div class="font-medium text-gray-900 text-sm sm:text-base">{{ __('common.scan_qr') }}</div>
-                                <div class="text-xs sm:text-sm text-gray-500">{{ __('common.quick_access_to_quizzes') }}</div>
-                            </button>
-                            
-                            <button 
-                                onclick="Livewire.dispatch('refresh-dashboard')"
-                                class="p-3 sm:p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-left">
-                                <i class="fas fa-sync-alt text-purple-500 text-lg sm:text-xl mb-2"></i>
-                                <div class="font-medium text-gray-900 text-sm sm:text-base">{{ __('common.refresh_data') }}</div>
-                                <div class="text-xs sm:text-sm text-gray-500">{{ __('common.update_dashboard_content') }}</div>
                             </button>
                         </div>
                     </div>

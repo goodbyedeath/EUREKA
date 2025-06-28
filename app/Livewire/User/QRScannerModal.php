@@ -34,6 +34,14 @@ class QRScannerModal extends Component
 
     public function handleQRScanned($qrCode)
     {
+        // Sanitize input
+        $qrCode = is_string($qrCode) ? trim($qrCode) : '';
+        
+        if (empty($qrCode) || strlen($qrCode) > 255) {
+            $this->error = 'Invalid QR code detected.';
+            return;
+        }
+        
         $this->scannedCode = $qrCode;
         $this->isScanning = false;
         $this->lookupQuestionnaire($qrCode);
@@ -58,15 +66,9 @@ class QRScannerModal extends Component
                 return;
             }
 
-            // Check if user can scan this questionnaire (using new QrCodeScan model)
+            // Check if user can scan this questionnaire
             if (!QrCodeScan::canUserScanQuestionnaire(auth()->id(), $this->questionnaire)) {
-                // Only set session flash if one doesn't already exist to prevent duplicates
-                if (!session()->has('error')) {
-                    session()->flash('error', 'You have reached the maximum number of attempts for this questionnaire');
-                }
                 $this->error = 'You have reached the maximum number of attempts for this questionnaire';
-                
-                // Set questionnaire to null to prevent showing the start quiz button
                 $this->questionnaire = null;
                 return;
             }
@@ -74,11 +76,6 @@ class QRScannerModal extends Component
             // Record the QR code scan
             QrCodeScan::recordScan(auth()->id(), $this->questionnaire->id, $code);
 
-            // Success - questionnaire found and user can access it
-            if (!session()->has('success') && !session()->has('error')) {
-                session()->flash('success', 'Questionnaire unlocked successfully!');
-            }
-            
             // Dispatch event to show the questionnaire in available quizzes
             $this->dispatch('qr-code-scanned', qr_code: $code);
             
@@ -86,14 +83,18 @@ class QRScannerModal extends Component
             $this->closeModal();
             
         } catch (\Exception $e) {
-            $this->error = 'Error looking up questionnaire: ' . $e->getMessage();
+            \Log::error('QR Scanner error: ' . $e->getMessage());
+            $this->error = 'An error occurred while processing the QR code. Please try again.';
         }
     }
 
     public function manualEntry($code)
     {
-        if (!empty($code)) {
+        $code = is_string($code) ? trim($code) : '';
+        if (!empty($code) && strlen($code) <= 255) {
             $this->handleQRScanned($code);
+        } else {
+            $this->error = 'Please enter a valid QR code.';
         }
     }
 

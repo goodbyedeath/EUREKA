@@ -260,7 +260,7 @@
                                     <label for="deposit" class="block text-sm font-medium text-gray-700">Deposit</label>
                                     <input type="number" 
                                            wire:model.live="deposit" 
-                                           step="0.01" 
+                                           step="1" 
                                            min="0"
                                            class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
                                     @error('deposit') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
@@ -270,7 +270,7 @@
                                     <label for="penalty" class="block text-sm font-medium text-gray-700">Penalty</label>
                                     <input type="number" 
                                            wire:model.live="penalty" 
-                                           step="0.01" 
+                                           step="1" 
                                            min="0"
                                            class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
                                     @error('penalty') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror

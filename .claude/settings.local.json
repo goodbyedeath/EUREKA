@@ -54,7 +54,11 @@
       "WebFetch(domain:www.edureka.co)",
       "Bash(sudo apt:*)",
       "Bash(composer --version)",
-      "Bash(mysql:*)"
+      "Bash(mysql:*)",
+      "Bash(git checkout:*)",
+      "Bash(curl:*)",
+      "Bash(dpkg:*)",
+      "Bash(ss:*)"
     ],
     "deny": []
   }
