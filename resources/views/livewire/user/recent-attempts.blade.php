@@ -119,12 +119,12 @@
             </table>
         </div>
 
-        @if($recentAttempts && $recentAttempts->count() >= 10)
+        @if($this->hasMoreAttempts())
             <div class="px-6 py-3 border-t border-gray-200 bg-gray-50">
                 <div class="text-center">
                     <button wire:click="loadMoreAttempts" 
-                            class="text-sm text-blue-600 hover:text-blue-800 focus:outline-none">
-                        Load More Attempts
+                            class="text-sm text-blue-600 hover:text-blue-800 focus:outline-none focus:underline">
+                        Load More Attempts ({{ $recentAttempts->count() }} of {{ $totalAttempts }})
                     </button>
                 </div>
             </div>

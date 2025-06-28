@@ -57,7 +57,7 @@ class QuizTake extends Component
         RateLimiter::hit($key, 60); // 1 minute window
 
         if ($attemptId) {
-            // Load existing attempt
+            // Load existing attempt (quiz continuation)
             $this->attempt = QuizAttempt::with(['questionnaire.questions', 'userAnswers'])
                 ->where('id', $attemptId)
                 ->where('user_id', auth()->id())
@@ -73,12 +73,13 @@ class QuizTake extends Component
                 abort(403, 'This quiz attempt cannot be continued.');
             }
             
-            // Check if attempt hasn't expired - this is crucial for timer accuracy
+            // Enhanced timer validation for continued quizzes
             if ($this->attempt->questionnaire->time_limit) {
                 $elapsed = now()->diffInSeconds($this->attempt->started_at);
                 $timeLimit = $this->attempt->questionnaire->time_limit * 60;
                 
                 if ($elapsed >= $timeLimit) {
+                    session()->flash('warning', 'Quiz time has expired. Submitting automatically.');
                     $this->handleTimeExpiry();
                     return;
                 }
@@ -87,6 +88,9 @@ class QuizTake extends Component
             $this->questionnaire = $this->attempt->questionnaire;
             $this->loadExistingAnswers();
             $this->startTime = $this->attempt->started_at;
+            
+            // Set flag for frontend to know this is a continued quiz
+            session()->flash('quiz_continued', true);
             
         } elseif ($questionnaireId) {
             // Cache questionnaire data to reduce DB queries
@@ -142,11 +146,6 @@ class QuizTake extends Component
         
         $this->questions = $questions->toArray();
         
-        // Log for debugging
-        \Log::info('Loaded questions for questionnaire ' . $this->questionnaire->id, [
-            'count' => count($this->questions),
-            'questions' => $this->questions
-        ]);
     }
     
     private function getCorrectAnswers()
@@ -162,7 +161,7 @@ class QuizTake extends Component
         );
     }
 
-    // Simple timer calculation based on server time
+    // Enhanced timer calculation for both new and continued quizzes
     public function calculateTimeRemaining()
     {
         if (!$this->questionnaire->time_limit || $this->isCompleted || !$this->attempt) {
@@ -170,7 +169,7 @@ class QuizTake extends Component
             return;
         }
 
-        // Simple calculation from start time
+        // Get the quiz start time
         $startTime = $this->attempt->started_at;
         if (!$startTime) {
             $this->timeRemaining = null;
@@ -179,7 +178,7 @@ class QuizTake extends Component
         
         $now = now();
         $elapsed = $now->getTimestamp() - $startTime->getTimestamp();
-        $totalTime = $this->questionnaire->time_limit * 60;
+        $totalTime = $this->questionnaire->time_limit * 60; // Convert minutes to seconds
         
         $this->timeRemaining = max(0, $totalTime - $elapsed);
         
@@ -231,17 +230,27 @@ class QuizTake extends Component
         return sprintf('%d:%02d', $minutes, $seconds);
     }
 
-    // Get basic timing data for JavaScript initialization
+    // Get comprehensive timing data for JavaScript initialization
     public function getQuizTimingData()
     {
         $this->calculateTimeRemaining();
         
-        return [
+        $data = [
             'hasTimeLimit' => (bool) $this->questionnaire->time_limit,
             'timeRemaining' => $this->timeRemaining,
-            'startTime' => $this->attempt->started_at->getTimestamp(),
             'timeLimitSeconds' => $this->questionnaire->time_limit ? $this->questionnaire->time_limit * 60 : null,
+            'isCompleted' => $this->isCompleted,
+            'isTimerExpired' => $this->timerExpired,
+            'formattedTimeRemaining' => $this->getFormattedTimeRemaining(),
         ];
+        
+        if ($this->attempt && $this->attempt->started_at) {
+            $data['startTime'] = $this->attempt->started_at->getTimestamp();
+            $data['elapsedTime'] = now()->getTimestamp() - $this->attempt->started_at->getTimestamp();
+            $data['isContinuedQuiz'] = $data['elapsedTime'] > 60; // If more than 1 minute has passed, it's likely a continued quiz
+        }
+        
+        return $data;
     }
 
     public function calculateTotalPoints()
@@ -277,8 +286,14 @@ class QuizTake extends Component
 
     public function saveAnswer($questionId, $answer)
     {
+        // Debug logging
+        if (config('app.debug')) {
+            \Log::debug("QuizTake: saveAnswer called - QuestionID: {$questionId}, Answer: '{$answer}'");
+        }
+        
         // Prevent saving answers if quiz is completed
         if (!$this->attempt->canEditAnswers()) {
+            \Log::warning("QuizTake: Cannot edit answers - quiz has been submitted. AttemptID: {$this->attempt->id}");
             session()->flash('error', 'Cannot edit answers - quiz has been submitted.');
             return;
         }
@@ -286,12 +301,17 @@ class QuizTake extends Component
         // Validate the answer before saving
         $question = collect($this->questions)->firstWhere('id', $questionId);
         if (!$question) {
+            \Log::error("QuizTake: Question not found - QuestionID: {$questionId}");
             return;
         }
 
         try {
             $answer = $this->validateAnswer($question, $answer);
+            if (config('app.debug')) {
+                \Log::debug("QuizTake: Answer validated successfully - QuestionID: {$questionId}, ValidatedAnswer: '{$answer}'");
+            }
         } catch (ValidationException $e) {
+            \Log::error("QuizTake: Answer validation failed - QuestionID: {$questionId}, Error: " . $e->getMessage());
             // Handle validation error
             session()->flash('error', $e->getMessage());
             return;
@@ -300,10 +320,23 @@ class QuizTake extends Component
         $this->answers[$questionId] = $answer;
         $this->pendingAnswers[$questionId] = $answer;
         
-        // Batch save every 5 answers or on navigation
-        if (count($this->pendingAnswers) >= 5) {
-            $this->flushPendingAnswers();
+        if (config('app.debug')) {
+            \Log::debug("QuizTake: Answer added to pending - QuestionID: {$questionId}, PendingCount: " . count($this->pendingAnswers));
         }
+        
+        // EMERGENCY FIX: Force immediate save instead of batching
+        if (config('app.debug')) {
+            \Log::debug("QuizTake: Force-flushing pending answers (immediate save enabled)");
+        }
+        $this->flushPendingAnswers();
+        
+        // Original batching logic (commented out for debugging)
+        // if (count($this->pendingAnswers) >= 5) {
+        //     if (config('app.debug')) {
+        //         \Log::debug("QuizTake: Auto-flushing pending answers (5+ answers)");
+        //     }
+        //     $this->flushPendingAnswers();
+        // }
     }
 
     public function saveAnswerDebounced($questionId, $answer)
@@ -326,7 +359,14 @@ class QuizTake extends Component
 
     public function flushPendingAnswers()
     {
+        if (config('app.debug')) {
+            \Log::debug("QuizTake: flushPendingAnswers called - PendingCount: " . count($this->pendingAnswers));
+        }
+        
         if (empty($this->pendingAnswers)) {
+            if (config('app.debug')) {
+                \Log::debug("QuizTake: No pending answers to flush");
+            }
             return;
         }
         
@@ -372,12 +412,27 @@ class QuizTake extends Component
             }
             
             if (!empty($data)) {
+                if (config('app.debug')) {
+                    \Log::debug("QuizTake: Saving " . count($data) . " answers to database");
+                    foreach ($data as $answerData) {
+                        \Log::debug("QuizTake: Saving - Q{$answerData['question_id']}: '{$answerData['answer']}' (Correct: " . ($answerData['is_correct'] ? 'YES' : 'NO') . ")");
+                    }
+                }
+                
                 // Use upsert for better performance
                 UserAnswer::upsert(
                     $data,
                     ['quiz_attempt_id', 'question_id'],
                     ['answer', 'is_correct', 'points_earned', 'updated_at']
                 );
+                
+                if (config('app.debug')) {
+                    \Log::debug("QuizTake: Successfully saved answers to database");
+                }
+            } else {
+                if (config('app.debug')) {
+                    \Log::debug("QuizTake: No data to save to database");
+                }
             }
         });
         
@@ -475,6 +530,9 @@ class QuizTake extends Component
             }
             
             // Flush any pending answers before submission
+            if (config('app.debug')) {
+                \Log::debug("QuizTake: About to flush pending answers before submission. Pending count: " . count($this->pendingAnswers));
+            }
             $this->flushPendingAnswers();
             
             $this->endTime = now();
@@ -492,7 +550,7 @@ class QuizTake extends Component
                 'status' => QuizAttempt::STATUS_COMPLETED,
                 'completed_at' => $this->endTime,
                 'total_score' => $this->earnedPoints,
-                'total_time_seconds' => $this->endTime->diffInSeconds($this->startTime),
+                'total_time_seconds' => $this->endTime->diffInSeconds($lockedAttempt->started_at),
             ]);
 
             // Update local attempt reference
@@ -503,7 +561,6 @@ class QuizTake extends Component
         });
 
         $this->isCompleted = true;
-        $this->showResults = true;
         $this->quizLocked = false; // Unlock quiz after completion
         $this->preventNavigation = false; // Allow navigation after completion
 
@@ -517,6 +574,9 @@ class QuizTake extends Component
             'earnedPoints' => $this->earnedPoints,
             'attemptId' => $this->attempt->id
         ]);
+
+        // Redirect to dedicated results page to ensure fresh data
+        return $this->redirect(route('quiz.results', ['attemptId' => $this->attempt->id]), navigate: true);
     }
 
     public function isFunGameOnlyQuiz()
@@ -562,7 +622,7 @@ class QuizTake extends Component
                 'status' => QuizAttempt::STATUS_COMPLETED,
                 'completed_at' => $this->endTime,
                 'total_score' => 0, // Score comes from assessments
-                'total_time_seconds' => $this->endTime->diffInSeconds($this->startTime),
+                'total_time_seconds' => $this->endTime->diffInSeconds($lockedAttempt->started_at),
             ]);
 
             $this->attempt = $lockedAttempt;
@@ -570,7 +630,6 @@ class QuizTake extends Component
         });
 
         $this->isCompleted = true;
-        $this->showResults = true;
         $this->quizLocked = false;
         $this->preventNavigation = false;
 
@@ -582,6 +641,9 @@ class QuizTake extends Component
             'earnedPoints' => 0,
             'attemptId' => $this->attempt->id
         ]);
+
+        // Redirect to dedicated results page to ensure fresh data
+        return $this->redirect(route('quiz.results', ['attemptId' => $this->attempt->id]), navigate: true);
     }
 
     public function calculateScore()
@@ -749,9 +811,16 @@ class QuizTake extends Component
     // Watch for answer changes and auto-save
     public function updatedAnswers($value, $key)
     {
+        if (config('app.debug')) {
+            \Log::debug("QuizTake: updatedAnswers triggered - Key: {$key}, Value: '{$value}', Is Numeric: " . (is_numeric($key) ? 'YES' : 'NO'));
+        }
+        
         if (is_numeric($key)) {
             // Prevent editing if quiz is completed
             if (!$this->attempt->canEditAnswers()) {
+                if (config('app.debug')) {
+                    \Log::debug("QuizTake: Cannot edit answers, resetting value for key: {$key}");
+                }
                 // Reset the answer to prevent frontend changes
                 $this->answers[$key] = $this->attempt->userAnswers()->where('question_id', $key)->first()->answer ?? '';
                 return;
@@ -761,13 +830,30 @@ class QuizTake extends Component
             $question = collect($this->questions)->firstWhere('id', $key);
             
             if ($question && $question['type'] === 'text') {
+                if (config('app.debug')) {
+                    \Log::debug("QuizTake: Skipping immediate save for text question: {$key}");
+                }
                 // Use wire:model.blur instead of immediate saving for text
                 // This is handled in the Blade template
                 return;
             }
             
+            if (config('app.debug')) {
+                \Log::debug("QuizTake: Calling saveAnswer from updatedAnswers - Key: {$key}, Value: '{$value}'");
+            }
+            
             // For radio buttons and other inputs, save immediately
             $this->saveAnswer($key, $value);
+            
+            // EMERGENCY FIX: Also force flush after every answer change
+            if (config('app.debug')) {
+                \Log::debug("QuizTake: Force-flushing from updatedAnswers as backup");
+            }
+            $this->flushPendingAnswers();
+        } else {
+            if (config('app.debug')) {
+                \Log::debug("QuizTake: Skipping non-numeric key: {$key}");
+            }
         }
     }
     
@@ -886,7 +972,7 @@ class QuizTake extends Component
 
         session()->flash('success', 'Game completed! Please fill out the assessment form.');
         
-        // Redirect to assessment page
+        // Always redirect to assessment page after completing any fun game
         return $this->redirect(route('game.assessment', ['assessmentId' => $assessment->id]), navigate: true);
     }
 
@@ -914,5 +1000,57 @@ class QuizTake extends Component
             'answeredPercentage' => $this->getAnsweredPercentage(),
             'formattedTimeRemaining' => $this->getFormattedTimeRemaining(),
         ]);
+    }
+
+    /**
+     * DIAGNOSTIC METHOD: Test answer saving manually
+     */
+    public function testAnswerSaving($questionId = null, $testAnswer = 'TEST_ANSWER')
+    {
+        if (!config('app.debug')) {
+            return ['error' => 'Debug mode must be enabled'];
+        }
+
+        \Log::debug("QuizTake: DIAGNOSTIC - Testing answer saving");
+        
+        // Use first question if no ID provided
+        if (!$questionId && !empty($this->questions)) {
+            $questionId = $this->questions[0]['id'];
+        }
+        
+        $diagnostic = [
+            'timestamp' => now()->toDateTimeString(),
+            'attempt_id' => $this->attempt ? $this->attempt->id : 'NULL',
+            'attempt_status' => $this->attempt ? $this->attempt->status : 'NULL',
+            'can_edit_answers' => $this->attempt ? $this->attempt->canEditAnswers() : false,
+            'question_id' => $questionId,
+            'test_answer' => $testAnswer,
+            'questions_count' => count($this->questions ?? []),
+            'pending_answers_before' => count($this->pendingAnswers),
+        ];
+
+        try {
+            // Test the full saving process
+            $this->saveAnswer($questionId, $testAnswer);
+            
+            $diagnostic['save_completed'] = true;
+            $diagnostic['pending_answers_after'] = count($this->pendingAnswers);
+            
+            // Check if answer was actually saved to database
+            $savedAnswer = UserAnswer::where('quiz_attempt_id', $this->attempt->id)
+                ->where('question_id', $questionId)
+                ->first();
+                
+            $diagnostic['database_saved'] = $savedAnswer ? true : false;
+            $diagnostic['database_answer'] = $savedAnswer ? $savedAnswer->answer : null;
+            
+        } catch (\Exception $e) {
+            $diagnostic['error'] = $e->getMessage();
+            $diagnostic['save_completed'] = false;
+        }
+
+        \Log::debug("QuizTake: DIAGNOSTIC RESULTS", $diagnostic);
+        
+        return $diagnostic;
     }
 }

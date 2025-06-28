@@ -1,16 +1,4 @@
 <div>
-    {{-- DEBUG: Show all questions data --}}
-    <div class="bg-red-100 border border-red-300 rounded p-3 m-4">
-        <strong>DEBUG - All Questions:</strong><br>
-        Total questions: {{ count($questions ?? []) }}<br>
-        @if(isset($questions))
-            @foreach($questions as $index => $q)
-                Question {{ $index + 1 }}: Type={{ $q['type'] ?? 'N/A' }}, 
-                Images={{ !empty($q['images']) ? 'YES(' . count($q['images']) . ')' : 'NO' }}<br>
-            @endforeach
-        @endif
-        Current Question Index: {{ $currentQuestionIndex ?? 'N/A' }}
-    </div>
 
     @if(!$isCompleted)
         {{-- Quiz Header --}}
@@ -31,12 +19,142 @@
                     @endphp
                     
                     @if($showTimer)
-                        <div class="flex items-center space-x-2 bg-white rounded-lg px-3 py-2 shadow-sm border" 
-                             x-data="countdownTimer({{ $safeTimeRemaining }}, '{{ $questionnaire->id }}')" 
-                             x-init="init()">
-                            <i class="fas fa-clock" :class="isWarning ? 'text-red-500' : 'text-blue-500'"></i>
-                            <span x-text="displayTime" 
-                                  :class="isWarning ? 'font-bold text-red-600' : 'font-semibold text-gray-800'"></span>
+                        <div class="enhanced-timer-container" 
+                             x-data="{
+                                timeRemaining: {{ $safeTimeRemaining }},
+                                displayTime: '{{ sprintf("%d:%02d", floor($safeTimeRemaining / 60), $safeTimeRemaining % 60) }}',
+                                isWarning: {{ $safeTimeRemaining <= 300 ? 'true' : 'false' }},
+                                isCritical: {{ $safeTimeRemaining <= 60 ? 'true' : 'false' }},
+                                timerInterval: null,
+                                progressPercentage: {{ $questionnaire->time_limit ? round(($safeTimeRemaining / ($questionnaire->time_limit * 60)) * 100, 2) : 100 }},
+                                totalTimeLimit: {{ $questionnaire->time_limit * 60 }},
+                                animationClass: '',
+                                init() {
+                                    this.startTimer();
+                                },
+                                startTimer() {
+                                    if (window.timeLimitSeconds && window.quizStartTime && !window.isQuizCompleted) {
+                                        this.timerInterval = setInterval(() => {
+                                            this.calculateTimeRemaining();
+                                            if (this.timeRemaining <= 0) {
+                                                this.handleTimeExpiry();
+                                            }
+                                        }, 1000);
+                                    }
+                                },
+                                calculateTimeRemaining() {
+                                    if (window.timeLimitSeconds && window.quizStartTime) {
+                                        const currentTime = Math.floor(Date.now() / 1000);
+                                        const elapsed = currentTime - window.quizStartTime;
+                                        this.timeRemaining = Math.max(0, window.timeLimitSeconds - elapsed);
+                                        this.displayTime = this.formatTime(this.timeRemaining);
+                                        
+                                        // Update warning states
+                                        const wasWarning = this.isWarning;
+                                        const wasCritical = this.isCritical;
+                                        this.isWarning = this.timeRemaining <= 300 && this.timeRemaining > 0;
+                                        this.isCritical = this.timeRemaining <= 60 && this.timeRemaining > 0;
+                                        
+                                        // Calculate progress percentage
+                                        this.progressPercentage = this.totalTimeLimit > 0 ? 
+                                            Math.round((this.timeRemaining / this.totalTimeLimit) * 100) : 0;
+                                        
+                                        // Trigger animations on state change
+                                        if (!wasWarning && this.isWarning) {
+                                            this.triggerWarningAlert('5 minutes remaining!');
+                                        }
+                                        if (!wasCritical && this.isCritical) {
+                                            this.triggerWarningAlert('1 minute remaining!');
+                                            this.animationClass = 'pulse-critical';
+                                        }
+                                    }
+                                },
+                                formatTime(seconds) {
+                                    const minutes = Math.floor(Math.max(0, seconds) / 60);
+                                    const secs = Math.max(0, seconds) % 60;
+                                    return minutes + ':' + secs.toString().padStart(2, '0');
+                                },
+                                handleTimeExpiry() {
+                                    if (this.timerInterval) {
+                                        clearInterval(this.timerInterval);
+                                        this.timerInterval = null;
+                                    }
+                                    this.timeRemaining = 0;
+                                    this.displayTime = '0:00';
+                                    this.progressPercentage = 0;
+                                    this.animationClass = 'timer-expired';
+                                    
+                                    if (this.$wire) {
+                                        this.$wire.call('handleTimeExpiry');
+                                    }
+                                },
+                                triggerWarningAlert(message) {
+                                    // Show a subtle notification
+                                    const notification = document.createElement('div');
+                                    notification.className = 'timer-notification';
+                                    notification.innerHTML = `
+                                        <div class='timer-notification-content'>
+                                            <i class='fas fa-clock'></i>
+                                            <span>${message}</span>
+                                        </div>
+                                    `;
+                                    document.body.appendChild(notification);
+                                    
+                                    setTimeout(() => {
+                                        if (notification.parentNode) {
+                                            notification.parentNode.removeChild(notification);
+                                        }
+                                    }, 3000);
+                                },
+                                getTimerStatusText() {
+                                    if (this.isCritical) return 'Critical!';
+                                    if (this.isWarning) return 'Warning';
+                                    return 'Active';
+                                },
+                                getTimerIcon() {
+                                    if (this.isCritical) return 'fas fa-exclamation-triangle';
+                                    if (this.isWarning) return 'fas fa-clock';
+                                    return 'fas fa-stopwatch';
+                                }
+                             }">
+                            
+                            <!-- Enhanced Timer Display -->
+                            <div class="timer-widget" 
+                                 :class="{
+                                     'timer-normal': !isWarning && !isCritical,
+                                     'timer-warning': isWarning && !isCritical,
+                                     'timer-critical': isCritical,
+                                     'animate-pulse': isCritical
+                                 }">
+                                
+                                <!-- Timer Icon and Time -->
+                                <div class="timer-display-section">
+                                    <div class="timer-icon-wrapper">
+                                        <i :class="getTimerIcon()" class="timer-icon"></i>
+                                    </div>
+                                    <div class="timer-time-section">
+                                        <div class="timer-time" x-text="displayTime"></div>
+                                        <div class="timer-status" x-text="getTimerStatusText()"></div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Progress Bar -->
+                                <div class="timer-progress-container">
+                                    <div class="timer-progress-bar" 
+                                         :style="`width: ${progressPercentage}%`"
+                                         :class="{
+                                             'progress-normal': !isWarning && !isCritical,
+                                             'progress-warning': isWarning && !isCritical,
+                                             'progress-critical': isCritical
+                                         }"></div>
+                                </div>
+                                
+                                <!-- Time Details -->
+                                <div class="timer-details">
+                                    <span class="timer-label">Time Remaining</span>
+                                    <span class="timer-percentage" x-text="`${progressPercentage}%`"></span>
+                                </div>
+                            </div>
                         </div>
                     @elseif($showTimeUp)
                         <div class="flex items-center space-x-2 bg-red-50 rounded-lg px-3 py-2 border border-red-200">
@@ -125,19 +243,6 @@
                             </div>
                         
                         @elseif($currentQuestion['type'] === 'fun_game')
-                            {{-- DEBUG: Show current question data --}}
-                            <div class="mb-4 p-3 bg-yellow-100 border border-yellow-300 rounded">
-                                <strong>DEBUG - Current Question Data:</strong><br>
-                                Type: {{ $currentQuestion['type'] ?? 'N/A' }}<br>
-                                Images: {{ !empty($currentQuestion['images']) ? 'YES (' . count($currentQuestion['images']) . ')' : 'NO' }}<br>
-                                @if(!empty($currentQuestion['images']))
-                                    Image paths: 
-                                    @foreach($currentQuestion['images'] as $img)
-                                        <br>- {{ $img }}
-                                    @endforeach
-                                @endif
-                            </div>
-                            
                             <div class="fun-game-container">
                                 {{-- Game Header --}}
                                 <div class="bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg p-6 mb-6">
@@ -169,9 +274,8 @@
                                                 <img src="{{ $imageUrl }}" 
                                                      alt="Game Image" 
                                                      class="w-full h-48 object-cover hover:scale-105 transition-transform cursor-pointer"
-                                                     onclick="console.log('Image clicked:', '{{ $imageUrl }}'); openImageModal('{{ $imageUrl }}')"
-                                                     onerror="console.log('Image failed to load:', '{{ $imageUrl }}'); this.style.display='none'; this.nextElementSibling.style.display='block';"
-                                                     onload="console.log('Image loaded successfully:', '{{ $imageUrl }}')">
+                                                     onclick="openImageModal('{{ $imageUrl }}')"
+                                                     onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
                                                 <div style="display:none;" class="w-full h-48 bg-gray-200 flex items-center justify-center text-gray-500">
                                                     <div class="text-center">
                                                         <i class="fas fa-image text-4xl mb-2"></i>
@@ -287,6 +391,28 @@
                         </div>
                     @endif
                     
+                    {{-- Debug Tools --}}
+                    @if(config('app.debug'))
+                        <div class="flex items-center justify-between mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                            <div class="text-yellow-800 text-sm">
+                                <i class="fas fa-bug mr-2"></i>
+                                Debug Mode: Answer saving diagnostics enabled
+                            </div>
+                            <button onclick="testAnswerSaving()" class="px-3 py-1 bg-yellow-600 text-white text-xs rounded hover:bg-yellow-700">
+                                🔧 Test Save
+                            </button>
+                        </div>
+                        
+                        <script>
+                        function testAnswerSaving() {
+                            @this.call('testAnswerSaving').then(result => {
+                                console.log('Answer Saving Test Result:', result);
+                                alert('Test completed. Check browser console and Laravel logs for details.');
+                            });
+                        }
+                        </script>
+                    @endif
+
                     {{-- Quiz Status Warning --}}
                     @if(!$attempt->canEditAnswers())
                         <div class="flex items-center text-orange-600 text-sm mb-4 p-3 bg-orange-50 border border-orange-200 rounded-lg">
@@ -391,74 +517,24 @@
         @endif
 
     @else
-        {{-- Quiz Results --}}
+        {{-- Quiz Completion Message (fallback) --}}
         <div class="max-w-4xl mx-auto px-4">
             <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center">
                 <div class="mb-6">
-                    @if($autoSubmitted)
-                        <div class="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <i class="fas fa-clock text-yellow-600 text-2xl"></i>
-                        </div>
-                        <h2 class="text-2xl font-bold text-gray-900 mb-2">Time's Up!</h2>
-                        <p class="text-gray-600">Your quiz was automatically submitted when the time limit was reached.</p>
-                    @else
-                        <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <i class="fas fa-check text-green-600 text-2xl"></i>
-                        </div>
-                        <h2 class="text-2xl font-bold text-gray-900 mb-2">Quiz Completed!</h2>
-                        <p class="text-gray-600">Thank you for completing the quiz.</p>
-                    @endif
-                </div>
-
-                {{-- Score Display --}}
-                <div class="bg-gray-50 rounded-lg p-6 mb-6">
-                    <div class="text-center">
-                        <div class="text-4xl font-bold mb-2 {{ $score >= 70 ? 'text-green-600' : 'text-red-600' }}">
-                            {{ number_format($score, 1) }}%
-                        </div>
-                        <p class="text-gray-600 mb-4">Your Score</p>
-                        
-                        <div class="grid grid-cols-3 gap-4 text-sm">
-                            <div>
-                                <p class="text-gray-500">Points Earned</p>
-                                <p class="font-semibold">{{ $earnedPoints }} / {{ $totalPoints }}</p>
-                            </div>
-                            <div>
-                                <p class="text-gray-500">Questions Answered</p>
-                                <p class="font-semibold">{{ $this->getAnsweredQuestionsCount() }} / {{ count($questions) }}</p>
-                            </div>
-                            <div>
-                                <p class="text-gray-500">Time Taken</p>
-                                <p class="font-semibold">
-                                    {{ gmdate('H:i:s', $endTime->diffInSeconds($startTime)) }}
-                                </p>
-                            </div>
-                        </div>
+                    <div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-hourglass-half text-blue-600 text-2xl"></i>
                     </div>
+                    <h2 class="text-2xl font-bold text-gray-900 mb-2">Quiz Submitted!</h2>
+                    <p class="text-gray-600">Redirecting to results page...</p>
                 </div>
 
-                {{-- Performance Indicator --}}
-                <div class="mb-6">
-                    @if($score >= 90)
-                        <div class="text-green-600">
-                            <i class="fas fa-trophy text-2xl mb-2"></i>
-                            <p class="font-semibold">Excellent Performance!</p>
-                        </div>
-                    @elseif($score >= 70)
-                        <div class="text-blue-600">
-                            <i class="fas fa-thumbs-up text-2xl mb-2"></i>
-                            <p class="font-semibold">Good Job!</p>
-                        </div>
-                    @else
-                        <div class="text-orange-600">
-                            <i class="fas fa-redo text-2xl mb-2"></i>
-                            <p class="font-semibold">Keep Practicing!</p>
-                        </div>
-                    @endif
-                </div>
-
-                {{-- Action Buttons --}}
+                {{-- Manual navigation if auto-redirect fails --}}
                 <div class="flex flex-col sm:flex-row gap-3 justify-center">
+                    <a href="{{ route('quiz.results', ['attemptId' => $attempt->id]) }}" 
+                       class="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors">
+                        <i class="fas fa-chart-bar mr-2"></i>
+                        View Results
+                    </a>
                     <button wire:click="goToQuizList" 
                             class="px-6 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors">
                         <i class="fas fa-list mr-2"></i>
@@ -567,177 +643,64 @@
 @endphp
 
 // Define these as global variables before Alpine initializes
-window.quizStartTime = {{ $timerStartTime ?? 'null' }};
-window.timeLimitSeconds = {{ $timerLimitSeconds ?? 'null' }};
-window.isQuizCompleted = {{ $timerCompleted ? 'true' : 'false' }};
+window.quizStartTime = {!! json_encode($timerStartTime) !!};
+window.timeLimitSeconds = {!! json_encode($timerLimitSeconds) !!};
+window.isQuizCompleted = {!! json_encode($timerCompleted) !!};
+window.isQuizContinued = {!! json_encode(session()->has('quiz_continued')) !!};
 
-// Debug timer data
-console.log('Timer initialization:', {
-    quizStartTime: window.quizStartTime,
-    timeLimitSeconds: window.timeLimitSeconds,
-    isQuizCompleted: window.isQuizCompleted
-});
 
-// Compact countdown timer component - define globally before Alpine loads
-window.countdownTimer = function(initialSeconds, questionnaireId) {
-    return {
-        timeRemaining: initialSeconds,
-        displayTime: '',
-        isWarning: false,
-        timerInterval: null,
+// Show continuation notification if this is a continued quiz
+if (window.isQuizContinued) {
+    document.addEventListener('DOMContentLoaded', function() {
+        const notification = document.createElement('div');
+        notification.className = 'quiz-continued-notification';
+        notification.innerHTML = `
+            <div class='continued-notification-content'>
+                <i class='fas fa-play-circle'></i>
+                <div>
+                    <div class='notification-title'>Quiz Continued</div>
+                    <div class='notification-subtitle'>Resuming from where you left off</div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(notification);
         
-        init() {
-            // Validate timer data before starting
-            if (!window.timeLimitSeconds || !window.quizStartTime || window.isQuizCompleted) {
-                console.warn('Timer initialization skipped:', {
-                    timeLimitSeconds: window.timeLimitSeconds,
-                    quizStartTime: window.quizStartTime,
-                    isQuizCompleted: window.isQuizCompleted
-                });
-                // Set fallback display
-                this.displayTime = this.timeRemaining > 0 ? this.formatTime(this.timeRemaining) : '0:00';
-                return;
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.parentNode.removeChild(notification);
             }
-            
-            this.updateDisplay();
-            this.startTimer();
-            
-            // Sync on page visibility change
-            document.addEventListener('visibilitychange', () => {
-                if (!document.hidden && !window.isQuizCompleted) {
-                    this.syncTime();
-                }
-            });
-            
-            // Cleanup on completion - use wire instead of $wire for better compatibility
-            if (this.$wire) {
-                this.$wire.on('quizCompleted', () => {
-                    this.stopTimer();
-                });
-            }
-        },
-        
-        formatTime(seconds) {
-            const minutes = Math.floor(Math.max(0, seconds) / 60);
-            const secs = Math.max(0, seconds) % 60;
-            return `${minutes}:${secs.toString().padStart(2, '0')}`;
-        },
-        
-        startTimer() {
-            if (this.timerInterval) {
-                clearInterval(this.timerInterval);
-            }
-            
-            this.timerInterval = setInterval(() => {
-                if (window.isQuizCompleted) {
-                    this.stopTimer();
-                    return;
-                }
-                
-                // Calculate actual time remaining based on server time
-                this.calculateTimeRemaining();
-                this.updateDisplay();
-                
-                if (this.timeRemaining <= 0) {
-                    this.handleTimeExpiry();
-                }
-                
-                // Show warning at 5 minutes and 1 minute
-                if ((this.timeRemaining === 300 || this.timeRemaining === 60) && !this.isWarning) {
-                    this.showWarning();
-                }
-            }, 1000);
-        },
-        
-        calculateTimeRemaining() {
-            if (!window.timeLimitSeconds || !window.quizStartTime || typeof window.timeLimitSeconds !== 'number' || typeof window.quizStartTime !== 'number') {
-                console.warn('Invalid timer data:', { timeLimitSeconds: window.timeLimitSeconds, quizStartTime: window.quizStartTime });
-                return;
-            }
-            
-            const currentTime = Math.floor(Date.now() / 1000);
-            const elapsed = currentTime - window.quizStartTime;
-            this.timeRemaining = Math.max(0, window.timeLimitSeconds - elapsed);
-            
-            // Debug log every 30 seconds
-            if (elapsed % 30 === 0) {
-                console.log('Timer sync:', {
-                    currentTime,
-                    quizStartTime: window.quizStartTime,
-                    elapsed,
-                    timeLimitSeconds: window.timeLimitSeconds,
-                    timeRemaining: this.timeRemaining
-                });
-            }
-        },
-        
-        updateDisplay() {
-            this.displayTime = this.formatTime(this.timeRemaining);
-            
-            // Warning when less than 5 minutes
-            this.isWarning = this.timeRemaining <= 300 && this.timeRemaining > 0;
-        },
-        
-        syncTime() {
-            // Simple sync - recalculate from server start time
-            this.calculateTimeRemaining();
-            this.updateDisplay();
-        },
-        
-        handleTimeExpiry() {
-            this.stopTimer();
-            this.timeRemaining = 0;
-            this.updateDisplay();
-            
-            // Auto-submit quiz
-            if (this.$wire) {
-                this.$wire.call('handleTimeExpiry').then(() => {
-                    alert('Time is up! Your quiz has been submitted automatically.');
-                });
-            }
-        },
-        
-        stopTimer() {
-            if (this.timerInterval) {
-                clearInterval(this.timerInterval);
-                this.timerInterval = null;
-            }
-        },
-        
-        showWarning() {
-            const timeText = this.timeRemaining === 300 ? '5 minutes' : '1 minute';
-            
-            // Simple alert for time warning
-            if (confirm(`${timeText} remaining! Click OK to continue.`)) {
-                this.isWarning = true;
-            }
-        }
-    }
+        }, 4000);
+    });
 }
 
+// Timer functionality is now handled inline with Alpine.js x-data
+
 // Prevent accidental page refresh during quiz
-let beforeUnloadHandler = function(e) {
-    if (!window.isQuizCompleted && @json($quizLocked)) {
-        e.preventDefault();
-        e.returnValue = 'Quiz in progress! You cannot leave until all questions are completed and submitted.';
-        return 'Quiz in progress! You cannot leave until all questions are completed and submitted.';
-    }
-};
+if (!window.beforeUnloadHandler) {
+    window.beforeUnloadHandler = function(e) {
+        if (!window.isQuizCompleted && {!! json_encode($quizLocked ?? false) !!}) {
+            e.preventDefault();
+            e.returnValue = 'Quiz in progress! You cannot leave until all questions are completed and submitted.';
+            return 'Quiz in progress! You cannot leave until all questions are completed and submitted.';
+        }
+    };
+}
 
 // Add the warning if quiz is not completed
-if (!window.isQuizCompleted && @json($quizLocked)) {
-    window.addEventListener('beforeunload', beforeUnloadHandler);
+if (!window.isQuizCompleted && {!! json_encode($quizLocked ?? false) !!}) {
+    window.removeEventListener('beforeunload', window.beforeUnloadHandler);
+    window.addEventListener('beforeunload', window.beforeUnloadHandler);
 }
 
 // Block back button navigation during quiz
-let isNavigationBlocked = @json($quizLocked) && !window.isQuizCompleted;
+window.isNavigationBlocked = {!! json_encode($quizLocked ?? false) !!} && !window.isQuizCompleted;
 
-if (isNavigationBlocked) {
+if (window.isNavigationBlocked) {
     // Push a dummy state to prevent back button navigation
     history.pushState(null, '', location.href);
     
     window.addEventListener('popstate', function(event) {
-        if (isNavigationBlocked) {
+        if (window.isNavigationBlocked) {
             // Push state again to prevent going back
             history.pushState(null, '', location.href);
             
@@ -754,7 +717,7 @@ if (isNavigationBlocked) {
 
 // Block common keyboard shortcuts that could navigate away
 document.addEventListener('keydown', function(e) {
-    if (isNavigationBlocked) {
+    if (window.isNavigationBlocked) {
         // Block Alt+Left (back), Alt+Right (forward)
         if (e.altKey && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
             e.preventDefault();
@@ -776,7 +739,7 @@ document.addEventListener('keydown', function(e) {
 });
 
 // Disable right-click context menu during quiz
-if (isNavigationBlocked) {
+if (window.isNavigationBlocked) {
     document.addEventListener('contextmenu', function(e) {
         e.preventDefault();
         return false;
@@ -784,11 +747,13 @@ if (isNavigationBlocked) {
 }
 
 // Auto-save functionality
-let saveTimeout;
+if (!window.saveTimeout) {
+    window.saveTimeout = null;
+}
 document.addEventListener('input', function(e) {
     if (e.target.tagName === 'TEXTAREA') {
-        clearTimeout(saveTimeout);
-        saveTimeout = setTimeout(() => {
+        clearTimeout(window.saveTimeout);
+        window.saveTimeout = setTimeout(() => {
             if (window.Livewire && typeof $wire !== 'undefined') {
                 $wire.call('flushPendingAnswers');
             }
@@ -797,11 +762,11 @@ document.addEventListener('input', function(e) {
 });
 
 // Keyboard shortcuts and prevention
-let quizCompleted = window.isQuizCompleted;
+window.quizCompleted = window.isQuizCompleted;
 
 document.addEventListener('keydown', function(e) {
     // Prevent F5 refresh during quiz (but allow after completion)
-    if (!quizCompleted && (e.key === 'F5' || (e.ctrlKey && e.key === 'r'))) {
+    if (!window.quizCompleted && (e.key === 'F5' || (e.ctrlKey && e.key === 'r'))) {
         e.preventDefault();
         return false;
     }
@@ -834,10 +799,10 @@ document.addEventListener('keydown', function(e) {
 document.addEventListener('livewire:initialized', () => {
     Livewire.on('quizCompleted', () => {
         // Remove the beforeunload warning when quiz is completed
-        window.removeEventListener('beforeunload', beforeUnloadHandler);
+        window.removeEventListener('beforeunload', window.beforeUnloadHandler);
         // Update completion status
         window.isQuizCompleted = true;
-        isNavigationBlocked = false;
+        window.isNavigationBlocked = false;
         
         // Re-enable right-click context menu
         document.removeEventListener('contextmenu', function(e) {
@@ -875,9 +840,6 @@ window.openImageModal = function(imageSrc) {
         modal.classList.remove('hidden');
         modal.style.display = 'block';
         document.body.style.overflow = 'hidden'; // Prevent scrolling
-        console.log('Opening image modal with:', imageSrc);
-    } else {
-        console.error('Image modal elements not found');
     }
 }
 
@@ -887,7 +849,6 @@ window.closeImageModal = function() {
         modal.classList.add('hidden');
         modal.style.display = 'none';
         document.body.style.overflow = ''; // Restore scrolling
-        console.log('Closing image modal');
     }
 }
 
@@ -909,6 +870,297 @@ document.addEventListener('keydown', function(e) {
     .quiz-container {
         min-height: 100vh;
         background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    }
+    
+    /* Enhanced Timer Styles */
+    .enhanced-timer-container {
+        position: relative;
+        z-index: 10;
+    }
+    
+    .timer-widget {
+        background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+        border-radius: 16px;
+        padding: 16px;
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+        border: 2px solid transparent;
+        min-width: 280px;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        backdrop-filter: blur(10px);
+    }
+    
+    .timer-normal {
+        border-color: #3b82f6;
+        background: linear-gradient(135deg, #dbeafe 0%, #ffffff 100%);
+    }
+    
+    .timer-warning {
+        border-color: #f59e0b;
+        background: linear-gradient(135deg, #fef3c7 0%, #ffffff 100%);
+        animation: subtle-pulse 2s infinite;
+    }
+    
+    .timer-critical {
+        border-color: #ef4444;
+        background: linear-gradient(135deg, #fecaca 0%, #ffffff 100%);
+        animation: critical-pulse 1s infinite;
+    }
+    
+    .timer-display-section {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 12px;
+    }
+    
+    .timer-icon-wrapper {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(255, 255, 255, 0.8);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        transition: all 0.3s ease;
+    }
+    
+    .timer-normal .timer-icon-wrapper {
+        background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+    }
+    
+    .timer-warning .timer-icon-wrapper {
+        background: linear-gradient(135deg, #f59e0b, #d97706);
+    }
+    
+    .timer-critical .timer-icon-wrapper {
+        background: linear-gradient(135deg, #ef4444, #dc2626);
+    }
+    
+    .timer-icon {
+        font-size: 20px;
+        color: white;
+        transition: all 0.3s ease;
+    }
+    
+    .timer-time-section {
+        flex: 1;
+    }
+    
+    .timer-time {
+        font-size: 24px;
+        font-weight: 700;
+        letter-spacing: -0.5px;
+        line-height: 1;
+        margin-bottom: 4px;
+        font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+    }
+    
+    .timer-normal .timer-time {
+        color: #1e40af;
+    }
+    
+    .timer-warning .timer-time {
+        color: #d97706;
+    }
+    
+    .timer-critical .timer-time {
+        color: #dc2626;
+    }
+    
+    .timer-status {
+        font-size: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        opacity: 0.8;
+    }
+    
+    .timer-progress-container {
+        width: 100%;
+        height: 6px;
+        background: rgba(0, 0, 0, 0.1);
+        border-radius: 3px;
+        overflow: hidden;
+        margin-bottom: 12px;
+        position: relative;
+    }
+    
+    .timer-progress-bar {
+        height: 100%;
+        border-radius: 3px;
+        transition: width 0.3s ease, background-color 0.3s ease;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .progress-normal {
+        background: linear-gradient(90deg, #3b82f6, #1d4ed8);
+    }
+    
+    .progress-warning {
+        background: linear-gradient(90deg, #f59e0b, #d97706);
+    }
+    
+    .progress-critical {
+        background: linear-gradient(90deg, #ef4444, #dc2626);
+        animation: progress-pulse 0.5s infinite alternate;
+    }
+    
+    .timer-details {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 11px;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: #6b7280;
+    }
+    
+    .timer-percentage {
+        font-weight: 700;
+        color: #374151;
+    }
+    
+    /* Timer Notification Styles */
+    .timer-notification {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+        color: white;
+        padding: 12px 20px;
+        border-radius: 12px;
+        box-shadow: 0 8px 25px rgba(245, 158, 11, 0.4);
+        z-index: 1000;
+        animation: slide-in-notification 0.3s ease-out;
+        min-width: 200px;
+    }
+    
+    .timer-notification-content {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 600;
+        font-size: 14px;
+    }
+    
+    /* Quiz Continuation Notification */
+    .quiz-continued-notification {
+        position: fixed;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+        padding: 16px 24px;
+        border-radius: 16px;
+        box-shadow: 0 10px 30px rgba(16, 185, 129, 0.4);
+        z-index: 1000;
+        animation: slide-down-notification 0.5s ease-out;
+        min-width: 300px;
+        max-width: 500px;
+    }
+    
+    .continued-notification-content {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    
+    .continued-notification-content i {
+        font-size: 20px;
+        opacity: 0.9;
+    }
+    
+    .notification-title {
+        font-weight: 700;
+        font-size: 16px;
+        margin-bottom: 2px;
+    }
+    
+    .notification-subtitle {
+        font-weight: 400;
+        font-size: 13px;
+        opacity: 0.8;
+    }
+    
+    /* Animations */
+    @keyframes subtle-pulse {
+        0%, 100% { 
+            transform: scale(1);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+        }
+        50% { 
+            transform: scale(1.02);
+            box-shadow: 0 12px 35px rgba(245, 158, 11, 0.2);
+        }
+    }
+    
+    @keyframes critical-pulse {
+        0%, 100% { 
+            transform: scale(1);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+        }
+        50% { 
+            transform: scale(1.03);
+            box-shadow: 0 16px 40px rgba(239, 68, 68, 0.3);
+        }
+    }
+    
+    @keyframes progress-pulse {
+        0% { opacity: 1; }
+        100% { opacity: 0.7; }
+    }
+    
+    @keyframes slide-in-notification {
+        from {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+    
+    @keyframes slide-down-notification {
+        from {
+            transform: translateX(-50%) translateY(-100%);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+        }
+    }
+    
+    /* Responsive Design */
+    @media (max-width: 640px) {
+        .timer-widget {
+            min-width: 240px;
+            padding: 12px;
+        }
+        
+        .timer-time {
+            font-size: 20px;
+        }
+        
+        .timer-icon-wrapper {
+            width: 40px;
+            height: 40px;
+        }
+        
+        .timer-icon {
+            font-size: 16px;
+        }
+        
+        .timer-notification {
+            right: 10px;
+            left: 10px;
+            min-width: auto;
+        }
     }
     
     /* Smooth transitions */

@@ -53,7 +53,8 @@
       "Bash(php:*)",
       "WebFetch(domain:www.edureka.co)",
       "Bash(sudo apt:*)",
-      "Bash(composer --version)"
+      "Bash(composer --version)",
+      "Bash(mysql:*)"
     ],
     "deny": []
   }

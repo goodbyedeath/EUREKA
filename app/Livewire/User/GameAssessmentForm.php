@@ -126,8 +126,8 @@ class GameAssessmentForm extends Component
 
         session()->flash('success', 'Assessment saved successfully! Team points updated.');
         
-        // Redirect to quiz results
-        return $this->redirect(route('quiz.results', ['attemptId' => $this->attempt->id]), navigate: true);
+        // Check if there are more questions in the quiz
+        return $this->handlePostAssessmentNavigation();
     }
 
     public function skipAssessment()
@@ -148,8 +148,46 @@ class GameAssessmentForm extends Component
 
         session()->flash('info', 'Assessment skipped. No points awarded.');
         
-        // Redirect to quiz results
-        return $this->redirect(route('quiz.results', ['attemptId' => $this->attempt->id]), navigate: true);
+        // Check if there are more questions in the quiz
+        return $this->handlePostAssessmentNavigation();
+    }
+
+    protected function handlePostAssessmentNavigation()
+    {
+        // Safety checks
+        if (!$this->attempt || !$this->attempt->questionnaire || !$this->question) {
+            session()->flash('error', 'Invalid assessment data. Redirecting to dashboard.');
+            return $this->redirect(route('user.dashboard'), navigate: true);
+        }
+        
+        // Get all questions in the quiz
+        $allQuestions = $this->attempt->questionnaire->questions()->orderBy('order')->get();
+        
+        if ($allQuestions->isEmpty()) {
+            // No questions found, go to results
+            return $this->redirect(route('quiz.results', ['attemptId' => $this->attempt->id]), navigate: true);
+        }
+        
+        // Find current question position
+        $currentQuestionIndex = $allQuestions->search(function($q) {
+            return $q->id === $this->question->id;
+        });
+        
+        // If question not found in list, assume it's the last one
+        if ($currentQuestionIndex === false) {
+            return $this->redirect(route('quiz.results', ['attemptId' => $this->attempt->id]), navigate: true);
+        }
+        
+        // Check if there are more questions after this one
+        $hasMoreQuestions = $currentQuestionIndex < $allQuestions->count() - 1;
+        
+        if ($hasMoreQuestions) {
+            // Continue to the quiz (next question)
+            return $this->redirect(route('quiz.continue', ['attemptId' => $this->attempt->id]), navigate: true);
+        } else {
+            // This was the last question, go to results
+            return $this->redirect(route('quiz.results', ['attemptId' => $this->attempt->id]), navigate: true);
+        }
     }
 
     public function render()

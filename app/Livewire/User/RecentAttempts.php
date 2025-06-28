@@ -9,6 +9,8 @@ use Illuminate\Support\Facades\Auth;
 class RecentAttempts extends Component
 {
     public $recentAttempts;
+    public $loadLimit = 10;
+    public $totalAttempts = 0;
 
     protected $listeners = [
         'refresh-attempts' => 'loadAttempts'
@@ -21,11 +23,29 @@ class RecentAttempts extends Component
 
     public function loadAttempts()
     {
+        // Get total count for pagination
+        $this->totalAttempts = QuizAttempt::where('user_id', Auth::id())->count();
+        
+        // Load attempts with current limit
         $this->recentAttempts = QuizAttempt::with(['questionnaire'])
             ->where('user_id', Auth::id())
             ->orderBy('created_at', 'desc')
-            ->limit(10)
+            ->limit($this->loadLimit)
             ->get();
+    }
+
+    public function loadMoreAttempts()
+    {
+        // Increase the limit by 10
+        $this->loadLimit += 10;
+        
+        // Reload attempts with new limit
+        $this->loadAttempts();
+    }
+
+    public function hasMoreAttempts()
+    {
+        return $this->recentAttempts->count() < $this->totalAttempts;
     }
 
     public function continueQuiz($attemptId)

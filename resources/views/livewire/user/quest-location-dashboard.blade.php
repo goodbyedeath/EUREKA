@@ -8,6 +8,18 @@
         <p><strong>User Latitude:</strong> {{ $userLatitude ?? 'Not set' }}</p>
         <p><strong>User Longitude:</strong> {{ $userLongitude ?? 'Not set' }}</p>
         <p><strong>Quest Locations Count:</strong> {{ $questLocations ? count($questLocations) : 'No data' }}</p>
+        
+        @auth
+            @if(auth()->user()->role === 'admin' && $questLocations && count($questLocations) > 0)
+                <div class="mt-3">
+                    <button wire:click="clearAllLocations" 
+                            onclick="return confirm('Are you sure you want to delete ALL quest locations? This cannot be undone!')"
+                            class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded text-sm">
+                        Clear All Sample Locations
+                    </button>
+                </div>
+            @endif
+        @endauth
     </div>
 
     <!-- Location Permission -->

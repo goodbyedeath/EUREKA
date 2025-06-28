@@ -49,6 +49,9 @@ class QuestLocationDashboard extends Component
 
     public function mount()
     {
+        // Initialize empty collection first
+        $this->questLocations = collect([]);
+        
         $this->loadQuestLocations();
         $this->loadUserCheckInData();
         $this->requestLocationOnMount();
@@ -151,33 +154,82 @@ class QuestLocationDashboard extends Component
     // Optimized Data Loading
     private function loadQuestLocations()
     {
-        $query = QuestLocation::active()->orderBy('name');
-        
-        // If user location is available, only load nearby locations
-        if ($this->userLatitude && $this->userLongitude) {
-            $query->nearUser($this->userLatitude, $this->userLongitude, $this->maxDistance);
+        try {
+            $query = QuestLocation::active()->orderBy('name');
+            
+            // If user location is available, only load nearby locations
+            if ($this->userLatitude && $this->userLongitude) {
+                $query->nearUser($this->userLatitude, $this->userLongitude, $this->maxDistance);
+            }
+            
+            $this->questLocations = $query->get();
+            
+            // If no quest locations found, initialize empty collection
+            if ($this->questLocations->isEmpty()) {
+                $this->questLocations = collect([]);
+                Log::info('No active quest locations found in database', [
+                    'user_id' => Auth::id(),
+                    'total_locations' => QuestLocation::count(),
+                    'active_locations' => QuestLocation::active()->count()
+                ]);
+            }
+            
+        } catch (\Exception $e) {
+            Log::error('Failed to load quest locations', [
+                'user_id' => Auth::id(),
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            // Initialize empty collection on error
+            $this->questLocations = collect([]);
+            
+            $this->dispatch('showAlert', [
+                'type' => 'error',
+                'message' => 'Failed to load quest locations. Please try again later.'
+            ]);
         }
-        
-        $this->questLocations = $query->get();
     }
 
     private function loadUserCheckInData()
     {
         $userId = Auth::id();
+        
+        // Reset arrays
+        $this->checkedInStatus = [];
+        $this->checkInCounts = [];
+        
+        if ($this->questLocations->isEmpty()) {
+            return; // No locations to process
+        }
+        
         $locationIds = $this->questLocations->pluck('id');
         
-        // Batch load user check-in data
-        $checkpoints = UserQuestCheckpoint::where('user_id', $userId)
-            ->whereIn('quest_location_id', $locationIds)
-            ->selectRaw('quest_location_id, COUNT(*) as count, MIN(created_at) as first_checkin')
-            ->groupBy('quest_location_id')
-            ->get()
-            ->keyBy('quest_location_id');
+        try {
+            // Batch load user check-in data
+            $checkpoints = UserQuestCheckpoint::where('user_id', $userId)
+                ->whereIn('quest_location_id', $locationIds)
+                ->selectRaw('quest_location_id, COUNT(*) as count, MIN(created_at) as first_checkin')
+                ->groupBy('quest_location_id')
+                ->get()
+                ->keyBy('quest_location_id');
 
-        foreach ($locationIds as $locationId) {
-            $checkpoint = $checkpoints->get($locationId);
-            $this->checkedInStatus[$locationId] = $checkpoint !== null;
-            $this->checkInCounts[$locationId] = $checkpoint->count ?? 0;
+            foreach ($locationIds as $locationId) {
+                $checkpoint = $checkpoints->get($locationId);
+                $this->checkedInStatus[$locationId] = $checkpoint !== null;
+                $this->checkInCounts[$locationId] = $checkpoint->count ?? 0;
+            }
+        } catch (\Exception $e) {
+            Log::error('Failed to load user check-in data', [
+                'user_id' => $userId,
+                'error' => $e->getMessage()
+            ]);
+            
+            // Initialize with empty data on error
+            foreach ($locationIds as $locationId) {
+                $this->checkedInStatus[$locationId] = false;
+                $this->checkInCounts[$locationId] = 0;
+            }
         }
     }
 
@@ -445,4 +497,54 @@ class QuestLocationDashboard extends Component
             'message' => 'Data refreshed successfully!'
         ]);
     }
+
+    // Delete all sample locations (for development/testing)
+    public function clearAllLocations()
+    {
+        try {
+            // Only allow if user is admin or in development
+            if (!Auth::user() || Auth::user()->role !== 'admin') {
+                $this->dispatch('showAlert', [
+                    'type' => 'error',
+                    'message' => 'Unauthorized: Admin access required.'
+                ]);
+                return;
+            }
+
+            $deletedCount = QuestLocation::count();
+            QuestLocation::truncate();
+            
+            // Clear user checkpoints as well
+            \App\Models\UserQuestCheckpoint::truncate();
+            
+            // Reset component data
+            $this->questLocations = collect([]);
+            $this->checkedInStatus = [];
+            $this->checkInCounts = [];
+            $this->locationDistances = [];
+            $this->withinRadiusStatus = [];
+            
+            Log::info('All quest locations cleared', [
+                'user_id' => Auth::id(),
+                'deleted_count' => $deletedCount
+            ]);
+            
+            $this->dispatch('showAlert', [
+                'type' => 'success',
+                'message' => "All quest locations cleared ({$deletedCount} locations removed)."
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::error('Failed to clear quest locations', [
+                'user_id' => Auth::id(),
+                'error' => $e->getMessage()
+            ]);
+            
+            $this->dispatch('showAlert', [
+                'type' => 'error',
+                'message' => 'Failed to clear locations. Please try again.'
+            ]);
+        }
+    }
+
 }
