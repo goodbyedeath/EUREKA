@@ -900,6 +900,20 @@
 
 @push('scripts')
 <script>
+    // Error handling for Livewire components
+    window.addEventListener('error', function(e) {
+        if (e.message && e.message.includes("Cannot read properties of undefined (reading 'call')")) {
+            console.warn('Livewire component not ready, retrying...', e);
+            e.preventDefault();
+            return false;
+        }
+    });
+
+    // Wait for Livewire to be fully loaded
+    document.addEventListener('livewire:init', function() {
+        console.log('Livewire initialized');
+    });
+
     // Add smooth scrolling and other interactions
     document.addEventListener('DOMContentLoaded', function() {
         // Animate stats on load

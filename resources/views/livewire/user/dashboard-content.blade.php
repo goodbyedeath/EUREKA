@@ -34,7 +34,7 @@
                             </button>
                             
                             <button 
-                                onclick="Livewire.dispatch('open-qr-scanner')"
+                                wire:click="openQRScanner"
                                 class="p-3 sm:p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-left">
                                 <i class="fas fa-qrcode text-green-500 text-lg sm:text-xl mb-2"></i>
                                 <div class="font-medium text-gray-900 text-sm sm:text-base">{{ __('common.scan_qr') }}</div>

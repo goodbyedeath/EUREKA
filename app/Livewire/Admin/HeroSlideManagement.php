@@ -31,6 +31,11 @@ class HeroSlideManagement extends Component
     public $order = 0;
     public $is_active = true;
     public $icon_svg = '';
+    public $icon_position = 0;
+    public $title_position = 1;
+    public $subtitle_position = 2;
+    public $primary_button_position = 3;
+    public $secondary_button_position = 4;
 
     protected function rules()
     {
@@ -48,6 +53,11 @@ class HeroSlideManagement extends Component
             'order' => 'required|integer|min:0',
             'is_active' => 'boolean',
             'icon_svg' => 'nullable|string|max:2000',
+            'icon_position' => 'required|integer|min:0|max:4',
+            'title_position' => 'required|integer|min:0|max:4',
+            'subtitle_position' => 'required|integer|min:0|max:4',
+            'primary_button_position' => 'required|integer|min:0|max:4',
+            'secondary_button_position' => 'required|integer|min:0|max:4',
         ];
     }
 
@@ -64,8 +74,8 @@ class HeroSlideManagement extends Component
     public function openCreateForm()
     {
         $this->resetForm();
-        $this->showForm = true;
         $this->editingSlide = null;
+        $this->showForm = true;
     }
 
     public function openEditForm($slideId)
@@ -88,6 +98,14 @@ class HeroSlideManagement extends Component
         $this->is_active = $slide->is_active;
         $this->icon_svg = $slide->icon_svg ?? '';
         
+        // Load element positions from stored element_order
+        $elementOrder = $slide->element_order ?? $slide->getDefaultElementOrder();
+        $this->icon_position = $elementOrder['icon'] ?? 0;
+        $this->title_position = $elementOrder['title'] ?? 1;
+        $this->subtitle_position = $elementOrder['subtitle'] ?? 2;
+        $this->primary_button_position = $elementOrder['primary_button'] ?? 3;
+        $this->secondary_button_position = $elementOrder['secondary_button'] ?? 4;
+        
         $this->showForm = true;
     }
 
@@ -108,6 +126,13 @@ class HeroSlideManagement extends Component
             'order' => $this->order,
             'is_active' => $this->is_active,
             'icon_svg' => $this->icon_svg ?: null,
+            'element_order' => [
+                'icon' => (int)$this->icon_position,
+                'title' => (int)$this->title_position,
+                'subtitle' => (int)$this->subtitle_position,
+                'primary_button' => (int)$this->primary_button_position,
+                'secondary_button' => (int)$this->secondary_button_position,
+            ],
         ];
 
         // Handle background image upload
@@ -227,8 +252,22 @@ class HeroSlideManagement extends Component
         $this->order = HeroSlide::max('order') + 1 ?? 0;
         $this->is_active = true;
         $this->icon_svg = '';
+        $this->icon_position = 0;
+        $this->title_position = 1;
+        $this->subtitle_position = 2;
+        $this->primary_button_position = 3;
+        $this->secondary_button_position = 4;
         $this->editingSlide = null;
         $this->resetValidation();
+    }
+
+    public function resetElementPositions()
+    {
+        $this->icon_position = 0;
+        $this->title_position = 1;
+        $this->subtitle_position = 2;
+        $this->primary_button_position = 3;
+        $this->secondary_button_position = 4;
     }
 
     public function render()

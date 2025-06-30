@@ -1,5 +1,145 @@
 import './bootstrap';
 
+// Dark Mode functionality - improved version
+window.DarkMode = {
+    init() {
+        console.log('Dark Mode initializing...');
+        
+        // Set theme immediately on init
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        console.log('Saved theme:', savedTheme);
+        this.setTheme(savedTheme);
+        
+        // Update buttons when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => {
+                console.log('DOM loaded, updating buttons');
+                this.updateToggleButtons();
+            });
+        } else {
+            // DOM is already loaded
+            console.log('DOM already loaded, updating buttons immediately');
+            this.updateToggleButtons();
+        }
+        
+        // Also listen for Livewire page loads
+        document.addEventListener('livewire:navigated', () => {
+            console.log('Livewire navigated, updating buttons');
+            this.updateToggleButtons();
+        });
+    },
+    
+    setTheme(theme) {
+        console.log('Setting theme to:', theme);
+        
+        if (theme === 'dark') {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+        
+        localStorage.setItem('theme', theme);
+        
+        // Use setTimeout to ensure DOM updates are processed
+        setTimeout(() => {
+            this.updateToggleButtons();
+        }, 10);
+    },
+    
+    toggle() {
+        const isDark = document.documentElement.classList.contains('dark');
+        const newTheme = isDark ? 'light' : 'dark';
+        console.log('Toggling theme from', isDark ? 'dark' : 'light', 'to', newTheme);
+        this.setTheme(newTheme);
+    },
+    
+    updateToggleButtons() {
+        const isDark = document.documentElement.classList.contains('dark');
+        const toggleButtons = document.querySelectorAll('[data-theme-toggle]');
+        
+        console.log('Updating buttons. Is dark:', isDark, 'Found buttons:', toggleButtons.length);
+        
+        toggleButtons.forEach((button, index) => {
+            const sunIcon = button.querySelector('.sun-icon');
+            const moonIcon = button.querySelector('.moon-icon');
+            
+            console.log(`Button ${index}: sun icon found:`, !!sunIcon, 'moon icon found:', !!moonIcon);
+            
+            if (sunIcon && moonIcon) {
+                if (isDark) {
+                    sunIcon.style.display = 'block';
+                    moonIcon.style.display = 'none';
+                    console.log(`Button ${index}: Showing sun icon (dark mode)`);
+                } else {
+                    sunIcon.style.display = 'none';
+                    moonIcon.style.display = 'block';
+                    console.log(`Button ${index}: Showing moon icon (light mode)`);
+                }
+            }
+        });
+    },
+    
+    getTheme() {
+        return document.documentElement.classList.contains('dark') ? 'dark' : 'light';
+    }
+};
+
+// Initialize dark mode immediately
+window.DarkMode.init();
+
+// Global function for theme toggle with debugging
+window.toggleTheme = function() {
+    console.log('toggleTheme called');
+    try {
+        window.DarkMode.toggle();
+    } catch (error) {
+        console.error('Error in toggleTheme:', error);
+    }
+};
+
+// Add click event listeners as backup
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Adding click listeners to theme toggle buttons');
+    
+    function addClickListeners() {
+        const buttons = document.querySelectorAll('[data-theme-toggle]');
+        console.log('Found toggle buttons for click listeners:', buttons.length);
+        
+        buttons.forEach((button, index) => {
+            // Remove existing listeners to prevent duplicates
+            button.removeEventListener('click', handleThemeToggle);
+            // Add new listener
+            button.addEventListener('click', handleThemeToggle);
+            console.log(`Added click listener to button ${index}`);
+        });
+    }
+    
+    function handleThemeToggle(event) {
+        console.log('Button clicked via event listener');
+        event.preventDefault();
+        window.toggleTheme();
+    }
+    
+    // Add listeners initially
+    addClickListeners();
+    
+    // Also add after Livewire navigation
+    document.addEventListener('livewire:navigated', () => {
+        console.log('Re-adding click listeners after Livewire navigation');
+        addClickListeners();
+    });
+});
+
+// Debug function to check current state
+window.debugDarkMode = function() {
+    console.log('=== Dark Mode Debug ===');
+    console.log('Current theme:', window.DarkMode.getTheme());
+    console.log('HTML has dark class:', document.documentElement.classList.contains('dark'));
+    console.log('LocalStorage theme:', localStorage.getItem('theme'));
+    console.log('Toggle buttons found:', document.querySelectorAll('[data-theme-toggle]').length);
+    console.log('==================');
+};
+
 // Import and expose QR Scanner for global use
 import QrScanner from 'qr-scanner';
 

@@ -8,28 +8,28 @@
 
     @if(!$isCompleted)
         {{-- Enhanced Quiz Header --}}
-        <div class="sticky top-0 z-40 backdrop-blur-xl bg-white/80 border-b border-white/20 shadow-lg">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div class="py-4">
+        <div class="sticky top-0 z-40 backdrop-blur-xl bg-white/90 border-b border-white/30 shadow-2xl">
+            <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+                <div class="py-3 sm:py-4">
                     {{-- Header Content --}}
-                    <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
                         {{-- Quiz Info --}}
-                        <div class="flex-1">
-                            <div class="flex items-start gap-4">
-                                <div class="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
-                                    <i class="fas fa-brain text-white text-xl"></i>
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-start gap-3 sm:gap-4">
+                                <div class="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg flex-shrink-0">
+                                    <i class="fas fa-brain text-white text-lg sm:text-xl"></i>
                                 </div>
                                 <div class="flex-1 min-w-0">
-                                    <h1 class="text-xl lg:text-2xl font-bold text-gray-900 truncate">{{ $questionnaire->title }}</h1>
-                                    <div class="flex flex-wrap items-center gap-3 mt-1 text-sm text-gray-600">
-                                        <span class="flex items-center gap-1">
+                                    <h1 class="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 truncate">{{ $questionnaire->title }}</h1>
+                                    <div class="flex flex-wrap items-center gap-2 sm:gap-3 mt-1 text-xs sm:text-sm text-gray-600">
+                                        <span class="flex items-center gap-1 bg-indigo-50 px-2 py-1 rounded-full">
                                             <i class="fas fa-question-circle text-indigo-500"></i>
-                                            Question {{ $currentQuestionIndex + 1 }} of {{ count($questions) }}
+                                            <span class="font-medium">{{ $currentQuestionIndex + 1 }}/{{ count($questions) }}</span>
                                         </span>
                                         @if($questionnaire->time_limit)
-                                            <span class="flex items-center gap-1">
+                                            <span class="flex items-center gap-1 bg-purple-50 px-2 py-1 rounded-full">
                                                 <i class="fas fa-clock text-purple-500"></i>
-                                                {{ $questionnaire->time_limit }} min limit
+                                                <span class="font-medium">{{ $questionnaire->time_limit }}min</span>
                                             </span>
                                         @endif
                                     </div>
@@ -45,7 +45,7 @@
                         @endphp
                         
                         @if($showTimer)
-                            <div class="timer-container-enhanced" 
+                            <div class="timer-container-enhanced flex-shrink-0 w-full sm:w-auto mt-3 sm:mt-0" 
                                  x-data="{
                                     timeRemaining: {{ $safeTimeRemaining }},
                                     displayTime: '{{ sprintf("%d:%02d", floor($safeTimeRemaining / 60), $safeTimeRemaining % 60) }}',
@@ -147,13 +147,13 @@
                                             <div class="timer-display-enhanced" x-text="displayTime"></div>
                                             <div class="timer-status-enhanced" x-text="isCritical ? 'CRITICAL!' : (isWarning ? 'Warning' : 'Active')"></div>
                                         </div>
-                                        <div class="timer-percentage-enhanced" x-text="`${progressPercentage}%`"></div>
+                                        <div class="timer-percentage-enhanced" x-text="progressPercentage + '%'"></div>
                                     </div>
                                     
                                     {{-- Progress Bar --}}
                                     <div class="timer-progress-enhanced">
                                         <div class="timer-progress-bar-enhanced" 
-                                             :style="`width: ${progressPercentage}%`"
+                                             :style="'width: ' + progressPercentage + '%'"
                                              :class="{
                                                  'bg-gradient-to-r from-blue-500 to-blue-600': !isWarning && !isCritical,
                                                  'bg-gradient-to-r from-amber-500 to-amber-600': isWarning && !isCritical,
@@ -171,19 +171,19 @@
                     </div>
                     
                     {{-- Enhanced Progress Bar --}}
-                    <div class="mt-4">
-                        <div class="flex items-center justify-between text-sm text-gray-600 mb-2">
+                    <div class="mt-3 sm:mt-4">
+                        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs sm:text-sm text-gray-600 mb-2">
                             <span class="flex items-center gap-2">
                                 <i class="fas fa-chart-line text-indigo-500"></i>
-                                Progress: {{ $progressPercentage }}%
+                                <span class="font-medium">Progress: {{ $progressPercentage }}%</span>
                             </span>
                             <span class="flex items-center gap-2">
                                 <i class="fas fa-check-circle text-emerald-500"></i>
-                                Answered: {{ $answeredPercentage }}%
+                                <span class="font-medium">Answered: {{ $answeredPercentage }}%</span>
                             </span>
                         </div>
                         <div class="relative">
-                            <div class="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                            <div class="w-full bg-gray-200 rounded-full h-2 sm:h-3 overflow-hidden">
                                 <div class="bg-gradient-to-r from-indigo-500 to-purple-600 h-full rounded-full transition-all duration-500 ease-out shadow-sm" 
                                      style="width: {{ $progressPercentage }}%"></div>
                             </div>
@@ -197,54 +197,57 @@
 
         {{-- Enhanced Question Content --}}
         @if($currentQuestion)
-            <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                <div class="bg-white/80 backdrop-blur-xl rounded-3xl shadow-xl border border-white/20 overflow-hidden">
+            <div class="max-w-6xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
+                <div class="bg-white/90 backdrop-blur-xl rounded-2xl sm:rounded-3xl shadow-2xl border border-white/30 overflow-hidden">
                     {{-- Question Header --}}
-                    <div class="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 p-6 text-white">
-                        <div class="flex items-start justify-between">
-                            <div class="flex-1">
-                                <div class="flex items-center gap-3 mb-2">
+                    <div class="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 p-4 sm:p-6 text-white">
+                        <div class="flex items-start justify-between gap-3">
+                            <div class="flex-1 min-w-0">
+                                <div class="flex flex-wrap items-center gap-2 sm:gap-3 mb-3">
                                     <span class="bg-white/20 backdrop-blur-sm px-3 py-1 rounded-full text-sm font-medium">
-                                        Question {{ $currentQuestionIndex + 1 }}
+                                        Q{{ $currentQuestionIndex + 1 }}
                                     </span>
                                     @if($currentQuestion['points'] > 1)
                                         <span class="bg-yellow-400/20 backdrop-blur-sm px-3 py-1 rounded-full text-sm font-medium flex items-center gap-1">
                                             <i class="fas fa-star text-yellow-300"></i>
-                                            {{ $currentQuestion['points'] }} points
+                                            {{ $currentQuestion['points'] }}pts
                                         </span>
                                     @endif
+                                    <span class="bg-white/10 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-medium">
+                                        {{ ucfirst(str_replace('_', ' ', $currentQuestion['type'])) }}
+                                    </span>
                                 </div>
-                                <h2 class="text-xl lg:text-2xl font-bold leading-relaxed">
+                                <h2 class="text-lg sm:text-xl lg:text-2xl font-bold leading-relaxed break-words">
                                     {{ $currentQuestion['question'] }}
                                 </h2>
                             </div>
-                            <div class="ml-4 flex items-center justify-center w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl">
-                                <i class="fas fa-{{ $currentQuestion['type'] === 'multiple_choice' ? 'list-ul' : ($currentQuestion['type'] === 'true_false' ? 'toggle-on' : ($currentQuestion['type'] === 'fun_game' ? 'gamepad' : 'edit')) }} text-xl"></i>
+                            <div class="flex-shrink-0 w-10 h-10 sm:w-12 sm:h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
+                                <i class="fas fa-{{ $currentQuestion['type'] === 'multiple_choice' ? 'list-ul' : ($currentQuestion['type'] === 'true_false' ? 'toggle-on' : ($currentQuestion['type'] === 'fun_game' ? 'gamepad' : 'edit')) }} text-lg sm:text-xl"></i>
                             </div>
                         </div>
                     </div>
 
                     {{-- Question Content --}}
-                    <div class="p-6 lg:p-8">
+                    <div class="p-4 sm:p-6 lg:p-8">
                         @if($currentQuestion['type'] === 'multiple_choice')
                             <div class="space-y-3">
                                 @foreach($currentQuestion['options'] as $index => $option)
                                     @if(!empty(trim($option)))
                                         <label class="group block {{ $attempt->canEditAnswers() ? 'cursor-pointer' : 'cursor-not-allowed' }} transition-all duration-300">
-                                            <div class="flex items-start gap-4 p-4 rounded-2xl border-2 transition-all duration-300 {{ $attempt->canEditAnswers() ? 'border-gray-200 hover:border-indigo-300 hover:bg-indigo-50/50' : 'border-gray-100 bg-gray-50' }}">
-                                                <div class="relative flex-shrink-0 mt-1">
+                                            <div class="flex items-start gap-3 sm:gap-4 p-3 sm:p-4 rounded-xl sm:rounded-2xl border-2 transition-all duration-300 {{ $attempt->canEditAnswers() ? 'border-gray-200 hover:border-indigo-300 hover:bg-indigo-50/50 active:scale-[0.98]' : 'border-gray-100 bg-gray-50' }}">
+                                                <div class="relative flex-shrink-0 mt-0.5 sm:mt-1">
                                                     <input type="radio" 
                                                            wire:model.live="answers.{{ $currentQuestion['id'] }}" 
                                                            value="{{ $option }}"
                                                            {{ $attempt->canEditAnswers() ? '' : 'disabled' }}
-                                                           class="w-5 h-5 text-indigo-600 border-2 border-gray-300 focus:ring-indigo-500 focus:ring-2 {{ $attempt->canEditAnswers() ? '' : 'opacity-50' }}">
+                                                           class="w-4 h-4 sm:w-5 sm:h-5 text-indigo-600 border-2 border-gray-300 focus:ring-indigo-500 focus:ring-2 {{ $attempt->canEditAnswers() ? '' : 'opacity-50' }}">
                                                 </div>
                                                 <div class="flex-1 min-w-0">
-                                                    <span class="text-gray-800 font-medium leading-relaxed {{ $attempt->canEditAnswers() ? '' : 'opacity-50' }}">{{ $option }}</span>
+                                                    <span class="text-sm sm:text-base text-gray-800 font-medium leading-relaxed {{ $attempt->canEditAnswers() ? '' : 'opacity-50' }} break-words">{{ $option }}</span>
                                                 </div>
                                                 <div class="flex-shrink-0">
-                                                    <div class="w-6 h-6 rounded-full border-2 border-gray-300 flex items-center justify-center group-hover:border-indigo-400 transition-colors">
-                                                        <div class="w-2 h-2 rounded-full bg-indigo-500 opacity-0 group-hover:opacity-50 transition-opacity"></div>
+                                                    <div class="w-5 h-5 sm:w-6 sm:h-6 rounded-full border-2 border-gray-300 flex items-center justify-center group-hover:border-indigo-400 transition-colors">
+                                                        <div class="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-indigo-500 opacity-0 group-hover:opacity-50 transition-opacity"></div>
                                                     </div>
                                                 </div>
                                             </div>
@@ -254,30 +257,30 @@
                             </div>
                         
                         @elseif($currentQuestion['type'] === 'true_false')
-                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                                 <label class="group block {{ $attempt->canEditAnswers() ? 'cursor-pointer' : 'cursor-not-allowed' }} transition-all duration-300">
-                                    <div class="flex items-center gap-4 p-6 rounded-2xl border-2 transition-all duration-300 {{ $attempt->canEditAnswers() ? 'border-gray-200 hover:border-emerald-300 hover:bg-emerald-50/50' : 'border-gray-100 bg-gray-50' }}">
+                                    <div class="flex items-center gap-3 sm:gap-4 p-4 sm:p-6 rounded-xl sm:rounded-2xl border-2 transition-all duration-300 {{ $attempt->canEditAnswers() ? 'border-gray-200 hover:border-emerald-300 hover:bg-emerald-50/50 active:scale-[0.98]' : 'border-gray-100 bg-gray-50' }}">
                                         <input type="radio" 
                                                wire:model.live="answers.{{ $currentQuestion['id'] }}" 
                                                value="true"
                                                {{ $attempt->canEditAnswers() ? '' : 'disabled' }}
-                                               class="w-5 h-5 text-emerald-600 border-2 border-gray-300 focus:ring-emerald-500 focus:ring-2 {{ $attempt->canEditAnswers() ? '' : 'opacity-50' }}">
-                                        <div class="flex items-center gap-3">
-                                            <i class="fas fa-check-circle text-emerald-500 text-xl"></i>
-                                            <span class="text-lg font-semibold text-gray-800 {{ $attempt->canEditAnswers() ? '' : 'opacity-50' }}">True</span>
+                                               class="w-4 h-4 sm:w-5 sm:h-5 text-emerald-600 border-2 border-gray-300 focus:ring-emerald-500 focus:ring-2 {{ $attempt->canEditAnswers() ? '' : 'opacity-50' }}">
+                                        <div class="flex items-center gap-2 sm:gap-3">
+                                            <i class="fas fa-check-circle text-emerald-500 text-lg sm:text-xl"></i>
+                                            <span class="text-base sm:text-lg font-semibold text-gray-800 {{ $attempt->canEditAnswers() ? '' : 'opacity-50' }}">True</span>
                                         </div>
                                     </div>
                                 </label>
                                 <label class="group block {{ $attempt->canEditAnswers() ? 'cursor-pointer' : 'cursor-not-allowed' }} transition-all duration-300">
-                                    <div class="flex items-center gap-4 p-6 rounded-2xl border-2 transition-all duration-300 {{ $attempt->canEditAnswers() ? 'border-gray-200 hover:border-red-300 hover:bg-red-50/50' : 'border-gray-100 bg-gray-50' }}">
+                                    <div class="flex items-center gap-3 sm:gap-4 p-4 sm:p-6 rounded-xl sm:rounded-2xl border-2 transition-all duration-300 {{ $attempt->canEditAnswers() ? 'border-gray-200 hover:border-red-300 hover:bg-red-50/50 active:scale-[0.98]' : 'border-gray-100 bg-gray-50' }}">
                                         <input type="radio" 
                                                wire:model.live="answers.{{ $currentQuestion['id'] }}" 
                                                value="false"
                                                {{ $attempt->canEditAnswers() ? '' : 'disabled' }}
-                                               class="w-5 h-5 text-red-600 border-2 border-gray-300 focus:ring-red-500 focus:ring-2 {{ $attempt->canEditAnswers() ? '' : 'opacity-50' }}">
-                                        <div class="flex items-center gap-3">
-                                            <i class="fas fa-times-circle text-red-500 text-xl"></i>
-                                            <span class="text-lg font-semibold text-gray-800 {{ $attempt->canEditAnswers() ? '' : 'opacity-50' }}">False</span>
+                                               class="w-4 h-4 sm:w-5 sm:h-5 text-red-600 border-2 border-gray-300 focus:ring-red-500 focus:ring-2 {{ $attempt->canEditAnswers() ? '' : 'opacity-50' }}">
+                                        <div class="flex items-center gap-2 sm:gap-3">
+                                            <i class="fas fa-times-circle text-red-500 text-lg sm:text-xl"></i>
+                                            <span class="text-base sm:text-lg font-semibold text-gray-800 {{ $attempt->canEditAnswers() ? '' : 'opacity-50' }}">False</span>
                                         </div>
                                     </div>
                                 </label>
@@ -287,11 +290,11 @@
                             <div class="space-y-4">
                                 <div class="relative">
                                     <textarea wire:model.blur="answers.{{ $currentQuestion['id'] }}" 
-                                              class="w-full px-4 py-4 border-2 border-gray-200 rounded-2xl focus:outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400 transition-all duration-300 resize-none {{ $attempt->canEditAnswers() ? 'bg-white' : 'bg-gray-50 opacity-50' }}"
-                                              rows="6"
+                                              class="w-full px-3 sm:px-4 py-3 sm:py-4 border-2 border-gray-200 rounded-xl sm:rounded-2xl focus:outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400 transition-all duration-300 resize-none text-sm sm:text-base {{ $attempt->canEditAnswers() ? 'bg-white' : 'bg-gray-50 opacity-50' }}"
+                                              rows="4"
                                               {{ $attempt->canEditAnswers() ? '' : 'readonly' }}
                                               placeholder="{{ $attempt->canEditAnswers() ? 'Type your answer here...' : 'Quiz has been submitted - answers cannot be edited' }}"></textarea>
-                                    <div class="absolute bottom-3 right-3 text-xs text-gray-400">
+                                    <div class="absolute bottom-2 sm:bottom-3 right-2 sm:right-3 text-xs text-gray-400">
                                         <i class="fas fa-edit"></i>
                                     </div>
                                 </div>
@@ -321,25 +324,25 @@
 
                                 {{-- Game Images --}}
                                 @if(!empty($currentQuestion['images']))
-                                    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                                         @foreach($currentQuestion['images'] as $image)
                                             @php $imageUrl = asset('storage/' . $image); @endphp
-                                            <div class="group relative bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300 cursor-pointer" onclick="openImageModal('{{ $imageUrl }}')">
+                                            <div class="group relative bg-white rounded-xl sm:rounded-2xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300 cursor-pointer" onclick="openImageModal('{{ $imageUrl }}')">
                                                 <div class="aspect-w-16 aspect-h-12">
                                                     <img src="{{ $imageUrl }}" 
                                                          alt="Game Image" 
-                                                         class="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
+                                                         class="w-full h-40 sm:h-48 object-cover group-hover:scale-105 transition-transform duration-300"
                                                          onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                                                    <div style="display:none;" class="w-full h-48 bg-gray-100 flex items-center justify-center text-gray-500">
+                                                    <div style="display:none;" class="w-full h-40 sm:h-48 bg-gray-100 flex items-center justify-center text-gray-500">
                                                         <div class="text-center">
-                                                            <i class="fas fa-image text-4xl mb-2"></i>
-                                                            <p class="text-sm font-medium">Image not found</p>
+                                                            <i class="fas fa-image text-3xl sm:text-4xl mb-2"></i>
+                                                            <p class="text-xs sm:text-sm font-medium">Image not found</p>
                                                         </div>
                                                     </div>
                                                 </div>
                                                 <div class="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-all duration-300 flex items-center justify-center">
                                                     <div class="opacity-0 group-hover:opacity-100 transition-opacity">
-                                                        <i class="fas fa-search-plus text-white text-2xl"></i>
+                                                        <i class="fas fa-search-plus text-white text-xl sm:text-2xl"></i>
                                                     </div>
                                                 </div>
                                             </div>
@@ -464,19 +467,19 @@
                 </div>
 
                 {{-- Enhanced Navigation Controls --}}
-                <div class="flex flex-col sm:flex-row items-center justify-between gap-4 mt-8">
+                <div class="flex flex-col lg:flex-row items-center justify-between gap-4 mt-6 sm:mt-8">
                     <button wire:click="goToPreviousQuestion" 
-                            class="flex items-center gap-2 px-6 py-3 text-gray-600 hover:text-gray-800 hover:bg-white/50 rounded-2xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed backdrop-blur-sm"
+                            class="flex items-center gap-2 px-4 sm:px-6 py-2 sm:py-3 text-gray-600 hover:text-gray-800 hover:bg-white/50 rounded-xl sm:rounded-2xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed backdrop-blur-sm text-sm sm:text-base order-2 lg:order-1"
                             {{ !$this->canGoPrevious() || !$attempt->canEditAnswers() ? 'disabled' : '' }}>
                         <i class="fas fa-chevron-left"></i>
                         <span class="font-medium">Previous</span>
                     </button>
 
                     {{-- Enhanced Question Navigator --}}
-                    <div class="flex items-center gap-2 flex-wrap justify-center">
+                    <div class="flex items-center gap-1 sm:gap-2 flex-wrap justify-center max-w-full overflow-x-auto pb-2 order-1 lg:order-2">
                         @foreach($questions as $index => $question)
                             <button wire:click="goToQuestion({{ $index }})"
-                                    class="w-10 h-10 text-sm font-bold rounded-xl transition-all duration-300 {{ !$attempt->canEditAnswers() ? 'cursor-not-allowed' : '' }}
+                                    class="w-8 h-8 sm:w-10 sm:h-10 text-xs sm:text-sm font-bold rounded-lg sm:rounded-xl transition-all duration-300 flex-shrink-0 {{ !$attempt->canEditAnswers() ? 'cursor-not-allowed' : '' }}
                                            {{ $index === $currentQuestionIndex 
                                               ? 'bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-lg scale-110' 
                                               : ($this->isQuestionAnswered($question['id']) 
@@ -487,10 +490,10 @@
                         @endforeach
                     </div>
 
-                    <div class="flex gap-3">
+                    <div class="flex gap-2 sm:gap-3 order-3 lg:order-3">
                         @if(!$this->isLastQuestion())
                             <button wire:click="goToNextQuestion" 
-                                    class="flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-2xl font-semibold hover:from-indigo-600 hover:to-purple-700 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transform hover:scale-105"
+                                    class="flex items-center gap-2 px-4 sm:px-8 py-2 sm:py-3 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl sm:rounded-2xl font-semibold hover:from-indigo-600 hover:to-purple-700 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transform hover:scale-105 text-sm sm:text-base"
                                     {{ !$this->canGoNext() || !$attempt->canEditAnswers() ? 'disabled' : '' }}>
                                 <span>Next</span>
                                 <i class="fas fa-chevron-right"></i>
@@ -506,28 +509,31 @@
                                 @endphp
                                 
                                 @if($allGamesCompleted)
-                                    <div class="flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-2xl font-semibold shadow-lg">
+                                    <div class="flex items-center gap-2 px-4 sm:px-8 py-2 sm:py-3 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-xl sm:rounded-2xl font-semibold shadow-lg text-sm sm:text-base">
                                         <i class="fas fa-check-circle"></i>
-                                        <span>All Games Completed</span>
+                                        <span class="hidden sm:inline">All Games Completed</span>
+                                        <span class="sm:hidden">Complete</span>
                                     </div>
                                 @else
-                                    <div class="flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-amber-500 to-amber-600 text-white rounded-2xl font-semibold shadow-lg">
+                                    <div class="flex items-center gap-2 px-4 sm:px-8 py-2 sm:py-3 bg-gradient-to-r from-amber-500 to-amber-600 text-white rounded-xl sm:rounded-2xl font-semibold shadow-lg text-sm sm:text-base">
                                         <i class="fas fa-gamepad"></i>
-                                        <span>Complete All Games</span>
+                                        <span class="hidden sm:inline">Complete All Games</span>
+                                        <span class="sm:hidden">Finish</span>
                                     </div>
                                 @endif
                             @else
                                 @if($attempt->canSubmit())
                                     <button wire:click="submitQuiz"
                                             wire:confirm="Are you sure you want to submit your quiz? This action cannot be undone."
-                                            class="flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-2xl font-semibold hover:from-emerald-600 hover:to-emerald-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105">
+                                            class="flex items-center gap-2 px-4 sm:px-8 py-2 sm:py-3 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-xl sm:rounded-2xl font-semibold hover:from-emerald-600 hover:to-emerald-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 text-sm sm:text-base">
                                         <i class="fas fa-check"></i>
                                         <span>Submit Quiz</span>
                                     </button>
                                 @else
-                                    <div class="flex items-center gap-2 px-8 py-3 bg-gray-400 text-white rounded-2xl font-semibold cursor-not-allowed shadow-lg">
+                                    <div class="flex items-center gap-2 px-4 sm:px-8 py-2 sm:py-3 bg-gray-400 text-white rounded-xl sm:rounded-2xl font-semibold cursor-not-allowed shadow-lg text-sm sm:text-base">
                                         <i class="fas fa-check-circle"></i>
-                                        <span>Quiz Submitted</span>
+                                        <span class="hidden sm:inline">Quiz Submitted</span>
+                                        <span class="sm:hidden">Submitted</span>
                                     </div>
                                 @endif
                             @endif
@@ -857,7 +863,8 @@ document.addEventListener('keydown', function(e) {
 <style>
     /* Enhanced Quiz Styles */
     .timer-container-enhanced {
-        min-width: 300px;
+        min-width: 280px;
+        max-width: 100%;
     }
     
     .timer-widget-enhanced {
@@ -995,15 +1002,53 @@ document.addEventListener('keydown', function(e) {
     /* Responsive design enhancements */
     @media (max-width: 768px) {
         .timer-container-enhanced {
-            min-width: 250px;
+            min-width: 240px;
+            max-width: 100%;
         }
         
         .timer-display-enhanced {
-            font-size: 1.25rem;
+            font-size: 1.1rem;
         }
         
         .timer-widget-enhanced {
             padding: 0.75rem;
+        }
+        
+        .timer-percentage-enhanced {
+            font-size: 0.75rem;
+        }
+        
+        .timer-status-enhanced {
+            font-size: 0.625rem;
+        }
+    }
+    
+    @media (max-width: 640px) {
+        .timer-container-enhanced {
+            min-width: 200px;
+        }
+        
+        .timer-display-enhanced {
+            font-size: 1rem;
+        }
+        
+        .timer-widget-enhanced {
+            padding: 0.5rem;
+        }
+    }
+    
+    /* Touch-friendly hover states for mobile */
+    @media (hover: none) and (pointer: coarse) {
+        .group:hover .group-hover\:opacity-100 {
+            opacity: 1;
+        }
+        
+        .group:hover .group-hover\:scale-105 {
+            transform: scale(1.05);
+        }
+        
+        .hover\:scale-105:hover {
+            transform: scale(1.05);
         }
     }
     

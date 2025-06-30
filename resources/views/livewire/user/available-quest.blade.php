@@ -18,27 +18,7 @@
         </div>
     @endif
 
-    {{-- DEBUG SECTION - Always visible --}}
-    <div class="mb-4 p-4 bg-yellow-100 border border-yellow-300 rounded">
-        <h4 class="font-bold text-yellow-800 mb-2">DEBUG INFO</h4>
-        <div class="text-xs text-yellow-800">
-            Current User ID: {{ Auth::id() }}<br>
-            Scanned QR Code: {{ $scannedQr_code ?? 'None' }}<br>
-            Recent Attempts Count: {{ $this->recentAttempts ? $this->recentAttempts->count() : 'NULL' }}<br>
-            @if($this->recentAttempts && $this->recentAttempts->count() > 0)
-                Attempts: 
-                @foreach($this->recentAttempts as $attempt)
-                    [Q{{ $attempt->questionnaire_id }}:{{ $attempt->status }}:U{{ $attempt->user_id }}] 
-                @endforeach
-            @else
-                NO ATTEMPTS FOUND
-            @endif
-            <br>
-            <button wire:click="debugQuizData(1)" class="mt-2 bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-xs">
-                Debug Quiz Data (ID: 1)
-            </button>
-        </div>
-    </div>
+ 
 
     {{-- Available Quizzes Grid --}}
     @if($scannedQr_code)
@@ -116,38 +96,7 @@
                 @endif
                 
 
-                {{-- DEBUG: Show actual values --}}
-                <div class="mb-2 p-2 bg-yellow-100 text-xs text-yellow-800 rounded">
-                    DEBUG: hasCompleted={{ $hasCompleted ? 'true' : 'false' }} | 
-                    canTakeQuiz={{ $canTakeQuiz ? 'true' : 'false' }} | 
-                    hasInProgress={{ $hasInProgress ? 'true' : 'false' }}
-                    <br>recentAttempts count: {{ $this->recentAttempts->count() }}
-                    <br>questionnaire_id: {{ $questionnaire->id }}
-                    <br>current user_id: {{ Auth::id() }}
-                    @if($this->recentAttempts->count() > 0)
-                        <br>ALL attempt statuses: 
-                        @foreach($this->recentAttempts as $attempt)
-                            [Q{{ $attempt->questionnaire_id }}:{{ $attempt->status }}:U{{ $attempt->user_id }}]
-                        @endforeach
-                        <br>THIS questionnaire ({{ $questionnaire->id }}) attempts: 
-                        @php
-                            $thisQuestionnaireAttempts = $this->recentAttempts->where('questionnaire_id', $questionnaire->id);
-                        @endphp
-                        @if($thisQuestionnaireAttempts->count() > 0)
-                            @foreach($thisQuestionnaireAttempts as $attempt)
-                                [Q{{ $attempt->questionnaire_id }}:{{ $attempt->status }}:U{{ $attempt->user_id }}]
-                            @endforeach
-                        @else
-                            NONE
-                        @endif
-                    @else
-                        <br>NO RECENT ATTEMPTS FOUND
-                    @endif
-                    <br><button wire:click="debugQuizData({{ $questionnaire->id }})" class="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-xs">
-                        Debug Quiz Data
-                    </button>
-                </div>
-
+               
                 {{-- Action Buttons --}}
                 @if($hasInProgress)
                     <button wire:click="continueQuiz({{ $hasInProgress->id }})" 

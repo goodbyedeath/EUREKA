@@ -50,30 +50,90 @@
                             <div class="relative flex items-center justify-center h-full">
                                 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
                                     <div class="max-w-4xl mx-auto">
-                                        @if($slide->icon_svg)
-                                            <div class="mb-6 flex justify-center">
-                                                {!! $slide->icon_svg !!}
+                                        @php
+                                            $orderedElements = $slide->getOrderedElements();
+                                        @endphp
+                                        
+                                        @foreach($orderedElements as $element)
+                                            @if($slide->shouldDisplayElement($element['type']))
+                                                @switch($element['type'])
+                                                    @case('icon')
+                                                        <div class="mb-6 flex justify-center">
+                                                            {!! $element['content'] !!}
+                                                        </div>
+                                                        @break
+                                                    
+                                                    @case('title')
+                                                        <h1 class="text-4xl md:text-6xl font-bold {{ $slide->text_color }} mb-6 leading-tight">
+                                                            {{ $element['content'] }}
+                                                        </h1>
+                                                        @break
+                                                    
+                                                    @case('subtitle')
+                                                        <p class="text-xl md:text-2xl {{ $slide->text_color === 'text-white' ? 'text-blue-100' : 'text-gray-600' }} mb-8 leading-relaxed">
+                                                            {{ $element['content'] }}
+                                                        </p>
+                                                        @break
+                                                    
+                                                    @case('primary_button')
+                                                        @if($element['content']['text'] && $element['content']['url'])
+                                                            <div class="mb-4 flex justify-center">
+                                                                <a href="{{ $element['content']['url'] }}" class="inline-flex items-center px-8 py-4 border border-transparent text-lg font-medium rounded-lg {{ $slide->button_color }} hover:bg-gray-50 transition duration-300 shadow-lg">
+                                                                    {{ $element['content']['text'] }}
+                                                                    <svg class="ml-2 w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path>
+                                                                    </svg>
+                                                                </a>
+                                                            </div>
+                                                        @endif
+                                                        @break
+                                                    
+                                                    @case('secondary_button')
+                                                        @if($element['content']['text'] && $element['content']['url'])
+                                                            <div class="mb-4 flex justify-center">
+                                                                <a href="{{ $element['content']['url'] }}" class="inline-flex items-center px-8 py-4 border-2 border-white text-lg font-medium rounded-lg {{ $slide->text_color }} hover:bg-white hover:text-blue-600 transition duration-300">
+                                                                    {{ $element['content']['text'] }}
+                                                                </a>
+                                                            </div>
+                                                        @endif
+                                                        @break
+                                                @endswitch
+                                            @endif
+                                        @endforeach
+                                        
+                                        {{-- Fallback: Group buttons together if they're consecutive --}}
+                                        @php
+                                            $buttonElements = collect($orderedElements)->filter(function($element) use ($slide) {
+                                                return in_array($element['type'], ['primary_button', 'secondary_button']) && 
+                                                       $slide->shouldDisplayElement($element['type']);
+                                            })->values();
+                                            
+                                            $consecutiveButtons = false;
+                                            if ($buttonElements->count() > 1) {
+                                                $positions = $buttonElements->pluck('position')->sort()->values();
+                                                $consecutiveButtons = $positions->count() > 1 && 
+                                                                     ($positions[1] - $positions[0]) === 1;
+                                            }
+                                        @endphp
+                                        
+                                        @if($consecutiveButtons)
+                                            <div class="flex flex-col sm:flex-row gap-4 justify-center mt-8">
+                                                @foreach($buttonElements->sortBy('position') as $buttonElement)
+                                                    @if($buttonElement['type'] === 'primary_button' && $buttonElement['content']['text'] && $buttonElement['content']['url'])
+                                                        <a href="{{ $buttonElement['content']['url'] }}" class="inline-flex items-center px-8 py-4 border border-transparent text-lg font-medium rounded-lg {{ $slide->button_color }} hover:bg-gray-50 transition duration-300 shadow-lg">
+                                                            {{ $buttonElement['content']['text'] }}
+                                                            <svg class="ml-2 w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path>
+                                                            </svg>
+                                                        </a>
+                                                    @elseif($buttonElement['type'] === 'secondary_button' && $buttonElement['content']['text'] && $buttonElement['content']['url'])
+                                                        <a href="{{ $buttonElement['content']['url'] }}" class="inline-flex items-center px-8 py-4 border-2 border-white text-lg font-medium rounded-lg {{ $slide->text_color }} hover:bg-white hover:text-blue-600 transition duration-300">
+                                                            {{ $buttonElement['content']['text'] }}
+                                                        </a>
+                                                    @endif
+                                                @endforeach
                                             </div>
                                         @endif
-                                        <h1 class="text-4xl md:text-6xl font-bold {{ $slide->text_color }} mb-6 leading-tight">
-                                            {{ $slide->title }}
-                                        </h1>
-                                        <p class="text-xl md:text-2xl {{ $slide->text_color === 'text-white' ? 'text-blue-100' : 'text-gray-600' }} mb-8 leading-relaxed">
-                                            {{ $slide->subtitle }}
-                                        </p>
-                                        <div class="flex flex-col sm:flex-row gap-4 justify-center">
-                                            <a href="{{ $slide->primary_button_url }}" class="inline-flex items-center px-8 py-4 border border-transparent text-lg font-medium rounded-lg {{ $slide->button_color }} hover:bg-gray-50 transition duration-300 shadow-lg">
-                                                {{ $slide->primary_button_text }}
-                                                <svg class="ml-2 w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path>
-                                                </svg>
-                                            </a>
-                                            @if($slide->secondary_button_text && $slide->secondary_button_url)
-                                                <a href="{{ $slide->secondary_button_url }}" class="inline-flex items-center px-8 py-4 border-2 border-white text-lg font-medium rounded-lg {{ $slide->text_color }} hover:bg-white hover:text-blue-600 transition duration-300">
-                                                    {{ $slide->secondary_button_text }}
-                                                </a>
-                                            @endif
-                                        </div>
                                     </div>
                                 </div>
                             </div>

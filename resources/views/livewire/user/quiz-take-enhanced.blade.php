@@ -147,13 +147,13 @@
                                             <div class="timer-display-enhanced" x-text="displayTime"></div>
                                             <div class="timer-status-enhanced" x-text="isCritical ? 'CRITICAL!' : (isWarning ? 'Warning' : 'Active')"></div>
                                         </div>
-                                        <div class="timer-percentage-enhanced" x-text="`${progressPercentage}%`"></div>
+                                        <div class="timer-percentage-enhanced" x-text="progressPercentage + '%'"></div>
                                     </div>
                                     
                                     {{-- Progress Bar --}}
                                     <div class="timer-progress-enhanced">
                                         <div class="timer-progress-bar-enhanced" 
-                                             :style="`width: ${progressPercentage}%`"
+                                             :style="'width: ' + progressPercentage + '%'"
                                              :class="{
                                                  'bg-gradient-to-r from-blue-500 to-blue-600': !isWarning && !isCritical,
                                                  'bg-gradient-to-r from-amber-500 to-amber-600': isWarning && !isCritical,

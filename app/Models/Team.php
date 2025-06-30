@@ -71,6 +71,7 @@ class Team extends Model
         return $this;
     }
 
+
     /**
      * Deduct points from the team
      */
@@ -85,6 +86,7 @@ class Team extends Model
         
         return $this;
     }
+
 
     /**
      * Set initial points for the team

@@ -1,3 +1,29 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Dark mode custom styles for testing */
+.dark {
+    color-scheme: dark;
+}
+
+/* Ensure transitions work smoothly */
+html {
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+body {
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Debug styles to ensure dark mode is working */
+.dark body {
+    background-color: rgb(17, 24, 39) !important; /* gray-900 */
+    color: rgb(243, 244, 246) !important; /* gray-100 */
+}
+
+/* Test if dark mode is being applied */
+.dark .test-dark-mode {
+    background-color: red !important;
+    color: white !important;
+}

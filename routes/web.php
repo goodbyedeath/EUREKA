@@ -40,6 +40,11 @@ Route::get('/', function () {
     return view('landing-dynamic', compact('heroSlides'));
 })->name('home');
 
+// Dark mode test page
+Route::get('/test-dark-mode', function () {
+    return view('test-dark-mode');
+})->name('test.dark-mode');
+
 // Authenticated routes
 Route::middleware(['auth', 'preventbackhistory'])->group(function () {
     Route::get('/dashboard', function () {
@@ -54,6 +59,7 @@ Route::middleware(['auth', 'preventbackhistory'])->group(function () {
         Route::get('/games', [DashboardController::class, 'gameManagement'])->name('games');
         Route::get('/user-progress', [DashboardController::class, 'userProgress'])->name('user-progress');
         Route::get('/hero-slides', [DashboardController::class, 'heroSlides'])->name('hero-slides');
+        Route::get('/team-management', [DashboardController::class, 'teamManagement'])->name('team-management');
         
     });
     

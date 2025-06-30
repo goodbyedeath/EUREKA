@@ -8,6 +8,8 @@ export default {
         './storage/framework/views/*.php',
         './resources/views/**/*.blade.php',
     ],
+    
+    darkMode: 'class', // Enable class-based dark mode
 
     theme: {
         extend: {

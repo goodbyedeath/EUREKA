@@ -141,7 +141,7 @@
                                 <!-- Progress Bar -->
                                 <div class="timer-progress-container">
                                     <div class="timer-progress-bar" 
-                                         :style="`width: ${progressPercentage}%`"
+                                         :style="'width: ' + progressPercentage + '%'"
                                          :class="{
                                              'progress-normal': !isWarning && !isCritical,
                                              'progress-warning': isWarning && !isCritical,
@@ -152,7 +152,7 @@
                                 <!-- Time Details -->
                                 <div class="timer-details">
                                     <span class="timer-label">Time Remaining</span>
-                                    <span class="timer-percentage" x-text="`${progressPercentage}%`"></span>
+                                    <span class="timer-percentage" x-text="progressPercentage + '%'"></span>
                                 </div>
                             </div>
                         </div>

@@ -9,7 +9,7 @@
                     @if($isScanning)
                         <div wire:ignore>
                             <div id="qr-scanner-container" class="relative">
-                                <video id="qr-video" class="w-full max-w-md mx-auto rounded-lg bg-black" playsinline></video>
+                                <video id="qr-video" class="w-full max-w-md mx-auto rounded-lg bg-black" playsinline autoplay muted></video>
                                 <div id="qr-scanner-overlay" class="absolute inset-0 border-2 border-blue-500 rounded-lg pointer-events-none"></div>
                                 <div class="absolute bottom-2 left-2 right-2 text-center">
                                     <p class="text-white text-sm bg-black bg-opacity-50 rounded px-2 py-1">
@@ -203,7 +203,6 @@ async function initializeQRScanner() {
         if (window.QrScanner) {
             QrScanner = window.QrScanner;
         } else {
-            // Fallback: try to import directly (for development)
             try {
                 const module = await import('qr-scanner');
                 QrScanner = module.default;
@@ -214,9 +213,10 @@ async function initializeQRScanner() {
         const video = document.getElementById('qr-video');
         
         if (!video) {
-            // Video element not found
-            $wire.set('error', 'Video element not found');
-            $wire.set('isScanning', false);
+            if (typeof $wire !== 'undefined' && $wire && $wire.set) {
+                $wire.set('error', 'Video element not found. Please try again.');
+                $wire.set('isScanning', false);
+            }
             return;
         }
 
@@ -224,7 +224,9 @@ async function initializeQRScanner() {
         qrScanner = new QrScanner(
             video,
             result => {
-                $wire.handleQRScanned(result.data);
+                if (typeof $wire !== 'undefined' && $wire && $wire.handleQRScanned) {
+                    $wire.handleQRScanned(result.data);
+                }
             },
             {
                 returnDetailedScanResult: true,
@@ -236,6 +238,17 @@ async function initializeQRScanner() {
         );
 
         await qrScanner.start();
+        
+        // Check if video is working after brief delay
+        setTimeout(() => {
+            if (video.videoWidth === 0 || video.videoHeight === 0) {
+                if (typeof $wire !== 'undefined' && $wire && $wire.set) {
+                    $wire.set('error', 'Camera feed not detected. Please check camera permissions and try again.');
+                    $wire.set('isScanning', false);
+                }
+            }
+        }, 2000);
+        
         isInitialized = true;
         
     } catch (error) {
@@ -253,10 +266,14 @@ async function initializeQRScanner() {
             errorMessage = 'QR scanner is not supported on this device/browser. Please try a different browser.';
         } else if (error.name === 'AbortError') {
             errorMessage = 'Camera access was interrupted. Please try again.';
+        } else {
+            errorMessage = `Camera initialization failed: ${error.message}`;
         }
         
-        $wire.set('error', errorMessage);
-        $wire.set('isScanning', false);
+        if (typeof $wire !== 'undefined' && $wire && $wire.set) {
+            $wire.set('error', errorMessage);
+            $wire.set('isScanning', false);
+        }
     }
 }
 
@@ -274,15 +291,21 @@ async function cleanupQRScanner() {
 }
 
 $wire.on('start-qr-scanner', () => {
-    setTimeout(initializeQRScanner, 300);
+    if (typeof $wire !== 'undefined' && $wire) {
+        setTimeout(initializeQRScanner, 300);
+    }
 });
 
 $wire.on('stop-qr-scanner', () => {
-    cleanupQRScanner();
+    if (typeof $wire !== 'undefined' && $wire) {
+        cleanupQRScanner();
+    }
 });
 
 $wire.on('cleanup-qr-scanner', () => {
-    cleanupQRScanner();
+    if (typeof $wire !== 'undefined' && $wire) {
+        cleanupQRScanner();
+    }
 });
 
 document.addEventListener('livewire:navigating', () => {
@@ -298,5 +321,6 @@ document.addEventListener('visibilitychange', () => {
         cleanupQRScanner();
     }
 });
+
 </script>
 @endscript

@@ -24,11 +24,13 @@ class HeroSlide extends Model
         'order',
         'is_active',
         'icon_svg',
+        'element_order',
     ];
 
     protected $casts = [
         'is_active' => 'boolean',
         'order' => 'integer',
+        'element_order' => 'array',
     ];
 
     /**
@@ -141,6 +143,109 @@ class HeroSlide extends Model
         $slides = self::orderBy('order')->get();
         foreach ($slides as $index => $slide) {
             $slide->update(['order' => $index]);
+        }
+    }
+
+    /**
+     * Get the default element order
+     */
+    public function getDefaultElementOrder()
+    {
+        return [
+            'icon' => 0,
+            'title' => 1,
+            'subtitle' => 2,
+            'primary_button' => 3,
+            'secondary_button' => 4,
+        ];
+    }
+
+    /**
+     * Get the element order for this slide
+     */
+    public function getElementOrder()
+    {
+        return $this->element_order ?? $this->getDefaultElementOrder();
+    }
+
+    /**
+     * Get elements in their defined order
+     */
+    public function getOrderedElements()
+    {
+        $order = $this->getElementOrder();
+        $elements = [];
+
+        // Create array of elements with their order
+        foreach ($order as $element => $position) {
+            $elements[] = [
+                'type' => $element,
+                'position' => $position,
+                'content' => $this->getElementContent($element)
+            ];
+        }
+
+        // Sort by position
+        usort($elements, function ($a, $b) {
+            return $a['position'] <=> $b['position'];
+        });
+
+        return $elements;
+    }
+
+    /**
+     * Get content for a specific element
+     */
+    private function getElementContent($element)
+    {
+        switch ($element) {
+            case 'icon':
+                return $this->icon_svg;
+            case 'title':
+                return $this->title;
+            case 'subtitle':
+                return $this->subtitle;
+            case 'primary_button':
+                return [
+                    'text' => $this->primary_button_text,
+                    'url' => $this->primary_button_url
+                ];
+            case 'secondary_button':
+                return [
+                    'text' => $this->secondary_button_text,
+                    'url' => $this->secondary_button_url
+                ];
+            default:
+                return null;
+        }
+    }
+
+    /**
+     * Update element order
+     */
+    public function updateElementOrder(array $newOrder)
+    {
+        $this->update(['element_order' => $newOrder]);
+    }
+
+    /**
+     * Check if element should be displayed
+     */
+    public function shouldDisplayElement($element)
+    {
+        switch ($element) {
+            case 'icon':
+                return !empty($this->icon_svg);
+            case 'title':
+                return !empty($this->title);
+            case 'subtitle':
+                return !empty($this->subtitle);
+            case 'primary_button':
+                return !empty($this->primary_button_text) && !empty($this->primary_button_url);
+            case 'secondary_button':
+                return !empty($this->secondary_button_text) && !empty($this->secondary_button_url);
+            default:
+                return false;
         }
     }
 

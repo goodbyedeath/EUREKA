@@ -82,6 +82,11 @@ class DashboardContent extends Component
         $this->dispatch('tab-switched', ['tab' => 'games']);
     }
 
+    public function openQRScanner()
+    {
+        $this->dispatch('open-qr-scanner');
+    }
+
     public function render()
     {
         return view('livewire.user.dashboard-content');

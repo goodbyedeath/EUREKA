@@ -45,4 +45,9 @@ class DashboardController extends Controller
     {
         return view('admin.hero-slides');
     }
+
+    public function teamManagement()
+    {
+        return view('admin.team-management');
+    }
 }
