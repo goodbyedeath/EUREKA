@@ -75,7 +75,15 @@ Route::middleware(['auth', 'preventbackhistory'])->group(function () {
                 Route::get('/quiz/start/{questionnaireId}', QuizTake::class)->name('quiz.start');
                 Route::get('/quiz/take/{questionnaireId}', QuizTake::class)->name('quiz.take');
                 Route::get('/quiz/continue/{attemptId}', QuizTake::class)->name('quiz.continue');
-                Route::get('/quiz/results/{attemptId}', QuizResults::class)->name('quiz.results');
+                Route::get('/quiz/results/{attemptId}', function($attemptId) {
+                    $attempt = \App\Models\QuizAttempt::with(['questionnaire.questions'])
+                        ->where('id', $attemptId)
+                        ->where('user_id', Auth::id())
+                        ->where('status', 'completed')
+                        ->firstOrFail();
+                        
+                    return view('user.quiz-results', compact('attempt'));
+                })->name('quiz.results');
                 Route::get('/game/assessment/{assessmentId}', GameAssessmentForm::class)->name('game.assessment');
             });
             Route::get('/quest-dashboard', QuestLocationDashboard::class)->name('user.quest-location-dashboard');
@@ -89,5 +97,5 @@ Route::middleware(['auth', 'preventbackhistory'])->group(function () {
 
 // Fallback route
 Route::fallback(function () {
-    return view('livewire.fallback');
+    return response()->view('errors.404', [], 404);
 });

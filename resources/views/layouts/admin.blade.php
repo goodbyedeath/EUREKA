@@ -19,6 +19,11 @@
     @livewireStyles
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     
+    <!-- Fix modal flickering -->
+    <style>
+        [x-cloak] { display: none !important; }
+    </style>
+    
     <!-- Dark Mode Init Script - runs before page render -->
     <script>
         // Apply theme immediately to prevent flash

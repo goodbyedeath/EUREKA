@@ -45,6 +45,14 @@
                 
                 <!-- Desktop Navigation -->
                 <div class="hidden md:flex items-center space-x-4">
+                    <!-- Dark Mode Toggle -->
+                    <div class="nav-item">
+                        <button data-theme-toggle class="dark-mode-btn" title="Toggle Dark Mode">
+                            <i class="fas fa-sun sun-icon" style="display: none;"></i>
+                            <i class="fas fa-moon moon-icon"></i>
+                        </button>
+                    </div>
+                    
                     <!-- Language Switcher -->
                     <div class="nav-item">
                         @include('components.simple-language-switcher')
@@ -95,6 +103,18 @@
                  x-transition:leave-end="opacity-0 transform scale-95"
                  class="mobile-menu">
                 <div class="mobile-menu-content">
+                    <!-- Mobile Dark Mode Toggle -->
+                    <div class="mobile-item">
+                        <div class="mobile-item-header">
+                            <span>Theme:</span>
+                        </div>
+                        <button data-theme-toggle class="mobile-dark-mode-btn">
+                            <i class="fas fa-sun sun-icon" style="display: none;"></i>
+                            <i class="fas fa-moon moon-icon"></i>
+                            <span class="mobile-theme-text">Dark Mode</span>
+                        </button>
+                    </div>
+                    
                     <!-- Mobile Language Switcher -->
                     <div class="mobile-item">
                         <div class="mobile-item-header">
@@ -177,30 +197,6 @@
                             </div>
                         </div>
                         
-                        <!-- Quick Stats Grid -->
-                        <div class="quick-stats-grid">
-                            <div class="stat-card stat-primary">
-                                <div class="stat-icon">
-                                    <i class="fas fa-trophy"></i>
-                                </div>
-                                <div class="stat-content">
-                                    <div class="stat-value">{{ $team->total_score ?? '0' }}</div>
-                                    <div class="stat-label">Total Score</div>
-                                </div>
-                                <div class="stat-glow"></div>
-                            </div>
-                            
-                            <div class="stat-card stat-success">
-                                <div class="stat-icon">
-                                    <i class="fas fa-tasks"></i>
-                                </div>
-                                <div class="stat-content">
-                                    <div class="stat-value">{{ $team->completed_quests ?? '0' }}</div>
-                                    <div class="stat-label">Completed</div>
-                                </div>
-                                <div class="stat-glow"></div>
-                            </div>
-                        </div>
                     </div>
                     
                     <!-- Action Panel -->
@@ -210,6 +206,11 @@
                 </div>
             </div>
 
+
+            <!-- Dashboard Stats -->
+            <div class="stats-section">
+                @livewire('user.dashboard-stats')
+            </div>
 
             <!-- Tab Navigation -->
             <div class="tab-navigation">
@@ -229,6 +230,9 @@
 {{-- Include QR Scanner Modal --}}
 @livewire('user.q-r-scanner-modal')
 
+{{-- Include Score Breakdown Modal --}}
+@livewire('user.score-breakdown')
+
 @push('styles')
 <style>
     /* Premium Dashboard Styles */
@@ -237,6 +241,12 @@
         min-height: 100vh;
         position: relative;
         overflow-x: hidden;
+        transition: all 0.3s ease;
+    }
+    
+    /* Dark mode dashboard background */
+    .dark .dashboard-premium {
+        background: linear-gradient(135deg, #0f172a 0%, #1e293b 25%, #334155 50%, #475569 75%, #1e293b 100%);
     }
     
     /* Floating Particles */
@@ -257,6 +267,11 @@
         background: rgba(255, 255, 255, 0.4);
         border-radius: 50%;
         animation: particleFloat 25s infinite linear;
+        transition: background 0.3s ease;
+    }
+    
+    .dark .particle {
+        background: rgba(148, 163, 184, 0.3);
     }
     
     .particle:nth-child(1) { left: 5%; animation-delay: 0s; animation-duration: 20s; }
@@ -332,6 +347,13 @@
         box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
         position: relative;
         z-index: 50;
+        transition: all 0.3s ease;
+    }
+    
+    .dark .premium-nav {
+        background: rgba(15, 23, 42, 0.95);
+        border-bottom: 1px solid rgba(51, 65, 85, 0.3);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
     }
     
     .brand-container {
@@ -380,6 +402,60 @@
         border-radius: 12px;
         padding: 8px 12px;
         border: 1px solid rgba(255, 255, 255, 0.3);
+        transition: all 0.3s ease;
+    }
+    
+    .dark .nav-item {
+        background: rgba(51, 65, 85, 0.7);
+        border: 1px solid rgba(71, 85, 105, 0.3);
+    }
+    
+    /* Dark Mode Toggle */
+    .dark-mode-btn {
+        background: transparent;
+        border: none;
+        color: #374151;
+        font-size: 16px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+    }
+    
+    .dark-mode-btn:hover {
+        background: rgba(0, 0, 0, 0.1);
+        color: #667eea;
+        transform: scale(1.1);
+    }
+    
+    .mobile-dark-mode-btn {
+        width: 100%;
+        background: rgba(255, 255, 255, 0.5);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        border-radius: 8px;
+        padding: 12px 16px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        color: #374151;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    
+    .mobile-dark-mode-btn:hover {
+        background: rgba(255, 255, 255, 0.7);
+        transform: translateY(-1px);
+    }
+    
+    .mobile-theme-text {
+        font-size: 14px;
+        font-weight: 500;
     }
     
     .user-profile-section {
@@ -392,6 +468,11 @@
         padding: 8px 16px;
         border: 1px solid rgba(255, 255, 255, 0.3);
         transition: all 0.3s ease;
+    }
+    
+    .dark .user-profile-section {
+        background: rgba(51, 65, 85, 0.7);
+        border: 1px solid rgba(71, 85, 105, 0.3);
     }
     
     .user-profile-section:hover {
@@ -422,11 +503,21 @@
         font-weight: 600;
         color: #1f2937;
         font-size: 14px;
+        transition: color 0.3s ease;
+    }
+    
+    .dark .user-name {
+        color: #f1f5f9;
     }
     
     .user-role {
         font-size: 12px;
         color: #6b7280;
+        transition: color 0.3s ease;
+    }
+    
+    .dark .user-role {
+        color: #94a3b8;
     }
     
     .logout-btn {
@@ -616,6 +707,13 @@
         box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
         position: relative;
         overflow: hidden;
+        transition: all 0.3s ease;
+    }
+    
+    .dark .hero-section {
+        background: rgba(15, 23, 42, 0.95);
+        border: 1px solid rgba(51, 65, 85, 0.3);
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
     }
     
     .hero-background-effect {
@@ -705,6 +803,20 @@
         position: relative;
         overflow: hidden;
         cursor: pointer;
+    }
+
+    .clickable-stat {
+        cursor: pointer;
+        user-select: none;
+    }
+
+    .clickable-stat:hover {
+        transform: translateY(-4px) scale(1.02);
+        box-shadow: 0 16px 40px rgba(0, 0, 0, 0.2);
+    }
+
+    .clickable-stat:active {
+        transform: translateY(-2px) scale(1.01);
     }
     
     .stat-card:hover {
@@ -823,6 +935,13 @@
         box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
         overflow: hidden;
         padding: 32px;
+        transition: all 0.3s ease;
+    }
+    
+    .dark .content-card {
+        background: rgba(15, 23, 42, 0.95);
+        border: 1px solid rgba(51, 65, 85, 0.3);
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
     }
     
     /* Animations */
@@ -914,8 +1033,115 @@
         console.log('Livewire initialized');
     });
 
+    // Dashboard-specific dark mode setup
+    function initDashboardDarkMode() {
+        console.log('=== Dashboard Dark Mode Init ===');
+        
+        // Check if the global DarkMode is available
+        if (typeof window.DarkMode !== 'undefined') {
+            console.log('Global DarkMode found, using existing system');
+            
+            // Wait a bit for DOM to be fully ready, then update buttons
+            setTimeout(() => {
+                if (window.DarkMode.updateToggleButtons) {
+                    window.DarkMode.updateToggleButtons();
+                }
+                updateMobileThemeText();
+            }, 100);
+            
+        } else {
+            console.log('Global DarkMode not found, creating simple fallback');
+            
+            // Simple fallback if the main system isn't loaded yet
+            const buttons = document.querySelectorAll('[data-theme-toggle]');
+            console.log('Found theme toggle buttons:', buttons.length);
+            
+            buttons.forEach((button, index) => {
+                console.log(`Setting up button ${index}`);
+                button.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    console.log('Theme toggle clicked');
+                    
+                    // Simple toggle
+                    const isDark = document.documentElement.classList.toggle('dark');
+                    localStorage.setItem('theme', isDark ? 'dark' : 'light');
+                    
+                    // Update icons manually
+                    updateDashboardIcons();
+                    updateMobileThemeText();
+                });
+            });
+            
+            // Set initial state
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            if (savedTheme === 'dark') {
+                document.documentElement.classList.add('dark');
+            }
+            updateDashboardIcons();
+            updateMobileThemeText();
+        }
+    }
+    
+    function updateDashboardIcons() {
+        const isDark = document.documentElement.classList.contains('dark');
+        const buttons = document.querySelectorAll('[data-theme-toggle]');
+        
+        buttons.forEach(button => {
+            const sunIcon = button.querySelector('.sun-icon');
+            const moonIcon = button.querySelector('.moon-icon');
+            
+            if (sunIcon && moonIcon) {
+                if (isDark) {
+                    sunIcon.style.display = 'block';
+                    moonIcon.style.display = 'none';
+                } else {
+                    sunIcon.style.display = 'none';
+                    moonIcon.style.display = 'block';
+                }
+            }
+        });
+    }
+
+    function updateMobileThemeText() {
+        const isDark = document.documentElement.classList.contains('dark');
+        const themeTexts = document.querySelectorAll('.mobile-theme-text');
+        
+        themeTexts.forEach(text => {
+            text.textContent = isDark ? 'Light Mode' : 'Dark Mode';
+        });
+    }
+
     // Add smooth scrolling and other interactions
     document.addEventListener('DOMContentLoaded', function() {
+        // Initialize dashboard dark mode
+        initDashboardDarkMode();
+        
+        // Add debug tools to window for testing
+        window.testDashboardDarkMode = function() {
+            console.log('=== Dashboard Dark Mode Test ===');
+            console.log('Current theme:', document.documentElement.classList.contains('dark') ? 'dark' : 'light');
+            console.log('LocalStorage:', localStorage.getItem('theme'));
+            console.log('Toggle buttons found:', document.querySelectorAll('[data-theme-toggle]').length);
+            console.log('Global DarkMode available:', typeof window.DarkMode);
+            
+            // Try to toggle manually
+            const isDark = document.documentElement.classList.toggle('dark');
+            localStorage.setItem('theme', isDark ? 'dark' : 'light');
+            updateDashboardIcons();
+            updateMobileThemeText();
+            console.log('Manually toggled to:', isDark ? 'dark' : 'light');
+        };
+        
+        window.debugDashboardButtons = function() {
+            const buttons = document.querySelectorAll('[data-theme-toggle]');
+            console.log('Found buttons:', buttons.length);
+            buttons.forEach((btn, i) => {
+                console.log(`Button ${i}:`, btn);
+                console.log(`  Sun icon:`, btn.querySelector('.sun-icon'));
+                console.log(`  Moon icon:`, btn.querySelector('.moon-icon'));
+            });
+        };
+        
         // Animate stats on load
         const statCards = document.querySelectorAll('.stat-card');
         statCards.forEach((card, index) => {

@@ -549,7 +549,7 @@ class QuizTake extends Component
             $lockedAttempt->update([
                 'status' => QuizAttempt::STATUS_COMPLETED,
                 'completed_at' => $this->endTime,
-                'total_score' => $this->earnedPoints,
+                'total_score' => $this->getBasePoints() + $this->earnedPoints,
                 'total_time_seconds' => $this->endTime->diffInSeconds($lockedAttempt->started_at),
             ]);
 
@@ -644,6 +644,17 @@ class QuizTake extends Component
 
         // Redirect to dedicated results page to ensure fresh data
         return $this->redirect(route('quiz.results', ['attemptId' => $this->attempt->id]), navigate: true);
+    }
+
+    public function getBasePoints()
+    {
+        // Base points from user's team initial points
+        $user = auth()->user();
+        if (!$user || !$user->team) {
+            return 1000; // Default base points
+        }
+        
+        return $user->team->initial_points ?? 1000;
     }
 
     public function calculateScore()

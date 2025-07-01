@@ -44,24 +44,24 @@
             </div>
         </div>
 
-        {{-- Average Score --}}
-        <div class="premium-stat-card average">
+        {{-- Average Points Per Question --}}
+        <div class="premium-stat-card average clickable" wire:click="openScoreDetails">
             <div class="stat-card-glow"></div>
             <div class="stat-card-content">
                 <div class="stat-header">
                     <div class="stat-icon-container">
                         <div class="stat-icon-bg average-bg"></div>
-                        <i class="fas fa-star stat-icon"></i>
+                        <i class="fas fa-calculator stat-icon"></i>
                     </div>
                     <div class="stat-pulse-ring"></div>
                 </div>
                 <div class="stat-body">
                     <div class="stat-value-container">
-                        <span class="stat-value {{ $this->getScoreColor($averageScore) }}">{{ $averageScore }}</span>
+                        <span class="stat-value {{ $this->getScoreColor($averageScore) }}">{{ number_format($averageScore, 1) }}</span>
                         <div class="stat-value-effect"></div>
                     </div>
-                    <div class="stat-label">Average Score</div>
-                    <div class="stat-description">Performance rating</div>
+                    <div class="stat-label">Average Points</div>
+                    <div class="stat-description">Gained per question answered</div>
                 </div>
             </div>
         </div>
@@ -93,7 +93,7 @@
             </div>
         </div>
 
-        {{-- Team Points --}}
+        {{-- Total Score --}}
         @if($teamName)
             <div class="premium-stat-card team">
                 <div class="stat-card-glow"></div>
@@ -101,7 +101,7 @@
                     <div class="stat-header">
                         <div class="stat-icon-container">
                             <div class="stat-icon-bg team-bg"></div>
-                            <i class="fas fa-coins stat-icon"></i>
+                            <i class="fas fa-trophy stat-icon"></i>
                         </div>
                         <div class="stat-pulse-ring"></div>
                     </div>
@@ -110,8 +110,8 @@
                             <span class="stat-value {{ $teamPoints >= 1000 ? 'text-green-400' : ($teamPoints >= 500 ? 'text-yellow-400' : 'text-red-400') }}">{{ number_format($teamPoints, 0) }}</span>
                             <div class="stat-value-effect"></div>
                         </div>
-                        <div class="stat-label">Team Points</div>
-                        <div class="stat-description">{{ $teamName }}</div>
+                        <div class="stat-label">Total Score</div>
+                        <div class="stat-description">Base + Gained Points</div>
                     </div>
                 </div>
             </div>
@@ -137,7 +137,230 @@
                 </div>
             </div>
         @endif
+
+        {{-- History Card --}}
+        <div class="premium-stat-card history clickable" wire:click="openHistoryModal">
+            <div class="stat-card-glow"></div>
+            <div class="stat-card-content">
+                <div class="stat-header">
+                    <div class="stat-icon-container">
+                        <div class="stat-icon-bg history-bg"></div>
+                        <i class="fas fa-history stat-icon"></i>
+                    </div>
+                    <div class="stat-pulse-ring"></div>
+                </div>
+                <div class="stat-body">
+                    <div class="stat-value-container">
+                        <span class="stat-value">{{ $completedAttempts }}</span>
+                        <div class="stat-value-effect"></div>
+                    </div>
+                    <div class="stat-label">History</div>
+                    <div class="stat-description">View recent attempts</div>
+                </div>
+            </div>
+        </div>
     </div>
+
+    {{-- Score Details Modal --}}
+    @if($showDetailsModal)
+    <div class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" wire:click="closeDetailsModal"></div>
+            
+            <div class="inline-block align-bottom bg-white dark:bg-gray-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">
+                <div class="bg-white dark:bg-gray-800 px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-xl font-bold text-gray-900 dark:text-gray-100">
+                            <i class="fas fa-chart-line text-blue-500 mr-2"></i>
+                            Score Details
+                        </h3>
+                        <button type="button" wire:click="closeDetailsModal" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </button>
+                    </div>
+
+                    @if(count($scoreDetails) > 0)
+                    <div class="mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
+                            <div>
+                                <div class="text-2xl font-bold text-blue-600">{{ number_format($averageScore, 0) }}</div>
+                                <div class="text-sm text-gray-600 dark:text-gray-400">Average Total Score</div>
+                            </div>
+                            <div>
+                                <div class="text-2xl font-bold text-green-600">{{ count($scoreDetails) }}</div>
+                                <div class="text-sm text-gray-600 dark:text-gray-400">Completed Quizzes</div>
+                            </div>
+                            <div>
+                                <div class="text-2xl font-bold text-purple-600">{{ number_format(collect($scoreDetails)->avg('percentage'), 1) }}%</div>
+                                <div class="text-sm text-gray-600 dark:text-gray-400">Average Percentage</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                            <thead class="bg-gray-50 dark:bg-gray-700">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Quiz</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Date</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Base Points</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Earned Points</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Total Score</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Percentage</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Duration</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                                @foreach($scoreDetails as $detail)
+                                <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <div class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ $detail['questionnaire_name'] }}</div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <div class="text-sm text-gray-600 dark:text-gray-400">{{ $detail['completed_at'] }}</div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <div class="text-sm font-mono text-gray-600 dark:text-gray-400">{{ number_format($detail['base_points']) }}</div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <div class="text-sm font-mono text-blue-600">+{{ number_format($detail['earned_points']) }}</div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <div class="text-sm font-bold font-mono {{ $this->getScoreColor($detail['total_score']) }}">{{ number_format($detail['total_score']) }}</div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                                            @if($detail['percentage'] >= 90) bg-green-100 text-green-800
+                                            @elseif($detail['percentage'] >= 80) bg-blue-100 text-blue-800
+                                            @elseif($detail['percentage'] >= 70) bg-yellow-100 text-yellow-800
+                                            @elseif($detail['percentage'] >= 60) bg-orange-100 text-orange-800
+                                            @else bg-red-100 text-red-800
+                                            @endif">
+                                            {{ number_format($detail['percentage'], 1) }}%
+                                        </span>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <div class="text-sm text-gray-600 dark:text-gray-400">{{ $detail['duration'] }}</div>
+                                    </td>
+                                </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                    @else
+                    <div class="text-center py-8">
+                        <div class="text-gray-400 text-lg mb-2">
+                            <i class="fas fa-chart-line text-4xl"></i>
+                        </div>
+                        <p class="text-gray-600 dark:text-gray-400">No completed quizzes found.</p>
+                    </div>
+                    @endif
+                </div>
+
+                <div class="bg-gray-50 dark:bg-gray-700 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                    <button type="button" wire:click="closeDetailsModal" class="w-full inline-flex justify-center rounded-md border border-gray-300 dark:border-gray-600 shadow-sm px-4 py-2 bg-white dark:bg-gray-800 text-base font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:w-auto sm:text-sm">
+                        Close
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    @endif
+
+    {{-- History Modal (Recent Attempts) --}}
+    @if($showHistoryModal)
+    <div class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" wire:click="closeHistoryModal"></div>
+            
+            <div class="inline-block align-bottom bg-white dark:bg-gray-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-5xl sm:w-full">
+                <div class="bg-white dark:bg-gray-800 px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-xl font-bold text-gray-900 dark:text-gray-100">
+                            <i class="fas fa-history text-purple-500 mr-2"></i>
+                            Recent Quiz Attempts
+                        </h3>
+                        <button type="button" wire:click="closeHistoryModal" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </button>
+                    </div>
+
+                    @if(count($recentAttempts) > 0)
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                            <thead class="bg-gray-50 dark:bg-gray-700">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Quiz</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Score</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Date</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                                @foreach($recentAttempts as $attempt)
+                                <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <div class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ $attempt['quiz_title'] }}</div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                                            @if($attempt['status'] === 'completed') bg-green-100 text-green-800
+                                            @elseif($attempt['status'] === 'in_progress') bg-yellow-100 text-yellow-800
+                                            @else bg-gray-100 text-gray-800
+                                            @endif">
+                                            {{ ucfirst($attempt['status']) }}
+                                        </span>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        @if($attempt['status'] === 'completed')
+                                            <div class="text-sm font-mono font-bold text-green-600">{{ number_format($attempt['score']) }}</div>
+                                        @else
+                                            <div class="text-sm text-gray-400">-</div>
+                                        @endif
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <div class="text-sm text-gray-600 dark:text-gray-400">{{ $attempt['date'] }}</div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                        @if($attempt['status'] === 'completed')
+                                            <a href="{{ route('quiz.results', $attempt['id']) }}" class="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300">
+                                                View Details
+                                            </a>
+                                        @elseif($attempt['status'] === 'in_progress')
+                                            <a href="{{ route('quiz.take', $attempt['questionnaire_id']) }}" class="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300">
+                                                Continue
+                                            </a>
+                                        @endif
+                                    </td>
+                                </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                    @else
+                    <div class="text-center py-8">
+                        <div class="text-gray-400 text-lg mb-2">
+                            <i class="fas fa-clipboard-list text-4xl"></i>
+                        </div>
+                        <p class="text-gray-600 dark:text-gray-400">No quiz attempts found.</p>
+                    </div>
+                    @endif
+                </div>
+
+                <div class="bg-gray-50 dark:bg-gray-700 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                    <button type="button" wire:click="closeHistoryModal" class="w-full inline-flex justify-center rounded-md border border-gray-300 dark:border-gray-600 shadow-sm px-4 py-2 bg-white dark:bg-gray-800 text-base font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:w-auto sm:text-sm">
+                        Close
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    @endif
 
     <style>
     /* Premium Stats Styles */
@@ -163,6 +386,11 @@
         cursor: pointer;
     }
     
+    .dark .premium-stat-card {
+        background: rgba(15, 23, 42, 0.9);
+        border: 1px solid rgba(51, 65, 85, 0.3);
+    }
+    
     .premium-stat-card:hover {
         transform: translateY(-8px);
         box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
@@ -174,6 +402,20 @@
     
     .premium-stat-card:hover .stat-pulse-ring {
         animation: pulseFast 1.5s infinite;
+    }
+    
+    .premium-stat-card.clickable {
+        cursor: pointer;
+        user-select: none;
+    }
+    
+    .premium-stat-card.clickable:hover {
+        transform: translateY(-12px);
+        box-shadow: 0 25px 50px rgba(0, 0, 0, 0.2);
+    }
+    
+    .premium-stat-card.clickable:active {
+        transform: translateY(-8px);
     }
     
     .stat-card-glow {
@@ -215,6 +457,11 @@
     .premium-stat-card.no-team .stat-card-glow {
         background: conic-gradient(from 0deg, rgba(107, 114, 128, 0.1), rgba(75, 85, 99, 0.1), rgba(107, 114, 128, 0.1));
         animation: rotateGlow 30s linear infinite;
+    }
+    
+    .premium-stat-card.history .stat-card-glow {
+        background: conic-gradient(from 0deg, rgba(139, 92, 246, 0.15), rgba(99, 102, 241, 0.15), rgba(139, 92, 246, 0.15));
+        animation: rotateGlow 20s linear infinite;
     }
     
     .stat-card-content {
@@ -269,6 +516,10 @@
         background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
     }
     
+    .history-bg {
+        background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
+    }
+    
     .stat-icon {
         font-size: 32px;
         color: white;
@@ -305,6 +556,11 @@
         font-family: 'SF Mono', 'Monaco', monospace;
         position: relative;
         z-index: 2;
+        transition: color 0.3s ease;
+    }
+    
+    .dark .stat-value {
+        color: #f1f5f9;
     }
     
     .stat-value-effect {
@@ -325,6 +581,11 @@
         text-transform: uppercase;
         letter-spacing: 0.5px;
         margin-bottom: 8px;
+        transition: color 0.3s ease;
+    }
+    
+    .dark .stat-label {
+        color: #d1d5db;
     }
     
     .stat-description {
@@ -332,6 +593,11 @@
         font-weight: 500;
         color: #6b7280;
         opacity: 0.8;
+        transition: color 0.3s ease;
+    }
+    
+    .dark .stat-description {
+        color: #9ca3af;
     }
     
     /* Completion Circle Styles */

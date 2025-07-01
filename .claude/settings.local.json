@@ -58,7 +58,9 @@
       "Bash(git checkout:*)",
       "Bash(curl:*)",
       "Bash(dpkg:*)",
-      "Bash(ss:*)"
+      "Bash(ss:*)",
+      "Bash(mv:*)",
+      "Bash(touch:*)"
     ],
     "deny": []
   }

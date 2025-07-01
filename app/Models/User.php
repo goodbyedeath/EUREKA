@@ -115,6 +115,7 @@ class User extends Authenticatable
                 ['email' => $this->email],
                 [
                     'team_id' => $this->team_id,
+                    'user_id' => $this->id,  // Add this
                     'name' => $this->name,
                     'is_leader' => $this->isTeamLeader($this->team_id)
                 ]

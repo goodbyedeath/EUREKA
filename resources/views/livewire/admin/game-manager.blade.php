@@ -609,7 +609,6 @@
         if (typeof window.interact !== 'undefined') {
             callback();
         } else {
-            console.log('⏳ Waiting for InteractJS to load...');
             setTimeout(() => waitForInteract(callback), 100);
         }
     }
@@ -620,17 +619,13 @@
 
     // Initialize when everything is ready
     document.addEventListener('DOMContentLoaded', function() {
-        console.log('📄 DOM loaded, waiting for InteractJS...');
         waitForInteract(() => {
-            console.log('✅ InteractJS loaded, checking for map...');
             initializeMapWhenReady();
         });
     });
 
     // Livewire v3 hooks - more reliable approach
     document.addEventListener('livewire:init', () => {
-        console.log('🔄 Livewire initialized');
-        
         // Listen for component updates
         Livewire.hook('morph.updated', ({ el, component }) => {
             // Check if modal is now visible
@@ -638,7 +633,6 @@
             if (modal) {
                 const isVisible = modal.offsetParent !== null;
                 if (isVisible) {
-                    console.log('✅ Modal appeared, initializing map interaction...');
                     waitForInteract(() => {
                         setTimeout(initializeMapWhenReady, 150);
                     });
@@ -654,18 +648,14 @@
         const mapContainer = document.querySelector('.map-container-enhanced');
         
         if (!mapImage || !marker || !mapContainer) {
-            console.log('⏳ Map elements not ready yet, retrying...');
             setTimeout(initializeMapWhenReady, 200);
             return;
         }
         
         if (window.mapInteractionInitialized) {
-            console.log('✅ Map interaction already initialized, reinitializing...');
             // Reset flag to allow reinitialization
             window.mapInteractionInitialized = false;
         }
-        
-        console.log('🎯 Initializing InteractJS map interaction...');
         initializeInteractiveMap();
     }
 
@@ -675,13 +665,11 @@
         const mapContainer = document.querySelector('.map-container-enhanced');
         
         if (!mapImage || !marker || !mapContainer) {
-            console.log('❌ Required elements not found');
             return;
         }
 
         // Check if InteractJS is available
         if (typeof window.interact === 'undefined') {
-            console.error('❌ InteractJS not found! Make sure it\'s imported in your build.');
             return;
         }
         
@@ -689,9 +677,7 @@
         if (window.currentInteractInstance) {
             try {
                 window.currentInteractInstance.unset();
-                console.log('🧹 Cleaned up existing interact instance');
             } catch (e) {
-                console.log('🧹 No existing instance to clean up');
             }
         }
         
@@ -715,7 +701,6 @@
             const clampedX = Math.max(0, Math.min(x, rect.width));
             const clampedY = Math.max(0, Math.min(y, rect.height));
             
-            console.log('📍 Map clicked at:', { x: Math.round(clampedX), y: Math.round(clampedY) });
             
             // Position marker
             positionMarker(Math.round(clampedX), Math.round(clampedY));
@@ -728,7 +713,6 @@
         };
         
         mapContainer.addEventListener('click', window.mapClickHandler);
-        console.log('✅ Click handler attached');
         
         // 2. Set up InteractJS draggable on marker
         try {
@@ -752,7 +736,6 @@
                     ],
                     listeners: {
                         start(event) {
-                            console.log('🎯 Started dragging marker');
                             event.target.classList.add('dragging');
                             mapContainer.classList.add('dragging');
                         },
@@ -782,7 +765,6 @@
                         },
                         
                         end(event) {
-                            console.log('✅ Finished dragging marker');
                             event.target.classList.remove('dragging');
                             mapContainer.classList.remove('dragging');
                             
@@ -798,9 +780,7 @@
                     }
                 });
             
-            console.log('✅ InteractJS draggable initialized');
         } catch (error) {
-            console.error('❌ Error initializing InteractJS:', error);
             return;
         }
         
@@ -813,14 +793,11 @@
             
             if (currentX > 0 || currentY > 0) {
                 positionMarker(currentX, currentY);
-                console.log('📍 Initialized marker at existing coordinates:', { x: currentX, y: currentY });
             }
         } catch (error) {
-            console.log('⚠️ Could not get initial coordinates, that\'s okay');
         }
         
         window.mapInteractionInitialized = true;
-        console.log('✅ InteractJS map interaction initialized successfully');
     }
 
     function positionMarker(x, y) {
@@ -855,7 +832,6 @@
             component.set('coordinate_x', x);
             component.set('coordinate_y', y);
         } catch (error) {
-            console.log('⚠️ Could not update Livewire coordinates:', error);
         }
         
         // Update visual display
@@ -870,7 +846,6 @@
             coordinateDisplay.style.animation = 'coordinateFlash 0.5s ease-out';
         }
         
-        console.log('📊 Updated coordinates:', { x, y });
     }
 
     function createClickFeedback(x, y) {
@@ -901,7 +876,6 @@
 
     // Function to manually reinitialize (useful for debugging)
     window.reinitializeMap = function() {
-        console.log('🔄 Manual reinitialization requested');
         window.mapInteractionInitialized = false;
         if (window.currentInteractInstance) {
             window.currentInteractInstance.unset();
@@ -992,5 +966,3 @@
     }
     </style>
 </div>
-
-

@@ -20,25 +20,32 @@ class QuizResults extends Component
 
     public function mount($attemptId)
     {
-        $this->attempt = QuizAttempt::with(['questionnaire.questions'])
-            ->where('id', $attemptId)
-            ->where('user_id', Auth::id())
-            ->where('status', QuizAttempt::STATUS_COMPLETED)
-            ->firstOrFail();
+        try {
+            // Debug logging
+            \Log::info("QuizResults: Mounting with attemptId: {$attemptId}, userId: " . Auth::id());
+            
+            $this->attempt = QuizAttempt::with(['questionnaire.questions'])
+                ->where('id', $attemptId)
+                ->where('user_id', Auth::id())
+                ->where('status', 'completed')
+                ->firstOrFail();
 
-        // Clear any cached data to ensure fresh results
-        \Cache::forget("quiz_results_{$attemptId}");
-        \Cache::forget("questionnaire_{$this->attempt->questionnaire_id}");
-        
-        $this->questionnaire = $this->attempt->questionnaire;
-        $this->questions = $this->questionnaire->questions;
-        
-        $this->loadUserAnswers();
-        $this->loadAssessments();
-        
-        // Log successful fresh data load for debugging
-        if (config('app.debug')) {
-            \Log::debug("QuizResults: Fresh data loaded for attempt {$attemptId}. Total time: {$this->attempt->total_time_seconds} seconds");
+            \Log::info("QuizResults: Attempt found: " . $this->attempt->id);
+            
+            $this->questionnaire = $this->attempt->questionnaire;
+            $this->questions = $this->questionnaire->questions ?? collect();
+            
+            \Log::info("QuizResults: Questionnaire loaded: " . ($this->questionnaire->title ?? 'No title'));
+            
+            $this->loadUserAnswers();
+            $this->loadAssessments();
+            
+            \Log::info("QuizResults: Mount completed successfully");
+            
+        } catch (\Exception $e) {
+            \Log::error("QuizResults: Mount failed: " . $e->getMessage());
+            \Log::error("QuizResults: Stack trace: " . $e->getTraceAsString());
+            throw $e;
         }
     }
 
@@ -617,6 +624,8 @@ class QuizResults extends Component
 
     public function render()
     {
-        return view('livewire.user.quiz-results');
+        \Log::info("QuizResults: Rendering for attempt {$this->attempt->id}");
+        
+        return view('livewire.user.quiz-results')->layout('layouts.appUser');
     }
 }

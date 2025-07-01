@@ -13,9 +13,6 @@ class TeamManager extends Component
     use WithPagination;
 
     public $searchTerm = '';
-    public $selectedTeam = null;
-    public $showEditModal = false;
-    public $showMembersModal = false;
     
     // Team form data
     public $teamId = null;
@@ -25,7 +22,7 @@ class TeamManager extends Component
     public $points = 1000;
     public $initial_points = 1000;
     
-    // Points management
+    // Points management (for quick actions only)
     public $pointsAction = 'set'; // set, add, deduct
     public $pointsAmount = 0;
     public $pointsReason = '';
@@ -41,10 +38,6 @@ class TeamManager extends Component
     
     // Bulk operations
     public $selectedTeams = [];
-    public $showBulkModal = false;
-    public $bulkAction = 'add';
-    public $bulkAmount = 0;
-    public $bulkReason = '';
 
     protected $rules = [
         'name' => 'required|string|max:255',
@@ -78,54 +71,73 @@ class TeamManager extends Component
     public function createTeam()
     {
         $this->resetForm();
-        $this->showEditModal = true;
+        $this->dispatch('open-team-modal', [
+            'teamId' => null,
+            'name' => '',
+            'department' => '',
+            'description' => '',
+            'initial_points' => 1000,
+            'points' => 1000
+        ]);
     }
 
     public function editTeam($teamId)
     {
         $team = Team::findOrFail($teamId);
         
-        $this->teamId = $team->id;
-        $this->name = $team->name;
-        $this->description = $team->description ?? '';
-        $this->department = $team->department ?? '';
-        $this->points = $team->points;
-        $this->initial_points = $team->initial_points;
-        
-        $this->showEditModal = true;
+        $this->dispatch('open-team-modal', [
+            'teamId' => $team->id,
+            'name' => $team->name,
+            'department' => $team->department ?? '',
+            'description' => $team->description ?? '',
+            'initial_points' => $team->initial_points,
+            'points' => $team->points
+        ]);
     }
 
-    public function saveTeam()
+    public function saveTeam($teamData)
     {
-        $this->validate();
+        // Validate the incoming data
+        $validator = validator($teamData, [
+            'name' => 'required|string|max:255',
+            'description' => 'nullable|string|max:1000',
+            'department' => 'nullable|string|max:255',
+            'points' => 'required|integer|min:0|max:999999',
+            'initial_points' => 'required|integer|min:0|max:999999',
+        ]);
+        
+        if ($validator->fails()) {
+            session()->flash('error', 'Validation failed: ' . $validator->errors()->first());
+            return;
+        }
 
-        if ($this->teamId) {
+        if ($teamData['teamId']) {
             // Update existing team
-            $team = Team::findOrFail($this->teamId);
+            $team = Team::findOrFail($teamData['teamId']);
             $team->update([
-                'name' => $this->name,
-                'description' => $this->description,
-                'department' => $this->department,
-                'points' => $this->points,
-                'initial_points' => $this->initial_points,
+                'name' => $teamData['name'],
+                'description' => $teamData['description'],
+                'department' => $teamData['department'],
+                'points' => $teamData['points'],
+                'initial_points' => $teamData['initial_points'],
             ]);
             
             session()->flash('success', 'Team updated successfully!');
         } else {
             // Create new team
             Team::create([
-                'name' => $this->name,
-                'description' => $this->description,
-                'department' => $this->department,
-                'points' => $this->points,
-                'initial_points' => $this->initial_points,
+                'name' => $teamData['name'],
+                'description' => $teamData['description'],
+                'department' => $teamData['department'],
+                'points' => $teamData['points'],
+                'initial_points' => $teamData['initial_points'],
                 'created_by' => auth()->id(),
             ]);
             
             session()->flash('success', 'Team created successfully!');
         }
 
-        $this->closeModal();
+        $this->dispatch('close-team-modal');
         $this->resetForm();
     }
 
@@ -145,42 +157,50 @@ class TeamManager extends Component
 
     public function managePoints($teamId)
     {
-        $this->selectedTeam = Team::with(['members.user'])->findOrFail($teamId);
-        $this->pointsAction = 'set';
-        $this->pointsAmount = $this->selectedTeam->points;
-        $this->pointsReason = '';
+        $team = Team::findOrFail($teamId);
+        
+        $this->dispatch('open-points-modal', [
+            'id' => $team->id,
+            'name' => $team->name,
+            'points' => number_format($team->points, 2),
+            'pointsAction' => 'set',
+            'pointsAmount' => 0,
+            'pointsReason' => ''
+        ]);
     }
 
-    public function updatePoints()
+
+    public function updatePointsFromModal($teamData)
     {
         $this->validate([
-            'pointsAmount' => 'required|integer|min:0|max:999999',
-            'pointsReason' => 'nullable|string|max:255',
+            'teamData.pointsAmount' => 'required|integer|min:0|max:999999',
+            'teamData.pointsReason' => 'nullable|string|max:255',
+        ], [], [
+            'teamData.pointsAmount' => 'points amount',
+            'teamData.pointsReason' => 'reason'
         ]);
 
-        if (!$this->selectedTeam) {
-            return;
-        }
+        $team = Team::findOrFail($teamData['id']);
 
-        switch ($this->pointsAction) {
+        switch ($teamData['pointsAction']) {
             case 'set':
-                $this->selectedTeam->update(['points' => $this->pointsAmount]);
-                $message = "Team points set to {$this->pointsAmount}";
+                $team->update(['points' => $teamData['pointsAmount']]);
+                $message = "Team points set to {$teamData['pointsAmount']}";
                 break;
                 
             case 'add':
-                $this->selectedTeam->addPoints($this->pointsAmount, $this->pointsReason);
-                $message = "Added {$this->pointsAmount} points to team";
+                $team->addPoints($teamData['pointsAmount'], $teamData['pointsReason']);
+                $message = "Added {$teamData['pointsAmount']} points to team";
                 break;
                 
             case 'deduct':
-                $this->selectedTeam->deductPoints($this->pointsAmount, $this->pointsReason);
-                $message = "Deducted {$this->pointsAmount} points from team";
+                $team->deductPoints($teamData['pointsAmount'], $teamData['pointsReason']);
+                $message = "Deducted {$teamData['pointsAmount']} points from team";
                 break;
         }
 
-        session()->flash('success', $message . ($this->pointsReason ? " - {$this->pointsReason}" : ''));
-        $this->selectedTeam = null;
+        session()->flash('success', $message . ($teamData['pointsReason'] ? " - {$teamData['pointsReason']}" : ''));
+        $this->dispatch('close-points-modal');
     }
 
     public function quickPointsAction($teamId, $action, $amount, $reason)
@@ -210,10 +230,35 @@ class TeamManager extends Component
         session()->flash('success', "Team points reset to initial amount ({$team->initial_points})");
     }
 
+
+    
     public function viewMembers($teamId)
     {
-        $this->selectedTeam = Team::with(['members.user'])->findOrFail($teamId);
-        $this->showMembersModal = true;
+        $team = Team::with(['members.user'])->findOrFail($teamId);
+
+        $members = $team->members->map(function($member) {
+            $user = $member->user;
+
+            // Fallback manually if user is null and user_id is missing
+            if (!$user && $member->email) {
+                $user = User::where('email', $member->email)->first();
+            }
+
+            return [
+                'id' => $user?->id,
+                'name' => $user?->name ?? $member->name,
+                'email' => $user?->email ?? $member->email,
+                'is_leader' => $member->is_leader,
+                'joined_date' => $member->created_at->format('M d, Y'),
+            ];
+        });
+
+        $this->dispatch('open-members-modal', [
+            'id' => $team->id,
+            'name' => $team->name,
+            'members' => $members->toArray()
+        ]);
+        
     }
 
     public function bulkPointsOperation()
@@ -223,50 +268,50 @@ class TeamManager extends Component
             return;
         }
         
-        $this->showBulkModal = true;
+        $this->dispatch('open-bulk-modal', [
+            'selectedCount' => count($this->selectedTeams),
+            'bulkAction' => 'add',
+            'bulkAmount' => 0,
+            'bulkReason' => ''
+        ]);
     }
     
-    public function executeBulkPoints()
+
+    public function executeBulkPointsFromModal($bulkData)
     {
         $this->validate([
-            'bulkAmount' => 'required|integer|min:0|max:999999',
-            'bulkReason' => 'required|string|max:255',
+            'bulkData.bulkAmount' => 'required|integer|min:0|max:999999',
+            'bulkData.bulkReason' => 'required|string|max:255',
+        ], [], [
+            'bulkData.bulkAmount' => 'points amount',
+            'bulkData.bulkReason' => 'reason'
         ]);
         
         $teams = Team::whereIn('id', $this->selectedTeams)->get();
         $processedCount = 0;
         
         foreach ($teams as $team) {
-            switch ($this->bulkAction) {
+            switch ($bulkData['bulkAction']) {
                 case 'add':
-                    $team->addPoints($this->bulkAmount, $this->bulkReason);
+                    $team->addPoints($bulkData['bulkAmount'], $bulkData['bulkReason']);
                     break;
                 case 'deduct':
-                    $team->deductPoints($this->bulkAmount, $this->bulkReason);
+                    $team->deductPoints($bulkData['bulkAmount'], $bulkData['bulkReason']);
                     break;
                 case 'set':
-                    $team->update(['points' => $this->bulkAmount]);
+                    $team->update(['points' => $bulkData['bulkAmount']]);
                     break;
             }
             $processedCount++;
         }
         
-        $actionText = $this->bulkAction === 'add' ? 'Added' : ($this->bulkAction === 'deduct' ? 'Deducted' : 'Set');
-        session()->flash('success', "{$actionText} points for {$processedCount} teams - {$this->bulkReason}");
+        $actionText = $bulkData['bulkAction'] === 'add' ? 'Added' : ($bulkData['bulkAction'] === 'deduct' ? 'Deducted' : 'Set');
+        session()->flash('success', "{$actionText} points for {$processedCount} teams - {$bulkData['bulkReason']}");
         
         $this->selectedTeams = [];
-        $this->showBulkModal = false;
-        $this->bulkAmount = 0;
-        $this->bulkReason = '';
+        $this->dispatch('close-bulk-modal');
     }
 
-    public function closeModal()
-    {
-        $this->showEditModal = false;
-        $this->showMembersModal = false;
-        $this->showBulkModal = false;
-        $this->selectedTeam = null;
-    }
 
     public function resetForm()
     {

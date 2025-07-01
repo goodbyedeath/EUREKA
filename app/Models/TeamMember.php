@@ -10,12 +10,21 @@ class TeamMember extends Model
 
     protected $fillable = [
         'team_id',
+        'user_id',  
         'name',
         'email',
         'phone',
         'position',
         'is_leader'
     ];
+
+    public function user()
+    {
+        // Try user_id first, fallback to email
+        return $this->user_id 
+            ? $this->belongsTo(User::class, 'user_id')
+            : $this->belongsTo(User::class, 'email', 'email');
+    }
 
     protected $casts = [
         'is_leader' => 'boolean'
@@ -26,12 +35,7 @@ class TeamMember extends Model
         return $this->belongsTo(Team::class);
     }
 
-    // Optional: Get the corresponding User if they exist in the system
-    public function user()
-    {
-        return $this->belongsTo(User::class, 'email', 'email');
-    }
-
+    
     // Scope to get leaders only
     public function scopeLeaders($query)
     {

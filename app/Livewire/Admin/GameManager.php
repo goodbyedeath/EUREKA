@@ -181,6 +181,8 @@ class GameManager extends Component
                 // Store new regular image
                 $imagePath = $this->image->store('games/images', 'public');
                 $data['image_path'] = $imagePath;
+                $this->existing_image_path = $imagePath; // Update component property
+                $this->image = null; // Clear uploaded file
             } catch (\Exception $e) {
                 session()->flash('error', __('games.upload_failed', ['error' => $e->getMessage()]));
                 return;
@@ -207,8 +209,10 @@ class GameManager extends Component
                 }
                 
                 // Store new map image with proper naming
-                $mapImagePath = $this->map_image->store('games/maps', 'public');
+                $mapImagePath = $this->map_image->store('games/map-images', 'public');
                 $data['map_image_path'] = $mapImagePath;
+                $this->existing_map_image_path = $mapImagePath; // Update component property
+                $this->map_image = null; // Clear uploaded file
             } catch (\Exception $e) {
                 session()->flash('error', __('games.upload_failed', ['error' => $e->getMessage()]));
                 return;
@@ -252,7 +256,10 @@ class GameManager extends Component
         try {
             $game = GameLocation::findOrFail($id);
             
-            // Delete associated image if it exists
+            // Delete associated images if they exist
+            if ($game->image_path) {
+                Storage::disk('public')->delete($game->image_path);
+            }
             if ($game->map_image_path) {
                 Storage::disk('public')->delete($game->map_image_path);
             }
@@ -390,7 +397,10 @@ class GameManager extends Component
             $games = GameLocation::whereIn('id', $this->selectedGames)->get();
             
             foreach ($games as $game) {
-                // Delete associated map image
+                // Delete associated images
+                if ($game->image_path) {
+                    Storage::disk('public')->delete($game->image_path);
+                }
                 if ($game->map_image_path) {
                     Storage::disk('public')->delete($game->map_image_path);
                 }

@@ -1,12 +1,12 @@
 <div>
-    <div class="border-b border-gray-200">
+    <div class="border-b border-gray-200 dark:border-gray-700">
         <nav class="-mb-px flex space-x-2 sm:space-x-4 lg:space-x-8 overflow-x-auto" role="tablist">
             <button 
                 wire:click="switchTab('dashboard')" 
                 role="tab"
                 aria-selected="{{ $activeTab === 'dashboard' ? 'true' : 'false' }}"
                 class="py-2 px-1 border-b-2 font-medium text-xs sm:text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 whitespace-nowrap
-                       {{ $activeTab === 'dashboard' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }}">
+                       {{ $activeTab === 'dashboard' ? 'border-blue-500 text-blue-600 dark:text-blue-400' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600' }}">
                 <i class="fas fa-tachometer-alt mr-1 sm:mr-2"></i>
                 <span class="hidden sm:inline">{{ __('common.dashboard') }}</span>
                 <span class="sm:hidden">{{ __('common.dashboard') }}</span>
@@ -17,7 +17,7 @@
                 role="tab"
                 aria-selected="{{ $activeTab === 'quizzes' ? 'true' : 'false' }}"
                 class="py-2 px-1 border-b-2 font-medium text-xs sm:text-sm transition-colors relative focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 whitespace-nowrap
-                       {{ $activeTab === 'quizzes' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }}">
+                       {{ $activeTab === 'quizzes' ? 'border-blue-500 text-blue-600 dark:text-blue-400' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600' }}">
                 <i class="fas fa-clipboard-list mr-1 sm:mr-2"></i>
                 <span class="hidden sm:inline">{{ __('common.available_quests') }}</span>
                 <span class="sm:hidden">Quests</span>
@@ -31,7 +31,7 @@
                 role="tab"
                 aria-selected="{{ $activeTab === 'members' ? 'true' : 'false' }}"
                 class="py-2 px-1 border-b-2 font-medium text-xs sm:text-sm transition-colors relative focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 whitespace-nowrap
-                       {{ $activeTab === 'members' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }}">
+                       {{ $activeTab === 'members' ? 'border-blue-500 text-blue-600 dark:text-blue-400' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600' }}">
                 <i class="fas fa-users mr-1 sm:mr-2"></i>
                 <span class="hidden sm:inline">{{ __('common.team_members') }}</span>
                 <span class="sm:hidden">Members</span>
@@ -42,7 +42,7 @@
                 role="tab"
                 aria-selected="{{ $activeTab === 'games' ? 'true' : 'false' }}"
                 class="py-2 px-1 border-b-2 font-medium text-xs sm:text-sm transition-colors relative focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 whitespace-nowrap
-                       {{ $activeTab === 'games' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }}">
+                       {{ $activeTab === 'games' ? 'border-blue-500 text-blue-600 dark:text-blue-400' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600' }}">
                 <i class="fas fa-map-marked-alt mr-1 sm:mr-2"></i>
                 <span class="hidden sm:inline">Outdoor Games</span>
                 <span class="sm:hidden">Games</span>

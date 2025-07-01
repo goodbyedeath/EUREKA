@@ -118,7 +118,24 @@ class QuizAttempt extends Model
             return 0;
         }
         
-        return round(($this->total_score / $this->questionnaire->total_points) * 100, 1);
+        // Get base points for this user's team
+        $basePoints = $this->getBasePoints();
+        
+        // Calculate earned points (total_score - base points)
+        $earnedPoints = max(0, $this->total_score - $basePoints);
+        
+        // Calculate percentage based on earned points vs possible points
+        return round(($earnedPoints / $this->questionnaire->total_points) * 100, 1);
+    }
+    
+    public function getBasePoints(): int
+    {
+        // Base points from user's team initial points
+        if (!$this->user || !$this->user->team) {
+            return 1000; // Default base points
+        }
+        
+        return $this->user->team->initial_points ?? 1000;
     }
 
     /**

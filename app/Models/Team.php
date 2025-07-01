@@ -116,7 +116,13 @@ class Team extends Model
      */
     public function getTotalScoreAttribute()
     {
-        return $this->points ?? 0;
+        $basePoints = $this->points ?? 0;
+        $earnedPoints = $this->users()
+            ->join('quiz_attempts', 'users.id', '=', 'quiz_attempts.user_id')
+            ->where('quiz_attempts.status', 'completed')
+            ->sum('quiz_attempts.total_score') ?? 0;
+        
+        return $basePoints + $earnedPoints;
     }
 
     /**

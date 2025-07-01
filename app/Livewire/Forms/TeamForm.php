@@ -4,6 +4,7 @@ namespace App\Livewire\Forms;
 
 use App\Models\Team;
 use App\Models\TeamMember;
+use App\Models\User;
 use Livewire\Component;
 use Livewire\Attributes\Validate;
 
@@ -166,12 +167,17 @@ class TeamForm extends Component
         foreach ($this->members as $memberData) {
             TeamMember::create([
                 'team_id' => $team->id,
+                'user_id' => auth()->user()->id,
                 'name' => $memberData['name'],
                 'email' => $memberData['email'],
                 'phone' => $memberData['phone'],
                 'position' => $memberData['position'],
                 'is_leader' => $memberData['is_leader'],
+
+            
             ]);
+
+            
         }
 
         // 🔥 Perbarui team_id user yang membuat tim
