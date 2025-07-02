@@ -24,15 +24,24 @@ class TeamForm extends Component
 
     public function mount()
     {
-        // Check if user has already registered a team
-        $existingTeam = Team::where('created_by', auth()->id())->first();
-        if ($existingTeam) {
+        // Check if user has already registered a team or is part of a team
+        $user = auth()->user();
+        
+        if ($user->team_id || $user->createdTeams()->exists()) {
+            $teamName = $user->team ? $user->team->name : $user->createdTeams()->first()->name;
             return redirect()->route('user.dashboard')
-                ->with('info', 'Anda sudah terdaftar dalam tim: ' . $existingTeam->name);
+                ->with('info', 'Anda sudah terdaftar dalam tim: ' . $teamName);
         }
 
-        // Inisialisasi dengan 1 anggota kosong (minimum)
+        // Pre-fill with current user as first member
         $this->initializeMembers();
+        $this->members[0] = [
+            'name' => $user->name,
+            'email' => $user->email,
+            'phone' => '',
+            'position' => '',
+            'is_leader' => true // Default the creator as leader
+        ];
     }
 
     public function initializeMembers()
@@ -165,19 +174,18 @@ class TeamForm extends Component
 
         // Simpan anggota
         foreach ($this->members as $memberData) {
+            // Check if member email matches the current user (team creator)
+            $userId = ($memberData['email'] === auth()->user()->email) ? auth()->user()->id : null;
+            
             TeamMember::create([
                 'team_id' => $team->id,
-                'user_id' => auth()->user()->id,
+                'user_id' => $userId,
                 'name' => $memberData['name'],
                 'email' => $memberData['email'],
                 'phone' => $memberData['phone'],
                 'position' => $memberData['position'],
                 'is_leader' => $memberData['is_leader'],
-
-            
             ]);
-
-            
         }
 
         // 🔥 Perbarui team_id user yang membuat tim
@@ -203,6 +211,7 @@ class TeamForm extends Component
 
     public function render()
     {
-        return view('livewire.forms.team-form');
+        return view('livewire.forms.team-form')
+            ->layout('components.layouts.app', ['title' => 'Team Registration']);
     }
 }

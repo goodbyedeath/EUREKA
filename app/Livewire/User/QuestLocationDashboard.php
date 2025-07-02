@@ -35,6 +35,8 @@ class QuestLocationDashboard extends Component
     public $sortBy = 'distance'; // distance, name, status, points
     public $filterStatus = 'all'; // all, available, completed, nearby
     public $showMap = false;
+    public $showDetailsModal = false;
+    public $selectedLocationDetails = null;
 
     // Performance settings
     public $maxDistance = 50000; // Only load locations within 50km
@@ -44,7 +46,9 @@ class QuestLocationDashboard extends Component
         'locationUpdated',
         'checkInToLocation',
         'openScanner',
-        'refreshData' => 'updateLocationData'
+        'refreshData' => 'updateLocationData',
+        'openLocationDetails',
+        'closeLocationDetails'
     ];
 
     public function mount()
@@ -498,5 +502,22 @@ class QuestLocationDashboard extends Component
         ]);
     }
 
+    // Location Details Modal
+    public function openLocationDetails($locationId)
+    {
+        $location = $this->questLocations->find($locationId);
+        if ($location) {
+            $this->selectedLocationDetails = $location;
+            $this->selectedLocationId = $locationId;
+            $this->showDetailsModal = true;
+        }
+    }
+
+    public function closeLocationDetails()
+    {
+        $this->showDetailsModal = false;
+        $this->selectedLocationDetails = null;
+        $this->selectedLocationId = null;
+    }
 
 }

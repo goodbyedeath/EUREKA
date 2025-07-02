@@ -148,6 +148,15 @@
 
                                 <!-- Right Side Actions -->
                                 <div class="w-full md:w-48 space-y-2">
+                                    <!-- View Details Button -->
+                                    <button wire:click="openLocationDetails({{ $location->id }})"
+                                            class="w-full py-2 px-4 rounded text-sm font-medium transition-colors bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600">
+                                        <svg class="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                        </svg>
+                                        View Details
+                                    </button>
+
                                     <!-- Check-in Button -->
                                     @php
                                         $canCheckIn = $locationEnabled && $withinRadius && !$checkedIn;
@@ -222,6 +231,100 @@
             </div>
         @endif
     </div>
+
+    <!-- Location Details Modal -->
+    @if($showDetailsModal && $selectedLocationDetails)
+        <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50" wire:click="closeLocationDetails">
+            <div class="relative top-20 mx-auto p-5 border w-11/12 md:w-2/3 lg:w-1/2 shadow-lg rounded-md bg-white dark:bg-gray-800" wire:click.stop>
+                <!-- Modal Header -->
+                <div class="flex items-center justify-between pb-3 border-b border-gray-200 dark:border-gray-600">
+                    <h3 class="text-xl font-semibold text-gray-900 dark:text-gray-100">
+                        {{ $selectedLocationDetails->name ?? 'Location Details' }}
+                    </h3>
+                    <button wire:click="closeLocationDetails" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Modal Body -->
+                <div class="pt-4 space-y-6">
+                    <!-- Map Section -->
+                    @if(isset($selectedLocationDetails->google_map_embed_url) && $selectedLocationDetails->google_map_embed_url)
+                        <div class="w-full h-64 bg-gray-200 dark:bg-gray-700 rounded-lg overflow-hidden">
+                            <iframe 
+                                src="{{ $selectedLocationDetails->google_map_embed_url }}" 
+                                width="100%" 
+                                height="100%" 
+                                style="border:0;" 
+                                allowfullscreen="" 
+                                loading="lazy"
+                                referrerpolicy="no-referrer-when-downgrade">
+                            </iframe>
+                        </div>
+                    @endif
+
+                    <!-- Location Info -->
+                    <div class="space-y-4">
+                        @if(isset($selectedLocationDetails->description) && $selectedLocationDetails->description)
+                            <div>
+                                <h4 class="font-semibold text-gray-900 dark:text-gray-100 mb-2">Description</h4>
+                                <p class="text-gray-600 dark:text-gray-400">{{ $selectedLocationDetails->description }}</p>
+                            </div>
+                        @endif
+                        
+                        @if(isset($selectedLocationDetails->what_to_do) && $selectedLocationDetails->what_to_do)
+                            <div>
+                                <h4 class="font-semibold text-gray-900 dark:text-gray-100 mb-2">Instructions</h4>
+                                <div class="bg-blue-50 dark:bg-blue-900/20 p-3 rounded">
+                                    <p class="text-blue-700 dark:text-blue-300">{{ $selectedLocationDetails->what_to_do }}</p>
+                                </div>
+                            </div>
+                        @endif
+
+                        <!-- Location Stats -->
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="bg-gray-50 dark:bg-gray-700 p-3 rounded">
+                                <h5 class="font-medium text-gray-900 dark:text-gray-100">Points</h5>
+                                <p class="text-lg font-bold text-blue-600">{{ $selectedLocationDetails->quest_points ?? 0 }}</p>
+                            </div>
+                            <div class="bg-gray-50 dark:bg-gray-700 p-3 rounded">
+                                <h5 class="font-medium text-gray-900 dark:text-gray-100">Radius</h5>
+                                <p class="text-lg font-bold text-green-600">{{ $selectedLocationDetails->radius ?? 0 }}m</p>
+                            </div>
+                        </div>
+
+                        @if($locationPermissionGranted && isset($locationDistances[$selectedLocationDetails->id]))
+                            <div class="bg-yellow-50 dark:bg-yellow-900/20 p-3 rounded">
+                                <h5 class="font-medium text-gray-900 dark:text-gray-100 mb-1">Your Distance</h5>
+                                <p class="text-lg font-bold text-yellow-600">
+                                    {{ number_format($locationDistances[$selectedLocationDetails->id], 2) }}m away
+                                </p>
+                                <p class="text-sm text-gray-600 dark:text-gray-400">
+                                    Status: {{ $withinRadiusStatus[$selectedLocationDetails->id] ?? false ? 'In Range' : 'Out of Range' }}
+                                </p>
+                            </div>
+                        @endif
+                    </div>
+                </div>
+
+                <!-- Modal Footer -->
+                <div class="flex items-center justify-end space-x-3 pt-6 mt-6 border-t border-gray-200 dark:border-gray-600">
+                    <button wire:click="closeLocationDetails"
+                            class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-600 rounded-md hover:bg-gray-200 dark:hover:bg-gray-500 transition-colors duration-200">
+                        Close
+                    </button>
+                    @if($locationPermissionGranted && isset($withinRadiusStatus[$selectedLocationDetails->id]) && $withinRadiusStatus[$selectedLocationDetails->id] && !($checkedInStatus[$selectedLocationDetails->id] ?? false))
+                        <button wire:click="checkInToLocation({{ $selectedLocationDetails->id }})"
+                                class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors duration-200">
+                            Check In Now
+                        </button>
+                    @endif
+                </div>
+            </div>
+        </div>
+    @endif
 </div>
 
 <script>

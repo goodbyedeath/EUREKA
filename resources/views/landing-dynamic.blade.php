@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ config('app.name', 'EUREKA') }} Indonesia</title>
     
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="{{ asset('logo/icon.png') }}">
+    
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
@@ -18,15 +21,14 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between h-16">
                 <div class="flex items-center">
-                    <div class="flex-shrink-0">
-                        <h1 class="text-2xl font-bold text-blue-600">EUREKA</h1>
+                    <div class="flex-shrink-0 flex items-center">
+                        <img src="{{ asset('logo/icon.png') }}" alt="EUREKA Logo" class="w-10 h-10">
+                        <div class="mx-3 text-gray-400 text-2xl font-light">|</div>
+                        <h1 class="text-2xl font-bold text-blue-600">EUREKA!</h1>
                     </div>
                 </div>
                 <div class="flex items-center space-x-4">
-                    <a href="{{ route('login') }}" class="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium transition duration-300">
-                        Login
-                    </a>
-                    <a href="{{ route('register') }}" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300">
+                    <a href="{{ route('login') }}" class="bg-purple-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300">
                         Get Started
                     </a>
                 </div>

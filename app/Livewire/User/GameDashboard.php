@@ -18,8 +18,7 @@ class GameDashboard extends Component
     public $coordinate_y = 0;
 
     protected $listeners = [
-        'coordinates-updated' => 'handleCoordinatesUpdate',
-        'modal-closed' => 'closeModal'
+        'coordinates-updated' => 'handleCoordinatesUpdate'
     ];
 
     public function mount()
@@ -69,8 +68,8 @@ class GameDashboard extends Component
         $this->coordinate_x = 0;
         $this->coordinate_y = 0;
         
-        // Dispatch event to cleanup frontend
-        $this->dispatch('modal-closed');
+        // Dispatch cleanup event to frontend without causing listener conflicts
+        $this->dispatch('game-modal-cleanup');
     }
 
     public function updateCoordinates($x, $y)

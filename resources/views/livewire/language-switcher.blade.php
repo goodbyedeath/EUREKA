@@ -1,9 +1,12 @@
-<!-- Debug Info -->
-<div class="text-xs text-gray-500 mb-2">
-    Current: {{ $currentLocale ?? 'none' }} | Available: {{ is_array($availableLocales) ? implode(', ', array_keys($availableLocales)) : 'none' }}
-</div>
+<div class="language-switcher">
+    <!-- Debug Info -->
+    @if(config('app.debug'))
+        <div class="text-xs text-gray-500 mb-2">
+            Current: {{ $currentLocale ?? 'none' }} | Available: {{ is_array($availableLocales) ? implode(', ', array_keys($availableLocales)) : 'none' }}
+        </div>
+    @endif
 
-<div class="relative inline-block text-left" x-data="{ open: false }">
+    <div class="relative inline-block text-left" x-data="{ open: false }">
     <div>
         <button type="button" 
                 @click="open = !open; console.log('Dropdown toggled, open:', open)"
@@ -56,4 +59,5 @@
             @endforeach
         </div>
     </div>
+</div>
 </div>

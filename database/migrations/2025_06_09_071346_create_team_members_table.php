@@ -11,12 +11,16 @@ return new class extends Migration
         Schema::create('team_members', function (Blueprint $table) {
             $table->id();
             $table->foreignId('team_id')->constrained()->onDelete('cascade');
+            $table->foreignId('user_id')->nullable()->constrained()->onDelete('cascade');
             $table->string('name');
             $table->string('email');
             $table->string('phone')->nullable();
             $table->string('position')->nullable();
             $table->boolean('is_leader')->default(false);
             $table->timestamps();
+            
+            // Add unique constraint to prevent duplicate entries
+            $table->unique(['team_id', 'email']);
         });
     }
 
