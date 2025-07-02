@@ -13,6 +13,7 @@
                 </div>
             </button>
             
+            @if($this->featureEnabled('quiz_system'))
             <button 
                 wire:click="switchTab('quizzes')" 
                 role="tab"
@@ -27,7 +28,9 @@
                     <span class="absolute -top-1 -right-1 h-4 w-4 bg-red-500 rounded-full animate-pulse border-2 border-white" title="QR Code Scanned"></span>
                 @endif
             </button>
+            @endif
 
+            @if($this->featureEnabled('team_management'))
             <button 
                 wire:click="switchTab('members')" 
                 role="tab"
@@ -39,7 +42,9 @@
                     <span class="text-xs font-medium">Team Members</span>
                 </div>
             </button>
+            @endif
 
+            @if($this->featureEnabled('quest_locations'))
             <button 
                 wire:click="switchTab('quests')" 
                 role="tab"
@@ -51,7 +56,9 @@
                     <span class="text-xs font-medium">Quest Locations</span>
                 </div>
             </button>
+            @endif
 
+            @if($this->featureEnabled('game_dashboard'))
             <button 
                 wire:click="switchTab('games')" 
                 role="tab"
@@ -63,6 +70,7 @@
                     <span class="text-xs font-medium">Outdoor Games</span>
                 </div>
             </button>
+            @endif
         </nav>
     </div>
 </div>

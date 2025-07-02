@@ -13,7 +13,15 @@ return new class extends Migration
     {
         Schema::create('feature_settings', function (Blueprint $table) {
             $table->id();
+            $table->string('feature_key')->unique();
+            $table->string('feature_name');
+            $table->text('description')->nullable();
+            $table->boolean('is_enabled')->default(true);
+            $table->integer('sort_order')->default(0);
+            $table->json('metadata')->nullable(); // For storing additional config
             $table->timestamps();
+            
+            $table->index(['is_enabled', 'sort_order']);
         });
     }
 

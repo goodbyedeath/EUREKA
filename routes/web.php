@@ -60,6 +60,7 @@ Route::middleware(['auth', 'preventbackhistory'])->group(function () {
         Route::get('/user-progress', [DashboardController::class, 'userProgress'])->name('user-progress');
         Route::get('/hero-slides', [DashboardController::class, 'heroSlides'])->name('hero-slides');
         Route::get('/team-management', [DashboardController::class, 'teamManagement'])->name('team-management');
+        Route::get('/feature-management', [DashboardController::class, 'featureManagement'])->name('feature-management');
         
     });
     

@@ -4,10 +4,12 @@
 namespace App\Http\Controllers\User;
 
 use App\Http\Controllers\Controller;
+use App\Traits\HasFeatureAccess;
 use Illuminate\Support\Facades\Auth;
 
 class UserDashboardController extends Controller
 {
+    use HasFeatureAccess;
     public function index()
     {
         $user = Auth::user();
@@ -26,7 +28,10 @@ class UserDashboardController extends Controller
                 ->with('info', 'Silakan buat tim terlebih dahulu.');
         }
 
-        return view('user.dashboard', compact('team'));
+        // Get enabled features for the dashboard
+        $features = $this->getFeatureDashboardData();
+
+        return view('user.dashboard', compact('team', 'features'));
     }
 
    

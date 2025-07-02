@@ -3,11 +3,13 @@
 
 namespace App\Livewire\User;
 
+use App\Traits\HasFeatureAccess;
 use Livewire\Component;
 use Livewire\Attributes\On;
 
 class DashboardTabs extends Component
 {
+    use HasFeatureAccess;
     public $activeTab = 'dashboard';
     public $scannedqr_code = null;
 
@@ -34,13 +36,39 @@ class DashboardTabs extends Component
 
     public function switchTab($tab)
     {
-        // Validate tab
-        if (in_array($tab, ['dashboard', 'quizzes', 'members', 'quests', 'games'])) {
+        // Get enabled features
+        $enabledTabs = $this->getEnabledTabs();
+        
+        // Validate tab and check if feature is enabled
+        if (in_array($tab, $enabledTabs)) {
             $this->activeTab = $tab;
             
             // Emit event to update content
             $this->dispatch('active-tab-changed', tab: $tab);
         }
+    }
+
+    public function getEnabledTabs()
+    {
+        $tabs = ['dashboard']; // Dashboard is always enabled
+        
+        if ($this->featureEnabled('quiz_system')) {
+            $tabs[] = 'quizzes';
+        }
+        
+        if ($this->featureEnabled('team_management')) {
+            $tabs[] = 'members';
+        }
+        
+        if ($this->featureEnabled('quest_locations')) {
+            $tabs[] = 'quests';
+        }
+        
+        if ($this->featureEnabled('game_dashboard')) {
+            $tabs[] = 'games';
+        }
+        
+        return $tabs;
     }
 
     #[On('qr-code-scanned')]

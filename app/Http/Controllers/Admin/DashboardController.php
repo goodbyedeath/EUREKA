@@ -50,4 +50,9 @@ class DashboardController extends Controller
     {
         return view('admin.team-management');
     }
+
+    public function featureManagement()
+    {
+        return view('admin.feature-management');
+    }
 }
