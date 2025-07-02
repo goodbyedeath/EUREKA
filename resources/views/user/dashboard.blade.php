@@ -1030,16 +1030,13 @@
 
     // Wait for Livewire to be fully loaded
     document.addEventListener('livewire:init', function() {
-        console.log('Livewire initialized');
+        // Livewire initialized
     });
 
     // Dashboard-specific dark mode setup
     function initDashboardDarkMode() {
-        console.log('=== Dashboard Dark Mode Init ===');
-        
         // Check if the global DarkMode is available
         if (typeof window.DarkMode !== 'undefined') {
-            console.log('Global DarkMode found, using existing system');
             
             // Wait a bit for DOM to be fully ready, then update buttons
             setTimeout(() => {
@@ -1050,17 +1047,12 @@
             }, 100);
             
         } else {
-            console.log('Global DarkMode not found, creating simple fallback');
-            
             // Simple fallback if the main system isn't loaded yet
             const buttons = document.querySelectorAll('[data-theme-toggle]');
-            console.log('Found theme toggle buttons:', buttons.length);
             
-            buttons.forEach((button, index) => {
-                console.log(`Setting up button ${index}`);
+            buttons.forEach((button) => {
                 button.addEventListener('click', function(e) {
                     e.preventDefault();
-                    console.log('Theme toggle clicked');
                     
                     // Simple toggle
                     const isDark = document.documentElement.classList.toggle('dark');
@@ -1116,31 +1108,6 @@
         // Initialize dashboard dark mode
         initDashboardDarkMode();
         
-        // Add debug tools to window for testing
-        window.testDashboardDarkMode = function() {
-            console.log('=== Dashboard Dark Mode Test ===');
-            console.log('Current theme:', document.documentElement.classList.contains('dark') ? 'dark' : 'light');
-            console.log('LocalStorage:', localStorage.getItem('theme'));
-            console.log('Toggle buttons found:', document.querySelectorAll('[data-theme-toggle]').length);
-            console.log('Global DarkMode available:', typeof window.DarkMode);
-            
-            // Try to toggle manually
-            const isDark = document.documentElement.classList.toggle('dark');
-            localStorage.setItem('theme', isDark ? 'dark' : 'light');
-            updateDashboardIcons();
-            updateMobileThemeText();
-            console.log('Manually toggled to:', isDark ? 'dark' : 'light');
-        };
-        
-        window.debugDashboardButtons = function() {
-            const buttons = document.querySelectorAll('[data-theme-toggle]');
-            console.log('Found buttons:', buttons.length);
-            buttons.forEach((btn, i) => {
-                console.log(`Button ${i}:`, btn);
-                console.log(`  Sun icon:`, btn.querySelector('.sun-icon'));
-                console.log(`  Moon icon:`, btn.querySelector('.moon-icon'));
-            });
-        };
         
         // Animate stats on load
         const statCards = document.querySelectorAll('.stat-card');

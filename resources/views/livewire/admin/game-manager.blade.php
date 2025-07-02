@@ -605,11 +605,15 @@
 <!-- Replace your existing script section with this fixed version -->
  <script>
     // Wait for InteractJS to be available from your build
-    function waitForInteract(callback) {
+    function waitForInteract(callback, attempts = 0) {
+        const maxAttempts = 50; // 5 seconds max wait
+        
         if (typeof window.interact !== 'undefined') {
             callback();
+        } else if (attempts < maxAttempts) {
+            setTimeout(() => waitForInteract(callback, attempts + 1), 100);
         } else {
-            setTimeout(() => waitForInteract(callback), 100);
+            console.warn('InteractJS failed to load after 5 seconds');
         }
     }
 
@@ -670,6 +674,7 @@
 
         // Check if InteractJS is available
         if (typeof window.interact === 'undefined') {
+            console.warn('InteractJS not available');
             return;
         }
         
@@ -725,13 +730,14 @@
                                 const rect = mapImage.getBoundingClientRect();
                                 const containerRect = mapContainer.getBoundingClientRect();
                                 return {
-                                    x: 0,
-                                    y: 0,
+                                    x: containerRect.left - rect.left,
+                                    y: containerRect.top - rect.top,
                                     width: rect.width,
                                     height: rect.height
                                 };
                             },
-                            elementRect: { top: 0.5, left: 0.5, bottom: 0.5, right: 0.5 }
+                            elementRect: { top: 0.5, left: 0.5, bottom: 0.5, right: 0.5 },
+                            endOnly: true
                         })
                     ],
                     listeners: {
@@ -754,33 +760,46 @@
                             target.setAttribute('data-x', x);
                             target.setAttribute('data-y', y);
                             
-                            // Calculate absolute coordinates relative to map image
-                            const rect = mapImage.getBoundingClientRect();
-                            const markerRect = target.getBoundingClientRect();
-                            const centerX = markerRect.left + markerRect.width / 2 - rect.left;
-                            const centerY = markerRect.top + markerRect.height / 2 - rect.top;
+                            // Calculate absolute coordinates based on original position + offset
+                            const originalLeft = parseFloat(target.style.left) || 0;
+                            const originalTop = parseFloat(target.style.top) || 0;
+                            const absoluteX = originalLeft + x;
+                            const absoluteY = originalTop + y;
                             
                             // Update coordinates in real-time
-                            updateLivewireCoordinates(Math.round(centerX), Math.round(centerY));
+                            updateLivewireCoordinates(Math.round(absoluteX), Math.round(absoluteY));
                         },
                         
                         end(event) {
                             event.target.classList.remove('dragging');
                             mapContainer.classList.remove('dragging');
                             
-                            // Final coordinate update
+                            // Final coordinate update and position normalization
                             const target = event.target;
-                            const rect = mapImage.getBoundingClientRect();
-                            const markerRect = target.getBoundingClientRect();
-                            const centerX = markerRect.left + markerRect.width / 2 - rect.left;
-                            const centerY = markerRect.top + markerRect.height / 2 - rect.top;
+                            const x = parseFloat(target.getAttribute('data-x')) || 0;
+                            const y = parseFloat(target.getAttribute('data-y')) || 0;
                             
-                            updateLivewireCoordinates(Math.round(centerX), Math.round(centerY));
+                            // Calculate final position
+                            const originalLeft = parseFloat(target.style.left) || 0;
+                            const originalTop = parseFloat(target.style.top) || 0;
+                            const finalX = originalLeft + x;
+                            const finalY = originalTop + y;
+                            
+                            // Update the marker's actual position
+                            target.style.left = finalX + 'px';
+                            target.style.top = finalY + 'px';
+                            target.style.transform = 'translate(-50%, -50%)';
+                            target.setAttribute('data-x', 0);
+                            target.setAttribute('data-y', 0);
+                            
+                            // Final coordinate update
+                            updateLivewireCoordinates(Math.round(finalX), Math.round(finalY));
                         }
                     }
                 });
             
         } catch (error) {
+            console.error('Failed to initialize InteractJS draggable:', error);
             return;
         }
         
@@ -793,8 +812,22 @@
             
             if (currentX > 0 || currentY > 0) {
                 positionMarker(currentX, currentY);
+            } else {
+                // Position marker at center if no coordinates set
+                const rect = mapImage.getBoundingClientRect();
+                const centerX = rect.width / 2;
+                const centerY = rect.height / 2;
+                positionMarker(centerX, centerY);
+                updateLivewireCoordinates(Math.round(centerX), Math.round(centerY));
             }
         } catch (error) {
+            // Fallback to center positioning
+            const rect = mapImage.getBoundingClientRect();
+            if (rect.width > 0 && rect.height > 0) {
+                const centerX = rect.width / 2;
+                const centerY = rect.height / 2;
+                positionMarker(centerX, centerY);
+            }
         }
         
         window.mapInteractionInitialized = true;
@@ -826,12 +859,29 @@
     }
 
     function updateLivewireCoordinates(x, y) {
+        // Validate coordinates
+        if (typeof x !== 'number' || typeof y !== 'number' || isNaN(x) || isNaN(y)) {
+            console.warn('Invalid coordinates provided:', x, y);
+            return;
+        }
+        
         // Update Livewire component using v3 syntax
         try {
-            const component = Livewire.find(document.querySelector('[wire\\:id]').getAttribute('wire:id'));
-            component.set('coordinate_x', x);
-            component.set('coordinate_y', y);
+            const wireElement = document.querySelector('[wire\\:id]');
+            if (!wireElement) {
+                console.warn('No Livewire element found');
+                return;
+            }
+            
+            const component = Livewire.find(wireElement.getAttribute('wire:id'));
+            if (component) {
+                component.set('coordinate_x', x);
+                component.set('coordinate_y', y);
+            } else {
+                console.warn('Livewire component not found');
+            }
         } catch (error) {
+            console.warn('Failed to update Livewire coordinates:', error);
         }
         
         // Update visual display
@@ -845,7 +895,6 @@
             coordinateDisplay.offsetHeight; // Trigger reflow
             coordinateDisplay.style.animation = 'coordinateFlash 0.5s ease-out';
         }
-        
     }
 
     function createClickFeedback(x, y) {

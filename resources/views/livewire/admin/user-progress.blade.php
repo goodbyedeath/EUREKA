@@ -56,7 +56,7 @@
     </div>
 
     <!-- Enhanced Overview Stats -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-4 lg:gap-6">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4 lg:gap-6">
         <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4 lg:p-6 transition-colors duration-200">
             <div class="flex items-center">
                 <div class="p-3 rounded-xl bg-blue-100 dark:bg-blue-900">
@@ -117,17 +117,6 @@
             </div>
         </div>
         
-        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4 lg:p-6 transition-colors duration-200">
-            <div class="flex items-center">
-                <div class="p-3 rounded-xl bg-indigo-100 dark:bg-indigo-900">
-                    <i class="fas fa-clock text-indigo-600 dark:text-indigo-400 text-lg"></i>
-                </div>
-                <div class="ml-4">
-                    <p class="text-xs lg:text-sm font-medium text-gray-600 dark:text-gray-400">Avg Time</p>
-                    <p class="text-xl lg:text-2xl font-bold text-gray-900 dark:text-gray-100">{{ $avgCompletionTime ?: '0s' }}</p>
-                </div>
-            </div>
-        </div>
     </div>
 
     <!-- Game Assessment Stats Card -->
@@ -164,15 +153,7 @@
     @endif
 
     <!-- Charts Section -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <!-- Completion Trends Chart -->
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 transition-colors duration-200">
-            <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Quiz Completion Trends</h3>
-            <div class="h-64">
-                <canvas id="completionTrendsChart"></canvas>
-            </div>
-        </div>
-
+    <div class="grid grid-cols-1 gap-6">
         <!-- Team Performance Chart -->
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 transition-colors duration-200">
             <div class="flex items-center justify-between mb-4">
@@ -270,6 +251,19 @@
                                         {{ $user['total_points'] >= 1000 ? 'bg-green-100 text-green-800' : ($user['total_points'] >= 500 ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800') }}">
                                         {{ $user['total_points'] }} pts
                                     </span>
+                                    @if(isset($user['team_points_breakdown']) && isset($user['team_points_breakdown']['breakdown_text']) && $user['team_points_breakdown']['breakdown_text'])
+                                        <div class="text-xs text-gray-500 mt-1">{{ $user['team_points_breakdown']['breakdown_text'] }}</div>
+                                    @elseif($user['total_points'] > 0)
+                                        <div class="text-xs text-gray-500 mt-1">{{ $user['total_points'] }} pts total</div>
+                                    @endif
+                                    @if(isset($user['assessment_notes']) && $user['assessment_notes']->count() > 0)
+                                        <button wire:click="showAssessmentNotes({{ $user['id'] }})" 
+                                                class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800 hover:bg-orange-200 transition-colors mt-1 cursor-pointer"
+                                                title="Click to view assessment notes">
+                                            <i class="fas fa-sticky-note mr-1"></i>
+                                            Notes ({{ $user['assessment_notes']->count() }})
+                                        </button>
+                                    @endif
                                 @else
                                     <span class="text-gray-400">N/A</span>
                                 @endif
@@ -332,6 +326,11 @@
                                             <i class="fas fa-eye text-xs"></i>
                                         </button>
                                     @endif
+                                    <button wire:click="showUserDetail({{ $user['id'] }})" 
+                                            class="ml-1 p-1 text-blue-400 hover:text-blue-600 dark:text-blue-400 transition-colors"
+                                            title="View User Progress Details">
+                                        <i class="fas fa-chart-line text-xs"></i>
+                                    </button>
                                 </div>
                             </td>
                             <td class="px-4 xl:px-6 py-4 whitespace-nowrap text-xs xl:text-sm text-gray-900 dark:text-gray-100">{{ $user['team'] }}</td>
@@ -358,8 +357,25 @@
                                             {{ $user['total_points'] >= 1000 ? 'bg-green-100 text-green-800' : ($user['total_points'] >= 500 ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800') }}">
                                             {{ $user['total_points'] }} pts
                                         </span>
+                                        @if(isset($user['team_points_breakdown']) && isset($user['team_points_breakdown']['breakdown_text']) && $user['team_points_breakdown']['breakdown_text'])
+                                            <span class="text-xs text-gray-500 dark:text-gray-400" title="Points Breakdown">
+                                                {{ $user['team_points_breakdown']['breakdown_text'] }}
+                                            </span>
+                                        @elseif($user['total_points'] > 0)
+                                            <span class="text-xs text-gray-500 dark:text-gray-400" title="Team Points">
+                                                {{ $user['total_points'] }} pts total
+                                            </span>
+                                        @endif
                                         @if($user['average_score'] > 0)
-                                            <span class="text-xs text-gray-500 dark:text-gray-400">Avg: {{ $user['average_score'] }} pts</span>
+                                            <span class="text-xs text-blue-600 dark:text-blue-400">Avg: {{ $user['average_score'] }} pts</span>
+                                        @endif
+                                        @if(isset($user['assessment_notes']) && $user['assessment_notes']->count() > 0)
+                                            <button wire:click="showAssessmentNotes({{ $user['id'] }})" 
+                                                    class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800 hover:bg-orange-200 transition-colors mt-1 cursor-pointer"
+                                                    title="Click to view assessment notes">
+                                                <i class="fas fa-sticky-note mr-1"></i>
+                                                Notes ({{ $user['assessment_notes']->count() }})
+                                            </button>
                                         @endif
                                     </div>
                                 @else
@@ -370,9 +386,6 @@
                                 <div class="flex flex-col">
                                     @if($user['last_activity'])
                                         <span>{{ \Carbon\Carbon::parse($user['last_activity'])->diffForHumans() }}</span>
-                                        @if($user['avg_completion_time'])
-                                            <span class="text-xs text-gray-400">Avg: {{ $user['avg_completion_time'] }}</span>
-                                        @endif
                                     @else
                                         <span class="text-gray-400">Never</span>
                                     @endif
@@ -397,7 +410,7 @@
                         </div>
                         <div>
                             <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">{{ $teamDetailData['team']->name }}</h3>
-                            <p class="text-sm text-gray-500 dark:text-gray-400">{{ $teamDetailData['team']->department ?? 'No Department' }} • {{ $teamDetailData['team']->points }} points</p>
+                            <p class="text-sm text-gray-500 dark:text-gray-400">{{ $teamDetailData['team']->department ?? 'No Department' }} • {{ $teamDetailData['team_total_points'] ?? $teamDetailData['team']->initial_points ?? 1000 }} total points</p>
                         </div>
                     </div>
                     <button wire:click="hideTeamDetail" class="text-gray-400 hover:text-gray-600 dark:text-gray-400 p-2">
@@ -418,18 +431,63 @@
                             <div class="text-2xl font-bold text-green-600">{{ $teamDetailData['completed_attempts'] }}</div>
                         </div>
                         <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-                            <div class="text-sm font-medium text-gray-500 dark:text-gray-400">Team Points</div>
-                            <div class="text-2xl font-bold text-indigo-600">{{ $teamDetailData['team']->points }}</div>
+                            <div class="text-sm font-medium text-gray-500 dark:text-gray-400">Team Points (Highest)</div>
+                            <div class="text-2xl font-bold text-indigo-600">{{ $teamDetailData['team_total_points'] ?? 0 }}</div>
                         </div>
                         <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-                            <div class="text-sm font-medium text-gray-500 dark:text-gray-400">Total Time Spent</div>
-                            <div class="text-2xl font-bold text-gray-900 dark:text-gray-100">{{ $teamDetailData['total_time_spent'] ?: '0s' }}</div>
+                            <div class="text-sm font-medium text-gray-500 dark:text-gray-400">Average Team Points</div>
+                            <div class="text-2xl font-bold text-blue-600">{{ $teamDetailData['team_average_points'] ?? 0 }}</div>
                         </div>
                     </div>
                     
+                    <!-- Team Questionnaire Completion Summary -->
+                    @if(isset($teamDetailData['questionnaire_completion_summary']) && $teamDetailData['questionnaire_completion_summary']->count() > 0)
+                        <div class="mb-6">
+                            <h4 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
+                                <i class="fas fa-chart-pie text-blue-600"></i>
+                                Team Questionnaire Completion Summary
+                            </h4>
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                @foreach($teamDetailData['questionnaire_completion_summary'] as $summary)
+                                    <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                                        <h5 class="font-medium text-gray-900 dark:text-gray-100 mb-2">{{ $summary['questionnaire_title'] }}</h5>
+                                        <div class="space-y-2 text-sm">
+                                            <div class="flex justify-between">
+                                                <span class="text-gray-600 dark:text-gray-400">Team Members Completed:</span>
+                                                <span class="font-medium">{{ $summary['users_completed'] }}/{{ $summary['total_team_members'] }}</span>
+                                            </div>
+                                            <div class="flex justify-between">
+                                                <span class="text-gray-600 dark:text-gray-400">Completion Rate:</span>
+                                                <span class="font-medium {{ $summary['team_completion_rate'] >= 80 ? 'text-green-600' : ($summary['team_completion_rate'] >= 50 ? 'text-yellow-600' : 'text-red-600') }}">
+                                                    {{ $summary['team_completion_rate'] }}%
+                                                </span>
+                                            </div>
+                                            <div class="flex justify-between">
+                                                <span class="text-gray-600 dark:text-gray-400">Questions Mastered:</span>
+                                                <span class="font-medium">{{ $summary['questions_mastered'] }}/{{ $summary['total_questions'] }}</span>
+                                            </div>
+                                            <div class="flex justify-between">
+                                                <span class="text-gray-600 dark:text-gray-400">Mastery Rate:</span>
+                                                <span class="font-medium {{ $summary['questions_mastery_rate'] >= 80 ? 'text-green-600' : ($summary['questions_mastery_rate'] >= 60 ? 'text-yellow-600' : 'text-red-600') }}">
+                                                    {{ $summary['questions_mastery_rate'] }}%
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <!-- Progress Bar -->
+                                        <div class="mt-3">
+                                            <div class="w-full bg-gray-200 rounded-full h-2">
+                                                <div class="bg-blue-600 h-2 rounded-full transition-all duration-300" style="width: {{ $summary['team_completion_rate'] }}%"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
+                    @endif
+                    
                     <!-- Questionnaire Details -->
                     <div>
-                        <h4 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Questionnaire Performance</h4>
+                        <h4 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Individual Questionnaire Performance</h4>
                         @if($teamDetailData['questionnaire_details']->count() > 0)
                             <div class="space-y-6">
                                 @foreach($teamDetailData['questionnaire_details'] as $questionnaire)
@@ -452,8 +510,8 @@
                                         <div class="px-4 py-3 bg-blue-50 border-b border-gray-200 dark:border-gray-700">
                                             <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                                                 <div>
-                                                    <span class="font-medium text-gray-700 dark:text-gray-300">Avg Points:</span>
-                                                    <span class="text-blue-600 font-semibold">{{ $questionnaire['average_score'] }}</span>
+                                                    <span class="font-medium text-gray-700 dark:text-gray-300">Avg Team Points:</span>
+                                                    <span class="text-blue-600 font-semibold">{{ $questionnaire['average_score'] }} pts</span>
                                                 </div>
                                                 @if($questionnaire['fastest_completion'])
                                                     <div>
@@ -488,7 +546,7 @@
                                                             <th class="pb-2">Started</th>
                                                             <th class="pb-2">Completed</th>
                                                             <th class="pb-2">Duration</th>
-                                                            <th class="pb-2">Points</th>
+                                                            <th class="pb-2">Team Points</th>
                                                         </tr>
                                                     </thead>
                                                     <tbody class="space-y-1">
@@ -533,8 +591,8 @@
                                                                 </td>
                                                                 <td class="py-2">
                                                                     @if($attempt['total_score'] !== null)
-                                                                        <span class="font-semibold {{ $attempt['total_score'] >= 70 ? 'text-green-600' : ($attempt['total_score'] >= 50 ? 'text-yellow-600' : 'text-red-600') }}">
-                                                                            {{ $attempt['total_score'] }}
+                                                                        <span class="font-semibold {{ $attempt['total_score'] >= 1000 ? 'text-green-600' : ($attempt['total_score'] >= 800 ? 'text-yellow-600' : 'text-red-600') }}">
+                                                                            {{ $attempt['total_score'] }} pts
                                                                         </span>
                                                                     @else
                                                                         -
@@ -560,45 +618,298 @@
             </div>
         </div>
     @endif
+    
+    <!-- User Detail Modal -->
+    @if($showDetailedView && $userDetailData)
+        <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden">
+                <!-- Modal Header -->
+                <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                            <i class="fas fa-user text-blue-600 text-lg"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">{{ $userDetailData['user']->name }}</h3>
+                            <p class="text-sm text-gray-500 dark:text-gray-400">{{ $userDetailData['user']->email }} • {{ $userDetailData['user']->team->name ?? 'No Team' }}</p>
+                        </div>
+                    </div>
+                    <button wire:click="hideUserDetail" class="text-gray-400 hover:text-gray-600 dark:text-gray-400 p-2">
+                        <i class="fas fa-times text-lg"></i>
+                    </button>
+                </div>
+                
+                <!-- Modal Content -->
+                <div class="p-6 overflow-y-auto max-h-[calc(90vh-120px)] space-y-6">
+                    
+                    <!-- Enhanced Team Points Breakdown -->
+                    @if($userDetailData['user']->team)
+                        <div class="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900 dark:to-indigo-900 rounded-lg p-4">
+                            <h4 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
+                                <i class="fas fa-trophy text-yellow-500"></i>
+                                Team Points Breakdown
+                            </h4>
+                            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                <div class="text-center">
+                                    <div class="text-2xl font-bold text-blue-600">{{ $userDetailData['team_points_breakdown']['base_points'] ?? 0 }}</div>
+                                    <div class="text-sm text-gray-600 dark:text-gray-400">Base Points</div>
+                                </div>
+                                <div class="text-center">
+                                    <div class="text-2xl font-bold text-green-600">{{ $userDetailData['team_points_breakdown']['earned_points'] ?? 0 }}</div>
+                                    <div class="text-sm text-gray-600 dark:text-gray-400">Earned Points</div>
+                                </div>
+                                <div class="text-center">
+                                    <div class="text-2xl font-bold text-purple-600">{{ $userDetailData['team_points_breakdown']['assessment_bonus'] ?? 0 }}</div>
+                                    <div class="text-sm text-gray-600 dark:text-gray-400">Assessment Bonus</div>
+                                </div>
+                                <div class="text-center">
+                                    <div class="text-3xl font-bold text-indigo-600">{{ $userDetailData['team_points_breakdown']['total'] ?? 0 }}</div>
+                                    <div class="text-sm text-gray-600 dark:text-gray-400">Total Points</div>
+                                </div>
+                            </div>
+                            <div class="mt-3 text-center">
+                                <div class="text-lg font-medium text-gray-700 dark:text-gray-300">
+                                    {{ $userDetailData['team_points_breakdown']['breakdown_text'] ?? 'No breakdown available' }}
+                                </div>
+                            </div>
+                        </div>
+                    @endif
+                    
+                    <!-- Questionnaire Completion Details -->
+                    @if($userDetailData['questionnaire_details']->count() > 0)
+                        <div>
+                            <h4 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
+                                <i class="fas fa-clipboard-list text-blue-600"></i>
+                                Questionnaire Progress
+                            </h4>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                @foreach($userDetailData['questionnaire_details'] as $quest)
+                                    <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                                        <h5 class="font-medium text-gray-900 dark:text-gray-100 mb-2">{{ $quest['questionnaire_title'] }}</h5>
+                                        <div class="space-y-2 text-sm">
+                                            <div class="flex justify-between">
+                                                <span class="text-gray-600 dark:text-gray-400">Attempts:</span>
+                                                <span class="font-medium">{{ $quest['completed_attempts'] }}/{{ $quest['total_attempts'] }}</span>
+                                            </div>
+                                            <div class="flex justify-between">
+                                                <span class="text-gray-600 dark:text-gray-400">Questions Correct:</span>
+                                                <span class="font-medium">{{ $quest['questions_answered_correctly'] }}/{{ $quest['total_questions'] }}</span>
+                                            </div>
+                                            <div class="flex justify-between">
+                                                <span class="text-gray-600 dark:text-gray-400">Mastery Rate:</span>
+                                                <span class="font-medium {{ $quest['questions_completion_rate'] >= 80 ? 'text-green-600' : ($quest['questions_completion_rate'] >= 60 ? 'text-yellow-600' : 'text-red-600') }}">
+                                                    {{ $quest['questions_completion_rate'] }}%
+                                                </span>
+                                            </div>
+                                            <div class="flex justify-between">
+                                                <span class="text-gray-600 dark:text-gray-400">Best Score:</span>
+                                                <span class="font-medium text-blue-600">{{ $quest['best_score'] }} pts</span>
+                                            </div>
+                                            @if($quest['last_attempt_date'])
+                                                <div class="flex justify-between">
+                                                    <span class="text-gray-600 dark:text-gray-400">Last Attempt:</span>
+                                                    <span class="text-xs">{{ \Carbon\Carbon::parse($quest['last_attempt_date'])->diffForHumans() }}</span>
+                                                </div>
+                                            @endif
+                                        </div>
+                                        <!-- Progress Bar -->
+                                        <div class="mt-3">
+                                            <div class="w-full bg-gray-200 rounded-full h-2">
+                                                <div class="bg-blue-600 h-2 rounded-full transition-all duration-300" style="width: {{ $quest['questions_completion_rate'] }}%"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
+                    @endif
+                    
+                    <!-- Assessment Notes -->
+                    @if($userDetailData['assessment_notes']->count() > 0)
+                        <div>
+                            <h4 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
+                                <i class="fas fa-sticky-note text-orange-600"></i>
+                                Assessment Notes & Feedback
+                            </h4>
+                            <div class="space-y-4">
+                                @foreach($userDetailData['assessment_notes'] as $note)
+                                    <div class="bg-orange-50 dark:bg-orange-900 border border-orange-200 dark:border-orange-700 rounded-lg p-4">
+                                        <div class="flex items-start justify-between mb-2">
+                                            <h5 class="font-medium text-gray-900 dark:text-gray-100">{{ $note['questionnaire_title'] }}</h5>
+                                            <div class="text-sm text-gray-500 dark:text-gray-400">
+                                                {{ \Carbon\Carbon::parse($note['assessment_date'])->format('M d, Y H:i') }}
+                                            </div>
+                                        </div>
+                                        @if($note['notes'])
+                                            <div class="mb-2">
+                                                <span class="font-medium text-gray-700 dark:text-gray-300">Notes:</span>
+                                                <p class="text-gray-600 dark:text-gray-400 mt-1">{{ $note['notes'] }}</p>
+                                            </div>
+                                        @endif
+                                        @if($note['total_deposit'])
+                                            <div class="text-sm">
+                                                <span class="font-medium text-gray-700 dark:text-gray-300">Total Deposit:</span>
+                                                <span class="text-green-600 dark:text-green-400 font-medium">{{ $note['total_deposit'] }} pts</span>
+                                            </div>
+                                        @endif
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
+                    @endif
+                    
+                    <!-- Recent Attempts Summary -->
+                    <div>
+                        <h4 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
+                            <i class="fas fa-history text-gray-600"></i>
+                            Recent Attempts
+                        </h4>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full text-sm">
+                                <thead>
+                                    <tr class="text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                        <th class="pb-2">Questionnaire</th>
+                                        <th class="pb-2">Status</th>
+                                        <th class="pb-2">Team Points</th>
+                                        <th class="pb-2">Started</th>
+                                        <th class="pb-2">Duration</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="space-y-1">
+                                    @foreach($userDetailData['attempts'] as $attempt)
+                                        <tr class="border-t border-gray-100">
+                                            <td class="py-2 font-medium text-gray-900 dark:text-gray-100">{{ $attempt['questionnaire_title'] }}</td>
+                                            <td class="py-2">
+                                                @if($attempt['status'] === 'completed')
+                                                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                                        Completed
+                                                    </span>
+                                                @elseif($attempt['status'] === 'started')
+                                                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                                        In Progress
+                                                    </span>
+                                                @else
+                                                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                                        {{ ucfirst($attempt['status']) }}
+                                                    </span>
+                                                @endif
+                                            </td>
+                                            <td class="py-2">
+                                                @if($attempt['total_score'] !== null)
+                                                    <span class="font-semibold {{ $attempt['total_score'] >= 1000 ? 'text-green-600' : ($attempt['total_score'] >= 800 ? 'text-yellow-600' : 'text-red-600') }}">
+                                                        {{ $attempt['total_score'] }} pts
+                                                    </span>
+                                                @else
+                                                    -
+                                                @endif
+                                            </td>
+                                            <td class="py-2 text-gray-600 dark:text-gray-400">
+                                                @if($attempt['started_at'])
+                                                    {{ $attempt['started_at']->format('M d, H:i') }}
+                                                @else
+                                                    -
+                                                @endif
+                                            </td>
+                                            <td class="py-2 text-gray-600 dark:text-gray-400">
+                                                @if($attempt['duration'])
+                                                    {{ $attempt['duration'] }} min
+                                                @else
+                                                    -
+                                                @endif
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                </div>
+            </div>
+        </div>
+    @endif
+    
+    <!-- Assessment Notes Modal (Simplified) -->
+    @if($showAssessmentNotesView && $assessmentNotesData)
+        <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-4xl w-full max-h-[80vh] overflow-hidden">
+                <!-- Modal Header -->
+                <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center">
+                            <i class="fas fa-sticky-note text-orange-600 text-lg"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">Assessment Notes</h3>
+                            <p class="text-sm text-gray-500 dark:text-gray-400">{{ $assessmentNotesData['user']->name }} • {{ $assessmentNotesData['user']->email }}</p>
+                            @if(isset($assessmentNotesData['team_points_breakdown']))
+                                <p class="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                                    Team Points: {{ $assessmentNotesData['team_points_breakdown']['breakdown_text'] }}
+                                </p>
+                            @endif
+                        </div>
+                    </div>
+                    <button wire:click="hideAssessmentNotes" class="text-gray-400 hover:text-gray-600 dark:text-gray-400 p-2">
+                        <i class="fas fa-times text-lg"></i>
+                    </button>
+                </div>
+                
+                <!-- Modal Content -->
+                <div class="p-6 overflow-y-auto max-h-[calc(80vh-120px)]">
+                    @if($assessmentNotesData['assessment_notes']->count() > 0)
+                        <div class="space-y-4">
+                            @foreach($assessmentNotesData['assessment_notes'] as $note)
+                                <div class="bg-orange-50 dark:bg-orange-900 border border-orange-200 dark:border-orange-700 rounded-lg p-4">
+                                    <div class="flex items-start justify-between mb-3">
+                                        <div>
+                                            <h4 class="font-medium text-gray-900 dark:text-gray-100">{{ $note['questionnaire_title'] }}</h4>
+                                            <div class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                                                {{ \Carbon\Carbon::parse($note['assessment_date'])->format('M d, Y H:i') }}
+                                            </div>
+                                        </div>
+                                        @if($note['total_deposit'])
+                                            <div class="text-sm">
+                                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                                    {{ $note['total_deposit'] }} pts
+                                                </span>
+                                            </div>
+                                        @endif
+                                    </div>
+                                    
+                                    <div class="space-y-3">
+                                        @if($note['notes'])
+                                            <div>
+                                                <span class="font-medium text-gray-700 dark:text-gray-300 text-sm">Notes:</span>
+                                                <p class="text-gray-600 dark:text-gray-400 mt-1 text-sm leading-relaxed">{{ $note['notes'] }}</p>
+                                            </div>
+                                        @endif
+                                        
+                                        @if(!$note['notes'])
+                                            <p class="text-gray-500 dark:text-gray-400 text-sm italic">No detailed notes available for this assessment.</p>
+                                        @endif
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                    @else
+                        <div class="text-center py-8">
+                            <div class="w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <i class="fas fa-sticky-note text-gray-400 text-2xl"></i>
+                            </div>
+                            <h4 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">No Assessment Notes</h4>
+                            <p class="text-gray-500 dark:text-gray-400">This user doesn't have any assessment notes in the selected timeframe.</p>
+                        </div>
+                    @endif
+                </div>
+            </div>
+        </div>
+    @endif
 </div>
 
 @push('scripts')
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Completion Trends Chart
-    const completionTrendsCtx = document.getElementById('completionTrendsChart');
-    if (completionTrendsCtx) {
-        new Chart(completionTrendsCtx, {
-            type: 'line',
-            data: {
-                labels: @json($completionTrends->pluck('date')),
-                datasets: [{
-                    label: 'Completed Quizzes',
-                    data: @json($completionTrends->pluck('completed')),
-                    borderColor: 'rgb(59, 130, 246)',
-                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                    tension: 0.1,
-                    fill: true
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        display: false
-                    }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true
-                    }
-                }
-            }
-        });
-    }
-
     // Team Performance Chart
     const teamPerformanceCtx = document.getElementById('teamPerformanceChart');
     if (teamPerformanceCtx) {

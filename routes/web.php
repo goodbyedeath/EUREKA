@@ -9,7 +9,7 @@ use App\Http\Controllers\User\UserDashboardController;
 use App\Livewire\User\QuizTake;
 use App\Livewire\User\QuestLocationDashboard;
 use App\Livewire\User\GameDashboard;
-use App\Livewire\User\QuizResults;
+
 use App\Livewire\User\GameAssessmentForm;
 use Ladumor\LaravelPwa\LaravelPwa;
 use App\Livewire\Forms\TeamForm;

@@ -3,35 +3,27 @@ import './bootstrap';
 // Dark Mode functionality - improved version
 window.DarkMode = {
     init() {
-        console.log('Dark Mode initializing...');
-        
         // Set theme immediately on init
         const savedTheme = localStorage.getItem('theme') || 'light';
-        console.log('Saved theme:', savedTheme);
         this.setTheme(savedTheme);
         
         // Update buttons when DOM is ready
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', () => {
-                console.log('DOM loaded, updating buttons');
                 this.updateToggleButtons();
             });
         } else {
             // DOM is already loaded
-            console.log('DOM already loaded, updating buttons immediately');
             this.updateToggleButtons();
         }
         
         // Also listen for Livewire page loads
         document.addEventListener('livewire:navigated', () => {
-            console.log('Livewire navigated, updating buttons');
             this.updateToggleButtons();
         });
     },
     
     setTheme(theme) {
-        console.log('Setting theme to:', theme);
-        
         if (theme === 'dark') {
             document.documentElement.classList.add('dark');
         } else {
@@ -49,7 +41,6 @@ window.DarkMode = {
     toggle() {
         const isDark = document.documentElement.classList.contains('dark');
         const newTheme = isDark ? 'light' : 'dark';
-        console.log('Toggling theme from', isDark ? 'dark' : 'light', 'to', newTheme);
         this.setTheme(newTheme);
     },
     
@@ -57,23 +48,17 @@ window.DarkMode = {
         const isDark = document.documentElement.classList.contains('dark');
         const toggleButtons = document.querySelectorAll('[data-theme-toggle]');
         
-        console.log('Updating buttons. Is dark:', isDark, 'Found buttons:', toggleButtons.length);
-        
-        toggleButtons.forEach((button, index) => {
+        toggleButtons.forEach((button) => {
             const sunIcon = button.querySelector('.sun-icon');
             const moonIcon = button.querySelector('.moon-icon');
-            
-            console.log(`Button ${index}: sun icon found:`, !!sunIcon, 'moon icon found:', !!moonIcon);
             
             if (sunIcon && moonIcon) {
                 if (isDark) {
                     sunIcon.style.display = 'block';
                     moonIcon.style.display = 'none';
-                    console.log(`Button ${index}: Showing sun icon (dark mode)`);
                 } else {
                     sunIcon.style.display = 'none';
                     moonIcon.style.display = 'block';
-                    console.log(`Button ${index}: Showing moon icon (light mode)`);
                 }
             }
         });
@@ -87,9 +72,8 @@ window.DarkMode = {
 // Initialize dark mode immediately
 window.DarkMode.init();
 
-// Global function for theme toggle with debugging
+// Global function for theme toggle
 window.toggleTheme = function() {
-    console.log('toggleTheme called');
     try {
         window.DarkMode.toggle();
     } catch (error) {
@@ -99,23 +83,18 @@ window.toggleTheme = function() {
 
 // Add click event listeners as backup
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('Adding click listeners to theme toggle buttons');
-    
     function addClickListeners() {
         const buttons = document.querySelectorAll('[data-theme-toggle]');
-        console.log('Found toggle buttons for click listeners:', buttons.length);
         
-        buttons.forEach((button, index) => {
+        buttons.forEach((button) => {
             // Remove existing listeners to prevent duplicates
             button.removeEventListener('click', handleThemeToggle);
             // Add new listener
             button.addEventListener('click', handleThemeToggle);
-            console.log(`Added click listener to button ${index}`);
         });
     }
     
     function handleThemeToggle(event) {
-        console.log('Button clicked via event listener');
         event.preventDefault();
         window.toggleTheme();
     }
@@ -125,20 +104,10 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Also add after Livewire navigation
     document.addEventListener('livewire:navigated', () => {
-        console.log('Re-adding click listeners after Livewire navigation');
         addClickListeners();
     });
 });
 
-// Debug function to check current state
-window.debugDarkMode = function() {
-    console.log('=== Dark Mode Debug ===');
-    console.log('Current theme:', window.DarkMode.getTheme());
-    console.log('HTML has dark class:', document.documentElement.classList.contains('dark'));
-    console.log('LocalStorage theme:', localStorage.getItem('theme'));
-    console.log('Toggle buttons found:', document.querySelectorAll('[data-theme-toggle]').length);
-    console.log('==================');
-};
 
 // Import and expose QR Scanner for global use
 import QrScanner from 'qr-scanner';
@@ -331,7 +300,6 @@ window.GameMapManager = {
     },
 
     updateFullscreenControls(isFullscreen) {
-        console.log('Updating fullscreen controls:', isFullscreen);
         
         if (isFullscreen) {
             this.showFullscreenControls();
@@ -428,18 +396,8 @@ window.AdminMapManager = {
     instances: new Map(),
     
     initialize(containerId, markerId, options = {}) {
-        console.log('=== AdminMapManager.initialize called ===');
-        console.log('Params:', { containerId, markerId, options });
-        
         const container = document.getElementById(containerId);
         const marker = document.getElementById(markerId);
-        
-        console.log('Found elements:', {
-            container: !!container,
-            marker: !!marker,
-            containerElement: container,
-            markerElement: marker
-        });
         
         if (!container || !marker) {
             console.warn(`Container or marker not found: ${containerId}, ${markerId}`);
@@ -458,12 +416,7 @@ window.AdminMapManager = {
             marker.setAttribute('data-y', initialY);
         }
         
-        console.log('Setting up InteractJS for marker:', marker.id);
-        console.log('interact function available:', typeof interact);
-        console.log('marker element:', marker);
-        
         // Make marker draggable with InteractJS using proper patterns
-        console.log('Calling interact(marker)...');
         const instance = interact(marker)
             .draggable({
                 // Restrict movement to parent container
@@ -483,7 +436,6 @@ window.AdminMapManager = {
                 // Event listeners following InteractJS patterns
                 listeners: {
                     start(event) {
-                        console.log('Drag started on marker:', event.target.id);
                         
                         // Add dragging visual feedback
                         event.target.style.boxShadow = '0 8px 25px rgba(239, 68, 68, 0.6)';
@@ -514,7 +466,6 @@ window.AdminMapManager = {
                     },
                     
                     end(event) {
-                        console.log('Drag ended on marker:', event.target.id);
                         
                         // Get final position from data attributes
                         const x = parseFloat(event.target.getAttribute('data-x')) || 0;
@@ -571,9 +522,6 @@ window.AdminMapManager = {
             options: options
         });
         
-        console.log('✅ AdminMapManager.initialize completed successfully');
-        console.log('Instance stored for markerId:', markerId);
-        console.log('=== AdminMapManager.initialize finished ===');
         
         return instance;
     },
@@ -674,88 +622,8 @@ window.AdminMapManager = {
     }
 };
 
-// Global test functions for debugging zoom
-window.testZoomIn = function() {
-    console.log('Testing zoom in...');
-    console.log('GameMapManager available:', typeof window.GameMapManager);
-    
-    if (typeof window.GameMapManager !== 'undefined') {
-        const instance = window.GameMapManager.getInstance('game-map');
-        console.log('Panzoom instance:', instance);
-        
-        if (instance) {
-            console.log('Current transform:', instance.getTransform());
-            console.log('Available methods:', Object.getOwnPropertyNames(instance).filter(prop => typeof instance[prop] === 'function'));
-            
-            // Try direct panzoom methods
-            if (typeof instance.zoom === 'function') {
-                console.log('Using instance.zoom(1.3)');
-                instance.zoom(1.3);
-            } else if (typeof instance.zoomBy === 'function') {
-                console.log('Using instance.zoomBy(1.3)');
-                instance.zoomBy(1.3);
-            } else {
-                console.log('Using manual fallback');
-                window.GameMapManager.manualZoom('game-map', 1.3);
-            }
-        } else {
-            console.log('No panzoom instance found, trying manual zoom');
-            window.GameMapManager.manualZoom('game-map', 1.3);
-        }
-        
-        // Also try through GameMapManager
-        window.GameMapManager.zoomIn('game-map');
-    }
-};
 
-window.testZoomOut = function() {
-    console.log('Testing zoom out...');
-    console.log('GameMapManager available:', typeof window.GameMapManager);
-    
-    if (typeof window.GameMapManager !== 'undefined') {
-        const instance = window.GameMapManager.getInstance('game-map');
-        console.log('Panzoom instance:', instance);
-        
-        if (instance) {
-            console.log('Current transform before zoom out:', instance.getTransform());
-            console.log('Available methods:', Object.getOwnPropertyNames(instance).filter(prop => typeof instance[prop] === 'function'));
-            
-            // Try direct panzoom methods for zoom out
-            const transform = instance.getTransform();
-            const currentScale = transform.scale;
-            const newScale = Math.max(currentScale / 1.3, 0.2);
-            
-            console.log('Current scale:', currentScale, 'New scale:', newScale);
-            
-            if (typeof instance.zoomAbs === 'function') {
-                console.log('Using instance.zoomAbs()');
-                const element = document.getElementById('game-map');
-                const rect = element.getBoundingClientRect();
-                instance.zoomAbs(rect.width / 2, rect.height / 2, newScale);
-            } else if (typeof instance.zoom === 'function') {
-                console.log('Using instance.zoom() with relative factor');
-                instance.zoom(newScale / currentScale);
-            } else {
-                console.log('Using manual fallback');
-                window.GameMapManager.manualZoom('game-map', 0.77);
-            }
-            
-            setTimeout(() => {
-                console.log('Transform after zoom out:', instance.getTransform());
-            }, 100);
-        }
-        
-        // Also try through GameMapManager
-        window.GameMapManager.zoomOut('game-map');
-    }
-};
 
-window.testReset = function() {
-    console.log('Testing reset...');
-    if (typeof window.GameMapManager !== 'undefined') {
-        window.GameMapManager.reset('game-map');
-    }
-};
 
 // Global handler functions for map controls
 window.handleZoomIn = function() {
@@ -949,47 +817,7 @@ function toggleFullscreenDirect(element) {
     }
 }
 
-// Test function to verify all handlers are loaded
-window.testHandlers = function() {
-    console.log('Testing all handler functions:');
-    console.log('handleZoomIn:', typeof window.handleZoomIn);
-    console.log('handleZoomOut:', typeof window.handleZoomOut);
-    console.log('handleReset:', typeof window.handleReset);
-    console.log('handleFullscreen:', typeof window.handleFullscreen);
-    console.log('GameMapManager:', typeof window.GameMapManager);
-};
 
-// Test function to verify controls functionality
-window.testMapControls = function() {
-    console.log('=== MAP CONTROLS TEST ===');
-    
-    const mapContainer = document.getElementById('map-container');
-    const floatingControls = document.getElementById('floating-controls');
-    const fullscreenButton = document.getElementById('fullscreen-toggle');
-    const zoomIndicator = document.getElementById('zoom-indicator');
-    
-    console.log('Map container:', !!mapContainer);
-    console.log('Floating controls:', !!floatingControls);
-    console.log('Fullscreen button:', !!fullscreenButton);
-    console.log('Zoom indicator:', !!zoomIndicator);
-    console.log('GameMapManager available:', !!window.GameMapManager);
-    
-    if (window.GameMapManager) {
-        const instance = window.GameMapManager.getInstance('game-map');
-        console.log('Panzoom instance:', !!instance);
-        
-        if (instance) {
-            try {
-                const transform = instance.getTransform();
-                console.log('Current transform:', transform);
-            } catch (e) {
-                console.log('Could not get transform:', e.message);
-            }
-        }
-    }
-    
-    console.log('=== END TEST ===');
-};
 
 
 // Global fullscreen change listener
