@@ -9,37 +9,31 @@
                     <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg p-4">
                         <div class="flex items-center">
                             <i class="fas fa-info-circle text-blue-500 mr-2"></i>
-                            <span class="text-blue-700 dark:text-blue-300">You have an active quiz session.</span>
+                            <span class="text-blue-700 dark:text-blue-300">{{ __('common.you_have_active_quiz') }}</span>
                         </div>
                     </div>
                 </div>
                 @livewire('user.quiz-take', ['questionnaireId' => $questionnaireId])
             @else
-                {{-- Normal Dashboard Content --}}
-                <div class="space-y-8">
-                    @livewire('user.quest-location-dashboard')
-
-                    {{-- Recent Activity --}}
-                    @livewire('user.recent-attempts')
-                    
-                    {{-- Quick Actions --}}
-                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
-                        <h3 class="text-base sm:text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">{{ __('common.quick_actions') }}</h3>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                            <button 
-                                wire:click="switchToQuizzes"
-                                class="p-3 sm:p-4 border border-gray-200 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-left">
-                                <i class="fas fa-clipboard-list text-blue-500 text-lg sm:text-xl mb-2"></i>
-                                <div class="font-medium text-gray-900 dark:text-gray-100 text-sm sm:text-base">{{ __('common.browse_quizzes') }}</div>
-                            </button>
-                            
-                            <button 
-                                wire:click="openQRScanner"
-                                class="p-3 sm:p-4 border border-gray-200 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-left">
-                                <i class="fas fa-qrcode text-green-500 text-lg sm:text-xl mb-2"></i>
-                                <div class="font-medium text-gray-900 dark:text-gray-100 text-sm sm:text-base">{{ __('common.scan_qr') }}</div>
-                            </button>
-                        </div>
+                {{-- Dashboard Content - Simplified to work with Premium Main Dashboard --}}
+                <div class="space-y-6">
+                    {{-- Simple Quick Actions for Tab Content --}}
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <button 
+                            wire:click="switchToQuizzes"
+                            class="p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:shadow-md transition-all text-left">
+                            <i class="fas fa-clipboard-list text-blue-500 text-lg mb-2"></i>
+                            <div class="font-medium text-gray-900 dark:text-gray-100">{{ __('common.browse_quizzes') }}</div>
+                            <div class="text-sm text-gray-600 dark:text-gray-400">{{ __('common.explore_available_quizzes') }}</div>
+                        </button>
+                        
+                        <button 
+                            wire:click="openQRScanner"
+                            class="p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:shadow-md transition-all text-left">
+                            <i class="fas fa-qrcode text-green-500 text-lg mb-2"></i>
+                            <div class="font-medium text-gray-900 dark:text-gray-100">{{ __('common.scan_qr') }}</div>
+                            <div class="text-sm text-gray-600 dark:text-gray-400">{{ __('common.quick_access_to_quizzes') }}</div>
+                        </button>
                     </div>
                 </div>
             @endif
@@ -55,7 +49,7 @@
                         <div class="flex items-center justify-between">
                             <div class="flex items-center">
                                 <i class="fas fa-check-circle text-green-500 mr-2"></i>
-                                <span class="text-green-700 dark:text-green-300">QR code scanned successfully!</span>
+                                <span class="text-green-700 dark:text-green-300">{{ __('common.qr_code_scanned_successfully') }}</span>
                             </div>
                             <button 
                                 onclick="Livewire.dispatch('clear-qr-code')"
@@ -105,6 +99,13 @@
                     </div>
                 </div>
             @endif
+        </div>
+    @endif
+
+    {{-- Quest Locations Tab --}}
+    @if($activeTab === 'quests')
+        <div class="fade-in" role="tabpanel">
+            @livewire('user.quest-location-dashboard')
         </div>
     @endif
 

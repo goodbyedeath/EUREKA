@@ -2,14 +2,14 @@
     <div class="container mx-auto px-4 py-6">
         <!-- Header -->
         <div class="mb-6">
-            <h1 class="text-2xl font-bold text-gray-800 mb-2">{{ __('games.outdoor_game_locations') }}</h1>
-            <p class="text-gray-600">{{ __('games.explore_outdoor_locations') }}</p>
+            <h1 class="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-2">{{ __('games.outdoor_game_locations') }}</h1>
+            <p class="text-gray-600 dark:text-gray-400">{{ __('games.explore_outdoor_locations') }}</p>
         </div>
 
         <!-- Games Grid -->
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             @forelse($games as $game)
-            <div class="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300">
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300">
             <!-- Game Image -->
             <div class="relative h-48">
                 @if($game->image_path)
@@ -26,7 +26,7 @@
                 
                 <!-- Status Indicator -->
                 <div class="absolute top-3 right-3">
-                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200">
                         {{ __('games.active') }}
                     </span>
                 </div>
@@ -34,7 +34,7 @@
                 <!-- Map Badge -->
                 @if($game->map_image_path)
                 <div class="absolute bottom-3 left-3">
-                    <span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-blue-600 text-white">
+                    <span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-blue-600 dark:bg-blue-700 text-white">
                         <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"></path>
                         </svg>
@@ -46,11 +46,11 @@
 
             <!-- Game Info -->
             <div class="p-4">
-                <h3 class="text-lg font-semibold text-gray-900 mb-2">{{ $game->name }}</h3>
-                <p class="text-gray-600 text-sm mb-3 line-clamp-2">{{ $game->description }}</p>
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">{{ $game->name }}</h3>
+                <p class="text-gray-600 dark:text-gray-400 text-sm mb-3 line-clamp-2">{{ $game->description }}</p>
                 
                 <!-- Stats -->
-                <div class="flex items-center justify-between text-xs text-gray-500 mb-4">
+                <div class="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 mb-4">
                     <div class="flex items-center">
                         <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
@@ -68,7 +68,7 @@
 
                 <!-- Action Button -->
                 <button wire:click="viewGame({{ $game->id }})" 
-                        class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg text-sm font-medium transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                        class="w-full bg-blue-600 dark:bg-blue-700 hover:bg-blue-700 dark:hover:bg-blue-800 text-white py-2 px-4 rounded-lg text-sm font-medium transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
                     {{ __('games.view_details') }}
                 </button>
             </div>
@@ -76,13 +76,13 @@
         @empty
         <!-- Empty State -->
         <div class="col-span-full">
-            <div class="text-center py-12 bg-white rounded-lg border-2 border-dashed border-gray-300">
+            <div class="text-center py-12 bg-white dark:bg-gray-800 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600">
                 <svg class="w-16 h-16 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 0 1-2.827 0l-4.244-4.243a8 8 0 1 1 11.314 0z"></path>
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 1 1-6 0 3 3 0 0 1 6 0z"></path>
                 </svg>
-                <h3 class="text-lg font-medium text-gray-900 mb-2">{{ __('games.no_locations_found') }}</h3>
-                <p class="text-gray-500">{{ __('games.admin_will_create_locations') }}</p>
+                <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">{{ __('games.no_locations_found') }}</h3>
+                <p class="text-gray-500 dark:text-gray-400">{{ __('games.admin_will_create_locations') }}</p>
             </div>
         </div>
             @endforelse
@@ -101,16 +101,16 @@
     <div class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
         <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
             <!-- Background overlay -->
-            <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" wire:click="closeModal"></div>
+            <div class="fixed inset-0 bg-gray-50 dark:bg-gray-7000 bg-opacity-75 transition-opacity" wire:click="closeModal"></div>
 
             <!-- Modal panel -->
-            <div class="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full sm:p-6">
+            <div class="inline-block align-bottom bg-white dark:bg-gray-800 rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full sm:p-6">
                 <div class="flex justify-between items-start mb-4">
                     <div>
-                        <h3 class="text-xl font-bold text-gray-900">{{ $selectedGame->name }}</h3>
-                        <p class="text-gray-600 mt-1">{{ $selectedGame->description }}</p>
+                        <h3 class="text-xl font-bold text-gray-900 dark:text-gray-100">{{ $selectedGame->name }}</h3>
+                        <p class="text-gray-600 dark:text-gray-400 mt-1">{{ $selectedGame->description }}</p>
                     </div>
-                    <button wire:click="closeModal" class="text-gray-400 hover:text-gray-600 focus:outline-none">
+                    <button wire:click="closeModal" class="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-400 focus:outline-none">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                         </svg>
@@ -121,9 +121,9 @@
                     <!-- Left Column - Map -->
                     <div>
                         @if($selectedGame->map_image_path)
-                        <div class="bg-gray-100 rounded-lg p-4">
+                        <div class="bg-gray-100 dark:bg-gray-700 rounded-lg p-4">
                             <h4 class="text-lg font-semibold mb-3">{{ __('games.interactive_map') }}</h4>
-                            <div id="map-container" class="relative bg-white rounded border overflow-hidden" style="height: 400px;">
+                            <div id="map-container" class="relative bg-white dark:bg-gray-800 rounded border overflow-hidden" style="height: 400px;">
                                 <div id="map-wrapper" class="relative w-full h-full">
                                     <img id="game-map" 
                                          src="{{ Storage::url($selectedGame->map_image_path) }}" 
@@ -155,17 +155,17 @@
                             </div>
                             
                             <!-- Instructions -->
-                            <div class="text-center text-xs text-gray-500 mt-3">
+                            <div class="text-center text-xs text-gray-500 dark:text-gray-400 mt-3">
                                 <p class="font-medium">{{ __('games.interactive_map_controls') }}</p>
                                 <p>🖱️ Click fullscreen button for better viewing</p>
                             </div>
                         </div>
                         @else
-                        <div class="bg-gray-100 rounded-lg p-8 text-center">
+                        <div class="bg-gray-100 dark:bg-gray-700 rounded-lg p-8 text-center">
                             <svg class="w-16 h-16 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 0 1 3 16.382V5.618a1 1 0 0 1 1.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0 0 21 18.382V7.618a1 1 0 0 0-.553-.894L15 4m0 13V4m0 0L9 7"></path>
                             </svg>
-                            <p class="text-gray-500">{{ __('games.no_map_available') }}</p>
+                            <p class="text-gray-500 dark:text-gray-400">{{ __('games.no_map_available') }}</p>
                         </div>
                         @endif
                     </div>
@@ -175,7 +175,7 @@
                         <!-- What to do -->
                         <div>
                             <h4 class="text-lg font-semibold mb-2">{{ __('games.what_to_do') }}</h4>
-                            <p class="text-gray-700 bg-gray-50 p-3 rounded">{{ $selectedGame->what_to_do }}</p>
+                            <p class="text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-700 p-3 rounded">{{ $selectedGame->what_to_do }}</p>
                         </div>
 
                         <!-- Location Info -->
@@ -184,20 +184,20 @@
                             <div class="space-y-2">
                                 @if($selectedGame->coordinate_x && $selectedGame->coordinate_y)
                                 <div class="flex items-center text-sm">
-                                    <svg class="w-4 h-4 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <svg class="w-4 h-4 mr-2 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 0 1 3 16.382V5.618a1 1 0 0 1 1.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0 0 21 18.382V7.618a1 1 0 0 0-.553-.894L15 4m0 13V4m0 0L9 7"></path>
                                     </svg>
                                     <span>{{ __('games.map_coordinates_label') }}: {{ $selectedGame->coordinate_x }}, {{ $selectedGame->coordinate_y }}</span>
                                 </div>
                                 @endif
                                 <div class="flex items-center text-sm">
-                                    <svg class="w-4 h-4 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <svg class="w-4 h-4 mr-2 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
                                     </svg>
                                     <span>{{ $selectedGame->quest_points }} {{ __('games.quest_points_label') }}</span>
                                 </div>
                                 <div class="flex items-center text-sm">
-                                    <svg class="w-4 h-4 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <svg class="w-4 h-4 mr-2 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"></path>
                                     </svg>
                                     <span>{{ $selectedGame->radius }}m {{ __('games.checkin_radius') }}</span>

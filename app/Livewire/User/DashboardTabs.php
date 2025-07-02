@@ -34,10 +34,13 @@ class DashboardTabs extends Component
 
     public function switchTab($tab)
     {
-        $this->activeTab = $tab;
-        
-        // Emit event to update content
-        $this->dispatch('active-tab-changed', tab: $tab);
+        // Validate tab
+        if (in_array($tab, ['dashboard', 'quizzes', 'members', 'quests', 'games'])) {
+            $this->activeTab = $tab;
+            
+            // Emit event to update content
+            $this->dispatch('active-tab-changed', tab: $tab);
+        }
     }
 
     #[On('qr-code-scanned')]

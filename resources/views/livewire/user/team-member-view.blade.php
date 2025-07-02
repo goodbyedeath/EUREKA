@@ -2,9 +2,9 @@
     <!-- Header -->
     <div class="flex justify-between items-center mb-6">
         <div>
-            <h2 class="text-2xl font-bold text-gray-900">Team Members</h2>
+            <h2 class="text-2xl font-bold text-gray-900 dark:text-gray-100 dark:text-gray-100">Team Members</h2>
             @if($userTeam)
-                <p class="text-gray-600">{{ $userTeam->name }} - {{ $userTeam->department }}</p>
+                <p class="text-gray-600 dark:text-gray-400">{{ $userTeam->name }} - {{ $userTeam->department }}</p>
             @endif
         </div>
         @if(auth()->user()->team_id)
@@ -35,20 +35,20 @@
     @if($teamMembers->count() > 0)
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             @foreach($teamMembers as $member)
-                <div class="bg-white rounded-lg shadow-md border border-gray-200 hover:shadow-lg transition-shadow duration-200">
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-shadow duration-200">
                     <div class="p-6">
                         <!-- Member Header -->
                         <div class="flex items-start justify-between mb-4">
                             <div class="flex items-center gap-3">
-                                <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                                    <span class="text-blue-600 font-semibold text-lg">
+                                <div class="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center">
+                                    <span class="text-blue-600 dark:text-blue-400 font-semibold text-lg">
                                         {{ strtoupper(substr($member->name, 0, 1)) }}
                                     </span>
                                 </div>
                                 <div>
-                                    <h3 class="font-semibold text-gray-900">{{ $member->name }}</h3>
+                                    <h3 class="font-semibold text-gray-900 dark:text-gray-100">{{ $member->name }}</h3>
                                     @if($member->is_leader)
-                                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200">
                                             <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
                                                 <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
                                             </svg>
@@ -66,17 +66,17 @@
                                     </svg>
                                 </button>
                                 <div x-show="open" @click.away="open = false" 
-                                     class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10 border border-gray-200">
+                                     class="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg z-10 border border-gray-200 dark:border-gray-700">
                                     <button wire:click="viewMember({{ $member->id }})" 
-                                            class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                            class="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
                                         View Details
                                     </button>
                                     <button wire:click="editMember({{ $member->id }})" 
-                                            class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                            class="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
                                         Edit
                                     </button>
                                     <button wire:click="confirmDelete({{ $member->id }})" 
-                                            class="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100">
+                                            class="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100 dark:hover:bg-gray-700">
                                         Delete
                                     </button>
                                 </div>
@@ -85,20 +85,20 @@
 
                         <!-- Member Info -->
                         <div class="space-y-2">
-                            <div class="flex items-center text-sm text-gray-600">
+                            <div class="flex items-center text-sm text-gray-600 dark:text-gray-400">
                                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2-2v2m8 0V6a2 2 0 012 2v6a2 2 0 01-2 2H8a2 2 0 01-2-2V8a2 2 0 012-2V6"/>
                                 </svg>
                                 {{ $member->position }}
                             </div>
-                            <div class="flex items-center text-sm text-gray-600">
+                            <div class="flex items-center text-sm text-gray-600 dark:text-gray-400">
                                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207"/>
                                 </svg>
                                 {{ $member->email }}
                             </div>
                             @if($member->phone)
-                                <div class="flex items-center text-sm text-gray-600">
+                                <div class="flex items-center text-sm text-gray-600 dark:text-gray-400">
                                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/>
                                     </svg>
@@ -115,7 +115,7 @@
             <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"/>
             </svg>
-            <h3 class="mt-2 text-sm font-medium text-gray-900">No team members</h3>
+            <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-gray-100">No team members</h3>
             <p class="mt-1 text-sm text-gray-500">
                 @if(!auth()->user()->team_id)
                     You are not assigned to any team yet.
@@ -129,34 +129,34 @@
     <!-- Add/Edit Modal -->
     @if($showModal)
         <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-            <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white dark:bg-gray-800">
                 <div class="mt-3">
-                    <h3 class="text-lg font-medium text-gray-900 mb-4">{{ $modalTitle }}</h3>
+                    <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">{{ $modalTitle }}</h3>
                     <form wire:submit.prevent="saveMember">
                         <div class="space-y-4">
                             <div>
-                                <label class="block text-sm font-medium text-gray-700">Name</label>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Name</label>
                                 <input type="text" wire:model="name" 
                                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
                                 @error('name') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                             </div>
                             
                             <div>
-                                <label class="block text-sm font-medium text-gray-700">Email</label>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Email</label>
                                 <input type="email" wire:model="email" 
                                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
                                 @error('email') <span class="text-red-500 text-sm">{{ $message ?? '' }}</span> @enderror
                             </div>
                             
                             <div>
-                                <label class="block text-sm font-medium text-gray-700">Phone</label>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Phone</label>
                                 <input type="text" wire:model="phone" 
                                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
                                 @error('phone') <span class="text-red-500 text-sm">{{ $message ?? '' }}</span> @enderror
                             </div>
                             
                             <div>
-                                <label class="block text-sm font-medium text-gray-700">Position</label>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Position</label>
                                 <input type="text" wire:model="position" 
                                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
                                 @error('position') <span class="text-red-500 text-sm">{{ $message ?? ''  }}</span> @enderror
@@ -165,13 +165,13 @@
                             <div class="flex items-center">
                                 <input type="checkbox" wire:model="is_leader" 
                                        class="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                                <label class="ml-2 block text-sm text-gray-900">Team Leader</label>
+                                <label class="ml-2 block text-sm text-gray-900 dark:text-gray-100">Team Leader</label>
                             </div>
                         </div>
                         
                         <div class="flex justify-end space-x-3 mt-6">
                             <button type="button" wire:click="closeModal" 
-                                    class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300">
+                                    class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-200 rounded-md hover:bg-gray-300">
                                 Cancel
                             </button>
                             <button type="submit" 
@@ -188,18 +188,18 @@
     <!-- Delete Confirmation Modal -->
     @if($showDeleteModal && $deletingMember)
         <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-            <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white dark:bg-gray-800">
                 <div class="mt-3 text-center">
                     <svg class="mx-auto h-12 w-12 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"/>
                     </svg>
-                    <h3 class="text-lg font-medium text-gray-900 mt-2">Delete Team Member</h3>
+                    <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mt-2">Delete Team Member</h3>
                     <p class="text-sm text-gray-500 mt-2">
                         Are you sure you want to delete <strong>{{ $deletingMember->name }}</strong>? This action cannot be undone.
                     </p>
                     <div class="flex justify-center space-x-3 mt-6">
                         <button wire:click="closeDeleteModal" 
-                                class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300">
+                                class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-200 rounded-md hover:bg-gray-300">
                             Cancel
                         </button>
                         <button wire:click="deleteMember" 
@@ -215,10 +215,10 @@
     <!-- Detail Modal -->
     @if($showDetailModal && $viewingMember)
         <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-            <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white dark:bg-gray-800">
                 <div class="mt-3">
                     <div class="flex justify-between items-center mb-4">
-                        <h3 class="text-lg font-medium text-gray-900">Member Details</h3>
+                        <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">Member Details</h3>
                         <button wire:click="closeDetailModal" class="text-gray-400 hover:text-gray-600">
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
@@ -228,14 +228,14 @@
                     
                     <div class="space-y-4">
                         <div class="text-center">
-                            <div class="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                                <span class="text-blue-600 font-semibold text-2xl">
+                            <div class="w-20 h-20 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <span class="text-blue-600 dark:text-blue-400 font-semibold text-2xl">
                                     {{ strtoupper(substr($viewingMember->name, 0, 1)) }}
                                 </span>
                             </div>
-                            <h4 class="text-xl font-semibold text-gray-900">{{ $viewingMember->name }}</h4>
+                            <h4 class="text-xl font-semibold text-gray-900 dark:text-gray-100">{{ $viewingMember->name }}</h4>
                             @if($viewingMember->is_leader)
-                                <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800 mt-2">
+                                <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200 mt-2">
                                     <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
                                         <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
                                     </svg>
@@ -248,25 +248,25 @@
                             <dl class="space-y-3">
                                 <div>
                                     <dt class="text-sm font-medium text-gray-500">Position</dt>
-                                    <dd class="text-sm text-gray-900">{{ $viewingMember->position }}</dd>
+                                    <dd class="text-sm text-gray-900 dark:text-gray-100">{{ $viewingMember->position }}</dd>
                                 </div>
                                 <div>
                                     <dt class="text-sm font-medium text-gray-500">Email</dt>
-                                    <dd class="text-sm text-gray-900">{{ $viewingMember->email }}</dd>
+                                    <dd class="text-sm text-gray-900 dark:text-gray-100">{{ $viewingMember->email }}</dd>
                                 </div>
                                 @if($viewingMember->phone)
                                     <div>
                                         <dt class="text-sm font-medium text-gray-500">Phone</dt>
-                                        <dd class="text-sm text-gray-900">{{ $viewingMember->phone }}</dd>
+                                        <dd class="text-sm text-gray-900 dark:text-gray-100">{{ $viewingMember->phone }}</dd>
                                     </div>
                                 @endif
                                 <div>
                                     <dt class="text-sm font-medium text-gray-500">Team</dt>
-                                    <dd class="text-sm text-gray-900">{{ $viewingMember->team->name }}</dd>
+                                    <dd class="text-sm text-gray-900 dark:text-gray-100">{{ $viewingMember->team->name }}</dd>
                                 </div>
                                 <div>
                                     <dt class="text-sm font-medium text-gray-500">Department</dt>
-                                    <dd class="text-sm text-gray-900">{{ $viewingMember->team->department }}</dd>
+                                    <dd class="text-sm text-gray-900 dark:text-gray-100">{{ $viewingMember->team->department }}</dd>
                                 </div>
                             </dl>
                         </div>

@@ -13,7 +13,7 @@
                 </div>
                 <div class="text-left">
                     <div class="font-semibold">{{ __('common.scan_qr') }}</div>
-                    <div class="text-xs opacity-90">Quick Access</div>
+                    <div class="text-xs opacity-90">{{ __('common.quick_access') }}</div>
                 </div>
             </div>
         </button>
@@ -33,7 +33,7 @@
                 </div>
                 <div class="text-left">
                     <div class="font-semibold text-gray-900 dark:text-gray-100">{{ __('common.refresh') }}</div>
-                    <div class="text-xs text-gray-500 dark:text-gray-400">Update Data</div>
+                    <div class="text-xs text-gray-500 dark:text-gray-400">{{ __('common.update_data') }}</div>
                 </div>
             </div>
             
@@ -44,7 +44,7 @@
                 </div>
                 <div class="text-left">
                     <div class="font-semibold text-gray-900 dark:text-gray-100">{{ __('common.refreshing') }}...</div>
-                    <div class="text-xs text-gray-500 dark:text-gray-400">Please wait</div>
+                    <div class="text-xs text-gray-500 dark:text-gray-400">{{ __('common.please_wait') }}</div>
                 </div>
             </div>
         </button>
@@ -54,7 +54,7 @@
     <div class="mt-3 sm:hidden">
         <p class="text-xs text-gray-500 dark:text-gray-400 text-center">
             <i class="fas fa-info-circle mr-1"></i>
-            Tap QR Scanner for quick quiz access
+            {{ __('common.tap_qr_scanner_hint') }}
         </p>
     </div>
 </div>

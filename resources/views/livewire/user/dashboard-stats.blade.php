@@ -16,8 +16,8 @@
                         <span class="stat-value">{{ $totalAttempts }}</span>
                         <div class="stat-value-effect"></div>
                     </div>
-                    <div class="stat-label">Total Attempts</div>
-                    <div class="stat-description">Quiz attempts made</div>
+                    <div class="stat-label">{{ __('common.total_attempts') }}</div>
+                    <div class="stat-description">{{ __('common.quiz_attempts_made') }}</div>
                 </div>
             </div>
         </div>
@@ -38,8 +38,8 @@
                         <span class="stat-value">{{ $completedAttempts }}</span>
                         <div class="stat-value-effect"></div>
                     </div>
-                    <div class="stat-label">Completed</div>
-                    <div class="stat-description">Successfully finished</div>
+                    <div class="stat-label">{{ __('common.completed') }}</div>
+                    <div class="stat-description">{{ __('common.successfully_finished') }}</div>
                 </div>
             </div>
         </div>
@@ -60,8 +60,8 @@
                         <span class="stat-value {{ $this->getScoreColor($averageScore) }}">{{ number_format($averageScore, 1) }}</span>
                         <div class="stat-value-effect"></div>
                     </div>
-                    <div class="stat-label">Average Points</div>
-                    <div class="stat-description">Gained per question answered</div>
+                    <div class="stat-label">{{ __('common.average_points') }}</div>
+                    <div class="stat-description">{{ __('common.gained_per_question') }}</div>
                 </div>
             </div>
         </div>
@@ -87,8 +87,8 @@
                     <div class="stat-pulse-ring"></div>
                 </div>
                 <div class="stat-body">
-                    <div class="stat-label">Completion Rate</div>
-                    <div class="stat-description">Success percentage</div>
+                    <div class="stat-label">{{ __('common.completion_rate') }}</div>
+                    <div class="stat-description">{{ __('common.success_percentage') }}</div>
                 </div>
             </div>
         </div>
@@ -110,8 +110,8 @@
                             <span class="stat-value {{ $teamPoints >= 1000 ? 'text-green-400' : ($teamPoints >= 500 ? 'text-yellow-400' : 'text-red-400') }}">{{ number_format($teamPoints, 0) }}</span>
                             <div class="stat-value-effect"></div>
                         </div>
-                        <div class="stat-label">Total Score</div>
-                        <div class="stat-description">Base + Gained Points</div>
+                        <div class="stat-label">{{ __('common.total_score') }}</div>
+                        <div class="stat-description">{{ __('common.base_gained_points') }}</div>
                     </div>
                 </div>
             </div>
@@ -128,11 +128,11 @@
                     </div>
                     <div class="stat-body">
                         <div class="stat-value-container">
-                            <span class="stat-value text-gray-400">No Team</span>
+                            <span class="stat-value text-gray-400">{{ __('common.no_team') }}</span>
                             <div class="stat-value-effect"></div>
                         </div>
-                        <div class="stat-label">Team Status</div>
-                        <div class="stat-description">Join a team to earn points</div>
+                        <div class="stat-label">{{ __('common.team_status') }}</div>
+                        <div class="stat-description">{{ __('common.join_team_earn_points') }}</div>
                     </div>
                 </div>
             </div>
@@ -154,8 +154,8 @@
                         <span class="stat-value">{{ $completedAttempts }}</span>
                         <div class="stat-value-effect"></div>
                     </div>
-                    <div class="stat-label">History</div>
-                    <div class="stat-description">View recent attempts</div>
+                    <div class="stat-label">{{ __('common.history') }}</div>
+                    <div class="stat-description">{{ __('common.view_recent_attempts') }}</div>
                 </div>
             </div>
         </div>
@@ -172,7 +172,7 @@
                     <div class="flex justify-between items-center mb-6">
                         <h3 class="text-xl font-bold text-gray-900 dark:text-gray-100">
                             <i class="fas fa-chart-line text-blue-500 mr-2"></i>
-                            Score Details
+                            {{ __('common.score_details') }}
                         </h3>
                         <button type="button" wire:click="closeDetailsModal" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -186,15 +186,15 @@
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
                             <div>
                                 <div class="text-2xl font-bold text-blue-600">{{ number_format($averageScore, 0) }}</div>
-                                <div class="text-sm text-gray-600 dark:text-gray-400">Average Total Score</div>
+                                <div class="text-sm text-gray-600 dark:text-gray-400">{{ __('common.average_total_score') }}</div>
                             </div>
                             <div>
                                 <div class="text-2xl font-bold text-green-600">{{ count($scoreDetails) }}</div>
-                                <div class="text-sm text-gray-600 dark:text-gray-400">Completed Quizzes</div>
+                                <div class="text-sm text-gray-600 dark:text-gray-400">{{ __('common.completed_quizzes') }}</div>
                             </div>
                             <div>
                                 <div class="text-2xl font-bold text-purple-600">{{ number_format(collect($scoreDetails)->avg('percentage'), 1) }}%</div>
-                                <div class="text-sm text-gray-600 dark:text-gray-400">Average Percentage</div>
+                                <div class="text-sm text-gray-600 dark:text-gray-400">{{ __('common.average_percentage') }}</div>
                             </div>
                         </div>
                     </div>
@@ -203,13 +203,13 @@
                         <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                             <thead class="bg-gray-50 dark:bg-gray-700">
                                 <tr>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Quiz</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Date</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Base Points</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Earned Points</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Total Score</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Percentage</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Duration</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{{ __('common.quiz') }}</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{{ __('common.date') }}</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{{ __('common.base_points') }}</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{{ __('common.earned_points') }}</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{{ __('common.total_score') }}</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{{ __('common.percentage') }}</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{{ __('common.duration') }}</th>
                                 </tr>
                             </thead>
                             <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
@@ -254,14 +254,14 @@
                         <div class="text-gray-400 text-lg mb-2">
                             <i class="fas fa-chart-line text-4xl"></i>
                         </div>
-                        <p class="text-gray-600 dark:text-gray-400">No completed quizzes found.</p>
+                        <p class="text-gray-600 dark:text-gray-400">{{ __('common.no_completed_quizzes') }}</p>
                     </div>
                     @endif
                 </div>
 
                 <div class="bg-gray-50 dark:bg-gray-700 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
                     <button type="button" wire:click="closeDetailsModal" class="w-full inline-flex justify-center rounded-md border border-gray-300 dark:border-gray-600 shadow-sm px-4 py-2 bg-white dark:bg-gray-800 text-base font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:w-auto sm:text-sm">
-                        Close
+                        {{ __('common.close') }}
                     </button>
                 </div>
             </div>
@@ -280,7 +280,7 @@
                     <div class="flex justify-between items-center mb-6">
                         <h3 class="text-xl font-bold text-gray-900 dark:text-gray-100">
                             <i class="fas fa-history text-purple-500 mr-2"></i>
-                            Recent Quiz Attempts
+                            {{ __('common.recent_quiz_attempts') }}
                         </h3>
                         <button type="button" wire:click="closeHistoryModal" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -294,11 +294,11 @@
                         <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                             <thead class="bg-gray-50 dark:bg-gray-700">
                                 <tr>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Quiz</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Score</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Date</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{{ __('common.quiz') }}</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{{ __('common.status') }}</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{{ __('common.score') }}</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{{ __('common.date') }}</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{{ __('common.actions') }}</th>
                                 </tr>
                             </thead>
                             <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
@@ -329,11 +329,11 @@
                                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                         @if($attempt['status'] === 'completed')
                                             <a href="{{ route('quiz.results', $attempt['id']) }}" class="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300">
-                                                View Details
+                                                {{ __('common.view_details') }}
                                             </a>
                                         @elseif($attempt['status'] === 'in_progress')
                                             <a href="{{ route('quiz.take', $attempt['questionnaire_id']) }}" class="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300">
-                                                Continue
+                                                {{ __('common.continue') }}
                                             </a>
                                         @endif
                                     </td>
@@ -347,14 +347,14 @@
                         <div class="text-gray-400 text-lg mb-2">
                             <i class="fas fa-clipboard-list text-4xl"></i>
                         </div>
-                        <p class="text-gray-600 dark:text-gray-400">No quiz attempts found.</p>
+                        <p class="text-gray-600 dark:text-gray-400">{{ __('common.no_quiz_attempts') }}</p>
                     </div>
                     @endif
                 </div>
 
                 <div class="bg-gray-50 dark:bg-gray-700 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
                     <button type="button" wire:click="closeHistoryModal" class="w-full inline-flex justify-center rounded-md border border-gray-300 dark:border-gray-600 shadow-sm px-4 py-2 bg-white dark:bg-gray-800 text-base font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:w-auto sm:text-sm">
-                        Close
+                        {{ __('common.close') }}
                     </button>
                 </div>
             </div>

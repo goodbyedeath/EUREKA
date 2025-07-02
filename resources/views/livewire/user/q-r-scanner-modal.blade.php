@@ -2,9 +2,9 @@
 <div>
     @if($showModal)
         <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-            <div class="relative top-20 mx-auto p-5 border w-11/12 md:w-1/2 shadow-lg rounded-md bg-white">
+            <div class="relative top-20 mx-auto p-5 border w-11/12 md:w-1/2 shadow-lg rounded-md bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600">
                 <div class="mt-3">
-                    <h3 class="text-lg font-medium text-gray-900 mb-4">{{ __('quiz.scan_qr_code') }}</h3>
+                    <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">{{ __('quiz.scan_qr_code') }}</h3>
                     
                     @if($isScanning)
                         <div wire:ignore>
@@ -30,14 +30,14 @@
                             </button>
                             
                             <!-- Info Section -->
-                            <div class="mt-4 p-3 bg-blue-50 border border-blue-200 rounded text-sm text-blue-800">
+                            <div class="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded text-sm text-blue-800 dark:text-blue-200">
                                 <div class="flex items-start">
                                     <svg class="w-5 h-5 text-blue-500 mt-0.5 mr-2" fill="currentColor" viewBox="0 0 20 20">
                                         <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
                                     </svg>
                                     <div>
-                                        <p class="font-medium">{{ __('quiz.scanning_tips') }}</p>
-                                        <ul class="list-disc list-inside mt-1 space-y-1 text-left">
+                                        <p class="font-medium text-blue-800 dark:text-blue-200">{{ __('quiz.scanning_tips') }}</p>
+                                        <ul class="list-disc list-inside mt-1 space-y-1 text-left text-blue-700 dark:text-blue-300">
                                             <li>{{ __('quiz.allow_camera_access') }}</li>
                                             <li>{{ __('quiz.ensure_good_lighting') }}</li>
                                             <li>{{ __('quiz.hold_qr_steady') }}</li>
@@ -51,10 +51,10 @@
 
                     <!-- Manual Entry -->
                     <div class="mt-4">
-                        <label class="block text-sm font-medium text-gray-700">Manual Entry</label>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Manual Entry</label>
                         <div class="flex mt-1">
-                            <input type="text" wire:model="scannedCode" class="flex-1 border rounded px-3 py-2" placeholder="Enter QR code manually">
-                            <button wire:click="manualEntry(scannedCode)" class="ml-2 bg-green-500 text-white px-4 py-2 rounded">
+                            <input type="text" wire:model="scannedCode" class="flex-1 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400" placeholder="Enter QR code manually">
+                            <button wire:click="manualEntry(scannedCode)" class="ml-2 bg-green-500 hover:bg-green-600 dark:bg-green-600 dark:hover:bg-green-700 text-white px-4 py-2 rounded transition-colors">
                                 Submit
                             </button>
                         </div>
@@ -62,19 +62,19 @@
 
                     <!-- Results -->
                     @if($error)
-                        <div class="mt-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
+                        <div class="mt-4 p-4 bg-red-100 dark:bg-red-900/20 border border-red-400 dark:border-red-700 text-red-700 dark:text-red-300 rounded">
                             <div class="flex items-start">
                                 <svg class="w-5 h-5 text-red-500 mt-0.5 mr-3" fill="currentColor" viewBox="0 0 20 20">
                                     <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path>
                                 </svg>
                                 <div>
-                                    <h4 class="font-semibold">Camera Access Error</h4>
-                                    <p class="mt-1">{{ $error }}</p>
+                                    <h4 class="font-semibold text-red-700 dark:text-red-300">Camera Access Error</h4>
+                                    <p class="mt-1 text-red-700 dark:text-red-300">{{ $error }}</p>
                                     
                                     @if(str_contains($error, 'denied') || str_contains($error, 'permission'))
                                         <div class="mt-3 text-sm">
-                                            <p class="font-medium">To fix this:</p>
-                                            <ol class="list-decimal list-inside mt-1 space-y-1">
+                                            <p class="font-medium text-red-700 dark:text-red-300">To fix this:</p>
+                                            <ol class="list-decimal list-inside mt-1 space-y-1 text-red-700 dark:text-red-300">
                                                 <li>Click the camera icon in your browser's address bar</li>
                                                 <li>Select "Allow" for camera access</li>
                                                 <li>Refresh the page and try again</li>
@@ -82,8 +82,8 @@
                                         </div>
                                     @elseif(str_contains($error, 'HTTPS'))
                                         <div class="mt-3 text-sm">
-                                            <p class="font-medium">Camera access requires a secure connection (HTTPS).</p>
-                                            <p>Please access this site via HTTPS or use localhost for testing.</p>
+                                            <p class="font-medium text-red-700 dark:text-red-300">Camera access requires a secure connection (HTTPS).</p>
+                                            <p class="text-red-700 dark:text-red-300">Please access this site via HTTPS or use localhost for testing.</p>
                                         </div>
                                     @endif
                                 </div>
@@ -92,16 +92,16 @@
                     @endif
 
                     @if($questionnaire)
-                        <div class="mt-4 p-4 bg-green-100 border border-green-400 text-green-700 rounded">
-                            <h4 class="font-semibold text-lg">{{ $questionnaire->title }}</h4>
-                            <p class="mt-2">{{ $questionnaire->description }}</p>
+                        <div class="mt-4 p-4 bg-green-100 dark:bg-green-900/20 border border-green-400 dark:border-green-700 text-green-700 dark:text-green-300 rounded">
+                            <h4 class="font-semibold text-lg text-green-700 dark:text-green-300">{{ $questionnaire->title }}</h4>
+                            <p class="mt-2 text-green-700 dark:text-green-300">{{ $questionnaire->description }}</p>
                             @if($questionnaire->time_limit)
-                                <p class="mt-2 text-sm text-green-600">
+                                <p class="mt-2 text-sm text-green-600 dark:text-green-400">
                                     <i class="fas fa-clock"></i> Time Limit: {{ $questionnaire->time_limit }} minutes
                                 </p>
                             @endif
                             <div class="mt-4">
-                                <button wire:click="startQuiz" class="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700 transition-colors">
+                                <button wire:click="startQuiz" class="bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-800 text-white px-6 py-2 rounded transition-colors">
                                     Start Quiz
                                 </button>
                             </div>
@@ -109,7 +109,7 @@
                     @endif
 
                     <div class="mt-6 text-center">
-                        <button wire:click="closeModal" class="bg-gray-500 text-white px-4 py-2 rounded">
+                        <button wire:click="closeModal" class="bg-gray-500 hover:bg-gray-600 dark:bg-gray-600 dark:hover:bg-gray-700 text-white px-4 py-2 rounded transition-colors">
                             Close
                         </button>
                     </div>

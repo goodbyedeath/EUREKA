@@ -47,7 +47,7 @@ class DashboardContent extends Component
 {
     $tabValue = is_array($tab) ? $tab['tab'] : $tab;
 
-    if (in_array($tabValue, ['dashboard', 'quizzes', 'members', 'games'])) {
+    if (in_array($tabValue, ['dashboard', 'quizzes', 'members', 'quests', 'games'])) {
         $this->activeTab = $tabValue;
     }
 }

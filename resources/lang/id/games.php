@@ -2,15 +2,15 @@
 
 return [
     // Page titles and headers
-    'title' => 'Lokasi Permainan',
-    'management' => 'Manajemen Permainan',
-    'game_management' => 'Manajemen Permainan',
-    'create' => 'Buat Lokasi Permainan',
-    'edit' => 'Edit Lokasi Permainan',
-    'view' => 'Lihat Lokasi Permainan',
+    'title' => 'Lokasi Game',
+    'management' => 'Kelola Game',
+    'game_management' => 'Kelola Game',
+    'create' => 'Buat Lokasi Game',
+    'edit' => 'Edit Lokasi Game',
+    'view' => 'Lihat Lokasi Game',
     
     // Actions
-    'add_location' => 'Tambah Lokasi Permainan',
+    'add_location' => 'Tambah Lokasi Game',
     'save_location' => 'Simpan Lokasi',
     'update_location' => 'Perbarui Lokasi',
     'delete_location' => 'Hapus Lokasi',
@@ -22,12 +22,12 @@ return [
     'bulk_delete' => 'Hapus Massal',
     
     // Form fields
-    'name' => 'Nama Permainan',
-    'name_placeholder' => 'Masukkan nama lokasi permainan yang unik',
+    'name' => 'Nama Game',
+    'name_placeholder' => 'Masukkan nama lokasi game yang unik',
     'description' => 'Deskripsi',
-    'description_placeholder' => 'Jelaskan lokasi dan apa yang dapat diharapkan pemain (minimal 10 karakter)',
+    'description_placeholder' => 'Jelaskan lokasi dan apa yang akan dilakukan peserta (minimal 10 karakter)',
     'what_to_do' => 'Apa yang harus dilakukan',
-    'what_to_do_placeholder' => 'Berikan instruksi yang jelas untuk pemain tentang apa yang perlu mereka lakukan di lokasi ini (minimal 10 karakter)',
+    'what_to_do_placeholder' => 'Berikan instruksi yang jelas untuk peserta tentang aktivitas di lokasi ini (minimal 10 karakter)',
     'google_maps_url' => 'URL Embed Google Maps',
     'google_maps_url_placeholder' => 'Tempel URL embed Google Maps atau kode iframe',
     'latitude' => 'Lintang',
@@ -42,7 +42,7 @@ return [
     'is_active' => 'Aktif',
     
     // Table headers
-    'game' => 'Permainan',
+    'game' => 'Game',
     'images' => 'Gambar',
     'coordinates' => 'Koordinat',
     'points' => 'Poin',
@@ -62,16 +62,16 @@ return [
     'extract_coordinates' => 'Ekstrak Koordinat',
     
     // Messages
-    'no_locations_found' => 'Tidak ada lokasi permainan ditemukan',
-    'create_first_location' => 'Buat lokasi permainan pertama Anda untuk memulai.',
-    'location_created' => 'Lokasi permainan berhasil dibuat!',
-    'location_updated' => 'Lokasi permainan berhasil diperbarui!',
-    'location_deleted' => 'Lokasi permainan berhasil dihapus!',
-    'locations_activated' => ':count lokasi permainan berhasil diaktifkan!',
-    'locations_deactivated' => ':count lokasi permainan berhasil dinonaktifkan!',
-    'locations_deleted' => ':count lokasi permainan berhasil dihapus!',
-    'select_at_least_one' => 'Silakan pilih setidaknya satu lokasi permainan.',
-    'selected_count' => ':count lokasi permainan dipilih',
+    'no_locations_found' => 'Tidak ada lokasi game yang ditemukan',
+    'create_first_location' => 'Buat lokasi game pertama untuk memulai.',
+    'location_created' => 'Lokasi game berhasil dibuat!',
+    'location_updated' => 'Lokasi game berhasil diperbarui!',
+    'location_deleted' => 'Lokasi game berhasil dihapus!',
+    'locations_activated' => ':count lokasi game berhasil diaktifkan!',
+    'locations_deactivated' => ':count lokasi game berhasil dinonaktifkan!',
+    'locations_deleted' => ':count lokasi game berhasil dihapus!',
+    'select_at_least_one' => 'Pilih minimal satu lokasi game.',
+    'selected_count' => ':count lokasi game dipilih',
     
     // Image management
     'regular_image_removed' => 'Gambar biasa berhasil dihapus!',
@@ -104,9 +104,9 @@ return [
     'interactive_positioning' => 'Posisi Interaktif',
     'interactive_map_controls' => 'Kontrol Peta Interaktif',
     'no_map_available' => 'Tidak ada peta interaktif tersedia',
-    'map_instructions_1' => 'Klik dan seret untuk menggeser • Gulir untuk zoom • Klik dua kali untuk zoom',
-    'map_instructions_2' => 'Masuk layar penuh untuk kontrol yang ditingkatkan dengan indikator zoom',
-    'map_instructions_3' => 'Keyboard: Spasi = layar penuh, + = zoom in, - = zoom out, R = reset',
+    'map_instructions_1' => 'Klik dan seret untuk menggeser • Scroll untuk zoom • Klik dua kali untuk zoom',
+    'map_instructions_2' => 'Mode layar penuh untuk kontrol yang lebih baik dengan indikator zoom',
+    'map_instructions_3' => 'Keyboard: Spasi = layar penuh, + = perbesar, - = perkecil, R = reset',
     'zoom_in' => 'Perbesar',
     'zoom_out' => 'Perkecil',
     'reset_view' => 'Reset Tampilan',
@@ -122,8 +122,8 @@ return [
     'close_details' => 'Tutup Detail',
     
     // Validation messages
-    'name_required' => 'Nama permainan wajib diisi.',
-    'name_unique' => 'Lokasi permainan dengan nama ini sudah ada.',
+    'name_required' => 'Nama game wajib diisi.',
+    'name_unique' => 'Lokasi game dengan nama ini sudah ada.',
     'description_min' => 'Deskripsi harus minimal 10 karakter.',
     'what_to_do_min' => 'Apa yang harus dilakukan harus minimal 10 karakter.',
     'latitude_required' => 'Lintang wajib diisi.',
@@ -145,19 +145,19 @@ return [
     
     // Error messages
     'upload_failed' => 'Gagal mengunggah gambar: :error',
-    'save_failed' => 'Gagal menyimpan lokasi permainan: :error',
-    'delete_failed' => 'Gagal menghapus lokasi permainan: :error',
+    'save_failed' => 'Gagal menyimpan lokasi game: :error',
+    'delete_failed' => 'Gagal menghapus lokasi game: :error',
     'remove_image_failed' => 'Gagal menghapus gambar: :error',
-    'activate_failed' => 'Gagal mengaktifkan lokasi permainan: :error',
-    'deactivate_failed' => 'Gagal menonaktifkan lokasi permainan: :error',
-    'bulk_delete_failed' => 'Gagal menghapus lokasi permainan: :error',
+    'activate_failed' => 'Gagal mengaktifkan lokasi game: :error',
+    'deactivate_failed' => 'Gagal menonaktifkan lokasi game: :error',
+    'bulk_delete_failed' => 'Gagal menghapus lokasi game: :error',
     
     // Confirmation messages
-    'confirm_delete' => 'Apakah Anda yakin ingin menghapus lokasi permainan ini?',
-    'confirm_bulk_delete' => 'Apakah Anda yakin ingin menghapus lokasi permainan yang dipilih?',
+    'confirm_delete' => 'Yakin ingin menghapus lokasi game ini?',
+    'confirm_bulk_delete' => 'Yakin ingin menghapus lokasi game yang dipilih?',
     
     // Additional user-facing messages
-    'explore_outdoor_locations' => 'Jelajahi lokasi luar ruangan dengan peta interaktif dan informasi detail.',
-    'admin_will_create_locations' => 'Lokasi permainan akan muncul di sini ketika dibuat oleh administrator.',
-    'outdoor_game_locations' => 'Lokasi Permainan Luar Ruangan',
+    'explore_outdoor_locations' => 'Jelajahi lokasi outdoor dengan peta interaktif dan informasi lengkap.',
+    'admin_will_create_locations' => 'Lokasi game akan muncul di sini setelah dibuat oleh administrator.',
+    'outdoor_game_locations' => 'Lokasi Game Outdoor',
 ];
