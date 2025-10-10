@@ -4,14 +4,13 @@
 namespace App\Livewire\User;
 
 use Livewire\Component;
+use Livewire\Attributes\On;
 
 class DashboardHeader extends Component
 {
     public $isRefreshing = false;
 
-    protected $listeners = [
-        'refresh-dashboard' => 'refreshData'
-    ];
+    #[On('refresh-dashboard')]
 
     public function refreshData()
     {

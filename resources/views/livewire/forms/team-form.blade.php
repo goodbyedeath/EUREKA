@@ -1,7 +1,19 @@
-{{-- resources/views/livewire/team-form.blade.php --}}
 <div class="container mx-auto px-4 py-6">
     <div class="max-w-4xl mx-auto p-6 bg-white dark:bg-gray-800 rounded-lg shadow-lg">
     <h2 class="text-2xl font-bold text-gray-800 mb-6">{{ __('common.team_registration') }}</h2>
+    
+    {{-- Information Banner --}}
+    <div class="mb-6 p-4 bg-blue-100 border border-blue-300 text-blue-800 rounded-lg">
+        <div class="flex items-center">
+            <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+            </svg>
+            <div>
+                <h3 class="font-medium mb-1">Pendaftaran Tim Baru</h3>
+                <p class="text-sm">Formulir ini hanya untuk pengguna yang belum memiliki tim. Silakan masukkan data lengkap semua anggota tim Anda.</p>
+            </div>
+        </div>
+    </div>
     
     {{-- Success Message --}}
     @if($showSuccessMessage)
@@ -230,6 +242,16 @@
         setTimeout(() => {
             $wire.set('showSuccessMessage', false);
         }, 3000);
+    });
+
+    $wire.on('redirect-to-dashboard', () => {
+        setTimeout(() => {
+            window.location.href = '{{ route("user.dashboard") }}';
+        }, 2000); // 2 second delay to show success message
+    });
+
+    $wire.on('redirect-to-dashboard-immediate', () => {
+        window.location.href = '{{ route("user.dashboard") }}';
     });
 </script>
 @endscript

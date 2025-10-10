@@ -87,8 +87,8 @@
                         @if($quizStats['best_score'] !== null)
                             <div class="flex items-center justify-between text-xs">
                                 <span class="text-gray-600">Best Score:</span>
-                                <span class="font-medium {{ $quizStats['best_score'] >= ($questionnaire->pass_percentage ?? 70) ? 'text-green-600' : 'text-red-600' }}">
-                                    {{ number_format($quizStats['best_score'], 1) }}%
+                                <span class="font-medium text-blue-600">
+                                    {{ number_format($quizStats['best_score'], 0) }} points
                                 </span>
                             </div>
                         @endif
@@ -146,8 +146,8 @@
                         <div class="mt-3 pt-3 border-t border-gray-200">
                             <div class="flex items-center justify-between text-sm">
                                 <span class="text-gray-600">Last Score:</span>
-                                <span class="font-medium {{ $lastCompletedAttempt->total_score >= ($questionnaire->pass_percentage ?? 70) ? 'text-green-600' : 'text-red-600' }}">
-                                    {{ number_format($lastCompletedAttempt->total_score, 1) }}%
+                                <span class="font-medium text-blue-600">
+                                    {{ number_format($lastCompletedAttempt->total_score, 0) }} points
                                 </span>
                             </div>
                             @if($lastCompletedAttempt->completed_at)

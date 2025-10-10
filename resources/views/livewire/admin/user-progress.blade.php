@@ -48,8 +48,8 @@
                     <i class="fas fa-undo text-sm"></i>
                 </button>
                 <button wire:click="exportData" class="px-4 py-2 bg-indigo-600 dark:bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700 dark:hover:bg-indigo-700 transition-colors duration-200 flex items-center gap-2">
-                    <i class="fas fa-download text-sm"></i>
-                    <span class="hidden sm:inline">Export</span>
+                    <i class="fas fa-file-pdf text-sm"></i>
+                    <span class="hidden sm:inline">Preview PDF</span>
                 </button>
             </div>
         </div>
@@ -193,6 +193,64 @@
         </div>
     </div>
 
+    <!-- Brief Feedback/Debrief Data Section -->
+    @if($briefFeedbackData->isNotEmpty())
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow transition-colors duration-200">
+        <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 transition-colors duration-200">
+            <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">Feedback & Debrief Responses</h3>
+            <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">User feedback and debrief answers from questionnaires</p>
+        </div>
+        <div class="p-6">
+            <div class="overflow-hidden">
+                <div class="grid gap-4">
+                    @foreach($briefFeedbackData as $feedback)
+                        <div class="border border-gray-200 dark:border-gray-600 rounded-lg p-4 bg-gray-50 dark:bg-gray-700 transition-colors duration-200">
+                            <div class="flex items-start justify-between mb-3">
+                                <div class="flex-1">
+                                    <div class="flex items-center gap-2 mb-1">
+                                        <span class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ $feedback['user_name'] }}</span>
+                                        <span class="text-xs text-gray-500 dark:text-gray-400">•</span>
+                                        <span class="text-xs text-gray-500 dark:text-gray-400">{{ $feedback['team_name'] }}</span>
+                                    </div>
+                                    <div class="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                                        <span class="font-medium">{{ $feedback['questionnaire_title'] }}</span>
+                                        <span class="ml-2">• {{ $feedback['submitted_at']->format('M d, Y H:i') }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <div class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Question:</div>
+                                <div class="text-sm text-gray-600 dark:text-gray-400 italic bg-white dark:bg-gray-800 p-3 rounded border-l-4 border-blue-500">
+                                    {{ $feedback['question_text'] }}
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <div class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Response:</div>
+                                <div class="text-sm text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 p-3 rounded border-l-4 border-green-500">
+                                    @if(!empty($feedback['feedback_answer']))
+                                        {{ $feedback['feedback_answer'] }}
+                                    @else
+                                        <span class="text-gray-500 dark:text-gray-400 italic">No response provided</span>
+                                    @endif
+                                </div>
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+                
+                @if($briefFeedbackData->count() === 0)
+                    <div class="text-center py-8 text-gray-500 dark:text-gray-400">
+                        <i class="fas fa-comments text-3xl mb-4"></i>
+                        <p>No feedback responses found for the selected timeframe and filters.</p>
+                    </div>
+                @endif
+            </div>
+        </div>
+    </div>
+    @endif
+
     <!-- Enhanced User Progress Table -->
     <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
         <div class="px-4 lg:px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -290,6 +348,19 @@
                             <span class="text-xs text-gray-900 dark:text-gray-100 whitespace-nowrap">{{ $user['completion_rate'] }}%</span>
                         </div>
                     </div>
+                    
+                    <div class="flex justify-end space-x-2 mt-3">
+                        <button wire:click="viewVerificationPhotos({{ $user['id'] }})" 
+                                class="inline-flex items-center px-3 py-1 border border-transparent text-xs leading-4 font-medium rounded text-green-700 bg-green-100 hover:bg-green-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors">
+                            <i class="fas fa-camera mr-1"></i>
+                            Photos
+                        </button>
+                        <button wire:click="showUserDetail({{ $user['id'] }})" 
+                                class="inline-flex items-center px-3 py-1 border border-transparent text-xs leading-4 font-medium rounded text-indigo-700 bg-indigo-100 hover:bg-indigo-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors">
+                            <i class="fas fa-eye mr-1"></i>
+                            Details
+                        </button>
+                    </div>
                 </div>
             @endforeach
         </div>
@@ -305,6 +376,7 @@
                         <th class="px-4 xl:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Completion Rate</th>
                         <th class="px-4 xl:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Team Points</th>
                         <th class="px-4 xl:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden xl:table-cell">Last Activity</th>
+                        <th class="px-4 xl:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
                     </tr>
                 </thead>
                 <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200">
@@ -389,6 +461,20 @@
                                     @else
                                         <span class="text-gray-400">Never</span>
                                     @endif
+                                </div>
+                            </td>
+                            <td class="px-4 xl:px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                <div class="flex items-center justify-end space-x-2">
+                                    <button wire:click="viewVerificationPhotos({{ $user['id'] }})" 
+                                            class="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300"
+                                            title="View Verification Photos">
+                                        <i class="fas fa-camera"></i>
+                                    </button>
+                                    <button wire:click="showUserDetail({{ $user['id'] }})" 
+                                            class="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300"
+                                            title="View Details">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
                                 </div>
                             </td>
                         </tr>
@@ -770,7 +856,7 @@
                                     <tr class="text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                                         <th class="pb-2">Questionnaire</th>
                                         <th class="pb-2">Status</th>
-                                        <th class="pb-2">Team Points</th>
+                                        <th class="pb-2">Points Earned</th>
                                         <th class="pb-2">Started</th>
                                         <th class="pb-2">Duration</th>
                                     </tr>
@@ -795,9 +881,9 @@
                                                 @endif
                                             </td>
                                             <td class="py-2">
-                                                @if($attempt['total_score'] !== null)
-                                                    <span class="font-semibold {{ $attempt['total_score'] >= 1000 ? 'text-green-600' : ($attempt['total_score'] >= 800 ? 'text-yellow-600' : 'text-red-600') }}">
-                                                        {{ $attempt['total_score'] }} pts
+                                                @if($attempt['earned_points'] !== null)
+                                                    <span class="font-semibold {{ $attempt['earned_points'] >= 200 ? 'text-green-600' : ($attempt['earned_points'] >= 100 ? 'text-yellow-600' : 'text-red-600') }}">
+                                                        {{ number_format($attempt['earned_points']) }} pts
                                                     </span>
                                                 @else
                                                     -
@@ -824,6 +910,95 @@
                         </div>
                     </div>
                     
+                    <!-- Brief Feedback Section -->
+                    @php
+                        // Get brief feedback data for this user safely
+                        $userBriefFeedback = collect();
+                        try {
+                            if (isset($userDetailData['user']) && $userDetailData['user']->id) {
+                                $userBriefFeedback = \App\Models\UserAnswer::whereHas('quizAttempt', function($query) use ($userDetailData) {
+                                    $query->where('user_id', $userDetailData['user']->id)
+                                          ->where('status', 'completed');
+                                })
+                                ->whereHas('question', function($query) {
+                                    $query->where('type', 'brief');
+                                })
+                                ->with(['question:id,question', 'quizAttempt.questionnaire:id,title'])
+                                ->orderBy('created_at', 'desc')
+                                ->get();
+                            }
+                        } catch (\Exception $e) {
+                            // Silently handle any database errors
+                            $userBriefFeedback = collect();
+                        }
+                    @endphp
+                    
+                    <!-- Always show the section, even if empty -->
+                    <div class="pt-6">
+                        <h4 class="text-md font-medium text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
+                            <i class="fas fa-comments text-blue-500"></i>
+                            Brief Feedback Responses 
+                            @if($userBriefFeedback->count() > 0)
+                                ({{ $userBriefFeedback->count() }})
+                            @endif
+                        </h4>
+                        
+                        @if($userBriefFeedback->count() > 0)
+                            <div class="space-y-4 max-h-64 overflow-y-auto">
+                                @foreach($userBriefFeedback as $feedback)
+                                    <div class="border border-gray-200 dark:border-gray-600 rounded-lg p-3 bg-gray-50 dark:bg-gray-700">
+                                        <div class="flex items-center justify-between mb-2">
+                                            <div class="text-xs font-medium text-gray-500 dark:text-gray-400">
+                                                {{ $feedback->quizAttempt->questionnaire->title ?? 'Unknown Quiz' }}
+                                            </div>
+                                            <div class="text-xs text-gray-500 dark:text-gray-400">
+                                                {{ $feedback->created_at->format('M d, Y H:i') }}
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- Question -->
+                                        <div class="mb-2">
+                                            <div class="text-xs font-medium text-blue-700 dark:text-blue-300 mb-1">Question:</div>
+                                            <div class="text-xs text-gray-600 dark:text-gray-400 italic bg-white dark:bg-gray-800 p-2 rounded border-l-2 border-blue-500">
+                                                {{ $feedback->question->question ?? 'Question not available' }}
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- Response -->
+                                        <div>
+                                            <div class="text-xs font-medium text-green-700 dark:text-green-300 mb-1">Response:</div>
+                                            <div class="text-xs text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 p-2 rounded border-l-2 border-green-500">
+                                                @if(!empty($feedback->answer))
+                                                    {{ $feedback->answer }}
+                                                @else
+                                                    <span class="text-gray-500 dark:text-gray-400 italic">No response provided</span>
+                                                @endif
+                                            </div>
+                                        </div>
+                                    </div>
+                                @endforeach
+                            </div>
+                        @else
+                            <div class="text-center py-6 bg-gray-50 dark:bg-gray-700 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600">
+                                <div class="text-gray-400 dark:text-gray-500 mb-2">
+                                    <i class="fas fa-comment-slash text-2xl"></i>
+                                </div>
+                                <p class="text-sm text-gray-500 dark:text-gray-400 font-medium">No Brief Feedback Yet</p>
+                                <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                                    This user hasn't submitted any brief feedback responses from questionnaires.
+                                </p>
+                            </div>
+                        @endif
+                    </div>
+                    
+                </div>
+                
+                <!-- Modal Footer -->
+                <div class="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex justify-end">
+                    <button wire:click="hideUserDetail" 
+                            class="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white text-sm rounded-lg transition-colors duration-200">
+                        <i class="fas fa-times mr-2"></i>Close
+                    </button>
                 </div>
             </div>
         </div>
@@ -904,6 +1079,131 @@
             </div>
         </div>
     @endif
+
+    {{-- Verification Photos Modal --}}
+    <div x-data="{ 
+        show: false,
+        verificationData: {
+            user_id: null,
+            user_name: '',
+            assessments: []
+        },
+        selectedPhoto: null,
+        showPhotoModal: false
+    }" 
+         x-show="show" 
+         x-cloak
+         class="fixed inset-0 z-50 overflow-y-auto"
+         x-transition:enter="ease-out duration-300"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="ease-in duration-200"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0"
+         @open-verification-photos-modal.window="
+            show = true;
+            verificationData = $event.detail[0] || $event.detail;
+         "
+         @close-verification-photos-modal.window="show = false">
+        <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div class="fixed inset-0 bg-gray-900 bg-opacity-75 transition-opacity" 
+                 x-on:click="show = false"></div>
+
+            <div class="inline-block align-bottom bg-white dark:bg-gray-800 rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full sm:p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-gray-100">
+                        <i class="fas fa-camera mr-2"></i>
+                        <span x-text="verificationData.user_name"></span> - Verification Photos
+                    </h3>
+                    <button x-on:click="show = false" class="text-gray-400 hover:text-gray-600 dark:text-gray-400">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+
+                <template x-if="verificationData.assessments && verificationData.assessments.length > 0">
+                    <div class="space-y-4 max-h-96 overflow-y-auto">
+                        <template x-for="assessment in verificationData.assessments" :key="assessment.id">
+                            <div class="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                                <div class="flex items-center flex-1">
+                                    <div class="w-16 h-16 bg-blue-100 rounded-lg flex items-center justify-center mr-4">
+                                        <i class="fas fa-user text-blue-600"></i>
+                                    </div>
+                                    <div class="flex-1">
+                                        <div class="text-sm font-medium text-gray-900 dark:text-gray-100" x-text="assessment.questionnaire_title"></div>
+                                        <div class="text-xs text-gray-400">
+                                            <span>Completed: </span><span x-text="assessment.completed_at"></span>
+                                        </div>
+                                        <div class="text-xs text-gray-400">
+                                            <span>Photo: </span><span x-text="assessment.photo_captured_at"></span>
+                                        </div>
+                                        <div class="text-sm font-semibold text-green-600">
+                                            Points: <span x-text="assessment.total_deposit"></span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="flex items-center space-x-2">
+                                    <template x-if="assessment.verification_photo">
+                                        <button 
+                                            @click="selectedPhoto = assessment.verification_photo; showPhotoModal = true"
+                                            class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                                            <i class="fas fa-eye mr-1"></i>
+                                            View Photo
+                                        </button>
+                                    </template>
+                                    <template x-if="!assessment.verification_photo">
+                                        <span class="text-sm text-gray-400">No photo</span>
+                                    </template>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </template>
+                
+                <template x-if="!verificationData.assessments || verificationData.assessments.length === 0">
+                    <div class="text-center py-8 text-gray-500 dark:text-gray-400">
+                        <i class="fas fa-camera text-4xl mb-4"></i>
+                        <p>No verification photos found</p>
+                        <p class="text-sm">Photos are captured when users submit fun game assessments</p>
+                    </div>
+                </template>
+            </div>
+        </div>
+
+        {{-- Photo Viewer Modal --}}
+        <div x-show="showPhotoModal" 
+             x-cloak
+             class="fixed inset-0 z-60 overflow-y-auto"
+             x-transition:enter="ease-out duration-300"
+             x-transition:enter-start="opacity-0"
+             x-transition:enter-end="opacity-100"
+             x-transition:leave="ease-in duration-200"
+             x-transition:leave-start="opacity-100"
+             x-transition:leave-end="opacity-0">
+            <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+                <div class="fixed inset-0 bg-black bg-opacity-90 transition-opacity" 
+                     x-on:click="showPhotoModal = false"></div>
+
+                <div class="inline-block align-middle bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full">
+                    <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-lg leading-6 font-medium text-gray-900">
+                                Verification Photo
+                            </h3>
+                            <button x-on:click="showPhotoModal = false" class="text-gray-400 hover:text-gray-600">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                        <div class="text-center">
+                            <img :src="selectedPhoto" 
+                                 alt="Verification Photo" 
+                                 class="max-w-full max-h-96 mx-auto rounded-lg shadow-lg"
+                                 x-show="selectedPhoto">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 @push('scripts')

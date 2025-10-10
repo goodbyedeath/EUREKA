@@ -12,6 +12,13 @@ class AnswerValidationService
      */
     public static function isAnswerCorrect(Question $question, string $userAnswer): bool
     {
+        $questionType = QuestionType::tryFrom($question->type);
+        
+        // Brief questions are always considered "correct" as they are feedback
+        if ($questionType === QuestionType::BRIEF) {
+            return true;
+        }
+
         if (empty(trim($userAnswer))) {
             return false;
         }
@@ -21,8 +28,6 @@ class AnswerValidationService
         if (empty($correctAnswer)) {
             return false;
         }
-
-        $questionType = QuestionType::tryFrom($question->type);
         
         return match ($questionType) {
             QuestionType::MULTIPLE_CHOICE => self::validateMultipleChoice($question, $userAnswer, $correctAnswer),
@@ -92,6 +97,13 @@ class AnswerValidationService
      */
     public static function calculatePointsEarned(Question $question, string $userAnswer): int
     {
+        $questionType = QuestionType::tryFrom($question->type);
+        
+        // Brief questions never award points
+        if ($questionType === QuestionType::BRIEF) {
+            return 0;
+        }
+        
         return self::isAnswerCorrect($question, $userAnswer) ? $question->points : 0;
     }
 
@@ -122,6 +134,14 @@ class AnswerValidationService
                 if (strlen($userAnswer) > 1000) {
                     $errors[] = 'Answer exceeds maximum length of 1000 characters';
                 }
+                break;
+
+            case QuestionType::BRIEF:
+                // Brief questions accept any text input with reasonable length limits
+                if (strlen($userAnswer) > 2000) {
+                    $errors[] = 'Feedback exceeds maximum length of 2000 characters';
+                }
+                // Brief questions are always valid as they're feedback
                 break;
 
             default:

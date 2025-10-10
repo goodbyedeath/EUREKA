@@ -17,11 +17,54 @@
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-    <!-- App Styles and Scripts via Vite -->
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com?v=3.4.0" defer></script>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@3.4.0/dist/tailwind.min.css" rel="stylesheet">
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            if (typeof tailwind !== 'undefined') {
+                tailwind.config = {
+                    darkMode: 'class',
+                    theme: {
+                        extend: {
+                            colors: {
+                                primary: {
+                                    50: '#eff6ff',
+                                    100: '#dbeafe', 
+                                    200: '#bfdbfe',
+                                    300: '#93c5fd',
+                                    400: '#60a5fa',
+                                    500: '#3b82f6',
+                                    600: '#2563eb',
+                                    700: '#1d4ed8',
+                                    800: '#1e40af',
+                                    900: '#1e3a8a',
+                                }
+                            }
+                        }
+                    }
+                };
+            }
+        });
+    </script>
+    
+    <!-- Custom styles -->
+    <style>
+        [x-cloak] { display: none !important; }
+        
+        /* Ensure Tailwind CDN is working - this will be overridden if Tailwind loads */
+        .tailwind-test {
+            background-color: red !important;
+            color: white !important;
+            padding: 1rem !important;
+        }
+    </style>
 
     <!-- Livewire Styles -->
     @livewireStyles
+    
+    <!-- Custom CSS (minimal) -->
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
 
     <!-- Dark Mode Init Script -->
     <script>
@@ -84,11 +127,11 @@
         </footer>
     </div>
 
-    <!-- Livewire Scripts -->
-    @livewireScripts
-
     <!-- External QR Library -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jsqr/1.4.0/jsQR.min.js"></script>
+
+    <!-- Livewire Scripts -->
+    @livewireScripts
 
     @stack('scripts')
 

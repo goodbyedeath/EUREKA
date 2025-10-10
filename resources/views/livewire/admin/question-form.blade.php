@@ -53,6 +53,7 @@
                     <option value="multiple_choice">Multiple Choice</option>
                     <option value="true_false">True/False</option>
                     <option value="fun_game">Fun Game</option>
+                    <option value="brief">Brief Feedback</option>
                 </select>
                 @error('newQuestion.type') 
                     <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> 
@@ -61,7 +62,12 @@
 
             <div>
                 <label for="question-points" class="block text-sm font-medium text-gray-700 mb-1">
-                    Points <span class="text-red-500">*</span>
+                    Points 
+                    @if($newQuestion['type'] !== 'brief')
+                        <span class="text-red-500">*</span>
+                    @else
+                        <span class="text-gray-400 text-xs">(Not applicable for feedback)</span>
+                    @endif
                 </label>
                 <input 
                     type="number" 
@@ -70,8 +76,16 @@
                     min="1"
                     max="100"
                     step="1"
-                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 transition-colors duration-200"
+                    @if($newQuestion['type'] === 'brief') 
+                        readonly value="0" 
+                        class="mt-1 block w-full rounded-md border-gray-300 bg-gray-100 text-gray-500 cursor-not-allowed"
+                    @else
+                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 transition-colors duration-200"
+                    @endif
                 >
+                @if($newQuestion['type'] === 'brief')
+                    <p class="text-xs text-gray-500 mt-1">Feedback questions don't award points</p>
+                @endif
                 @error('newQuestion.points') 
                     <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> 
                 @enderror
@@ -328,8 +342,48 @@
             </div>
         @endif
 
+        <!-- Brief Feedback Configuration -->
+        @if($newQuestion['type'] === 'brief')
+            <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                <h4 class="text-sm font-medium text-blue-900 mb-4 flex items-center">
+                    <i class="fas fa-comments mr-2"></i>
+                    Feedback Question Configuration
+                </h4>
+                
+                <!-- Description/Guidance -->
+                <div class="mb-4">
+                    <label for="brief-description" class="block text-sm font-medium text-gray-700 mb-1">
+                        Additional Guidance <span class="text-gray-500 text-xs">(Optional)</span>
+                    </label>
+                    <textarea 
+                        id="brief-description"
+                        wire:model="newQuestion.description" 
+                        rows="3"
+                        placeholder="Enter additional guidance or context for users filling out this feedback..."
+                        maxlength="1000"
+                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 transition-colors duration-200"
+                    ></textarea>
+                    @error('newQuestion.description') 
+                        <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> 
+                    @enderror
+                    <p class="text-xs text-gray-500 mt-1">{{ strlen($newQuestion['description'] ?? '') }}/1000 characters</p>
+                </div>
+
+                <div class="p-3 bg-blue-50 border border-blue-200 rounded-md">
+                    <div class="flex items-start">
+                        <svg class="w-5 h-5 text-blue-400 mt-0.5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+                        </svg>
+                        <div class="text-sm text-blue-800">
+                            <strong>About Feedback Questions:</strong> These questions are designed to collect user experience feedback and aren't scored. Users can provide text responses that help you understand their experience better.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        @endif
+
         <!-- Correct Answer -->
-        @if($newQuestion['type'] !== 'fun_game')
+        @if($newQuestion['type'] !== 'fun_game' && $newQuestion['type'] !== 'brief')
             <div>
                 <label for="correct-answer" class="block text-sm font-medium text-gray-700 mb-1">
                     Correct Answer <span class="text-red-500">*</span>

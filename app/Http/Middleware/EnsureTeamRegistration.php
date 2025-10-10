@@ -26,10 +26,11 @@ class EnsureTeamRegistration
             return $next($request);
         }
 
-        // Check if the authenticated user has already registered a team
-        $userHasRegisteredTeam = Team::where('created_by', auth()->id())->exists();
+        // Check if the authenticated user has a team (either created or assigned to one)
+        $user = auth()->user();
+        $userHasTeam = $user->team_id || Team::where('created_by', $user->id)->exists();
 
-        if (!$userHasRegisteredTeam) {
+        if (!$userHasTeam) {
             // Redirect to team registration with a message
             return redirect()->route('team.registration')
                 ->with('info', 'Silakan lengkapi pendaftaran tim terlebih dahulu untuk melanjutkan.');

@@ -18,6 +18,12 @@ return [
     'activate' => 'Activate',
     'deactivate' => 'Deactivate',
     'bulk_activate' => 'Bulk Activate',
+    
+    // Dashboard buttons
+    'outdoor_games' => 'Outdoor Games',
+    'quest_locations' => 'Quest Locations',
+    'interactive_game_maps' => 'Interactive Game Maps',
+    'explore_quest_locations' => 'Explore Quest Locations',
     'bulk_deactivate' => 'Bulk Deactivate',
     'bulk_delete' => 'Bulk Delete',
     
@@ -104,6 +110,11 @@ return [
     'interactive_positioning' => 'Interactive Positioning',
     'interactive_map_controls' => 'Interactive Map Controls',
     'no_map_available' => 'No interactive map available',
+    
+    // Panoramic viewer
+    'panoramic_view' => '360° Panoramic View',
+    'panoramic_controls' => 'Panoramic Controls',
+    'panoramic_image' => 'Panoramic Image',
     'map_instructions_1' => 'Click and drag to pan • Scroll to zoom • Double-click to zoom',
     'map_instructions_2' => 'Enter fullscreen for enhanced controls with zoom indicator',
     'map_instructions_3' => 'Keyboard: Space = fullscreen, + = zoom in, - = zoom out, R = reset',

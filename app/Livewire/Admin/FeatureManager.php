@@ -3,6 +3,7 @@
 namespace App\Livewire\Admin;
 
 use App\Models\FeatureSetting;
+use App\Services\WorkflowTimerService;
 use Livewire\Component;
 use Livewire\Attributes\Validate;
 
@@ -33,15 +34,15 @@ class FeatureManager extends Component
         $this->refreshFeatures();
     }
 
-    public function render()
-    {
-        return view('livewire.admin.feature-manager');
-    }
-
     public function refreshFeatures()
     {
         $this->features = FeatureSetting::orderBy('sort_order')->get();
         FeatureSetting::clearCache();
+    }
+
+    public function render()
+    {
+        return view('livewire.admin.feature-manager');
     }
 
     public function toggleFeature($featureId)
@@ -52,9 +53,17 @@ class FeatureManager extends Component
             
             $status = $feature->is_enabled ? 'enabled' : 'disabled';
             
+            // Special handling for workflow timers
+            $message = "Feature '{$feature->feature_name}' has been {$status}.";
+            if ($feature->feature_key === 'workflow_timers') {
+                $message .= $feature->is_enabled 
+                    ? ' Server-side workflow timers are now active for quiz and session timing.'
+                    : ' Falling back to client-side timer system.';
+            }
+            
             $this->dispatch('showAlert', [
                 'type' => 'success',
-                'message' => "Feature '{$feature->feature_name}' has been {$status}."
+                'message' => $message
             ]);
             
             $this->refreshFeatures();
@@ -116,16 +125,6 @@ class FeatureManager extends Component
         $this->resetErrorBag();
     }
 
-    public function moveUp($featureId)
-    {
-        $this->reorderFeature($featureId, 'up');
-    }
-
-    public function moveDown($featureId)
-    {
-        $this->reorderFeature($featureId, 'down');
-    }
-
     private function reorderFeature($featureId, $direction)
     {
         try {
@@ -165,6 +164,16 @@ class FeatureManager extends Component
                 'message' => 'Failed to reorder feature: ' . $e->getMessage()
             ]);
         }
+    }
+
+    public function moveUp($featureId)
+    {
+        $this->reorderFeature($featureId, 'up');
+    }
+
+    public function moveDown($featureId)
+    {
+        $this->reorderFeature($featureId, 'down');
     }
 
     public function bulkToggle($action)
@@ -220,5 +229,24 @@ class FeatureManager extends Component
     {
         unset($this->metadata[$index]);
         $this->metadata = array_values($this->metadata);
+    }
+    
+    /**
+     * Get workflow timer statistics for display
+     */
+    public function getWorkflowTimerStats()
+    {
+        try {
+            $workflowTimerService = app(WorkflowTimerService::class);
+            return $workflowTimerService->getTimerStatistics();
+        } catch (\Exception $e) {
+            return [
+                'error' => 'Could not fetch workflow timer statistics',
+                'active_session_timers' => 0,
+                'active_quiz_timers' => 0,
+                'total_workflows' => 0,
+                'feature_enabled' => false
+            ];
+        }
     }
 }

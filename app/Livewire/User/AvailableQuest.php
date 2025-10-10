@@ -111,12 +111,9 @@ class AvailableQuest extends Component
             return;
         }
 
-        // Use QrCodeScan model for more accurate validation
-        if (!QrCodeScan::canUserScanQuestionnaire(Auth::id(), $questionnaire)) {
-            // Only set session flash if one doesn't already exist to prevent duplicates
-            if (!session()->has('error')) {
-                session()->flash('error', 'You have reached the maximum number of attempts for this quiz.');
-            }
+        // Check if user can attempt this questionnaire (max attempts validation)
+        if (!$questionnaire->canUserAttempt(Auth::id())) {
+            session()->flash('error', 'You have reached the maximum number of attempts for this quiz.');
             return;
         }
 

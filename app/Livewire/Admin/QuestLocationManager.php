@@ -20,7 +20,6 @@ class QuestLocationManager extends Component
     public $name = '';
     public $description = '';
     public $what_to_do = '';
-    public $google_map_embed_url = '';
     public $latitude = '';
     public $longitude = '';
     public $radius = 50;
@@ -30,11 +29,18 @@ class QuestLocationManager extends Component
     public $image = null;
     public $existing_image_path = null;
 
+    // Location detection properties
+    public $adminLatitude = null;
+    public $adminLongitude = null;
+    public $locationAccuracy = null;
+    public $locationError = null;
+    public $locationDetected = false;
+    public $lastLocationUpdate = null;
+
     protected $rules = [
         'name' => 'required|string|max:255',
         'description' => 'required|string',
         'what_to_do' => 'required|string',
-        'google_map_embed_url' => 'nullable|url',
         'latitude' => 'required|numeric|between:-90,90',
         'longitude' => 'required|numeric|between:-180,180',
         'radius' => 'required|integer|min:10|max:1000',
@@ -55,7 +61,7 @@ class QuestLocationManager extends Component
     {
         return view('livewire.admin.quest-location-manager', [
             'questLocations' => QuestLocation::latest()->paginate(10)
-        ]);
+        ])->layout(null);
     }
 
     public function create()
@@ -73,7 +79,6 @@ class QuestLocationManager extends Component
         $this->name = $questLocation->name;
         $this->description = $questLocation->description;
         $this->what_to_do = $questLocation->what_to_do;
-        $this->google_map_embed_url = $questLocation->google_map_embed_url;
         $this->latitude = $questLocation->latitude;
         $this->longitude = $questLocation->longitude;
         $this->radius = $questLocation->radius;
@@ -94,7 +99,6 @@ class QuestLocationManager extends Component
             'name' => $this->name,
             'description' => $this->description,
             'what_to_do' => $this->what_to_do,
-            'google_map_embed_url' => $this->google_map_embed_url,
             'latitude' => $this->latitude,
             'longitude' => $this->longitude,
             'radius' => $this->radius,
@@ -160,6 +164,32 @@ class QuestLocationManager extends Component
         }
     }
 
+    public function updateAdminLocation($latitude, $longitude, $accuracy = null)
+    {
+        $this->adminLatitude = $latitude;
+        $this->adminLongitude = $longitude;
+        $this->locationAccuracy = $accuracy;
+        $this->locationDetected = true;
+        $this->locationError = null;
+        $this->lastLocationUpdate = now()->format('H:i:s');
+    }
+
+    public function setLocationError($error)
+    {
+        $this->locationError = $error;
+        $this->locationDetected = false;
+    }
+
+    public function useCurrentLocation()
+    {
+        if ($this->locationDetected) {
+            $this->latitude = $this->adminLatitude;
+            $this->longitude = $this->adminLongitude;
+            
+            session()->flash('message', 'Current location has been applied to the form!');
+        }
+    }
+
     public function closeModal()
     {
         $this->showModal = false;
@@ -171,7 +201,6 @@ class QuestLocationManager extends Component
         $this->name = '';
         $this->description = '';
         $this->what_to_do = '';
-        $this->google_map_embed_url = '';
         $this->latitude = '';
         $this->longitude = '';
         $this->radius = 50;
@@ -184,74 +213,4 @@ class QuestLocationManager extends Component
         $this->resetErrorBag();
     }
 
-    // Helper method to extract coordinates from Google Maps URL
-    public function extractCoordinates()
-    {
-        if (empty($this->google_map_embed_url)) {
-            return;
-        }
-
-        $input = trim($this->google_map_embed_url);
-        $url = '';
-
-        // Check if it's a full iframe code
-        if (strpos($input, '<iframe') !== false) {
-            // Extract src attribute from iframe
-            preg_match('/src="([^"]*)"/', $input, $matches);
-            if (isset($matches[1])) {
-                $url = $matches[1];
-                // Update the field with just the URL
-                $this->google_map_embed_url = $url;
-            }
-        } else {
-            // It's already a URL
-            $url = $input;
-        }
-
-        if (empty($url)) {
-            return;
-        }
-
-        // Extract coordinates from different Google Maps URL formats
-        $latitude = null;
-        $longitude = null;
-
-        // Method 1: Extract from pb parameter (embed URLs)
-        if (preg_match('/!3d(-?\d+\.?\d*)!4d(-?\d+\.?\d*)/', $url, $matches)) {
-            $latitude = (float) $matches[1];
-            $longitude = (float) $matches[2];
-        }
-        // Method 2: Extract from q parameter
-        elseif (preg_match('/[?&]q=(-?\d+\.?\d*),(-?\d+\.?\d*)/', $url, $matches)) {
-            $latitude = (float) $matches[1];
-            $longitude = (float) $matches[2];
-        }
-        // Method 3: Extract from ll parameter
-        elseif (preg_match('/[?&]ll=(-?\d+\.?\d*),(-?\d+\.?\d*)/', $url, $matches)) {
-            $latitude = (float) $matches[1];
-            $longitude = (float) $matches[2];
-        }
-        // Method 4: Extract from center parameter
-        elseif (preg_match('/[?&]center=(-?\d+\.?\d*),(-?\d+\.?\d*)/', $url, $matches)) {
-            $latitude = (float) $matches[1];
-            $longitude = (float) $matches[2];
-        }
-        // Method 5: Extract from @ parameter (new Google Maps URLs)
-        elseif (preg_match('/@(-?\d+\.?\d*),(-?\d+\.?\d*)/', $url, $matches)) {
-            $latitude = (float) $matches[1];
-            $longitude = (float) $matches[2];
-        }
-
-        // Update the coordinates if found
-        if ($latitude !== null && $longitude !== null) {
-            $this->latitude = $latitude;
-            $this->longitude = $longitude;
-            
-            // Optional: Show success message
-            session()->flash('coordinate_extracted', 'Coordinates extracted successfully!');
-        } else {
-            // Optional: Show error message
-            session()->flash('coordinate_error', 'Could not extract coordinates from the URL. Please enter them manually.');
-        }
-    }
 }

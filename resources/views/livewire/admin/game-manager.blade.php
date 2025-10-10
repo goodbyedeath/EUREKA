@@ -1,1017 +1,1307 @@
-<div class="container mx-auto px-4 py-8">
-    <!-- Header -->
-    <div class="flex flex-col lg:flex-row lg:justify-between lg:items-center mb-6 gap-4">
-        <h1 class="text-2xl font-bold text-gray-800 dark:text-gray-100">{{ __('games.title') }}</h1>
-        
-        <!-- Search and Filter -->
-        <div class="flex flex-col sm:flex-row gap-3">
-            <div class="flex gap-2">
-                <div class="relative">
-                    <input type="text" wire:model.live="search" placeholder="{{ __('games.search_locations') }}" 
-                           class="pl-8 pr-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm transition-colors duration-200">
-                    <svg class="w-4 h-4 absolute left-2.5 top-2.5 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-                    </svg>
-                </div>
-                
-                <select wire:model.live="filterStatus" class="border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm transition-colors duration-200">
-                    <option value="all">{{ __('games.all_status') }}</option>
-                    <option value="active">{{ __('games.filter_active') }}</option>
-                    <option value="inactive">{{ __('games.filter_inactive') }}</option>
-                </select>
-            </div>
-            
-            <button wire:click="create" class="bg-blue-500 dark:bg-blue-600 hover:bg-blue-600 dark:hover:bg-blue-700 text-white px-4 py-2 rounded-lg shadow whitespace-nowrap transition-colors duration-200">
-                <svg class="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-                </svg>
-                {{ __('games.add_location') }}
-            </button>
+<div class="container mx-auto px-2 sm:px-4 py-4 sm:py-6 min-h-screen">
+    <!-- Page Header -->
+    <div class="mb-4 sm:mb-6 flex flex-col sm:flex-row gap-4 sm:justify-between sm:items-center">
+        <div>
+            <h1 class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100">Game Location Manager</h1>
+            <p class="text-sm sm:text-base text-gray-600 dark:text-gray-400">Manage 360° panoramic game locations</p>
         </div>
+        <button wire:click="openModal" 
+                class="bg-blue-600 hover:bg-blue-700 text-white px-4 sm:px-6 py-2 rounded-lg transition-colors duration-200 text-sm sm:text-base w-full sm:w-auto">
+            <i class="fas fa-plus mr-2"></i>Add New Location
+        </button>
     </div>
 
-    <!-- Success Message -->
-    @if (session()->has('message'))
-        <div class="bg-green-100 dark:bg-green-800 border border-green-400 dark:border-green-600 text-green-700 dark:text-green-200 px-4 py-3 rounded-lg mb-4 transition-colors duration-200">
-            <div class="flex">
-                <svg class="w-4 h-4 mr-2 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
-                </svg>
-                {{ session('message') }}
-            </div>
-        </div>
-    @endif
-
-    <!-- Error Message -->
-    @if (session()->has('error'))
-        <div class="bg-red-100 dark:bg-red-800 border border-red-400 dark:border-red-600 text-red-700 dark:text-red-200 px-4 py-3 rounded-lg mb-4 transition-colors duration-200">
-            <div class="flex">
-                <svg class="w-4 h-4 mr-2 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path>
-                </svg>
-                {{ session('error') }}
-            </div>
-        </div>
-    @endif
-
-    <!-- Bulk Actions -->
-    @if(!empty($selectedGames))
-    <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg p-4 mb-4 transition-colors duration-200">
-        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-            <span class="text-sm text-blue-800 dark:text-blue-200">{{ __('games.selected_count', ['count' => count($selectedGames)]) }}</span>
-            <div class="flex gap-2">
-                <button wire:click="bulkActivate" class="bg-green-500 dark:bg-green-600 hover:bg-green-600 dark:hover:bg-green-700 text-white px-3 py-1 rounded text-sm transition-colors duration-200">
-                    {{ __('games.activate') }}
-                </button>
-                <button wire:click="bulkDeactivate" class="bg-orange-500 dark:bg-orange-600 hover:bg-orange-600 dark:hover:bg-orange-700 text-white px-3 py-1 rounded text-sm transition-colors duration-200">
-                    {{ __('games.deactivate') }}
-                </button>
-                <button wire:click="bulkDelete" wire:confirm="{{ __('games.confirm_bulk_delete') }}" class="bg-red-500 dark:bg-red-600 hover:bg-red-600 dark:hover:bg-red-700 text-white px-3 py-1 rounded text-sm transition-colors duration-200">
-                    {{ __('common.delete') }}
-                </button>
-            </div>
-        </div>
-    </div>
-    @endif
-
-    <!-- Games Table -->
-    <div class="bg-white dark:bg-gray-800 shadow-lg rounded-lg overflow-hidden transition-colors duration-200">
-        <!-- Mobile Card View (Hidden on Desktop) -->
-        <div class="block lg:hidden">
+    <!-- Games List -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden">
+        <!-- Mobile Cards (hidden on md+) -->
+        <div class="md:hidden">
             @forelse($games as $game)
-                <div class="border-b border-gray-200 dark:border-gray-700 p-4 transition-colors duration-200">
-                    <div class="flex items-start space-x-3">
-                        <div class="flex-shrink-0">
-                            <input type="checkbox" wire:model="selectedGames" value="{{ $game->id }}" class="rounded border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-blue-600 mt-1 transition-colors duration-200">
-                        </div>
-                        <div class="flex-shrink-0">
-                            @if($game->image_path)
-                                <img src="{{ Storage::url($game->image_path) }}" alt="{{ $game->name }}" 
-                                     class="w-16 h-16 rounded-lg object-cover">
-                            @else
-                                <div class="w-16 h-16 bg-gray-200 dark:bg-gray-600 rounded-lg flex items-center justify-center">
-                                    <svg class="w-8 h-8 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                                    </svg>
-                                </div>
+                <div class="border-b border-gray-200 dark:border-gray-700 p-4">
+                    <div class="flex justify-between items-start mb-3">
+                        <div class="flex-1">
+                            <h3 class="text-base font-medium text-gray-900 dark:text-gray-100">
+                                {{ $game->name }}
+                            </h3>
+                            @if($game->description)
+                                <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                                    {{ substr($game->description, 0, 50) }}{{ strlen($game->description) > 50 ? '...' : '' }}
+                                </p>
                             @endif
                         </div>
-                        <div class="flex-1 min-w-0">
-                            <div class="flex items-center justify-between mb-2">
-                                <div>
-                                    <h3 class="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{{ $game->name }}</h3>
-                                    <p class="text-xs text-gray-500 dark:text-gray-400">{{ Str::limit($game->description, 30) }}</p>
-                                </div>
-                                @if($game->is_active)
-                                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 dark:bg-green-800 text-green-800 dark:text-green-200">
-                                        {{ __('games.active') }}
-                                    </span>
-                                @else
-                                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 dark:bg-red-800 text-red-800 dark:text-red-200">
-                                        {{ __('games.inactive') }}
-                                    </span>
-                                @endif
-                            </div>
-                            <div class="grid grid-cols-2 gap-2 text-xs text-gray-600 dark:text-gray-400 mb-3">
-                                <div>
-                                    <span class="font-medium">Points:</span> {{ $game->quest_points }} pts
-                                </div>
-                                <div>
-                                    <span class="font-medium">Coordinates:</span>
-                                    @if($game->coordinate_x && $game->coordinate_y)
-                                        {{ $game->coordinate_x }}, {{ $game->coordinate_y }}
-                                    @else
-                                        Not set
-                                    @endif
-                                </div>
-                            </div>
-                            <div class="flex space-x-2 mb-2">
-                                @if($game->image_path)
-                                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-800 text-blue-800 dark:text-blue-200">
-                                        {{ __('games.regular') }}
-                                    </span>
-                                @endif
-                                @if($game->map_image_path)
-                                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 dark:bg-green-800 text-green-800 dark:text-green-200">
-                                        {{ __('games.map') }}
-                                    </span>
-                                @endif
-                            </div>
-                            <div class="flex justify-end space-x-2">
-                                <button wire:click="edit({{ $game->id }})" 
-                                        class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 text-sm transition-colors duration-200">
-                                    <i class="fas fa-edit mr-1"></i>Edit
-                                </button>
-                                <button wire:click="delete({{ $game->id }})" 
-                                        wire:confirm="{{ __('games.confirm_delete') }}"
-                                        class="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 text-sm transition-colors duration-200">
-                                    <i class="fas fa-trash mr-1"></i>Delete
-                                </button>
-                            </div>
+                        <button wire:click="toggleActive({{ $game->id }})"
+                                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $game->is_active ? 'bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100' : 'bg-red-100 text-red-800 dark:bg-red-800 dark:text-red-100' }}">
+                            {{ $game->is_active ? 'Active' : 'Inactive' }}
+                        </button>
+                    </div>
+                    
+                    @if($game->map_image_path)
+                        <div class="flex items-center space-x-2 mb-3">
+                            <img src="{{ Storage::url($game->map_image_path) }}" 
+                                 alt="360° Preview" 
+                                 class="h-12 w-12 rounded-lg object-cover">
+                            <a href="{{ route('panorama.view', $game->id) }}" target="_blank"
+                               class="inline-block bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-xs">
+                                <i class="fas fa-eye mr-1"></i>View 360°
+                            </a>
                         </div>
+                    @endif
+                    
+                    @if($game->default_pitch || $game->default_yaw)
+                        <div class="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                            <strong>Default View:</strong> Pitch: {{ number_format($game->default_pitch, 1) }}°, Yaw: {{ number_format($game->default_yaw, 1) }}°
+                        </div>
+                    @endif
+                    
+                    <div class="flex space-x-2">
+                        <button wire:click="openModal({{ $game->id }})"
+                                class="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded text-sm">
+                            <i class="fas fa-edit mr-1"></i>Edit
+                        </button>
+                        <button wire:click="delete({{ $game->id }})"
+                                wire:confirm="Are you sure you want to delete this location?"
+                                class="flex-1 bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded text-sm">
+                            <i class="fas fa-trash mr-1"></i>Delete
+                        </button>
                     </div>
                 </div>
             @empty
-                <div class="p-6 text-center text-gray-500 dark:text-gray-400">
-                    <svg class="w-12 h-12 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                    </svg>
-                    <p class="text-lg font-medium">{{ __('games.no_locations_found') }}</p>
-                    <p class="text-sm">{{ __('games.create_first_location') }}</p>
+                <div class="p-8 text-center text-gray-500 dark:text-gray-400">
+                    <i class="fas fa-map-marker-alt text-4xl mb-4"></i>
+                    <p class="text-lg font-medium">No game locations yet</p>
+                    <p class="text-sm">Create your first 360° game location to get started</p>
                 </div>
             @endforelse
         </div>
-
-        <!-- Desktop Table View (Hidden on Mobile) -->
-        <div class="hidden lg:block overflow-x-auto">
-            <table class="min-w-full">
+        
+        <!-- Desktop Table (hidden on sm-) -->
+        <div class="hidden md:block overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                 <thead class="bg-gray-50 dark:bg-gray-700">
                     <tr>
-                        <th class="px-4 xl:px-6 py-3 text-left text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                            <input type="checkbox" wire:model="selectAll" class="rounded border-gray-300 dark:border-gray-600">
+                        <th class="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                            Location
                         </th>
-                        <th class="px-4 xl:px-6 py-3 text-left text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{{ __('games.game') }}</th>
-                        <th class="px-4 xl:px-6 py-3 text-left text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden xl:table-cell">{{ __('games.images') }}</th>
-                        <th class="px-4 xl:px-6 py-3 text-left text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{{ __('games.coordinates') }}</th>
-                        <th class="px-4 xl:px-6 py-3 text-left text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden xl:table-cell">{{ __('games.points') }}</th>
-                        <th class="px-4 xl:px-6 py-3 text-left text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{{ __('games.status') }}</th>
-                        <th class="px-4 xl:px-6 py-3 text-center text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{{ __('games.actions') }}</th>
+                        <th class="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                            360° Image
+                        </th>
+                        <th class="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                            Default View
+                        </th>
+                        <th class="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                            Status
+                        </th>
+                        <th class="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                            Actions
+                        </th>
                     </tr>
                 </thead>
-                <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200">
+                <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                     @forelse($games as $game)
-                    <tr class="hover:bg-gray-50 dark:bg-gray-700">
-                        <td class="px-4 xl:px-6 py-4">
-                            <input type="checkbox" wire:model="selectedGames" value="{{ $game->id }}" class="rounded border-gray-300 dark:border-gray-600">
-                        </td>
-                        <td class="px-4 xl:px-6 py-4">
-                            <div class="flex items-center">
-                                @if($game->image_path)
-                                    <img src="{{ Storage::url($game->image_path) }}" alt="{{ $game->name }}" 
-                                         class="w-10 h-10 xl:w-12 xl:h-12 rounded-lg object-cover mr-3 xl:mr-4">
-                                @else
-                                    <div class="w-10 h-10 xl:w-12 xl:h-12 bg-gray-200 rounded-lg flex items-center justify-center mr-3 xl:mr-4">
-                                        <svg class="w-5 h-5 xl:w-6 xl:h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                                        </svg>
+                        <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
+                            <td class="px-4 lg:px-6 py-4 whitespace-nowrap">
+                                <div>
+                                    <div class="text-sm font-medium text-gray-900 dark:text-gray-100">
+                                        {{ $game->name }}
                                     </div>
-                                @endif
-                                <div class="min-w-0">
-                                    <div class="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{{ $game->name }}</div>
-                                    <div class="text-xs xl:text-sm text-gray-500 dark:text-gray-400 truncate">{{ Str::limit($game->description, 30) }}</div>
+                                    @if($game->description)
+                                        <div class="text-sm text-gray-500 dark:text-gray-400">
+                                            {{ substr($game->description, 0, 50) }}{{ strlen($game->description) > 50 ? '...' : '' }}
+                                        </div>
+                                    @endif
                                 </div>
-                            </div>
-                        </td>
-                        <td class="px-4 xl:px-6 py-4 hidden xl:table-cell">
-                            <div class="flex flex-wrap gap-1">
-                                @if($game->image_path)
-                                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                        {{ __('games.regular') }}
-                                    </span>
-                                @endif
+                            </td>
+                            <td class="px-4 lg:px-6 py-4 whitespace-nowrap">
                                 @if($game->map_image_path)
-                                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                        {{ __('games.map') }}
-                                    </span>
+                                    <div class="flex items-center space-x-2">
+                                        <img src="{{ Storage::url($game->map_image_path) }}" 
+                                             alt="360° Preview" 
+                                             class="h-12 w-12 rounded-lg object-cover">
+                                        <a href="{{ route('panorama.view', $game->id) }}" target="_blank"
+                                           class="inline-block bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-xs">
+                                            <i class="fas fa-eye mr-1"></i>View 360°
+                                        </a>
+                                    </div>
+                                @else
+                                    <span class="text-gray-400 text-sm">No image</span>
                                 @endif
-                            </div>
-                        </td>
-                        <td class="px-4 xl:px-6 py-4 text-xs xl:text-sm text-gray-900 dark:text-gray-100">
-                            @if($game->coordinate_x && $game->coordinate_y)
-                                <div class="truncate">{{ $game->coordinate_x }}, {{ $game->coordinate_y }}</div>
-                            @else
-                                <div class="text-gray-400">Not set</div>
-                            @endif
-                        </td>
-                        <td class="px-4 xl:px-6 py-4 text-xs xl:text-sm text-gray-900 dark:text-gray-100 hidden xl:table-cell">
-                            {{ $game->quest_points }} pts
-                        </td>
-                        <td class="px-4 xl:px-6 py-4">
-                            @if($game->is_active)
-                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                    <span class="hidden xl:inline">{{ __('games.active') }}</span>
-                                    <span class="xl:hidden">Active</span>
-                                </span>
-                            @else
-                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                                    <span class="hidden xl:inline">{{ __('games.inactive') }}</span>
-                                    <span class="xl:hidden">Inactive</span>
-                                </span>
-                            @endif
-                        </td>
-                        <td class="px-4 xl:px-6 py-4 text-center">
-                            <div class="flex justify-center space-x-1 xl:space-x-2">
-                                <button wire:click="edit({{ $game->id }})" 
-                                        class="text-blue-600 hover:text-blue-800 transition-colors p-1">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
-                                    </svg>
+                            </td>
+                            <td class="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                                @if($game->default_pitch || $game->default_yaw)
+                                    <div class="space-y-1">
+                                        <div>Pitch: {{ number_format($game->default_pitch, 1) }}°</div>
+                                        <div>Yaw: {{ number_format($game->default_yaw, 1) }}°</div>
+                                    </div>
+                                @else
+                                    <span class="text-gray-400">Default (0°, 0°)</span>
+                                @endif
+                            </td>
+                            <td class="px-4 lg:px-6 py-4 whitespace-nowrap">
+                                <button wire:click="toggleActive({{ $game->id }})"
+                                        class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $game->is_active ? 'bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100' : 'bg-red-100 text-red-800 dark:bg-red-800 dark:text-red-100' }}">
+                                    {{ $game->is_active ? 'Active' : 'Inactive' }}
                                 </button>
-                                <button wire:click="delete({{ $game->id }})" 
-                                        wire:confirm="{{ __('games.confirm_delete') }}"
-                                        class="text-red-600 hover:text-red-800 transition-colors p-1">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                                    </svg>
+                            </td>
+                            <td class="px-4 lg:px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                                <button wire:click="openModal({{ $game->id }})"
+                                        class="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300">
+                                    <i class="fas fa-edit mr-1"></i>Edit
                                 </button>
-                            </div>
-                        </td>
-                    </tr>
+                                <button wire:click="delete({{ $game->id }})"
+                                        wire:confirm="Are you sure you want to delete this location?"
+                                        class="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300">
+                                    <i class="fas fa-trash mr-1"></i>Delete
+                                </button>
+                            </td>
+                        </tr>
                     @empty
-                    <tr>
-                        <td colspan="7" class="px-4 xl:px-6 py-12 text-center text-gray-500 dark:text-gray-400">
-                            <svg class="w-12 h-12 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                            </svg>
-                            <p class="text-lg font-medium">{{ __('games.no_locations_found') }}</p>
-                            <p class="text-sm">{{ __('games.create_first_location') }}</p>
-                        </td>
-                    </tr>
+                        <tr>
+                            <td colspan="5" class="px-4 lg:px-6 py-12 text-center text-gray-500 dark:text-gray-400">
+                                <i class="fas fa-map-marker-alt text-4xl mb-4"></i>
+                                <p class="text-lg font-medium">No game locations yet</p>
+                                <p>Create your first 360° game location to get started</p>
+                            </td>
+                        </tr>
                     @endforelse
                 </tbody>
             </table>
         </div>
-
-    <!-- Pagination -->
-    <div class="mt-6">
-        {{ $games->links() }}
+        
+        <!-- Pagination -->
+        @if($games->hasPages())
+            <div class="px-6 py-3 border-t border-gray-200 dark:border-gray-700">
+                {{ $games->links() }}
+            </div>
+        @endif
     </div>
 
-    <!-- Modal -->
+    <!-- Add/Edit Modal -->
     @if($showModal)
-    <div class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-        <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-            <div class="fixed inset-0 bg-gray-50 dark:bg-gray-7000 bg-opacity-75 transition-opacity" wire:click="closeModal"></div>
-            
-            <div class="inline-block align-bottom bg-white dark:bg-gray-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">
-                <form wire:submit.prevent="save">
-                    <div class="bg-white dark:bg-gray-800 px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                        <div class="flex justify-between items-center mb-4">
-                            <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">
-                                {{ $editMode ? __('games.edit') : __('games.create') }}
-                            </h3>
-                            <button type="button" wire:click="closeModal" class="text-gray-400 hover:text-gray-600 dark:text-gray-400">
-                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                                </svg>
+        <div class="fixed inset-0 z-50 overflow-y-auto">
+            <div class="flex items-center justify-center min-h-screen px-2 sm:px-4">
+                <div class="fixed inset-0 bg-black opacity-50" wire:click="closeModal"></div>
+                
+                <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                    <div class="px-4 sm:px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                        <h3 class="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100">
+                            {{ $editingGameId ? 'Edit' : 'Add' }} Game Location
+                        </h3>
+                    </div>
+
+                    <form wire:submit.prevent="save" enctype="multipart/form-data" class="p-4 sm:p-6 space-y-4 sm:space-y-6">
+                        <!-- Name -->
+                        <div>
+                            <label for="name" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                Location Name *
+                            </label>
+                            <input type="text" wire:model="name" id="name"
+                                   class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-100">
+                            @error('name') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
+                        </div>
+
+                        <!-- Description -->
+                        <div>
+                            <label for="description" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                Description
+                            </label>
+                            <textarea wire:model="description" id="description" rows="3"
+                                      class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-100"></textarea>
+                        </div>
+
+                        <!-- 360° Image Upload -->
+                        <div>
+                            <label for="mapImageUpload" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                360° Panoramic Image (Equirectangular Format Required)
+                            </label>
+                            <div class="mt-1 mb-2 p-3 bg-blue-50 dark:bg-blue-900 rounded-md">
+                                <div class="text-sm text-blue-800 dark:text-blue-200">
+                                    <div class="font-semibold mb-1">📋 Image Requirements:</div>
+                                    <ul class="text-xs space-y-1">
+                                        <li>• <strong>Format:</strong> Must be equirectangular (2:1 aspect ratio)</li>
+                                        <li>• <strong>Examples:</strong> 4000×2000px, 3600×1800px, 2048×1024px</li>
+                                        <li>• <strong>Content:</strong> 360° photos only (not maps or flat images)</li>
+                                        <li>• <strong>Size:</strong> Maximum 10MB</li>
+                                    </ul>
+                                    <div class="mt-2 text-xs text-blue-600 dark:text-blue-300">
+                                        💡 <em>Use the Debug Panel in the viewer to verify your image format</em>
+                                    </div>
+                                </div>
+                            </div>
+                            <input type="file" wire:model="mapImageUpload" id="mapImageUpload" accept="image/*"
+                                   class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-100">
+                            @error('mapImageUpload') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
+                            
+                            @if($mapImageUpload)
+                                <div class="mt-2">
+                                    <p class="text-sm text-green-600">File ready for upload: {{ $mapImageUpload->getClientOriginalName() }}</p>
+                                </div>
+                            @elseif($map_image_path)
+                                <div class="mt-2">
+                                    <img src="{{ Storage::url($map_image_path) }}" alt="Current 360° Image" class="h-20 w-20 object-cover rounded">
+                                    <p class="text-sm text-gray-600 mt-1">Current image</p>
+                                </div>
+                            @endif
+                        </div>
+
+
+                        <!-- Panorama Default View -->
+                        <div>
+                            <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">🎯 Panorama Default View (Optional)</h4>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label for="default_yaw" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                        Yaw (Horizontal) °
+                                    </label>
+                                    <input type="number" wire:model="default_yaw" id="default_yaw" step="0.01" min="-180" max="180"
+                                           class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-100"
+                                           placeholder="0 (center)">
+                                    @error('default_yaw') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                                </div>
+                                <div>
+                                    <label for="default_pitch" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                        Pitch (Vertical) °
+                                    </label>
+                                    <input type="number" wire:model="default_pitch" id="default_pitch" step="0.01" min="-90" max="90"
+                                           class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-100"
+                                           placeholder="0 (horizon)">
+                                    @error('default_pitch') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                                </div>
+                            </div>
+                            <div class="mt-2 text-xs text-gray-600 dark:text-gray-400">
+                                💡 Set where users first look when opening the panorama. Leave empty for center view.
+                            </div>
+                        </div>
+
+                        <!-- Settings -->
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label for="target_type" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                    Target Type
+                                </label>
+                                <select wire:model="target_type" id="target_type"
+                                        class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-100">
+                                    <option value="all_users">All Users</option>
+                                    <option value="specific_user">Specific User</option>
+                                </select>
+                            </div>
+                            <div class="flex items-center pt-6">
+                                <input type="checkbox" wire:model="is_active" id="is_active"
+                                       class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                                <label for="is_active" class="ml-2 block text-sm text-gray-700 dark:text-gray-300">
+                                    Active
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Form Actions -->
+                        <div class="flex flex-col sm:flex-row justify-end gap-3 pt-4 sm:pt-6 border-t border-gray-200 dark:border-gray-700">
+                            <button type="button" wire:click="closeModal"
+                                    class="px-4 py-2 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-600 w-full sm:w-auto">
+                                Cancel
+                            </button>
+                            <button type="submit"
+                                    class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full sm:w-auto">
+                                {{ $editingGameId ? 'Update' : 'Create' }} Location
                             </button>
                         </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    @endif
 
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <!-- Left Column -->
-                            <div class="space-y-4">
-                                <!-- Name -->
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ __('games.name') }}</label>
-                                    <input type="text" wire:model="name" class="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="{{ __('games.name_placeholder') }}">
-                                    @error('name') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
-                                </div>
+    <!-- Simple Panorama Viewer Modal -->
+    @if($showPanoramaModal && $selectedGame)
+        <div class="fixed inset-0 z-50 overflow-y-auto" style="pointer-events: auto;">
+            <div class="flex items-center justify-center min-h-screen px-2 sm:px-4 py-4 sm:py-8" 
+                 wire:click="closePanoramaModal">
+                <div class="fixed inset-0 bg-black opacity-75 transition-opacity duration-300"></div>
+                
+                <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-7xl w-full max-h-[98vh]" 
+                     onclick="event.stopPropagation()"
+                     style="min-height: 70vh;">
+                    <div class="px-4 sm:px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row gap-2 sm:justify-between sm:items-center">
+                        <div class="flex-1">
+                            <h3 class="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100">
+                                360° View: {{ $selectedGame->name }}
+                            </h3>
+                            <p class="text-xs sm:text-sm text-gray-600 dark:text-gray-400 break-all">
+                                Panoramic viewer - Image: {{ basename($selectedGame->map_image_path) }}
+                            </p>
+                        </div>
+                        <button wire:click="closePanoramaModal" 
+                                class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 self-end sm:self-auto">
+                            <i class="fas fa-times text-lg sm:text-xl"></i>
+                        </button>
+                    </div>
 
-                                <!-- Description -->
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ __('games.description') }}</label>
-                                    <textarea wire:model="description" rows="3" class="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="{{ __('games.description_placeholder') }}"></textarea>
-                                    @error('description') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
-                                </div>
+                    <div class="p-3 sm:p-6">
+                        <!-- Simple Panellum Container -->
+                        <div id="admin-panorama-container" class="relative bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden"
+                             style="height: 50vh; min-height: 300px; max-height: 600px;">
+                             
+                            <!-- Panellum Viewer -->
+                            <div id="admin-panellum-viewer" class="w-full h-full bg-gray-100"></div>
+                            
+                            <!-- Viewer Controls -->
+                            <div class="absolute top-2 sm:top-4 right-2 sm:right-4 flex flex-wrap gap-1 sm:gap-2">
+                                <button type="button" onclick="initAdminPanellum()"
+                                        class="bg-blue-600 hover:bg-blue-700 text-white px-2 sm:px-3 py-1 rounded text-xs sm:text-sm shadow-sm transition-colors duration-200"
+                                        title="Reload 360° View">
+                                    <i class="fas fa-sync sm:mr-1"></i><span class="hidden sm:inline"> Reload</span>
+                                </button>
+                                <button type="button" onclick="resetAdminPanellum()"
+                                        class="bg-gray-600 hover:bg-gray-700 text-white px-2 sm:px-3 py-1 rounded text-xs sm:text-sm shadow-sm transition-colors duration-200"
+                                        title="Reset View">
+                                    <i class="fas fa-redo sm:mr-1"></i><span class="hidden sm:inline"> Reset</span>
+                                </button>
+                                <button type="button" onclick="toggleFullscreenPanellum()"
+                                        class="bg-green-600 hover:bg-green-700 text-white px-2 sm:px-3 py-1 rounded text-xs sm:text-sm shadow-sm transition-colors duration-200"
+                                        title="Toggle Fullscreen">
+                                    <i class="fas fa-expand sm:mr-1"></i><span class="hidden sm:inline"> Fullscreen</span>
+                                </button>
+                                <button type="button" onclick="toggleHotspots()"
+                                        class="bg-purple-600 hover:bg-purple-700 text-white px-2 sm:px-3 py-1 rounded text-xs sm:text-sm shadow-sm transition-colors duration-200"
+                                        title="Toggle Hotspots">
+                                    <i class="fas fa-map-marker-alt sm:mr-1"></i><span class="hidden sm:inline"> Hotspots</span>
+                                </button>
+                                <button type="button" onclick="enableHotspotMode()"
+                                        class="bg-orange-600 hover:bg-orange-700 text-white px-2 sm:px-3 py-1 rounded text-xs sm:text-sm shadow-sm transition-colors duration-200"
+                                        title="Click to add hotspots">
+                                    <i class="fas fa-plus sm:mr-1"></i><span class="hidden sm:inline"> Add</span>
+                                </button>
+                                <button type="button" onclick="debugPanellumState()"
+                                        class="bg-gray-600 hover:bg-gray-700 text-white px-2 sm:px-3 py-1 rounded text-xs sm:text-sm shadow-sm transition-colors duration-200"
+                                        title="Debug panorama state">
+                                    <i class="fas fa-bug sm:mr-1"></i><span class="hidden sm:inline"> Debug</span>
+                                </button>
+                            </div>
+                        </div>
 
-                                <!-- What to do -->
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ __('games.what_to_do') }}</label>
-                                    <textarea wire:model="what_to_do" rows="3" class="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="{{ __('games.what_to_do_placeholder') }}"></textarea>
-                                    @error('what_to_do') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
-                                </div>
-
-                                <!-- Map Coordinates (Auto-calculated) -->
-                                <div class="grid grid-cols-2 gap-3">
-                                    <div>
-                                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ __('games.coordinate_x') }} <span class="text-xs text-gray-500 dark:text-gray-400">(Auto-calculated)</span></label>
-                                        <input type="number" wire:model="coordinate_x" readonly class="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 bg-gray-50 dark:bg-gray-700 text-gray-600 dark:text-gray-400 focus:outline-none" placeholder="Drag red dot on map">
-                                        @error('coordinate_x') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                        <!-- Enhanced Hotspot Management -->
+                        <div class="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
+                            <!-- Hotspot Controls -->
+                            <div class="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                                <h4 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">
+                                    <i class="fas fa-map-marker-alt mr-2 text-purple-600"></i>Hotspot Controls
+                                </h4>
+                                <div class="space-y-3">
+                                    <div class="flex flex-col sm:flex-row gap-2">
+                                        <button type="button" onclick="clearAllDatabaseHotspots()"
+                                                class="bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded text-sm flex-1">
+                                            <i class="fas fa-trash mr-1"></i> Clear All
+                                        </button>
+                                        <button type="button" onclick="exportDatabaseHotspots()"
+                                                class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded text-sm flex-1">
+                                            <i class="fas fa-download mr-1"></i> Export
+                                        </button>
+                                        <button type="button" onclick="importDatabaseHotspots()"
+                                                class="bg-teal-600 hover:bg-teal-700 text-white px-3 py-2 rounded text-sm flex-1">
+                                            <i class="fas fa-upload mr-1"></i> Import
+                                        </button>
                                     </div>
-                                    <div>
-                                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ __('games.coordinate_y') }} <span class="text-xs text-gray-500 dark:text-gray-400">(Auto-calculated)</span></label>
-                                        <input type="number" wire:model="coordinate_y" readonly class="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 bg-gray-50 dark:bg-gray-700 text-gray-600 dark:text-gray-400 focus:outline-none" placeholder="Drag red dot on map">
-                                        @error('coordinate_y') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                                    <div id="hotspot-count" class="text-xs text-gray-600 dark:text-gray-400 text-center">
+                                        Hotspots: <span id="count-display">1</span>
                                     </div>
                                 </div>
                             </div>
-
-                            <!-- Right Column -->
-                            <div class="space-y-4">
-
-                                <!-- Settings -->
-                                <div class="grid grid-cols-2 gap-3">
-                                    <div>
-                                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ __('games.radius') }}</label>
-                                        <input type="number" wire:model="radius" class="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                                        @error('radius') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                            
+                            <!-- Current Location Info -->
+                            <div class="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                                <h4 class="text-sm font-semibold text-blue-900 dark:text-blue-100 mb-3">
+                                    <i class="fas fa-info-circle mr-2"></i>Location Info
+                                </h4>
+                                <div class="space-y-2 text-xs">
+                                    <div class="text-blue-700 dark:text-blue-300">
+                                        <strong>File:</strong> {{ basename($selectedGame->map_image_path) }}
                                     </div>
-                                    <div>
-                                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ __('games.quest_points') }}</label>
-                                        <input type="number" wire:model="quest_points" class="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                                        @error('quest_points') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                                    <div class="text-blue-700 dark:text-blue-300">
+                                        <strong>Status:</strong> {{ Storage::disk('public')->exists($selectedGame->map_image_path) ? 'Available' : 'Missing' }}
                                     </div>
-                                </div>
-
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ __('games.max_check_ins') }}</label>
-                                    <input type="number" wire:model="max_check_ins_per_user" class="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                                    @error('max_check_ins_per_user') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
-                                </div>
-
-                                <!-- Regular Image -->
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ __('games.regular_image') }}</label>
-                                    @if($existing_image_path && !$pending_remove_image)
-                                        <div class="mb-2">
-                                            <img src="{{ Storage::url($existing_image_path) }}" alt="Current Image" class="w-24 h-16 object-cover rounded border">
-                                            <button type="button" wire:click="removeImage('regular')" class="text-red-500 text-xs hover:text-red-700 ml-2">{{ __('games.remove') }}</button>
-                                        </div>
-                                    @elseif($existing_image_path && $pending_remove_image)
-                                        <div class="mb-2 p-3 bg-red-50 border border-red-200 rounded-lg">
-                                            <div class="flex items-center justify-between">
-                                                <div class="flex items-center">
-                                                    <div class="w-24 h-16 bg-red-100 border border-red-300 rounded flex items-center justify-center opacity-50">
-                                                        <svg class="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                                                        </svg>
-                                                    </div>
-                                                    <div class="ml-3">
-                                                        <p class="text-sm font-medium text-red-800">Image marked for removal</p>
-                                                        <p class="text-xs text-red-600">Will be deleted when you save</p>
-                                                    </div>
-                                                </div>
-                                                <button type="button" wire:click="undoRemoveImage('regular')" class="text-blue-600 text-xs hover:text-blue-800 font-medium">{{ __('games.undo_remove') }}</button>
-                                            </div>
+                                    @if($selectedGame->default_pitch || $selectedGame->default_yaw)
+                                        <div class="text-blue-700 dark:text-blue-300 p-2 bg-blue-100 dark:bg-blue-800/30 rounded">
+                                            <strong>Default View Angle:</strong><br>
+                                            Pitch: {{ number_format($selectedGame->default_pitch ?? 0, 1) }}°<br>
+                                            Yaw: {{ number_format($selectedGame->default_yaw ?? 0, 1) }}°
                                         </div>
                                     @endif
-                                    <input type="file" wire:model="image" accept="image/*" class="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                                    
-                                    <!-- Upload progress indicator -->
-                                    <div wire:loading wire:target="image" class="mt-2">
-                                        <div class="flex items-center text-sm text-blue-600">
-                                            <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                            </svg>
-                                            Uploading image...
-                                        </div>
-                                    </div>
-                                    
-                                    <!-- New image preview -->
-                                    @if($image && !$pending_remove_image)
-                                        <div class="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
-                                            <div class="flex items-center">
-                                                <svg class="w-5 h-5 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                                </svg>
-                                                <div>
-                                                    <p class="text-sm font-medium text-green-800">New image ready</p>
-                                                    <p class="text-xs text-green-600">{{ $image->getClientOriginalName() }} ({{ number_format($image->getSize() / 1024, 1) }} KB)</p>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    @endif
-                                    
-                                    @error('image') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
                                 </div>
-
-                                <!-- Map Image with Interactive Positioning -->
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ __('games.map_image') }}</label>
-                                    
-                                    <!-- Map Preview and Coordinate Setter -->
-                                    @if($existing_map_image_path && !$pending_remove_map_image)
-                                        <div class="mb-4">
-                                            <div class="relative inline-block border-2 border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden bg-gray-50 dark:bg-gray-700 map-container-enhanced">
-                                                <img id="admin-map-image" 
-                                                     src="{{ Storage::url($existing_map_image_path) }}" 
-                                                     alt="Interactive Map" 
-                                                     class="max-w-full max-h-64 object-contain cursor-crosshair"
-                                                     style="user-select: none;">
-                                                
-                                                <!-- Draggable Red Dot Marker -->
-                                                <div id="admin-location-marker" 
-                                                     class="absolute w-5 h-5 bg-red-500 rounded-full border-2 border-white shadow-lg cursor-grab hover:cursor-grabbing"
-                                                     style="left: {{ $coordinate_x ?: 50 }}px; top: {{ $coordinate_y ?: 50 }}px; z-index: 10; transform: translate(-50%, -50%);"
-                                                     title="Drag me to set the game location!"
-                                                     data-interactjs-draggable="true">
-                                                    <!-- Inner dot for better visibility -->
-                                                    <div class="absolute inset-0.5 bg-red-600 rounded-full"></div>
-                                                </div>
-                                            </div>
-                                            
-                                            <div class="mt-2 text-sm text-gray-600 dark:text-gray-400">
-                                                <p class="font-medium text-blue-600">🎯 {{ __('games.interactive_positioning') }}</p>
-                                                <div class="mt-1 space-y-1">
-                                                    <p>• <strong>Click</strong> anywhere on the map to place the red dot</p>
-                                                    <p>• <strong>Drag</strong> the red dot to fine-tune its position</p>
-                                                    <p>• <strong>Coordinates</strong> will be calculated automatically</p>
-                                                    <p class="text-green-600">• Current position: <span id="coordinate-display">{{ $coordinate_x ?? 'Not set' }}, {{ $coordinate_y ?? 'Not set' }}</span></p>
-                                                </div>
-                                            </div>
-                                            
-                                            <button type="button" wire:click="removeImage('map')" class="text-red-500 text-xs hover:text-red-700 mt-2">{{ __('games.remove') }}</button>
-                                        </div>
-                                    @elseif($existing_map_image_path && $pending_remove_map_image)
-                                        <div class="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-                                            <div class="flex items-center justify-between mb-3">
-                                                <div class="flex items-center">
-                                                    <div class="w-16 h-16 bg-red-100 border border-red-300 rounded flex items-center justify-center opacity-50">
-                                                        <svg class="w-8 h-8 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"></path>
-                                                        </svg>
-                                                    </div>
-                                                    <div class="ml-3">
-                                                        <p class="text-sm font-medium text-red-800">Map image marked for removal</p>
-                                                        <p class="text-xs text-red-600">Will be deleted when you save. Coordinates will be reset.</p>
-                                                    </div>
-                                                </div>
-                                                <button type="button" wire:click="undoRemoveImage('map')" class="text-blue-600 text-xs hover:text-blue-800 font-medium">{{ __('games.undo_remove') }}</button>
-                                            </div>
-                                            <div class="text-xs text-red-600 bg-red-100 p-2 rounded">
-                                                ⚠️ Removing the map image will also reset the coordinate positioning. You'll need to upload a new map and set coordinates again.
-                                            </div>
-                                        </div>
-                                    @endif
-                                    
-                                    <input type="file" wire:model="map_image" accept="image/*" class="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" onchange="setTimeout(() => { if (typeof initializeAdminMapInteraction === 'function') initializeAdminMapInteraction(); }, 1000)">
-                                    
-                                    <!-- Upload progress indicator -->
-                                    <div wire:loading wire:target="map_image" class="mt-2">
-                                        <div class="flex items-center text-sm text-blue-600">
-                                            <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                            </svg>
-                                            Uploading map image...
-                                        </div>
-                                    </div>
-                                    
-                                    <!-- New map image preview -->
-                                    @if($map_image && !$pending_remove_map_image)
-                                        <div class="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
-                                            <div class="flex items-center">
-                                                <svg class="w-5 h-5 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                                </svg>
-                                                <div>
-                                                    <p class="text-sm font-medium text-green-800">New map image ready</p>
-                                                    <p class="text-xs text-green-600">{{ $map_image->getClientOriginalName() }} ({{ number_format($map_image->getSize() / 1024, 1) }} KB)</p>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    @endif
-                                    
-                                    @error('map_image') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
-                                </div>
-
-
-                                <!-- Active Status -->
-                                <div class="flex items-center">
-                                    <input type="checkbox" wire:model="is_active" id="is_active" class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600 rounded">
-                                    <label for="is_active" class="ml-2 block text-sm text-gray-900 dark:text-gray-100">{{ __('games.is_active') }}</label>
+                            </div>
+                        </div>
+                        
+                        <!-- Live Hotspot List -->
+                        <div class="mt-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                            <h4 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">
+                                <i class="fas fa-list mr-2 text-orange-600"></i>Active Hotspots
+                            </h4>
+                            <div id="hotspot-list" class="space-y-2 max-h-32 overflow-y-auto">
+                                <div class="text-xs text-gray-500 dark:text-gray-400 italic">
+                                    Hotspots will appear here when added to the panorama
                                 </div>
                             </div>
                         </div>
                     </div>
-
-                    <div class="bg-gray-50 dark:bg-gray-700 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-                        <button type="submit" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm">
-                            {{ $editMode ? __('common.update') : __('common.create') }}
-                        </button>
-                        <button type="button" wire:click="closeModal" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 dark:border-gray-600 shadow-sm px-4 py-2 bg-white dark:bg-gray-800 text-base font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
-                            {{ __('common.cancel') }}
-                        </button>
-                    </div>
-                </form>
+                </div>
             </div>
         </div>
-    </div>
     @endif
+</div>
 
-    <!-- InteractJS Map Positioning Styles -->
-    <style>
-        @keyframes ripple {
-            0% {
-                transform: translate(-50%, -50%) scale(0);
-                opacity: 1;
+<!-- Custom Panellum Hotspot Styles -->
+<style>
+    /* Custom Panellum Hotspot Styles */
+    .admin-hotspot-marker {
+        background: linear-gradient(135deg, #3b82f6, #1e40af) !important;
+        border: 3px solid white !important;
+        border-radius: 50% !important;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3) !important;
+        animation: pulse-hotspot 2s infinite !important;
+    }
+    
+    .custom-admin-hotspot {
+        background: linear-gradient(135deg, #f59e0b, #d97706) !important;
+        border: 3px solid white !important;
+        border-radius: 50% !important;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3) !important;
+        animation: bounce-hotspot 3s infinite !important;
+    }
+    
+    @keyframes pulse-hotspot {
+        0% { transform: scale(1); opacity: 1; }
+        50% { transform: scale(1.2); opacity: 0.8; }
+        100% { transform: scale(1); opacity: 1; }
+    }
+    
+    @keyframes bounce-hotspot {
+        0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+        40% { transform: translateY(-10px); }
+        60% { transform: translateY(-5px); }
+    }
+    
+    /* Fullscreen styles */
+    #admin-panellum-viewer:-webkit-full-screen {
+        width: 100% !important;
+        height: 100% !important;
+    }
+    
+    #admin-panellum-viewer:-moz-full-screen {
+        width: 100% !important;
+        height: 100% !important;
+    }
+    
+    #admin-panellum-viewer:fullscreen {
+        width: 100% !important;
+        height: 100% !important;
+    }
+</style>
+
+<!-- Simple Admin Panellum Integration Script -->
+<script>
+    // Simple functions using existing global Panellum
+    function initAdminPanellum() {
+        console.log('🎯 Initializing Admin Panellum...');
+        
+        const container = document.getElementById('admin-panellum-viewer');
+        if (!container) {
+            console.error('❌ No admin container found');
+            return;
+        }
+        
+        // Get image URL from current selected game - fix Blade syntax
+        let imageUrl = '';
+        @if($selectedGame && $selectedGame->map_image_path)
+            imageUrl = '{{ Storage::url($selectedGame->map_image_path) }}';
+        @endif
+        
+        console.log('📸 Image URL:', imageUrl);
+        
+        if (!imageUrl) {
+            console.error('❌ No image URL available');
+            container.innerHTML = '<div class="flex items-center justify-center h-full text-yellow-600"><i class="fas fa-exclamation-triangle mr-2"></i>No 360° image selected</div>';
+            return;
+        }
+        
+        // Check if global Panellum is available
+        console.log('🔍 Checking Panellum availability:', typeof window.pannellum);
+        console.log('🌍 Window pannellum object:', window.pannellum);
+        
+        if (typeof window.pannellum !== 'undefined') {
+            try {
+                container.innerHTML = ''; // Clear container
+                
+                const viewer = window.pannellum.viewer('admin-panellum-viewer', {
+                    type: 'equirectangular',
+                    panorama: imageUrl,
+                    autoLoad: true,
+                    showControls: true,
+                    hfov: 90
+                });
+                
+                viewer.on('load', function() {
+                    console.log('✅ Admin panorama loaded successfully!');
+                    
+                    // Add hotspot if coordinates exist
+                    
+                    // Update UI components
+                    updateHotspotList();
+                    updateHotspotCount();
+                });
+                
+                viewer.on('error', function(err) {
+                    console.error('❌ Admin panorama error:', err);
+                });
+                
+                window.adminPanellumViewer = viewer;
+                
+            } catch (e) {
+                console.error('❌ Error creating admin viewer:', e);
             }
-            100% {
-                transform: translate(-50%, -50%) scale(4);
-                opacity: 0;
-            }
-        }
-        
-        @keyframes successPulse {
-            0% { transform: translate(-50%, -50%) scale(1); }
-            50% { transform: translate(-50%, -50%) scale(1.3); }
-            100% { transform: translate(-50%, -50%) scale(1); }
-        }
-        
-        .map-container-enhanced {
-            cursor: crosshair;
-            user-select: none;
-            -webkit-user-select: none;
-            -moz-user-select: none;
-            -ms-user-select: none;
-            touch-action: none;
-            -ms-touch-action: none;
-        }
-        
-        .map-container-enhanced.dragging {
-            cursor: grabbing !important;
-        }
-        
-        #admin-location-marker {
-            cursor: grab;
-            touch-action: none;
-            -ms-touch-action: none;  /* Better browser support */
-            pointer-events: auto;
-            user-select: none;
-            -webkit-user-select: none;  /* Better browser support */
-            -moz-user-select: none;
-            -ms-user-select: none;
-            transition: box-shadow 0.2s ease;
-        }
-        
-        #admin-location-marker:hover {
-            box-shadow: 0 6px 20px rgba(239, 68, 68, 0.4);
-        }
-        
-        #admin-location-marker.dragging {
-            cursor: grabbing;
-            z-index: 1000;
-            box-shadow: 0 8px 25px rgba(239, 68, 68, 0.5);
-        }
-        
-        /* Ensure inner dot doesn't interfere with dragging */
-        #admin-location-marker > div {
-            pointer-events: none;
-        }
-        
-        .ripple-effect {
-            pointer-events: none;
-            animation: ripple 0.6s ease-out;
-        }
-    </style>
-
-
-
-<!-- Replace your existing script section with this fixed version -->
- <script>
-    // Wait for InteractJS to be available from your build
-    function waitForInteract(callback, attempts = 0) {
-        const maxAttempts = 50; // 5 seconds max wait
-        
-        if (typeof window.interact !== 'undefined') {
-            callback();
-        } else if (attempts < maxAttempts) {
-            setTimeout(() => waitForInteract(callback, attempts + 1), 100);
         } else {
-            console.warn('InteractJS failed to load after 5 seconds');
+            console.error('❌ Panellum library not available');
+            container.innerHTML = '<div class="flex items-center justify-center h-full text-red-600"><i class="fas fa-exclamation-triangle mr-2"></i>Panellum library not loaded</div>';
         }
     }
-
-    // Global variables to prevent conflicts
-    window.mapInteractionInitialized = false;
-    window.currentInteractInstance = null;
-
-    // Initialize when everything is ready
-    document.addEventListener('DOMContentLoaded', function() {
-        waitForInteract(() => {
-            initializeMapWhenReady();
-        });
-    });
-
-    // Livewire v3 hooks - more reliable approach
-    document.addEventListener('livewire:init', () => {
-        // Listen for component updates
-        Livewire.hook('morph.updated', ({ el, component }) => {
-            // Check if modal is now visible
-            const modal = el.querySelector('[role="dialog"]');
-            if (modal) {
-                const isVisible = modal.offsetParent !== null;
-                if (isVisible) {
-                    waitForInteract(() => {
-                        setTimeout(initializeMapWhenReady, 150);
+    
+    // Initialize Panellum with explicit image URL (from Livewire event)
+    function initAdminPanellumWithImage(imageUrl, existingHotspots = []) {
+        const container = document.getElementById('admin-panellum-viewer');
+        if (!container || !imageUrl) return;
+        
+        if (typeof window.pannellum !== 'undefined') {
+            try {
+                container.innerHTML = ''; // Clear container
+                
+                // Enhanced configuration with hotspot support
+                const config = {
+                    type: 'equirectangular',
+                    panorama: imageUrl,
+                    autoLoad: true,
+                    showControls: true,
+                    showFullscreenCtrl: false, // We handle fullscreen manually
+                    showZoomCtrl: true,
+                    mouseZoom: true,
+                    keyboardZoom: true,
+                    hfov: 90,
+                    minHfov: 50,
+                    maxHfov: 120,
+                    hotSpots: [],
+                    hotSpotDebug: false,
+                    showTitle: true,
+                    author: 'Admin Panel',
+                    title: '360° Game Location View'
+                };
+                
+                // Add existing hotspot if coordinates exist (legacy support)
+                
+                // Add database hotspots
+                if (existingHotspots && existingHotspots.length > 0) {
+                    existingHotspots.forEach((hotspot, index) => {
+                        config.hotSpots.push({
+                            id: hotspot.id || `db-hotspot-${index}`,
+                            pitch: parseFloat(hotspot.pitch || 0),
+                            yaw: parseFloat(hotspot.yaw || 0),
+                            type: hotspot.type || 'info',
+                            text: hotspot.text || hotspot.title || 'Hotspot',
+                            cssClass: hotspot.cssClass || 'custom-admin-hotspot'
+                        });
                     });
                 }
+                
+                const viewer = window.pannellum.viewer('admin-panellum-viewer', config);
+                
+                // Store viewer reference and config
+                window.adminPanellumViewer = viewer;
+                window.adminPanellumConfig = config;
+                window.adminHotspotsVisible = true;
+                
+                // Add click listener for adding new hotspots
+                viewer.on('click', function(event) {
+                    console.log('🖱️ PANORAMA CLICK DETECTED - coordinates:', event.pitch.toFixed(2) + '°, ' + event.yaw.toFixed(2) + '°');
+                    console.log('🔍 Click event details:', event);
+                    console.log('🎯 Current hotspot mode:', window.adminHotspotMode);
+                    console.log('🎮 Current game ID:', window.currentGameLocationId);
+                    
+                    if (window.adminHotspotMode) {
+                        console.log('✅ Hotspot mode ACTIVE - proceeding to add hotspot');
+                        addHotspotAtClick(event);
+                    } else {
+                        console.log('⚠️ Hotspot mode DISABLED - enable hotspot mode first');
+                    }
+                });
+                
+                // Update UI on load
+                viewer.on('load', function() {
+                    console.log('🎉 Admin panorama loaded successfully - ready for hotspot placement');
+                    console.log('🔧 Click event listener registered on viewer');
+                    
+                    // Test click event binding
+                    setTimeout(() => {
+                        console.log('🧪 Testing viewer click event registration...');
+                        console.log('📊 Viewer event listeners:', viewer._events);
+                    }, 1000);
+                    
+                    updateHotspotList();
+                    updateHotspotCount();
+                });
+
+                // Handle fullscreen changes
+                document.addEventListener('fullscreenchange', handleFullscreenChange);
+                document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+                document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+                document.addEventListener('MSFullscreenChange', handleFullscreenChange);
+                
+            } catch (e) {
+                container.innerHTML = '<div class="flex items-center justify-center h-full text-red-600">Error creating 360° viewer</div>';
             }
-        });
-    });
-
-    function initializeMapWhenReady() {
-        // Check if elements exist
-        const mapImage = document.getElementById('admin-map-image');
-        const marker = document.getElementById('admin-location-marker');
-        const mapContainer = document.querySelector('.map-container-enhanced');
-        
-        if (!mapImage || !marker || !mapContainer) {
-            setTimeout(initializeMapWhenReady, 200);
-            return;
+        } else {
+            container.innerHTML = '<div class="flex items-center justify-center h-full text-red-600">Panellum library not loaded</div>';
         }
-        
-        if (window.mapInteractionInitialized) {
-            // Reset flag to allow reinitialization
-            window.mapInteractionInitialized = false;
-        }
-        initializeInteractiveMap();
     }
-
-    function initializeInteractiveMap() {
-        const mapImage = document.getElementById('admin-map-image');
-        const marker = document.getElementById('admin-location-marker');
-        const mapContainer = document.querySelector('.map-container-enhanced');
-        
-        if (!mapImage || !marker || !mapContainer) {
-            return;
-        }
-
-        // Check if InteractJS is available
-        if (typeof window.interact === 'undefined') {
-            console.warn('InteractJS not available');
-            return;
-        }
-        
-        // Destroy existing interact instance if it exists
-        if (window.currentInteractInstance) {
+    
+    function resetAdminPanellum() {
+        if (window.adminPanellumViewer) {
             try {
-                window.currentInteractInstance.unset();
+                window.adminPanellumViewer.lookAt(0, 0, 90);
             } catch (e) {
             }
         }
-        
-        // Remove existing click handlers to avoid duplicates
-        if (window.mapClickHandler) {
-            mapContainer.removeEventListener('click', window.mapClickHandler);
+    }
+    
+    // Fullscreen functionality
+    function toggleFullscreenPanellum() {
+        console.log('🔍 Fullscreen button clicked');
+        const container = document.getElementById('admin-panellum-viewer');
+        if (!container) {
+            console.error('❌ Container not found');
+            return;
         }
+        console.log('📦 Container found:', container);
         
-        // 1. Set up click positioning on map container
-        window.mapClickHandler = function(event) {
-            // Don't handle clicks on the marker itself
-            if (event.target === marker || marker.contains(event.target)) {
-                return;
+        if (!document.fullscreenElement) {
+            // Enter fullscreen
+            console.log('🚀 Entering fullscreen mode');
+            if (container.requestFullscreen) {
+                container.requestFullscreen().catch(e => console.log('Fullscreen error:', e));
+            } else if (container.webkitRequestFullscreen) {
+                container.webkitRequestFullscreen();
+            } else if (container.mozRequestFullScreen) {
+                container.mozRequestFullScreen();
+            } else if (container.msRequestFullscreen) {
+                container.msRequestFullscreen();
             }
             
-            const rect = mapImage.getBoundingClientRect();
-            const x = event.clientX - rect.left;
-            const y = event.clientY - rect.top;
+            // Update button text
+            updateFullscreenButton(true);
+        } else {
+            // Exit fullscreen
+            console.log('🔙 Exiting fullscreen mode');
+            if (document.exitFullscreen) {
+                document.exitFullscreen().catch(e => console.log('Exit fullscreen error:', e));
+            } else if (document.webkitExitFullscreen) {
+                document.webkitExitFullscreen();
+            } else if (document.mozCancelFullScreen) {
+                document.mozCancelFullScreen();
+            } else if (document.msExitFullscreen) {
+                document.msExitFullscreen();
+            }
             
-            // Keep within bounds
-            const clampedX = Math.max(0, Math.min(x, rect.width));
-            const clampedY = Math.max(0, Math.min(y, rect.height));
-            
-            
-            // Position marker
-            positionMarker(Math.round(clampedX), Math.round(clampedY));
-            
-            // Update coordinates
-            updateLivewireCoordinates(Math.round(clampedX), Math.round(clampedY));
-            
-            // Add visual feedback
-            createClickFeedback(clampedX, clampedY);
+            // Update button text
+            updateFullscreenButton(false);
+        }
+    }
+    
+    // Update fullscreen button appearance
+    function updateFullscreenButton(isFullscreen) {
+        const button = document.querySelector('[onclick="toggleFullscreenPanellum()"]');
+        if (button) {
+            const icon = button.querySelector('i');
+            if (isFullscreen) {
+                if (icon) icon.className = 'fas fa-compress mr-1';
+                button.innerHTML = '<i class="fas fa-compress mr-1"></i> Exit Fullscreen';
+            } else {
+                if (icon) icon.className = 'fas fa-expand mr-1';
+                button.innerHTML = '<i class="fas fa-expand mr-1"></i> Fullscreen';
+            }
+        }
+    }
+    
+    // Handle fullscreen change events
+    function handleFullscreenChange() {
+        const isFullscreen = !!(document.fullscreenElement || 
+                               document.webkitFullscreenElement || 
+                               document.mozFullScreenElement || 
+                               document.msFullscreenElement);
+        
+        console.log('📺 Fullscreen changed:', isFullscreen);
+        updateFullscreenButton(isFullscreen);
+        
+        // Ensure hotspot functionality persists in fullscreen
+        if (window.adminPanellumViewer) {
+            // Refresh hotspots to ensure they display correctly
+            setTimeout(() => {
+                if (window.adminHotspotsVisible && window.adminPanellumConfig) {
+                    const hotspots = window.adminPanellumConfig.hotSpots || [];
+                    hotspots.forEach((hotspot, index) => {
+                        try {
+                            // Remove and re-add to ensure proper positioning
+                            window.adminPanellumViewer.removeHotSpot(`hotspot-${index}`);
+                            window.adminPanellumViewer.addHotSpot({
+                                ...hotspot,
+                                id: `hotspot-${index}`
+                            });
+                        } catch (e) {
+                            // Hotspot might not exist, just add it
+                            window.adminPanellumViewer.addHotSpot({
+                                ...hotspot,
+                                id: `hotspot-${index}`
+                            });
+                        }
+                    });
+                }
+            }, 500);
+        }
+    }
+    
+    // Hotspot management
+    function toggleHotspots() {
+        console.log('📍 Hotspots button clicked');
+        if (!window.adminPanellumViewer) {
+            console.error('❌ No Panellum viewer found');
+            return;
+        }
+        console.log('✅ Viewer found, current hotspots visible:', window.adminHotspotsVisible);
+        
+        if (window.adminHotspotsVisible) {
+            // Hide hotspots
+            const hotspots = window.adminPanellumConfig.hotSpots || [];
+            hotspots.forEach((hotspot, index) => {
+                window.adminPanellumViewer.removeHotSpot(`hotspot-${index}`);
+            });
+            window.adminHotspotsVisible = false;
+            updateHotspotButton(false);
+        } else {
+            // Show hotspots
+            const hotspots = window.adminPanellumConfig.hotSpots || [];
+            hotspots.forEach((hotspot, index) => {
+                window.adminPanellumViewer.addHotSpot({
+                    ...hotspot,
+                    id: `hotspot-${index}`
+                });
+            });
+            window.adminHotspotsVisible = true;
+            updateHotspotButton(true);
+        }
+    }
+    
+    // Add hotspot at click position
+    function addHotspotAtClick(event) {
+        if (!window.adminPanellumViewer || !window.currentGameLocationId || !window.adminHotspotMode) {
+            return;
+        }
+        
+        // Get exact coordinates from the click event
+        const pitch = parseFloat(event.pitch);
+        const yaw = parseFloat(event.yaw);
+        
+        if (isNaN(pitch) || isNaN(yaw)) {
+            console.error('Invalid coordinates:', event);
+            return;
+        }
+        
+        const title = `Hotspot (${pitch.toFixed(1)}°, ${yaw.toFixed(1)}°)`;
+        
+        console.log('📍 Adding hotspot at EXACT coordinates:', {
+            clickPitch: pitch,
+            clickYaw: yaw,
+            precisionPitch: pitch.toFixed(5),
+            precisionYaw: yaw.toFixed(5)
+        });
+        
+        // Save to database immediately with exact coordinates
+        @this.call('saveHotspot', window.currentGameLocationId, pitch, yaw, title)
+            .then((hotspotId) => {
+                if (hotspotId && hotspotId !== false) {
+                    // Add hotspot to viewer with EXACT same coordinates
+                    const hotspot = {
+                        id: hotspotId,
+                        pitch: pitch, // Use exact pitch from click
+                        yaw: yaw,     // Use exact yaw from click
+                        type: 'info',
+                        text: title,
+                        cssClass: 'custom-admin-hotspot'
+                    };
+                    
+                    console.log('✅ Adding hotspot to viewer with coordinates:', {
+                        displayPitch: hotspot.pitch,
+                        displayYaw: hotspot.yaw,
+                        difference: {
+                            pitch: Math.abs(pitch - hotspot.pitch),
+                            yaw: Math.abs(yaw - hotspot.yaw)
+                        }
+                    });
+                    
+                    window.adminPanellumViewer.addHotSpot(hotspot);
+                    
+                    // Add to config
+                    if (!window.adminPanellumConfig.hotSpots) {
+                        window.adminPanellumConfig.hotSpots = [];
+                    }
+                    window.adminPanellumConfig.hotSpots.push(hotspot);
+                    
+                    // Update UI
+                    updateHotspotList();
+                    updateHotspotCount();
+                    
+                    // Auto-disable hotspot mode
+                    window.adminHotspotMode = false;
+                    const button = document.querySelector('[onclick="enableHotspotMode()"]');
+                    if (button) {
+                        button.classList.remove('bg-red-600', 'hover:bg-red-700');
+                        button.classList.add('bg-orange-600', 'hover:bg-orange-700');
+                        button.innerHTML = '<i class="fas fa-plus sm:mr-1"></i><span class="hidden sm:inline"> Add</span>';
+                    }
+                }
+            })
+            .catch((error) => {
+                console.error('Error saving hotspot:', error);
+            });
+    }
+    
+    // Clear all hotspots
+    function clearAllHotspots() {
+        if (!window.adminPanellumViewer || !window.adminPanellumConfig) return;
+        
+        // Remove all hotspots from viewer
+        const hotspots = window.adminPanellumConfig.hotSpots || [];
+        hotspots.forEach(hotspot => {
+            try {
+                window.adminPanellumViewer.removeHotSpot(hotspot.id);
+            } catch (e) {
+                // Hotspot might not exist
+            }
+        });
+        
+        // Keep only default hotspot (if exists)
+        const defaultHotspots = hotspots.filter(h => h.cssClass === 'admin-hotspot-marker');
+        window.adminPanellumConfig.hotSpots = defaultHotspots;
+        
+        // Update UI
+        updateHotspotList();
+        updateHotspotCount();
+        
+        console.log('Cleared all custom hotspots');
+    }
+    
+    // Export hotspots to JSON
+    function exportHotspots() {
+        if (!window.adminPanellumConfig || !window.adminPanellumConfig.hotSpots) {
+            alert('No hotspots to export');
+            return;
+        }
+        
+        const hotspots = window.adminPanellumConfig.hotSpots.filter(h => h.cssClass !== 'admin-hotspot-marker');
+        const data = {
+            location: '@if($selectedGame){{ $selectedGame->name }}@endif',
+            exported_at: new Date().toISOString(),
+            hotspots: hotspots
         };
         
-        mapContainer.addEventListener('click', window.mapClickHandler);
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `hotspots-{{ Str::slug($selectedGame->name ?? 'location') }}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
         
-        // 2. Set up InteractJS draggable on marker
-        try {
-            window.currentInteractInstance = window.interact('#admin-location-marker')
-                .draggable({
-                    // Restrict movement to the map image bounds
-                    modifiers: [
-                        window.interact.modifiers.restrict({
-                            restriction: function() {
-                                const rect = mapImage.getBoundingClientRect();
-                                const containerRect = mapContainer.getBoundingClientRect();
-                                return {
-                                    x: containerRect.left - rect.left,
-                                    y: containerRect.top - rect.top,
-                                    width: rect.width,
-                                    height: rect.height
-                                };
-                            },
-                            elementRect: { top: 0.5, left: 0.5, bottom: 0.5, right: 0.5 },
-                            endOnly: true
-                        })
-                    ],
-                    listeners: {
-                        start(event) {
-                            event.target.classList.add('dragging');
-                            mapContainer.classList.add('dragging');
-                        },
+        console.log('Exported hotspots:', hotspots);
+    }
+    
+    // Import hotspots from JSON
+    function importHotspots() {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.json';
+        input.onchange = function(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    if (data.hotspots && Array.isArray(data.hotspots)) {
+                        // Add imported hotspots
+                        data.hotspots.forEach(hotspot => {
+                            const newHotspot = {
+                                ...hotspot,
+                                id: `hotspot-${Date.now()}-${Math.random()}`,
+                                cssClass: 'custom-admin-hotspot'
+                            };
+                            
+                            window.adminPanellumViewer.addHotSpot(newHotspot);
+                            window.adminPanellumConfig.hotSpots.push(newHotspot);
+                        });
                         
-                        move(event) {
-                            const target = event.target;
-                            
-                            // Get current position
-                            const x = (parseFloat(target.getAttribute('data-x')) || 0) + event.dx;
-                            const y = (parseFloat(target.getAttribute('data-y')) || 0) + event.dy;
-                            
-                            // Update the element's position
-                            target.style.transform = `translate(${x}px, ${y}px) translate(-50%, -50%)`;
-                            
-                            // Store the position
-                            target.setAttribute('data-x', x);
-                            target.setAttribute('data-y', y);
-                            
-                            // Calculate absolute coordinates based on original position + offset
-                            const originalLeft = parseFloat(target.style.left) || 0;
-                            const originalTop = parseFloat(target.style.top) || 0;
-                            const absoluteX = originalLeft + x;
-                            const absoluteY = originalTop + y;
-                            
-                            // Update coordinates in real-time
-                            updateLivewireCoordinates(Math.round(absoluteX), Math.round(absoluteY));
-                        },
-                        
-                        end(event) {
-                            event.target.classList.remove('dragging');
-                            mapContainer.classList.remove('dragging');
-                            
-                            // Final coordinate update and position normalization
-                            const target = event.target;
-                            const x = parseFloat(target.getAttribute('data-x')) || 0;
-                            const y = parseFloat(target.getAttribute('data-y')) || 0;
-                            
-                            // Calculate final position
-                            const originalLeft = parseFloat(target.style.left) || 0;
-                            const originalTop = parseFloat(target.style.top) || 0;
-                            const finalX = originalLeft + x;
-                            const finalY = originalTop + y;
-                            
-                            // Update the marker's actual position
-                            target.style.left = finalX + 'px';
-                            target.style.top = finalY + 'px';
-                            target.style.transform = 'translate(-50%, -50%)';
-                            target.setAttribute('data-x', 0);
-                            target.setAttribute('data-y', 0);
-                            
-                            // Final coordinate update
-                            updateLivewireCoordinates(Math.round(finalX), Math.round(finalY));
-                        }
+                        updateHotspotList();
+                        updateHotspotCount();
+                        alert(`Imported ${data.hotspots.length} hotspots`);
+                    } else {
+                        alert('Invalid hotspot file format');
                     }
-                });
-            
-        } catch (error) {
-            console.error('Failed to initialize InteractJS draggable:', error);
+                } catch (err) {
+                    alert('Error reading hotspot file: ' + err.message);
+                }
+            };
+            reader.readAsText(file);
+        };
+        input.click();
+    }
+    
+    // Update hotspot count display
+    function updateHotspotCount() {
+        const countDisplay = document.getElementById('count-display');
+        if (countDisplay && window.adminPanellumConfig) {
+            const total = window.adminPanellumConfig.hotSpots ? window.adminPanellumConfig.hotSpots.length : 0;
+            countDisplay.textContent = total;
+        }
+    }
+    
+    // Update hotspot list display
+    function updateHotspotList() {
+        const listContainer = document.getElementById('hotspot-list');
+        if (!listContainer || !window.adminPanellumConfig) return;
+        
+        const hotspots = window.adminPanellumConfig.hotSpots || [];
+        
+        if (hotspots.length === 0) {
+            listContainer.innerHTML = '<div class="text-xs text-gray-500 dark:text-gray-400 italic">No hotspots added yet</div>';
             return;
         }
         
-        // 3. Initialize marker position if coordinates exist
-        try {
-            // Use Livewire v3 syntax to get component data
-            const component = Livewire.find(document.querySelector('[wire\\:id]').getAttribute('wire:id'));
-            const currentX = parseInt(component.get('coordinate_x')) || 0;
-            const currentY = parseInt(component.get('coordinate_y')) || 0;
+        const hotspotItems = hotspots.map((hotspot, index) => {
+            const isDefault = hotspot.cssClass === 'admin-hotspot-marker' || hotspot.id === 'default-hotspot';
+            const isDatabase = !isDefault && !isNaN(parseInt(hotspot.id)); // Database IDs are integers
+            const typeIcon = isDefault ? 'fa-home' : (isDatabase ? 'fa-database' : 'fa-map-marker-alt');
+            const typeColor = isDefault ? 'text-blue-600' : (isDatabase ? 'text-green-600' : 'text-orange-600');
             
-            if (currentX > 0 || currentY > 0) {
-                positionMarker(currentX, currentY);
-            } else {
-                // Position marker at center if no coordinates set
-                const rect = mapImage.getBoundingClientRect();
-                const centerX = rect.width / 2;
-                const centerY = rect.height / 2;
-                positionMarker(centerX, centerY);
-                updateLivewireCoordinates(Math.round(centerX), Math.round(centerY));
-            }
-        } catch (error) {
-            // Fallback to center positioning
-            const rect = mapImage.getBoundingClientRect();
-            if (rect.width > 0 && rect.height > 0) {
-                const centerX = rect.width / 2;
-                const centerY = rect.height / 2;
-                positionMarker(centerX, centerY);
-            }
-        }
+            return `
+                <div class="flex items-center justify-between p-2 bg-white dark:bg-gray-600 rounded text-xs">
+                    <div class="flex items-center space-x-2">
+                        <i class="fas ${typeIcon} ${typeColor}"></i>
+                        <span class="font-medium">${hotspot.text || 'Hotspot'}</span>
+                        ${isDatabase ? '<span class="text-xs text-green-500">(DB)</span>' : ''}
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <span class="text-gray-500 dark:text-gray-400">
+                            ${Math.round(hotspot.pitch)}°, ${Math.round(hotspot.yaw)}°
+                        </span>
+                        ${!isDefault ? `<button onclick="removeHotspot('${hotspot.id}')" class="text-red-600 hover:text-red-800" title="Remove"><i class="fas fa-times"></i></button>` : ''}
+                    </div>
+                </div>
+            `;
+        }).join('');
         
-        window.mapInteractionInitialized = true;
+        listContainer.innerHTML = hotspotItems;
     }
-
-    function positionMarker(x, y) {
-        const marker = document.getElementById('admin-location-marker');
-        if (!marker) return;
+    
+    // Remove individual hotspot
+    function removeHotspot(hotspotId) {
+        if (!window.adminPanellumViewer || !window.adminPanellumConfig) return;
         
-        // Reset any transform from dragging
-        marker.style.transform = 'translate(-50%, -50%)';
-        marker.setAttribute('data-x', 0);
-        marker.setAttribute('data-y', 0);
-        
-        // Set absolute position
-        marker.style.left = x + 'px';
-        marker.style.top = y + 'px';
-        
-        // Add animation
-        marker.style.transition = 'transform 0.3s ease-out';
-        marker.style.transform = 'translate(-50%, -50%) scale(1.2)';
-        
-        setTimeout(() => {
-            marker.style.transform = 'translate(-50%, -50%) scale(1)';
-            setTimeout(() => {
-                marker.style.transition = '';
-            }, 300);
-        }, 150);
+        // Delete from database via Livewire
+        @this.call('deleteHotspot', hotspotId)
+            .then((success) => {
+                if (success) {
+                    try {
+                        window.adminPanellumViewer.removeHotSpot(hotspotId);
+                        window.adminPanellumConfig.hotSpots = window.adminPanellumConfig.hotSpots.filter(h => h.id != hotspotId);
+                        
+                        updateHotspotList();
+                        updateHotspotCount();
+                        
+                        console.log('Removed hotspot from database:', hotspotId);
+                    } catch (e) {
+                        console.error('Error removing hotspot from viewer:', e);
+                    }
+                } else {
+                    console.error('Failed to delete hotspot from database');
+                }
+            })
+            .catch((error) => {
+                console.error('Error deleting hotspot:', error);
+            });
     }
-
-    function updateLivewireCoordinates(x, y) {
-        // Validate coordinates
-        if (typeof x !== 'number' || typeof y !== 'number' || isNaN(x) || isNaN(y)) {
-            console.warn('Invalid coordinates provided:', x, y);
+    
+    // Clear all database hotspots
+    function clearAllDatabaseHotspots() {
+        if (!window.currentGameLocationId) {
+            console.error('No game location ID available');
             return;
         }
         
-        // Update Livewire component using v3 syntax
-        try {
-            const wireElement = document.querySelector('[wire\\:id]');
-            if (!wireElement) {
-                console.warn('No Livewire element found');
-                return;
-            }
+        if (!confirm('Are you sure you want to delete all hotspots? This cannot be undone.')) {
+            return;
+        }
+        
+        @this.call('clearAllHotspots', window.currentGameLocationId)
+            .then((deletedCount) => {
+                if (deletedCount !== false) {
+                    // Clear from viewer
+                    if (window.adminPanellumViewer && window.adminPanellumConfig) {
+                        const hotspots = window.adminPanellumConfig.hotSpots || [];
+                        hotspots.forEach(hotspot => {
+                            try {
+                                if (hotspot.id !== 'default-hotspot') { // Keep legacy default hotspot
+                                    window.adminPanellumViewer.removeHotSpot(hotspot.id);
+                                }
+                            } catch (e) {
+                                // Hotspot might not exist
+                            }
+                        });
+                        
+                        // Keep only default hotspot
+                        window.adminPanellumConfig.hotSpots = hotspots.filter(h => h.id === 'default-hotspot');
+                        
+                        updateHotspotList();
+                        updateHotspotCount();
+                    }
+                    
+                    console.log(`Cleared ${deletedCount} hotspots from database`);
+                } else {
+                    console.error('Failed to clear hotspots from database');
+                }
+            })
+            .catch((error) => {
+                console.error('Error clearing hotspots:', error);
+            });
+    }
+    
+    // Export database hotspots
+    function exportDatabaseHotspots() {
+        if (!window.currentGameLocationId) {
+            console.error('No game location ID available');
+            return;
+        }
+        
+        @this.call('exportHotspots', window.currentGameLocationId)
+            .then((data) => {
+                if (data) {
+                    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `hotspots-${data.location_name || 'location'}-${new Date().toISOString().split('T')[0]}.json`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    
+                    console.log('Exported hotspots:', data);
+                } else {
+                    console.error('Failed to export hotspots');
+                }
+            })
+            .catch((error) => {
+                console.error('Error exporting hotspots:', error);
+            });
+    }
+    
+    // Import database hotspots
+    function importDatabaseHotspots() {
+        if (!window.currentGameLocationId) {
+            console.error('No game location ID available');
+            return;
+        }
+        
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.json';
+        input.onchange = function(event) {
+            const file = event.target.files[0];
+            if (!file) return;
             
-            const component = Livewire.find(wireElement.getAttribute('wire:id'));
-            if (component) {
-                component.set('coordinate_x', x);
-                component.set('coordinate_y', y);
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    const hotspots = data.hotspots || [];
+                    
+                    if (!Array.isArray(hotspots)) {
+                        alert('Invalid hotspot file format');
+                        return;
+                    }
+                    
+                    @this.call('importHotspots', window.currentGameLocationId, hotspots)
+                        .then((importedCount) => {
+                            if (importedCount !== false) {
+                                // Refresh the entire panorama to load new hotspots
+                                setTimeout(() => {
+                                    location.reload(); // Simple solution - reload the page to refresh hotspots
+                                }, 1000);
+                                
+                                console.log(`Imported ${importedCount} hotspots to database`);
+                            } else {
+                                console.error('Failed to import hotspots to database');
+                            }
+                        })
+                        .catch((error) => {
+                            console.error('Error importing hotspots:', error);
+                        });
+                        
+                } catch (err) {
+                    alert('Error reading hotspot file: ' + err.message);
+                }
+            };
+            reader.readAsText(file);
+        };
+        input.click();
+    }
+    
+    // Update hotspot button appearance
+    function updateHotspotButton(visible) {
+        const button = document.querySelector('[onclick="toggleHotspots()"]');
+        if (button) {
+            const icon = button.querySelector('i');
+            if (visible) {
+                button.classList.remove('bg-purple-600', 'hover:bg-purple-700');
+                button.classList.add('bg-yellow-600', 'hover:bg-yellow-700');
+                if (icon) icon.className = 'fas fa-eye mr-1';
             } else {
-                console.warn('Livewire component not found');
+                button.classList.remove('bg-yellow-600', 'hover:bg-yellow-700');
+                button.classList.add('bg-purple-600', 'hover:bg-purple-700');
+                if (icon) icon.className = 'fas fa-map-marker-alt mr-1';
             }
-        } catch (error) {
-            console.warn('Failed to update Livewire coordinates:', error);
         }
+    }
+    
+    // Enable hotspot creation mode
+    function enableHotspotMode() {
+        console.log('🎯 Add Hotspot button clicked');
+        window.adminHotspotMode = !window.adminHotspotMode;
+        console.log('Hotspot mode now:', window.adminHotspotMode);
+        console.log('Viewer available:', !!window.adminPanellumViewer);
+        console.log('Game location ID:', window.currentGameLocationId);
         
-        // Update visual display
-        const coordinateDisplay = document.getElementById('coordinate-display');
-        if (coordinateDisplay) {
-            coordinateDisplay.textContent = `${x}, ${y}`;
-            coordinateDisplay.style.color = '#10b981';
+        const button = document.querySelector('[onclick="enableHotspotMode()"]');
+        if (button) {
+            if (window.adminHotspotMode) {
+                button.classList.remove('bg-orange-600', 'hover:bg-orange-700');
+                button.classList.add('bg-red-600', 'hover:bg-red-700');
+                button.innerHTML = '<i class="fas fa-times sm:mr-1"></i><span class="hidden sm:inline"> Exit Mode</span>';
+                
+                // Show instruction
+                if (window.adminPanellumViewer) {
+                    console.log('✅ Hotspot mode enabled - Click anywhere in the panorama to add a hotspot');
+                    alert('Hotspot mode enabled! Click anywhere in the panorama to add a hotspot.');
+                } else {
+                    console.error('❌ Panorama viewer not ready');
+                    alert('Panorama viewer not ready. Please wait for it to load.');
+                }
+            } else {
+                button.classList.remove('bg-red-600', 'hover:bg-red-700');
+                button.classList.add('bg-orange-600', 'hover:bg-orange-700');
+                button.innerHTML = '<i class="fas fa-plus sm:mr-1"></i><span class="hidden sm:inline"> Add</span>';
+                console.log('Hotspot mode disabled');
+            }
+        }
+    }
+    
+    // Debug function
+    function debugPanellum() {
+        console.log('=== PANELLUM DEBUG ===');
+        console.log('Panellum available:', typeof window.pannellum);
+        console.log('Container found:', !!document.getElementById('admin-panellum-viewer'));
+        console.log('Current viewer:', window.adminPanellumViewer);
+        console.log('Hotspot mode:', window.adminHotspotMode);
+        console.log('Game location ID:', window.currentGameLocationId);
+    }
+    
+    // Enhanced debug function
+    function debugPanellumState() {
+        console.log('=== PANORAMA STATE ===');
+        console.log('Viewer exists:', !!window.adminPanellumViewer);
+        console.log('Hotspot mode:', window.adminHotspotMode);
+        console.log('Game ID:', window.currentGameLocationId);
+        
+        if (window.adminPanellumViewer) {
+            console.log('Current view - Pitch:', window.adminPanellumViewer.getPitch(), 'Yaw:', window.adminPanellumViewer.getYaw());
+        }
+    }
+    
+    
+    // Auto-initialize when modal opens
+    document.addEventListener('livewire:init', function() {
+        Livewire.on('panorama-modal-opened', function(eventData) {
+            // Extract data from array if needed
+            let data = eventData;
+            if (Array.isArray(eventData) && eventData.length > 0) {
+                data = eventData[0];
+            }
             
-            // Add flash animation
-            coordinateDisplay.style.animation = 'none';
-            coordinateDisplay.offsetHeight; // Trigger reflow
-            coordinateDisplay.style.animation = 'coordinateFlash 0.5s ease-out';
-        }
-    }
-
-    function createClickFeedback(x, y) {
-        const mapContainer = document.querySelector('.map-container-enhanced');
-        if (!mapContainer) return;
-        
-        const ripple = document.createElement('div');
-        ripple.className = 'ripple-effect';
-        ripple.style.cssText = `
-            position: absolute;
-            left: ${x}px;
-            top: ${y}px;
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            background: rgba(59, 130, 246, 0.5);
-            transform: translate(-50%, -50%) scale(0);
-            pointer-events: none;
-            z-index: 100;
-        `;
-        
-        mapContainer.appendChild(ripple);
-        
-        setTimeout(() => {
-            ripple.remove();
-        }, 600);
-    }
-
-    // Function to manually reinitialize (useful for debugging)
-    window.reinitializeMap = function() {
-        window.mapInteractionInitialized = false;
-        if (window.currentInteractInstance) {
-            window.currentInteractInstance.unset();
-            window.currentInteractInstance = null;
-        }
-        waitForInteract(() => {
-            initializeMapWhenReady();
+            // Store the current game location ID
+            window.currentGameLocationId = data.gameId;
+            
+            setTimeout(function() {
+                if (data && data.imagePath) {
+                    const imageUrl = '/storage/' + data.imagePath;
+                    initAdminPanellumWithImage(imageUrl, data.hotspots || []);
+                } else {
+                    initAdminPanellum();
+                }
+            }, 500);
         });
-    };
-
-    // Clean up on page unload
-    window.addEventListener('beforeunload', function() {
-        if (window.currentInteractInstance) {
-            window.currentInteractInstance.unset();
-        }
+        
+        Livewire.on('panorama-modal-closed', function() {
+            if (window.adminPanellumViewer) {
+                try {
+                    window.adminPanellumViewer.destroy();
+                } catch (e) {}
+                window.adminPanellumViewer = null;
+            }
+        });
     });
-    </script>
 
-    <!-- Keep your existing CSS -->
-    <style>
-    @keyframes coordinateFlash {
-        0% { background-color: transparent; }
-        50% { background-color: rgba(16, 185, 129, 0.2); }
-        100% { background-color: transparent; }
+</script>
+
+<!-- Simple Admin Hotspot Styling -->
+<style>
+    .admin-hotspot {
+        background: #dc2626 !important;
+        border: 2px solid white !important;
+        border-radius: 50% !important;
+        width: 16px !important;
+        height: 16px !important;
     }
     
-    /* Your existing styles stay the same */
-    @keyframes ripple {
-        0% {
-            transform: translate(-50%, -50%) scale(0);
-            opacity: 1;
+    .admin-hotspot:hover {
+        transform: scale(1.3);
+    }
+    
+    /* Responsive table adjustments */
+    @media (max-width: 768px) {
+        .table-responsive {
+            font-size: 14px;
         }
-        100% {
-            transform: translate(-50%, -50%) scale(4);
-            opacity: 0;
+    }
+    
+    @media (max-width: 640px) {
+        .table-responsive {
+            font-size: 12px;
         }
     }
     
-    @keyframes successPulse {
-        0% { transform: translate(-50%, -50%) scale(1); }
-        50% { transform: translate(-50%, -50%) scale(1.3); }
-        100% { transform: translate(-50%, -50%) scale(1); }
+    /* Mobile-friendly modal height */
+    @media (max-height: 600px) {
+        #admin-panorama-container {
+            height: 300px !important;
+        }
     }
     
-    .map-container-enhanced {
-        cursor: crosshair;
-        user-select: none;
-        -webkit-user-select: none;
-        -moz-user-select: none;
-        -ms-user-select: none;
-        touch-action: none;
-        -ms-touch-action: none;
+    @media (max-height: 400px) {
+        #admin-panorama-container {
+            height: 200px !important;
+        }
     }
-    
-    .map-container-enhanced.dragging {
-        cursor: grabbing !important;
-    }
-    
-    #admin-location-marker {
-        cursor: grab;
-        touch-action: none;
-        -ms-touch-action: none;
-        pointer-events: auto;
-        user-select: none;
-        -webkit-user-select: none;
-        -moz-user-select: none;
-        -ms-user-select: none;
-        transition: box-shadow 0.2s ease;
-    }
-    
-    #admin-location-marker:hover {
-        box-shadow: 0 6px 20px rgba(239, 68, 68, 0.4);
-    }
-    
-    #admin-location-marker.dragging {
-        cursor: grabbing;
-        z-index: 1000;
-        box-shadow: 0 8px 25px rgba(239, 68, 68, 0.5);
-    }
-    
-    #admin-location-marker > div {
-        pointer-events: none;
-    }
-    
-    .ripple-effect {
-        pointer-events: none;
-        animation: ripple 0.6s ease-out;
-    }
-    </style>
-</div>
+</style>

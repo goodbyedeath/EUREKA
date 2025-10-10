@@ -3,24 +3,47 @@
     "private": true,
     "type": "module",
     "scripts": {
-        "build": "vite build",
-        "dev": "vite"
+        "build": "NODE_OPTIONS=\"--max-old-space-size=96\" timeout 180s vite build",
+        "build-safe": "NODE_OPTIONS=\"--max-old-space-size=64 --max-semi-space-size=32\" timeout 30s vite build",
+        "build-ultra": "NODE_OPTIONS=\"--max-old-space-size=32\" timeout 20s vite build",
+        "build-minimal": "NODE_OPTIONS=\"--max-old-space-size=24 --max-semi-space-size=16 --expose-gc\" timeout 15s vite build --mode production",
+        "build-single": "NODE_OPTIONS=\"--max-old-space-size=64\" timeout 120s vite build",
+        "dev": "vite",
+        "dev-serve": "vite --host --port 5173",
+        "test:playwright": "playwright test"
     },
     "devDependencies": {
-        "@tailwindcss/forms": "^0.5.2",
-        "@tailwindcss/vite": "^4.0.0",
-        "autoprefixer": "^10.4.2",
-        "axios": "^1.8.2",
-        "concurrently": "^9.0.1",
+        "@playwright/test": "^1.55.0",
+        "autoprefixer": "^10.4.21",
         "laravel-vite-plugin": "^1.2.0",
-        "postcss": "^8.4.31",
-        "tailwindcss": "^3.1.0",
+        "postcss": "^8.5.6",
+        "tailwindcss": "^3.4.17",
         "vite": "^6.2.4"
     },
     "dependencies": {
         "@panzoom/panzoom": "^4.6.0",
+        "flipdown": "^0.3.2",
         "interactjs": "^1.10.27",
+        "pannellum": "^2.5.6",
         "panzoom": "^9.4.3",
         "qr-scanner": "^1.4.2"
-    }
+    },
+    "name": "public_html",
+    "version": "1.0.0",
+    "description": "<p align=\"center\"><a href=\"https://laravel.com\" target=\"_blank\"><img src=\"https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg\" width=\"400\" alt=\"Laravel Logo\"></a></p>",
+    "main": "postcss.config.js",
+    "directories": {
+        "test": "tests"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/goodbyedeath/EUREKA.git"
+    },
+    "keywords": [],
+    "author": "",
+    "license": "ISC",
+    "bugs": {
+        "url": "https://github.com/goodbyedeath/EUREKA/issues"
+    },
+    "homepage": "https://github.com/goodbyedeath/EUREKA#readme"
 }

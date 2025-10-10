@@ -11,14 +11,15 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // Call the UserSeeder first to create admin user, then quest locations
-        $this->call(UserSeeder::class);
-        $this->call(QuestLocationSeeder::class);
+        // Only call seeders that can handle existing data gracefully
+        $this->call([
+            FeatureSettingsSeeder::class,
+            HeroSlideSeeder::class,
+        ]);
         
-
-        // Optionally, seed a test user using factory
-        // \App\Models\User::factory(10)->create();
-
-       
+        // UserSeeder is commented out because it creates duplicate users in production
+        // Run: php artisan db:seed --class=UserSeeder --force (only once for initial setup)
+        
+        // QuestLocationSeeder has been removed as it's no longer needed
     }
 }

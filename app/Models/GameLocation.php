@@ -18,12 +18,17 @@ class GameLocation extends Model
         'radius',
         'is_active',
         'created_by',
+        'target_user',
+        'target_type',
+        'target_user_id',
         'max_check_ins_per_user',
         'quest_points',
         'image_path',
         'map_image_path',
         'coordinate_x',
-        'coordinate_y'
+        'coordinate_y',
+        'default_pitch',
+        'default_yaw'
     ];
 
     protected $casts = [
@@ -31,8 +36,11 @@ class GameLocation extends Model
         'radius' => 'integer',
         'max_check_ins_per_user' => 'integer',
         'quest_points' => 'integer',
-        'coordinate_x' => 'integer',
-        'coordinate_y' => 'integer'
+        'coordinate_x' => 'decimal:2',
+        'coordinate_y' => 'decimal:2',
+        'default_pitch' => 'float',
+        'default_yaw' => 'float',
+        'target_user_id' => 'integer'
     ];
 
     // Check if coordinate is within game map bounds
@@ -55,5 +63,17 @@ class GameLocation extends Model
         }
 
         return "X: {$this->coordinate_x}, Y: {$this->coordinate_y}";
+    }
+
+    // Relationship with hotspots
+    public function hotspots(): HasMany
+    {
+        return $this->hasMany(Hotspot::class);
+    }
+
+    // Get active hotspots only
+    public function activeHotspots(): HasMany
+    {
+        return $this->hasMany(Hotspot::class)->where('is_active', true);
     }
 }

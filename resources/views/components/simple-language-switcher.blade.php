@@ -1,5 +1,5 @@
 <!-- Simple Language Switcher with Forms -->
-<div class="flex items-center space-x-1 bg-gray-100 border border-gray-300 rounded-lg p-1" title="Language Switcher">
+<div class="flex items-center space-x-1 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg p-1" title="Language Switcher">
     @php
         $currentLocale = app()->getLocale();
         $supportedLocales = config('app.supported_locales', []);

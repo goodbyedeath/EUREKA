@@ -7,6 +7,7 @@ use Livewire\Component;
 use App\Models\Questionnaire;
 use App\Models\Question;
 use Livewire\Attributes\Validate;
+use Livewire\Attributes\On;
 use Illuminate\Validation\Rule;
 use App\Enums\QuestionType;
 use Livewire\WithFileUploads;
@@ -33,9 +34,11 @@ class QuestionForm extends Component
     public array $uploadedImages = [];
     public $newImage;
 
-    protected $listeners = [
-        'edit-question' => 'loadQuestionForEdit'
-    ];
+    #[On('edit-question')]
+    public function handleEditQuestion($questionId)
+    {
+        $this->loadQuestionForEdit($questionId);
+    }
 
     public function mount(Questionnaire $questionnaire)
     {
@@ -48,8 +51,12 @@ class QuestionForm extends Component
         $rules = [
             'newQuestion.question' => 'required|string|max:1000',
             'newQuestion.type' => ['required', Rule::in(QuestionType::values())],
-            'newQuestion.points' => 'required|integer|min:1',
         ];
+
+        // Points validation - not required for brief questions
+        if ($this->newQuestion['type'] !== 'brief') {
+            $rules['newQuestion.points'] = 'required|integer|min:1';
+        }
 
         // Type-specific validation
         switch ($this->newQuestion['type']) {
@@ -74,6 +81,12 @@ class QuestionForm extends Component
                     'uploadedImages.*' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
                     'newImage' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
                 ]);
+                break;
+            case 'brief':
+                $rules = array_merge($rules, [
+                    'newQuestion.description' => 'nullable|string|max:1000',
+                ]);
+                // Brief questions don't need correct answers or points
                 break;
         }
 
@@ -239,6 +252,13 @@ class QuestionForm extends Component
             $questionData['images'] = $this->storeUploadedImages();
         }
 
+        // Handle brief question specifics
+        if ($questionData['type'] === 'brief') {
+            $questionData['points'] = 0;
+            $questionData['correct_answer'] = null;
+            // Description is handled normally as it's shared with fun_game
+        }
+
         return $questionData;
     }
 
@@ -279,10 +299,23 @@ class QuestionForm extends Component
         // Reset fun game fields for non-fun-game types
         if ($this->newQuestion['type'] !== 'fun_game') {
             $this->newQuestion['game_name'] = '';
-            $this->newQuestion['description'] = '';
+            if ($this->newQuestion['type'] !== 'brief') {
+                $this->newQuestion['description'] = '';
+            }
             $this->newQuestion['images'] = [];
             $this->uploadedImages = [];
             $this->newImage = null;
+        }
+
+        // Handle brief question specifics
+        if ($this->newQuestion['type'] === 'brief') {
+            $this->newQuestion['points'] = 0;
+            $this->newQuestion['correct_answer'] = null;
+        }
+
+        // Reset brief description when changing away from brief (but not to fun_game)
+        if ($this->newQuestion['type'] !== 'brief' && $this->newQuestion['type'] !== 'fun_game') {
+            $this->newQuestion['description'] = '';
         }
         
         // Clear related validation errors

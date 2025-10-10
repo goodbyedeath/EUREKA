@@ -15,7 +15,6 @@ class QuestLocation extends Model
         'name',
         'description',
         'what_to_do',
-        'google_map_embed_url',
         'latitude',
         'longitude',
         'radius',
@@ -116,27 +115,6 @@ class QuestLocation extends Model
         );
     }
 
-    // Clean and validate Google Maps embed URL
-    public function setGoogleMapEmbedUrlAttribute(?string $value): void
-    {
-        if (empty($value)) {
-            $this->attributes['google_map_embed_url'] = null;
-            return;
-        }
-
-        // Extract URL from iframe if provided
-        if (str_contains($value, '<iframe')) {
-            preg_match('/src="([^"]*)"/', $value, $matches);
-            $value = $matches[1] ?? $value;
-        }
-
-        // Ensure it's a valid Google Maps embed URL
-        if (str_contains($value, 'google.com/maps/embed')) {
-            $this->attributes['google_map_embed_url'] = $value;
-        } else {
-            $this->attributes['google_map_embed_url'] = null;
-        }
-    }
 
     // Scope for active locations
     public function scopeActive($query)
@@ -155,32 +133,6 @@ class QuestLocation extends Model
                     ->whereBetween('longitude', [$userLng - $lngRange, $userLng + $lngRange]);
     }
 
-    // Auto-extract coordinates from Google Maps URL
-    public function extractCoordinatesFromUrl(): bool
-    {
-        if (empty($this->google_map_embed_url)) {
-            return false;
-        }
-
-        $url = $this->google_map_embed_url;
-        $patterns = [
-            '/!3d(-?\d+\.?\d*)!4d(-?\d+\.?\d*)/',           // pb parameter
-            '/[?&]q=(-?\d+\.?\d*),(-?\d+\.?\d*)/',          // q parameter  
-            '/[?&]ll=(-?\d+\.?\d*),(-?\d+\.?\d*)/',         // ll parameter
-            '/[?&]center=(-?\d+\.?\d*),(-?\d+\.?\d*)/',     // center parameter
-            '/@(-?\d+\.?\d*),(-?\d+\.?\d*)/',               // @ parameter
-        ];
-
-        foreach ($patterns as $pattern) {
-            if (preg_match($pattern, $url, $matches)) {
-                $this->latitude = (float) $matches[1];
-                $this->longitude = (float) $matches[2];
-                return true;
-            }
-        }
-
-        return false;
-    }
 
     // Format coordinates for display
     public function getFormattedCoordinatesAttribute(): string
@@ -192,15 +144,34 @@ class QuestLocation extends Model
         return number_format($this->latitude, 6) . ', ' . number_format($this->longitude, 6);
     }
 
-    // Get Google Maps direct link (for opening in Google Maps app)
-    public function getGoogleMapsLinkAttribute(): string
+    // Get coordinates in MapLibre format [longitude, latitude]
+    public function getMapLibreCoordinatesAttribute(): ?array
     {
         if (!$this->latitude || !$this->longitude) {
-            return '#';
+            return null;
         }
 
-        return "https://www.google.com/maps/dir/?api=1&destination={$this->latitude},{$this->longitude}";
+        return [(float) $this->longitude, (float) $this->latitude];
     }
+
+    // Check if location has valid coordinates for mapping
+    public function getHasValidCoordinatesAttribute(): bool
+    {
+        // Convert to float for proper comparison
+        $lat = (float) $this->latitude;
+        $lng = (float) $this->longitude;
+        
+        return $this->latitude !== null && 
+               $this->longitude !== null && 
+               $lat !== 0.0 && 
+               $lng !== 0.0 &&
+               $lat >= -90.0 && 
+               $lat <= 90.0 &&
+               $lng >= -180.0 && 
+               $lng <= 180.0;
+    }
+
+
 
     // Clear related caches when model is updated
     protected static function booted(): void

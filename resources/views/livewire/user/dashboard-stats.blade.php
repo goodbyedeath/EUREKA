@@ -1,6 +1,7 @@
-<div class="premium-stats-wrapper">
+<div class="premium-stats-wrapper" @if(!\App\Models\FeatureSetting::isEnabled('user_dashboard_stats')) style="display: none;" @endif>
     <div class="premium-stats-grid">
         {{-- Total Attempts --}}
+        @if(\App\Models\FeatureSetting::isEnabled('dashboard_stat_total_attempts'))
         <div class="premium-stat-card attempts">
             <div class="stat-card-glow"></div>
             <div class="stat-card-content">
@@ -21,8 +22,10 @@
                 </div>
             </div>
         </div>
+        @endif
 
         {{-- Completed Attempts --}}
+        @if(\App\Models\FeatureSetting::isEnabled('dashboard_stat_completed'))
         <div class="premium-stat-card completed">
             <div class="stat-card-glow"></div>
             <div class="stat-card-content">
@@ -43,8 +46,10 @@
                 </div>
             </div>
         </div>
+        @endif
 
         {{-- Average Points Per Question --}}
+        @if(\App\Models\FeatureSetting::isEnabled('dashboard_stat_average_points'))
         <div class="premium-stat-card average clickable" wire:click="openScoreDetails">
             <div class="stat-card-glow"></div>
             <div class="stat-card-content">
@@ -65,8 +70,10 @@
                 </div>
             </div>
         </div>
+        @endif
 
         {{-- Completion Rate --}}
+        @if(\App\Models\FeatureSetting::isEnabled('dashboard_stat_completion_rate'))
         <div class="premium-stat-card completion">
             <div class="stat-card-glow"></div>
             <div class="stat-card-content">
@@ -92,9 +99,10 @@
                 </div>
             </div>
         </div>
+        @endif
 
         {{-- Total Score --}}
-        @if($teamName)
+        @if($teamName && \App\Models\FeatureSetting::isEnabled('dashboard_stat_total_score'))
             <div class="premium-stat-card team">
                 <div class="stat-card-glow"></div>
                 <div class="stat-card-content">
@@ -115,7 +123,7 @@
                     </div>
                 </div>
             </div>
-        @else
+        @elseif(\App\Models\FeatureSetting::isEnabled('dashboard_stat_total_score'))
             <div class="premium-stat-card no-team">
                 <div class="stat-card-glow"></div>
                 <div class="stat-card-content">
@@ -139,6 +147,7 @@
         @endif
 
         {{-- History Card --}}
+        @if(\App\Models\FeatureSetting::isEnabled('dashboard_stat_history'))
         <div class="premium-stat-card history clickable" wire:click="openHistoryModal">
             <div class="stat-card-glow"></div>
             <div class="stat-card-content">
@@ -159,6 +168,7 @@
                 </div>
             </div>
         </div>
+        @endif
     </div>
 
     {{-- Score Details Modal --}}
@@ -708,3 +718,4 @@
         </linearGradient>
     </defs>
 </svg>
+</div>

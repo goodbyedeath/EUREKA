@@ -5,6 +5,11 @@
 
 @section('content')
 
+<!-- Pass session timeout to JavaScript -->
+<script>
+    window.userSessionTimeout = {{ auth()->user()->getSessionTimeout() / 60 }}; // Convert to minutes
+</script>
+
 <div class="dashboard-premium">
     <!-- Floating Particles Background -->
     <div class="particles-background">
@@ -59,6 +64,26 @@
                     </div>
                     
                     @auth
+                        <!-- Session Timer Display -->
+                        @if(auth()->user()->role === 'user' && class_exists('\App\Models\FeatureSetting') && \App\Models\FeatureSetting::isEnabled('user_dashboard_session_timer'))
+                            @php
+                                $workflowTimersEnabled = class_exists('\App\Models\FeatureSetting') && \App\Models\FeatureSetting::isEnabled('workflow_timers');
+                                $dashboardContent = app()->make('App\Livewire\User\DashboardContent');
+                                $dashboardContent->mount();
+                                $timerStatus = $workflowTimersEnabled ? $dashboardContent->getSessionTimerStatus() : 'normal';
+                                $displayTime = $workflowTimersEnabled ? $dashboardContent->getFormattedSessionTime() : '--:--';
+                            @endphp
+                            <div class="session-timer-display {{ $timerStatus }}" id="session-timer-container" style="display: {{ $workflowTimersEnabled ? 'flex' : 'none' }};">
+                                <div class="timer-icon">
+                                    <i class="fas fa-clock"></i>
+                                </div>
+                                <div class="timer-info">
+                                    <span class="timer-label">Session</span>
+                                    <div class="timer-value" id="session-timer-value">{{ $displayTime }}</div>
+                                </div>
+                            </div>
+                        @endif
+                        
                         <!-- User Profile Section -->
                         <div class="user-profile-section">
                             <!-- User Avatar -->
@@ -67,7 +92,7 @@
                             </div>
                             <div class="user-info">
                                 <span class="user-name">{{ auth()->user()->name }}</span>
-                                <div class="user-role">{{ $team->name ?? 'Team Member' }}</div>
+                                <div class="user-role">Team Member</div>
                             </div>
                             
                             <!-- Logout Button -->
@@ -124,6 +149,19 @@
                     </div>
                     
                     @auth
+                        <!-- Mobile Session Timer -->
+                        @if(auth()->user()->role === 'user' && class_exists('\App\Models\FeatureSetting') && \App\Models\FeatureSetting::isEnabled('user_dashboard_session_timer'))
+                            <div class="mobile-item mobile-session-timer {{ $timerStatus ?? 'normal' }}" id="mobile-session-timer" style="display: {{ $workflowTimersEnabled ?? false ? 'block' : 'none' }};">
+                                <div class="mobile-item-header">
+                                    <span>Session Time Remaining:</span>
+                                </div>
+                                <div class="mobile-session-display">
+                                    <i class="fas fa-clock text-blue-500"></i>
+                                    <span id="mobile-session-timer-value">{{ $displayTime ?? '--:--' }}</span>
+                                </div>
+                            </div>
+                        @endif
+                        
                         <!-- Mobile User Info -->
                         <div class="mobile-item">
                             <div class="mobile-user-info">
@@ -132,7 +170,7 @@
                                 </div>
                                 <div>
                                     <div class="mobile-user-name">{{ auth()->user()->name }}</div>
-                                    <div class="mobile-user-role">{{ $team->name ?? 'Team Member' }}</div>
+                                    <div class="mobile-user-role">Team Member</div>
                                 </div>
                             </div>
                             <form method="POST" action="{{ route('logout') }}" class="w-full mt-3">
@@ -149,29 +187,8 @@
         </div>
     </nav>
 
-    <!-- Flash Messages -->
+    <!-- Flash Messages handled by layout -->
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
-        @if(session('message'))
-            <div class="flash-message success">
-                <div class="flash-icon">
-                    <i class="fas fa-check-circle"></i>
-                </div>
-                <div class="flash-content">
-                    <p>{{ session('message') }}</p>
-                </div>
-            </div>
-        @endif
-        
-        @if(session('error'))
-            <div class="flash-message error">
-                <div class="flash-icon">
-                    <i class="fas fa-exclamation-circle"></i>
-                </div>
-                <div class="flash-content">
-                    <p>{{ session('error') }}</p>
-                </div>
-            </div>
-        @endif
     </div>
 
     <!-- Premium Dashboard Content -->
@@ -216,6 +233,9 @@
             <div class="tab-navigation">
                 @livewire('user.dashboard-tabs')
             </div>
+
+            <!-- GPS Tracker Widget -->
+            @livewire('user.gps-tracker')
 
             <!-- Main Content Area -->
             <div class="main-content-area">
@@ -453,6 +473,16 @@
         transform: translateY(-1px);
     }
     
+    .dark .mobile-dark-mode-btn {
+        background: rgba(51, 65, 85, 0.5);
+        border: 1px solid rgba(71, 85, 105, 0.3);
+        color: #f1f5f9;
+    }
+    
+    .dark .mobile-dark-mode-btn:hover {
+        background: rgba(51, 65, 85, 0.7);
+    }
+    
     .mobile-theme-text {
         font-size: 14px;
         font-weight: 500;
@@ -560,6 +590,11 @@
         overflow: hidden;
     }
     
+    .dark .mobile-menu {
+        background: rgba(15, 23, 42, 0.95);
+        border-top: 1px solid rgba(51, 65, 85, 0.3);
+    }
+    
     .mobile-menu-content {
         padding: 16px;
         display: flex;
@@ -575,11 +610,20 @@
         border: 1px solid rgba(255, 255, 255, 0.3);
     }
     
+    .dark .mobile-item {
+        background: rgba(51, 65, 85, 0.7);
+        border: 1px solid rgba(71, 85, 105, 0.3);
+    }
+    
     .mobile-item-header {
         font-size: 14px;
         font-weight: 600;
         color: #374151;
         margin-bottom: 8px;
+    }
+    
+    .dark .mobile-item-header {
+        color: #f1f5f9;
     }
     
     .mobile-user-info {
@@ -607,9 +651,17 @@
         font-size: 14px;
     }
     
+    .dark .mobile-user-name {
+        color: #f1f5f9;
+    }
+    
     .mobile-user-role {
         font-size: 12px;
         color: #6b7280;
+    }
+    
+    .dark .mobile-user-role {
+        color: #94a3b8;
     }
     
     .mobile-logout-btn {
@@ -631,6 +683,160 @@
     
     .mobile-logout-btn:hover {
         background: rgba(239, 68, 68, 0.15);
+    }
+    
+    /* Session Timer Display */
+    .session-timer-display {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background: rgba(79, 172, 254, 0.1);
+        backdrop-filter: blur(10px);
+        border-radius: 12px;
+        padding: 8px 12px;
+        border: 1px solid rgba(79, 172, 254, 0.2);
+        transition: all 0.3s ease;
+        animation: timerPulse 2s infinite;
+    }
+    
+    .dark .session-timer-display {
+        background: rgba(79, 172, 254, 0.15);
+        border: 1px solid rgba(79, 172, 254, 0.3);
+    }
+    
+    .session-timer-display.warning {
+        background: rgba(245, 158, 11, 0.1);
+        border-color: rgba(245, 158, 11, 0.3);
+        animation: timerWarning 1s infinite;
+    }
+    
+    .session-timer-display.critical {
+        background: rgba(239, 68, 68, 0.1);
+        border-color: rgba(239, 68, 68, 0.3);
+        animation: timerCritical 0.5s infinite;
+    }
+    
+    .timer-icon {
+        width: 24px;
+        height: 24px;
+        background: linear-gradient(135deg, #4facfe 0%, #3b82f6 100%);
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 12px;
+    }
+    
+    .session-timer-display.warning .timer-icon {
+        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    }
+    
+    .session-timer-display.critical .timer-icon {
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    }
+    
+    .timer-info {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .timer-label {
+        font-size: 10px;
+        font-weight: 500;
+        color: #6b7280;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        line-height: 1;
+    }
+    
+    .dark .timer-label {
+        color: #94a3b8 !important;
+    }
+    
+    .timer-value {
+        font-size: 12px;
+        font-weight: 700;
+        color: #1f2937;
+        font-family: 'SF Mono', 'Monaco', monospace;
+        line-height: 1;
+        margin-top: 2px;
+    }
+    
+    .dark .timer-value {
+        color: #f1f5f9 !important;
+    }
+    
+    .session-timer-display.warning .timer-value {
+        color: #d97706;
+    }
+    
+    .session-timer-display.critical .timer-value {
+        color: #dc2626;
+    }
+    
+    /* Mobile Session Timer */
+    .mobile-session-display {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background: rgba(79, 172, 254, 0.1);
+        border: 1px solid rgba(79, 172, 254, 0.2);
+        border-radius: 8px;
+        padding: 8px 12px;
+        font-family: 'SF Mono', 'Monaco', monospace;
+        font-weight: 600;
+        font-size: 14px;
+        color: #1f2937;
+    }
+    
+    .dark .mobile-session-display {
+        background: rgba(79, 172, 254, 0.15);
+        border-color: rgba(79, 172, 254, 0.3);
+        color: #f1f5f9 !important;
+    }
+    
+    .mobile-session-timer.warning .mobile-session-display {
+        background: rgba(245, 158, 11, 0.1);
+        border-color: rgba(245, 158, 11, 0.3);
+        color: #d97706;
+    }
+    
+    .mobile-session-timer.critical .mobile-session-display {
+        background: rgba(239, 68, 68, 0.1);
+        border-color: rgba(239, 68, 68, 0.3);
+        color: #dc2626;
+    }
+    
+    /* Timer Animations */
+    @keyframes timerPulse {
+        0%, 100% { 
+            box-shadow: 0 0 0 0 rgba(79, 172, 254, 0.3);
+        }
+        50% { 
+            box-shadow: 0 0 0 4px rgba(79, 172, 254, 0.1);
+        }
+    }
+    
+    @keyframes timerWarning {
+        0%, 100% { 
+            box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4);
+        }
+        50% { 
+            box-shadow: 0 0 0 6px rgba(245, 158, 11, 0.2);
+        }
+    }
+    
+    @keyframes timerCritical {
+        0%, 100% { 
+            box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.5);
+            transform: scale(1);
+        }
+        50% { 
+            box-shadow: 0 0 0 8px rgba(239, 68, 68, 0.2);
+            transform: scale(1.02);
+        }
     }
     
     /* Flash Messages */
@@ -1018,6 +1224,9 @@
 @endpush
 
 @push('scripts')
+<!-- GPS Footprint Tracker -->
+<script src="{{ asset('js/gps-footprint-tracker.js') }}"></script>
+
 <script>
     // Error handling for Livewire components
     window.addEventListener('error', function(e) {

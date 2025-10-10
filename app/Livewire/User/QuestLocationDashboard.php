@@ -5,519 +5,579 @@ namespace App\Livewire\User;
 use App\Models\QuestLocation;
 use App\Models\UserQuestCheckpoint;
 use Livewire\Component;
-use Livewire\Attributes\Computed;
+use Livewire\WithPagination;
 use Livewire\Attributes\On;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Cache;
-use Carbon\Carbon;
+use Illuminate\Support\Facades\Http;
 
 class QuestLocationDashboard extends Component
 {
-    // Location data
+    use WithPagination;
+
+    // Search and filter properties
+    public $search = '';
+    public $filterStatus = '';
+    public $sortBy = 'name';
+
+    // User location data
     public $userLatitude;
-    public $userLongitude;
+    public $userLongitude; 
     public $locationPermissionGranted = false;
     public $locationAccuracy;
-    public $lastLocationUpdate;
 
-    // Quest data
-    public $questLocations;
+    // User progress tracking
+    public $userProgress = [];
+    public $userDistances = [];
+    public $totalPoints = 0;
+
+    // Map modal
+    public $selectedLocation = null;
+    
+    // Location details modal
+    public $showDetailsModal = false;
+    public $selectedLocationDetails = null;
+    
+    // Fullscreen map modal
+    public $showFullscreenModal = false;
+    public $selectedFullscreenLocation = null;
+    
+    // Calculated data for template
     public $locationDistances = [];
     public $withinRadiusStatus = [];
     public $checkedInStatus = [];
-    public $checkInCounts = [];
-
-    // UI state
-    public $selectedLocationId;
-    public $showScanner = false;
-    public $loadingLocation = false;
-    public $sortBy = 'distance'; // distance, name, status, points
-    public $filterStatus = 'all'; // all, available, completed, nearby
-    public $showMap = false;
-    public $showDetailsModal = false;
-    public $selectedLocationDetails = null;
-
-    // Performance settings
-    public $maxDistance = 50000; // Only load locations within 50km
-    public $locationUpdateThrottle = 30; // Seconds between location updates
+    
+    // Route finding
+    public $routeData = [];
+    public $selectedRouteLocation = null;
+    public $showRouteModal = false;
 
     protected $listeners = [
         'locationUpdated',
-        'checkInToLocation',
-        'openScanner',
-        'refreshData' => 'updateLocationData',
-        'openLocationDetails',
-        'closeLocationDetails'
+        'showLocationMap',
+        'findRoute'
+    ];
+
+    protected $queryString = [
+        'search' => ['except' => ''],
+        'filterStatus' => ['except' => ''],
+        'sortBy' => ['except' => 'name']
     ];
 
     public function mount()
     {
-        // Initialize empty collection first
-        $this->questLocations = collect([]);
-        
-        $this->loadQuestLocations();
-        $this->loadUserCheckInData();
+        $this->loadUserProgress();
         $this->requestLocationOnMount();
     }
 
     public function render()
     {
+        $questLocations = $this->getFilteredQuestLocations();
+        $this->totalPoints = $this->calculateTotalPoints();
+
         return view('livewire.user.quest-location-dashboard', [
-            'filteredLocations' => $this->filteredLocations,
-            'hasActiveLocations' => $this->questLocations->where('is_active', true)->count() > 0,
-            'stats' => $this->stats
+            'questLocations' => $questLocations,
+            'userProgress' => $this->userProgress,
+            'userDistances' => $this->userDistances,
+            'totalPoints' => $this->totalPoints
         ]);
     }
 
-    // Computed Properties for Performance
-    #[Computed]
-    public function stats()
+    public function updatedSearch()
     {
-        return [
-            'total_locations' => $this->questLocations->count(),
-            'completed_locations' => collect($this->checkedInStatus)->filter()->count(),
-            'total_points' => $this->calculateTotalPoints(),
-            'nearby_locations' => $this->getNearbyLocationsCount(),
-            'available_points' => $this->getAvailablePoints()
-        ];
+        $this->resetPage();
     }
 
-    #[Computed]
-    public function filteredLocations()
+    public function updatedFilterStatus()
     {
-        $locations = $this->questLocations;
+        $this->resetPage();
+    }
 
-        // Apply filters
-        switch ($this->filterStatus) {
-            case 'available':
-                $locations = $locations->filter(fn($location) => !($this->checkedInStatus[$location->id] ?? false));
-                break;
-            case 'completed':
-                $locations = $locations->filter(fn($location) => $this->checkedInStatus[$location->id] ?? false);
-                break;
-            case 'nearby':
-                $locations = $locations->filter(fn($location) => 
-                    isset($this->locationDistances[$location->id]) && 
-                    $this->locationDistances[$location->id] <= 1000 // Within 1km
-                );
-                break;
+    public function updatedSortBy()
+    {
+        $this->resetPage();
+    }
+
+    private function getFilteredQuestLocations()
+    {
+        $query = QuestLocation::where('is_active', true);
+
+        // Apply search
+        if ($this->search) {
+            $query->where(function ($q) {
+                $q->where('name', 'like', '%' . $this->search . '%')
+                  ->orWhere('description', 'like', '%' . $this->search . '%');
+            });
+        }
+
+        // Apply status filter
+        if ($this->filterStatus) {
+            $visitedLocationIds = collect($this->userProgress)->keys();
+            
+            if ($this->filterStatus === 'visited') {
+                $query->whereIn('id', $visitedLocationIds);
+            } elseif ($this->filterStatus === 'not_visited') {
+                $query->whereNotIn('id', $visitedLocationIds);
+            }
         }
 
         // Apply sorting
-        return $locations->sortBy(function ($location) {
-            return match($this->sortBy) {
-                'distance' => $this->locationDistances[$location->id] ?? PHP_INT_MAX,
-                'name' => $location->name,
-                'status' => ($this->checkedInStatus[$location->id] ?? false) ? 1 : 0,
-                'points' => -$location->quest_points, // Descending
-                default => $location->id
-            };
-        })->values();
-    }
-
-    // Location Management with Throttling
-    #[On('locationUpdated')]
-    public function locationUpdated($latitude, $longitude, $accuracy = null)
-    {
-        // Throttle location updates to prevent excessive calculations
-        if ($this->lastLocationUpdate && 
-            Carbon::parse($this->lastLocationUpdate)->addSeconds($this->locationUpdateThrottle)->isFuture()) {
-            return;
+        switch ($this->sortBy) {
+            case 'points_desc':
+                $query->orderBy('quest_points', 'desc');
+                break;
+            case 'points_asc':
+                $query->orderBy('quest_points', 'asc');
+                break;
+            case 'distance':
+                if ($this->userLatitude && $this->userLongitude) {
+                    $query->selectRaw('*, (
+                        6371 * acos(
+                            cos(radians(?)) * 
+                            cos(radians(latitude)) * 
+                            cos(radians(longitude) - radians(?)) + 
+                            sin(radians(?)) * 
+                            sin(radians(latitude))
+                        )
+                    ) * 1000 as distance', [
+                        $this->userLatitude,
+                        $this->userLongitude,
+                        $this->userLatitude
+                    ])->orderBy('distance');
+                } else {
+                    $query->orderBy('name');
+                }
+                break;
+            default:
+                $query->orderBy('name');
+                break;
         }
 
-        $this->userLatitude = $latitude;
-        $this->userLongitude = $longitude;
-        $this->locationAccuracy = $accuracy;
-        $this->locationPermissionGranted = true;
-        $this->lastLocationUpdate = now();
-        $this->loadingLocation = false;
-
-        Log::info('Location updated', [
-            'user_id' => Auth::id(),
-            'latitude' => $latitude,
-            'longitude' => $longitude,
-            'accuracy' => $accuracy
-        ]);
-
-        $this->updateLocationData();
-        $this->dispatch('locationObtained');
+        return $query->paginate(12);
     }
 
-    public function requestLocation()
+    private function loadUserProgress()
     {
-        $this->loadingLocation = true;
-        $this->dispatch('requestLocation');
+        $userId = Auth::id();
+        
+        // Load user checkpoints with counts
+        $checkpoints = UserQuestCheckpoint::where('user_id', $userId)
+            ->selectRaw('quest_location_id, COUNT(*) as check_ins_count, MAX(checked_at) as last_checked_at')
+            ->groupBy('quest_location_id')
+            ->get()
+            ->keyBy('quest_location_id');
+
+        $this->userProgress = $checkpoints->toArray();
     }
 
     private function requestLocationOnMount()
     {
-        $this->dispatch('autoRequestLocation');
+        $this->dispatch('requestLocation');
     }
 
-    // Optimized Data Loading
-    private function loadQuestLocations()
+    #[On('locationUpdated')]
+    public function locationUpdated($latitude, $longitude, $accuracy = null)
     {
+        $this->userLatitude = $latitude;
+        $this->userLongitude = $longitude;
+        $this->locationAccuracy = $accuracy;
+        $this->locationPermissionGranted = true;
+
+        $this->calculateDistances();
+
+        Log::info('User location updated', [
+            'user_id' => Auth::id(),
+            'latitude' => $latitude,
+            'longitude' => $longitude,
+            'accuracy' => $accuracy,
+            'permission_granted' => $this->locationPermissionGranted
+        ]);
+
+        // Flash success message to show location is working
+        session()->flash('success', 'Location updated successfully!');
+    }
+
+    public function showLocationError($message)
+    {
+        session()->flash('error', $message);
+        
+        Log::warning('User location error displayed', [
+            'user_id' => Auth::id(),
+            'error_message' => $message
+        ]);
+    }
+
+    public function updateLocationSilently($latitude, $longitude, $accuracy = null)
+    {
+        // Update internal location properties
+        $this->userLatitude = $latitude;
+        $this->userLongitude = $longitude;
+        $this->locationAccuracy = $accuracy;
+        $this->locationPermissionGranted = true;
+
+        // Store location update in database with special quest location for tracking
         try {
-            $query = QuestLocation::active()->orderBy('name');
-            
-            // If user location is available, only load nearby locations
-            if ($this->userLatitude && $this->userLongitude) {
-                $query->nearUser($this->userLatitude, $this->userLongitude, $this->maxDistance);
-            }
-            
-            $this->questLocations = $query->get();
-            
-            // If no quest locations found, initialize empty collection
-            if ($this->questLocations->isEmpty()) {
-                $this->questLocations = collect([]);
-                Log::info('No active quest locations found in database', [
+            // Create or update a special "current location" checkpoint
+            UserQuestCheckpoint::updateOrCreate(
+                [
                     'user_id' => Auth::id(),
-                    'total_locations' => QuestLocation::count(),
-                    'active_locations' => QuestLocation::active()->count()
-                ]);
-            }
-            
-        } catch (\Exception $e) {
-            Log::error('Failed to load quest locations', [
+                    'quest_location_id' => null, // null indicates this is a location tracking entry
+                ],
+                [
+                    'user_latitude' => $latitude,
+                    'user_longitude' => $longitude,
+                    'checked_at' => now(),
+                ]
+            );
+
+            $this->calculateDistances();
+
+            Log::info('Silent location update stored', [
                 'user_id' => Auth::id(),
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'latitude' => $latitude,
+                'longitude' => $longitude,
+                'accuracy' => $accuracy
             ]);
-            
-            // Initialize empty collection on error
-            $this->questLocations = collect([]);
-            
-            $this->dispatch('showAlert', [
-                'type' => 'error',
-                'message' => 'Failed to load quest locations. Please try again later.'
-            ]);
-        }
-    }
 
-    private function loadUserCheckInData()
-    {
-        $userId = Auth::id();
-        
-        // Reset arrays
-        $this->checkedInStatus = [];
-        $this->checkInCounts = [];
-        
-        if ($this->questLocations->isEmpty()) {
-            return; // No locations to process
-        }
-        
-        $locationIds = $this->questLocations->pluck('id');
-        
-        try {
-            // Batch load user check-in data
-            $checkpoints = UserQuestCheckpoint::where('user_id', $userId)
-                ->whereIn('quest_location_id', $locationIds)
-                ->selectRaw('quest_location_id, COUNT(*) as count, MIN(created_at) as first_checkin')
-                ->groupBy('quest_location_id')
-                ->get()
-                ->keyBy('quest_location_id');
-
-            foreach ($locationIds as $locationId) {
-                $checkpoint = $checkpoints->get($locationId);
-                $this->checkedInStatus[$locationId] = $checkpoint !== null;
-                $this->checkInCounts[$locationId] = $checkpoint->count ?? 0;
-            }
         } catch (\Exception $e) {
-            Log::error('Failed to load user check-in data', [
-                'user_id' => $userId,
+            Log::error('Failed to store silent location update', [
+                'user_id' => Auth::id(),
                 'error' => $e->getMessage()
             ]);
-            
-            // Initialize with empty data on error
-            foreach ($locationIds as $locationId) {
-                $this->checkedInStatus[$locationId] = false;
-                $this->checkInCounts[$locationId] = 0;
-            }
         }
     }
 
-    private function updateLocationData()
+    private function calculateDistances()
     {
-        if (!$this->locationPermissionGranted || !$this->userLatitude || !$this->userLongitude) {
+        if (!$this->userLatitude || !$this->userLongitude) {
             return;
         }
 
-        // Update only distance-related data
-        foreach ($this->questLocations as $location) {
-            $locationId = $location->id;
+        $locations = QuestLocation::where('is_active', true)->get();
+        
+        foreach ($locations as $location) {
+            $distance = $this->calculateDistanceBetween(
+                $this->userLatitude,
+                $this->userLongitude,
+                $location->latitude,
+                $location->longitude
+            ) * 1000; // Convert to meters
             
-            // Calculate distance
-            $this->locationDistances[$locationId] = $location->calculateDistance(
-                $this->userLatitude, 
-                $this->userLongitude
-            );
+            $this->userDistances[$location->id] = $distance;
+            $this->locationDistances[$location->id] = $distance;
             
             // Check if within radius
-            $this->withinRadiusStatus[$locationId] = $location->isWithinRadius(
-                $this->userLatitude, 
-                $this->userLongitude
-            );
+            $this->withinRadiusStatus[$location->id] = $distance <= $location->radius;
+            
+            // Check if already checked in
+            $this->checkedInStatus[$location->id] = isset($this->userProgress[$location->id]);
         }
     }
 
-    // Enhanced Check-in Process
-    #[On('checkInToLocation')]
-    public function checkInToLocation($questLocationId)
+    private function calculateDistanceBetween($lat1, $lng1, $lat2, $lng2)
+    {
+        $earthRadius = 6371; // km
+
+        $dLat = deg2rad($lat2 - $lat1);
+        $dLng = deg2rad($lng2 - $lng1);
+
+        $a = sin($dLat/2) * sin($dLat/2) +
+             cos(deg2rad($lat1)) * cos(deg2rad($lat2)) *
+             sin($dLng/2) * sin($dLng/2);
+
+        $c = 2 * atan2(sqrt($a), sqrt(1-$a));
+        $distance = $earthRadius * $c;
+
+        return $distance;
+    }
+
+    public function viewOnMap($locationId)
+    {
+        $this->selectedLocation = QuestLocation::find($locationId);
+        
+        if ($this->selectedLocation) {
+            $this->dispatch('showLocationMap', [
+                'latitude' => $this->selectedLocation->latitude,
+                'longitude' => $this->selectedLocation->longitude,
+                'name' => $this->selectedLocation->name,
+                'radius' => $this->selectedLocation->radius ?? 50
+            ]);
+        }
+    }
+
+    public function showLocationDetails($locationId)
+    {
+        $location = QuestLocation::find($locationId);
+        if ($location) {
+            $this->selectedLocationDetails = $location;
+            $this->showDetailsModal = true;
+            
+            // Trigger location update when opening location details
+            $this->dispatch('updateLocationOnModalOpen');
+        }
+    }
+
+    public function closeDetailsModal()
+    {
+        $this->showDetailsModal = false;
+        $this->selectedLocationDetails = null;
+    }
+
+    public function showFullscreenMap($locationId)
+    {
+        $location = QuestLocation::find($locationId);
+        if ($location && $location->has_valid_coordinates) {
+            $this->selectedFullscreenLocation = $location;
+            $this->showFullscreenModal = true;
+            
+            // Trigger location update when opening fullscreen map
+            $this->dispatch('updateLocationOnModalOpen');
+        }
+    }
+
+    public function closeFullscreenMap()
+    {
+        $this->showFullscreenModal = false;
+        $this->selectedFullscreenLocation = null;
+    }
+
+    public function checkInToLocation($locationId)
+    {
+        // Use the existing startCheckIn method which already handles all the logic
+        $this->startCheckIn($locationId);
+        
+        // Close the modal after attempting check-in
+        $this->closeDetailsModal();
+    }
+
+    public function closeMap()
+    {
+        $this->selectedLocation = null;
+    }
+
+    public function startCheckIn($locationId)
     {
         try {
-            if (!$this->validateLocationForCheckIn()) {
+            $location = QuestLocation::findOrFail($locationId);
+
+            // Check if location permission is granted
+            if (!$this->locationPermissionGranted || !$this->userLatitude || !$this->userLongitude) {
+                Log::warning('Location check failed for check-in', [
+                    'user_id' => Auth::id(),
+                    'location_permission_granted' => $this->locationPermissionGranted,
+                    'user_latitude' => $this->userLatitude,
+                    'user_longitude' => $this->userLongitude,
+                    'location_id' => $locationId
+                ]);
+                
+                $debugInfo = "Debug: Permission=" . ($this->locationPermissionGranted ? 'Yes' : 'No') . 
+                           ", Lat=" . ($this->userLatitude ?: 'Missing') . 
+                           ", Lng=" . ($this->userLongitude ?: 'Missing');
+                
+                session()->flash('error', 'Location access required. Please enable GPS and refresh the page. ' . $debugInfo);
                 return;
             }
 
-            $questLocation = QuestLocation::findOrFail($questLocationId);
+            // Calculate distance to location
+            $distance = $this->calculateDistanceBetween(
+                $this->userLatitude,
+                $this->userLongitude,
+                $location->latitude,
+                $location->longitude
+            ) * 1000; // Convert to meters
 
-            if (!$this->validateCheckInEligibility($questLocation)) {
+            // Check if user is within radius
+            if ($distance > $location->radius) {
+                session()->flash('error', "You're {$distance}m away. Get within {$location->radius}m to check in.");
                 return;
             }
 
-            // Create checkpoint with additional metadata
+            // Check if user can still check in (max check-ins limit)
+            if ($location->max_check_ins_per_user) {
+                $currentCheckIns = $this->userProgress[$locationId]['check_ins_count'] ?? 0;
+                
+                if ($currentCheckIns >= $location->max_check_ins_per_user) {
+                    session()->flash('error', 'Maximum check-ins reached for this location.');
+                    return;
+                }
+            }
+
+            // Create checkpoint
             $checkpoint = UserQuestCheckpoint::create([
                 'user_id' => Auth::id(),
-                'quest_location_id' => $questLocationId,
+                'quest_location_id' => $locationId,
                 'user_latitude' => $this->userLatitude,
                 'user_longitude' => $this->userLongitude,
                 'checked_at' => now(),
-                'accuracy' => $this->locationAccuracy,
-                'distance_from_center' => $this->locationDistances[$questLocationId] ?? null,
-                'device_info' => request()->userAgent()
             ]);
 
-            // Update local state
-            $this->checkedInStatus[$questLocationId] = true;
-            $this->checkInCounts[$questLocationId] = ($this->checkInCounts[$questLocationId] ?? 0) + 1;
+            Log::info('Checkpoint created with location data', [
+                'checkpoint_id' => $checkpoint->id,
+                'user_id' => Auth::id(),
+                'quest_location_id' => $locationId,
+                'user_latitude' => $this->userLatitude,
+                'user_longitude' => $this->userLongitude,
+            ]);
 
-            // Clear related caches
-            $this->clearLocationCaches($questLocationId);
+            // Update user progress
+            $this->loadUserProgress();
 
-            // Enhanced success message
-            $points = $questLocation->quest_points ?? 0;
-            $totalPoints = $this->calculateTotalPoints();
+            // Success message
+            $points = $location->quest_points ?? 0;
             $message = $points > 0 
-                ? "Check-in successful! +{$points} points (Total: {$totalPoints})" 
+                ? "Check-in successful! +{$points} points earned!" 
                 : 'Check-in successful!';
 
-            $this->dispatch('showAlert', [
-                'type' => 'success',
-                'message' => $message,
-                'duration' => 5000
-            ]);
-
-            // Trigger celebration animation if high points
-            if ($points >= 100) {
-                $this->dispatch('celebrateCheckIn');
-            }
+            session()->flash('success', $message);
 
             Log::info('User checked in to quest location', [
                 'user_id' => Auth::id(),
-                'quest_location_id' => $questLocationId,
-                'checkpoint_id' => $checkpoint->id,
-                'distance' => $this->locationDistances[$questLocationId] ?? null,
+                'quest_location_id' => $locationId,
+                'distance' => $distance,
                 'points_earned' => $points
             ]);
 
         } catch (\Exception $e) {
             Log::error('Check-in failed', [
                 'user_id' => Auth::id(),
-                'quest_location_id' => $questLocationId,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'quest_location_id' => $locationId,
+                'error' => $e->getMessage()
             ]);
 
-            $this->dispatch('showAlert', [
-                'type' => 'error',
-                'message' => 'Check-in failed. Please try again.'
-            ]);
+            session()->flash('error', 'Check-in failed. Please try again.');
         }
     }
 
-    private function validateLocationForCheckIn(): bool
-    {
-        if (!$this->userLatitude || !$this->userLongitude) {
-            $this->dispatch('showAlert', [
-                'type' => 'error',
-                'message' => 'Location not detected. Please enable GPS and try again.'
-            ]);
-            return false;
-        }
-
-        // Check location accuracy
-        if ($this->locationAccuracy && $this->locationAccuracy > 100) {
-            $this->dispatch('showAlert', [
-                'type' => 'warning',
-                'message' => 'GPS accuracy is low. Please wait for better signal or move to an open area.'
-            ]);
-        }
-
-        return true;
-    }
-
-    private function validateCheckInEligibility(QuestLocation $questLocation): bool
-    {
-        // Check if user is within radius
-        if (!$questLocation->isWithinRadius($this->userLatitude, $this->userLongitude)) {
-            $distance = $questLocation->calculateDistance($this->userLatitude, $this->userLongitude);
-            $this->dispatch('showAlert', [
-                'type' => 'error',
-                'message' => "You're {$distance}m away. Get within {$questLocation->radius}m to check in."
-            ]);
-            return false;
-        }
-
-        // Check if user can still check in
-        if (!$questLocation->canUserCheckIn(Auth::id())) {
-            $maxCheckIns = $questLocation->max_check_ins_per_user ?? 1;
-            $this->dispatch('showAlert', [
-                'type' => 'warning',
-                'message' => "Maximum check-ins reached ({$maxCheckIns}) for this location."
-            ]);
-            return false;
-        }
-
-        return true;
-    }
-
-    // Helper Methods
     private function calculateTotalPoints(): int
     {
-        return $this->questLocations
-            ->whereIn('id', array_keys(array_filter($this->checkedInStatus)))
+        if (empty($this->userProgress)) {
+            return 0;
+        }
+
+        $locationIds = array_keys($this->userProgress);
+        
+        return QuestLocation::whereIn('id', $locationIds)
             ->sum('quest_points');
     }
 
-    private function getAvailablePoints(): int
+    public function findShortestRoute($locationId)
     {
-        return $this->questLocations
-            ->whereNotIn('id', array_keys(array_filter($this->checkedInStatus)))
-            ->sum('quest_points');
-    }
-
-    private function getNearbyLocationsCount(): int
-    {
-        if (!$this->locationPermissionGranted) return 0;
+        $location = QuestLocation::find($locationId);
         
-        return collect($this->locationDistances)
-            ->filter(fn($distance) => $distance <= 1000)
-            ->count();
-    }
+        if (!$location || !$this->locationPermissionGranted) {
+            session()->flash('error', 'Location access required for route finding.');
+            return;
+        }
 
-    private function clearLocationCaches($locationId): void
-    {
-        Cache::forget("quest_location_{$locationId}_total_checkins");
-        Cache::forget("quest_location_{$locationId}_unique_users");
-    }
+        try {
+            // Get route data from OpenRouteService
+            $routeData = $this->fetchRouteFromAPI(
+                $this->userLatitude, 
+                $this->userLongitude,
+                $location->latitude,
+                $location->longitude
+            );
 
-    // UI Actions
-    public function toggleMap()
-    {
-        $this->showMap = !$this->showMap;
-        if ($this->showMap) {
-            $this->dispatch('initializeMap', [
-                'locations' => $this->questLocations->toArray(),
-                'userLocation' => [
-                    'lat' => $this->userLatitude,
-                    'lng' => $this->userLongitude
-                ]
+            if ($routeData) {
+                $this->routeData = $routeData;
+                $this->selectedRouteLocation = $location;
+                $this->showRouteModal = true;
+                
+                // Dispatch event to show route on map
+                $this->dispatch('showRoute', [
+                    'routeData' => $routeData,
+                    'destination' => [
+                        'lat' => $location->latitude,
+                        'lng' => $location->longitude,
+                        'name' => $location->name
+                    ]
+                ]);
+            }
+
+        } catch (\Exception $e) {
+            Log::error('Route finding failed', [
+                'user_id' => Auth::id(),
+                'location_id' => $locationId,
+                'error' => $e->getMessage()
             ]);
+            
+            session()->flash('error', 'Unable to find route. Please try again.');
         }
     }
 
-    public function focusLocation($locationId)
+    private function fetchRouteFromAPI($startLat, $startLng, $endLat, $endLng)
     {
-        $location = $this->questLocations->find($locationId);
-        if ($location) {
-            $this->dispatch('focusMapLocation', [
-                'lat' => $location->latitude,
-                'lng' => $location->longitude,
-                'name' => $location->name
-            ]);
-        }
-    }
-
-    // Utility methods for template
-    public function getDistanceFor($locationId): ?float
-    {
-        return $this->locationDistances[$locationId] ?? null;
-    }
-
-    public function getWithinRadiusFor($locationId): bool
-    {
-        return $this->withinRadiusStatus[$locationId] ?? false;
-    }
-
-    public function getCheckedInFor($locationId): bool
-    {
-        return $this->checkedInStatus[$locationId] ?? false;
-    }
-
-    public function getCheckInCountFor($locationId): int
-    {
-        return $this->checkInCounts[$locationId] ?? 0;
-    }
-
-    public function canCheckInFor($locationId): bool
-    {
-        if (!$this->locationPermissionGranted) return false;
+        // Using OpenRouteService (free tier: 2000 requests/day)
+        $apiKey = env('OPENROUTE_API_KEY', 'eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6Ijc4ZjAyMDIyYmIyMDRlNDRiZmVjYWVkZGI3M2NjZjBlIiwiaCI6Im11cm11cjY0In0=');
         
-        $location = $this->questLocations->find($locationId);
-        if (!$location) return false;
-
-        return $location->canUserCheckIn(Auth::id()) && 
-               ($this->withinRadiusStatus[$locationId] ?? false);
-    }
-
-    public function getLocationStatusFor($locationId): string
-    {
-        if ($this->getCheckedInFor($locationId)) {
-            return 'completed';
-        }
+        $url = "https://api.openrouteservice.org/v2/directions/foot-walking";
         
-        if ($this->getWithinRadiusFor($locationId)) {
-            return 'available';
+        $data = [
+            'coordinates' => [
+                [$startLng, $startLat],
+                [$endLng, $endLat]
+            ],
+            'format' => 'geojson',
+            'instructions' => true,
+            'elevation' => false
+        ];
+
+        $response = \Http::withHeaders([
+            'Authorization' => $apiKey,
+            'Content-Type' => 'application/json'
+        ])->timeout(10)->post($url, $data);
+
+        if ($response->successful()) {
+            $routeData = $response->json();
+            
+            // Extract useful information
+            $feature = $routeData['features'][0] ?? null;
+            if ($feature) {
+                return [
+                    'coordinates' => $feature['geometry']['coordinates'],
+                    'distance' => $feature['properties']['summary']['distance'] ?? 0,
+                    'duration' => $feature['properties']['summary']['duration'] ?? 0,
+                    'instructions' => $feature['properties']['segments'][0]['steps'] ?? [],
+                    'geojson' => $routeData
+                ];
+            }
         }
-        
-        $distance = $this->getDistanceFor($locationId);
-        if ($distance && $distance <= 1000) {
-            return 'nearby';
+
+        // Fallback: return straight line route
+        return [
+            'coordinates' => [
+                [$startLng, $startLat],
+                [$endLng, $endLat]
+            ],
+            'distance' => $this->calculateDistanceBetween($startLat, $startLng, $endLat, $endLng) * 1000,
+            'duration' => null,
+            'instructions' => [
+                ['instruction' => 'Head straight to destination', 'distance' => 0]
+            ],
+            'geojson' => null,
+            'fallback' => true
+        ];
+    }
+
+    public function closeRouteModal()
+    {
+        $this->showRouteModal = false;
+        $this->routeData = [];
+        $this->selectedRouteLocation = null;
+    }
+
+    public function getRoutingInstructions()
+    {
+        if (empty($this->routeData['instructions'])) {
+            return [];
         }
-        
-        return 'distant';
-    }
 
-    // Data refresh
-    public function refreshData()
-    {
-        $this->loadQuestLocations();
-        $this->loadUserCheckInData();
-        $this->updateLocationData();
-        
-        $this->dispatch('showAlert', [
-            'type' => 'info',
-            'message' => 'Data refreshed successfully!'
-        ]);
+        return collect($this->routeData['instructions'])->map(function ($step) {
+            return [
+                'instruction' => $step['instruction'] ?? 'Continue',
+                'distance' => $step['distance'] ?? 0,
+                'duration' => $step['duration'] ?? 0
+            ];
+        })->toArray();
     }
-
-    // Location Details Modal
-    public function openLocationDetails($locationId)
-    {
-        $location = $this->questLocations->find($locationId);
-        if ($location) {
-            $this->selectedLocationDetails = $location;
-            $this->selectedLocationId = $locationId;
-            $this->showDetailsModal = true;
-        }
-    }
-
-    public function closeLocationDetails()
-    {
-        $this->showDetailsModal = false;
-        $this->selectedLocationDetails = null;
-        $this->selectedLocationId = null;
-    }
-
 }

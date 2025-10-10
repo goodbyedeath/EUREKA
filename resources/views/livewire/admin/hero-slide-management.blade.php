@@ -78,7 +78,7 @@
                         </div>
                         
                         <div class="flex justify-end space-x-2">
-                            <button wire:click="editSlide({{ $slide->id }})" class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 text-sm transition-colors duration-200">
+                            <button wire:click="openEditForm({{ $slide->id }})" class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 text-sm transition-colors duration-200">
                                 <i class="fas fa-edit mr-1"></i>Edit
                             </button>
                             <button wire:click="deleteSlide({{ $slide->id }})" 
@@ -238,23 +238,23 @@
                             <div>
                                 <label for="primary_button_url" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Primary Button URL</label>
                                 <input type="text" wire:model="primary_button_url" id="primary_button_url" 
-                                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                                @error('primary_button_url') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
+                                       class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition-colors duration-200">
+                                @error('primary_button_url') <span class="text-red-500 dark:text-red-400 text-sm">{{ $message }}</span> @enderror
                             </div>
 
                             <!-- Secondary Button -->
                             <div>
                                 <label for="secondary_button_text" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Secondary Button Text (Optional)</label>
                                 <input type="text" wire:model="secondary_button_text" id="secondary_button_text" 
-                                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                                @error('secondary_button_text') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
+                                       class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition-colors duration-200">
+                                @error('secondary_button_text') <span class="text-red-500 dark:text-red-400 text-sm">{{ $message }}</span> @enderror
                             </div>
 
                             <div>
                                 <label for="secondary_button_url" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Secondary Button URL (Optional)</label>
                                 <input type="text" wire:model="secondary_button_url" id="secondary_button_url" 
-                                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                                @error('secondary_button_url') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
+                                       class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition-colors duration-200">
+                                @error('secondary_button_url') <span class="text-red-500 dark:text-red-400 text-sm">{{ $message }}</span> @enderror
                             </div>
 
                             <!-- Background Image Upload -->

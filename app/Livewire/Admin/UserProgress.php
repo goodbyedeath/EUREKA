@@ -29,7 +29,6 @@ class UserProgress extends Component
     public $selectedTeamId = null;
     public $showAssessmentNotesView = false;
     public $selectedUserIdForNotes = null;
-    public $exportFormat = 'csv';
 
     public function render()
     {
@@ -70,6 +69,9 @@ class UserProgress extends Component
         
         // Assessment notes data
         $assessmentNotesData = $this->selectedUserIdForNotes ? $this->getAssessmentNotesData($this->selectedUserIdForNotes) : null;
+        
+        // Brief feedback data
+        $briefFeedbackData = $this->getBriefFeedbackData();
 
         return view('livewire.admin.user-progress', [
             'totalUsers' => $totalUsers,
@@ -86,8 +88,9 @@ class UserProgress extends Component
             'userDetailData' => $userDetailData,
             'teamDetailData' => $teamDetailData,
             'assessmentNotesData' => $assessmentNotesData,
+            'briefFeedbackData' => $briefFeedbackData,
             'completionRate' => $totalAttempts > 0 ? round(($completedAttempts / $totalAttempts) * 100, 1) : 0
-        ]);
+        ])->layout(null);
     }
 
     private function getUserProgressData()
@@ -334,11 +337,13 @@ class UserProgress extends Component
             'questionnaire_details' => $this->getUserQuestionnaireDetails($attempts),
             'assessment_notes' => $this->getUserAssessmentNotes($completed),
             'attempts' => $attempts->map(function($attempt) {
+                $teamPoints = $attempt->status === 'completed' ? $this->calculateTeamPoints($attempt) : null;
                 return [
                     'id' => $attempt->id,
                     'questionnaire_title' => $attempt->questionnaire->title,
                     'status' => $attempt->status,
-                    'total_score' => $attempt->status === 'completed' ? $this->calculateTeamPoints($attempt) : $attempt->total_score,
+                    'total_score' => is_array($teamPoints) ? $teamPoints['total'] : $attempt->total_score,
+                    'earned_points' => $attempt->status === 'completed' ? $this->calculateQuizScore($attempt) : null,
                     'started_at' => $attempt->started_at,
                     'completed_at' => $attempt->completed_at,
                     'duration' => $attempt->started_at && $attempt->completed_at 
@@ -425,40 +430,18 @@ class UserProgress extends Component
     
     public function exportData()
     {
-        $data = $this->getUserProgressData();
-        
-        if ($this->exportFormat === 'csv') {
-            return $this->exportToCsv($data);
-        }
-        
-        return $this->exportToExcel($data);
-    }
-    
-    private function exportToCsv($data)
-    {
-        $filename = 'user-progress-' . now()->format('Y-m-d-H-i-s') . '.csv';
-        $headers = [
-            'Content-Type' => 'text/csv',
-            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
-        ];
-        
-        $csv = "Name,Email,Team,Total Attempts,Completed,Completion Rate,Team Points,Average Points,Last Activity\n";
-        
-        foreach ($data as $user) {
-            $csv .= implode(',', [
-                '"' . $user['name'] . '"',
-                '"' . $user['email'] . '"',
-                '"' . $user['team'] . '"',
-                $user['total_attempts'],
-                $user['completed_attempts'],
-                $user['completion_rate'] . '%',
-                $user['total_points'],
-                $user['average_score'],
-                $user['last_activity'] ? $user['last_activity']->format('Y-m-d H:i:s') : 'Never'
-            ]) . "\n";
-        }
-        
-        return response($csv, 200, $headers);
+        // Store current filters in session for the export controller
+        session([
+            'export_filters' => [
+                'selectedTimeframe' => $this->selectedTimeframe,
+                'selectedTeam' => $this->selectedTeam,
+                'selectedRole' => $this->selectedRole,
+                'searchTerm' => $this->searchTerm,
+            ]
+        ]);
+
+        // Redirect to export controller
+        return redirect()->route('admin.user-progress.export');
     }
     
     public function updatedSearchTerm()
@@ -566,6 +549,24 @@ class UserProgress extends Component
     }
     
     /**
+     * Calculate just the quiz score (earned points from correct answers, no base points)
+     */
+    private function calculateQuizScore($attempt)
+    {
+        if (!$attempt->questionnaire || $attempt->status !== QuizAttempt::STATUS_COMPLETED) {
+            return 0;
+        }
+
+        // Get base points for this user's team
+        $basePoints = $attempt->user->team->initial_points ?? 1000;
+        
+        // Calculate earned points (total_score - base points)
+        $earnedPoints = max(0, $attempt->total_score - $basePoints);
+        
+        return $earnedPoints;
+    }
+
+    /**
      * Calculate team points following quiz-results logic:
      * Team points = base points + earned points from correct answers + assessment bonuses
      */
@@ -599,26 +600,40 @@ class UserProgress extends Component
     }
     
     /**
-     * Calculate user's total team points across all attempts
+     * Calculate user's total team points using same logic as DashboardStats
      */
     private function calculateUserTeamPoints($user, $attempts)
     {
-        $completedAttempts = $attempts->where('status', QuizAttempt::STATUS_COMPLETED);
+        $basePoints = $user->team ? ($user->team->initial_points ?? 1000) : 1000;
+        $totalGainedPoints = 0;
         
-        if ($completedAttempts->isEmpty()) {
-            return $user->team ? ($user->team->initial_points ?? 1000) : 1000;
-        }
+        // Get all gained points from correct answers in completed attempts
+        $userAnswers = UserAnswer::whereHas('quizAttempt', function($query) use ($user) {
+            $query->where('user_id', $user->id)
+                  ->where('status', 'completed')
+                  ->where('created_at', '>=', now()->subDays($this->selectedTimeframe));
+        })->with(['question'])->where('is_correct', true)->get();
         
-        // Get the highest team points from all completed attempts
-        $maxTeamPoints = 0;
-        foreach ($completedAttempts as $attempt) {
-            $teamPoints = $this->calculateTeamPoints($attempt);
-            if ($teamPoints > $maxTeamPoints) {
-                $maxTeamPoints = $teamPoints;
+        foreach ($userAnswers as $answer) {
+            if ($answer->question) {
+                $totalGainedPoints += $answer->question->points ?? 0;
             }
         }
         
-        return $maxTeamPoints;
+        // Add assessment gains (bonus from fun games)
+        $assessmentGains = GameAssessment::whereHas('quizAttempt', function($query) use ($user) {
+            $query->where('user_id', $user->id)
+                  ->where('status', 'completed')
+                  ->where('created_at', '>=', now()->subDays($this->selectedTimeframe));
+        })->where('is_assessed', true)->get();
+        
+        foreach ($assessmentGains as $assessment) {
+            // Assessment gain = total_deposit - base_points_used
+            $assessmentGain = ($assessment->total_deposit ?? 0) - $basePoints;
+            $totalGainedPoints += max(0, $assessmentGain);
+        }
+        
+        return $basePoints + $totalGainedPoints;
     }
     
     /**
@@ -626,35 +641,78 @@ class UserProgress extends Component
      */
     private function calculateUserTeamPointsFromUser($user)
     {
-        $attempts = $user->quizAttempts()
-            ->where('status', QuizAttempt::STATUS_COMPLETED)
-            ->where('created_at', '>=', now()->subDays($this->selectedTimeframe))
-            ->with(['userAnswers.question'])
-            ->get();
-            
-        return $this->calculateUserTeamPoints($user, $attempts);
-    }
-    
-    /**
-     * Calculate team's total points from all completed attempts
-     */
-    private function calculateTeamTotalPoints($team, $completedAttempts)
-    {
-        if ($completedAttempts->isEmpty()) {
-            return $team->initial_points ?? 1000;
-        }
+        $basePoints = $user->team ? ($user->team->initial_points ?? 1000) : 1000;
+        $totalGainedPoints = 0;
         
-        // Get the highest team points across all team members' attempts
-        $maxTeamPoints = $team->initial_points ?? 1000;
+        // Get all gained points from correct answers in completed attempts within timeframe
+        $userAnswers = UserAnswer::whereHas('quizAttempt', function($query) use ($user) {
+            $query->where('user_id', $user->id)
+                  ->where('status', 'completed')
+                  ->where('created_at', '>=', now()->subDays($this->selectedTimeframe));
+        })->with(['question'])->where('is_correct', true)->get();
         
-        foreach ($completedAttempts as $attempt) {
-            $teamPoints = $this->calculateTeamPoints($attempt);
-            if ($teamPoints > $maxTeamPoints) {
-                $maxTeamPoints = $teamPoints;
+        foreach ($userAnswers as $answer) {
+            if ($answer->question) {
+                $totalGainedPoints += $answer->question->points ?? 0;
             }
         }
         
-        return $maxTeamPoints;
+        // Add assessment gains (bonus from fun games)
+        $assessmentGains = GameAssessment::whereHas('quizAttempt', function($query) use ($user) {
+            $query->where('user_id', $user->id)
+                  ->where('status', 'completed')
+                  ->where('created_at', '>=', now()->subDays($this->selectedTimeframe));
+        })->where('is_assessed', true)->get();
+        
+        foreach ($assessmentGains as $assessment) {
+            // Assessment gain = total_deposit - base_points_used
+            $assessmentGain = ($assessment->total_deposit ?? 0) - $basePoints;
+            $totalGainedPoints += max(0, $assessmentGain);
+        }
+        
+        return $basePoints + $totalGainedPoints;
+    }
+    
+    /**
+     * Calculate team's total points using same logic as DashboardStats and KioskController
+     */
+    private function calculateTeamTotalPoints($team, $completedAttempts)
+    {
+        $basePoints = $team->initial_points ?? 1000;
+        $totalGainedPoints = 0;
+
+        // Get all team members
+        $teamMembers = $team->users;
+        
+        foreach ($teamMembers as $user) {
+            // Get all gained points from correct answers for this user
+            $userAnswers = UserAnswer::whereHas('quizAttempt', function($query) use ($user) {
+                $query->where('user_id', $user->id)
+                      ->where('status', 'completed')
+                      ->where('created_at', '>=', now()->subDays($this->selectedTimeframe));
+            })->with(['question'])->where('is_correct', true)->get();
+            
+            foreach ($userAnswers as $answer) {
+                if ($answer->question) {
+                    $totalGainedPoints += $answer->question->points ?? 0;
+                }
+            }
+            
+            // Add assessment gains (bonus from fun games) for this user
+            $assessmentGains = GameAssessment::whereHas('quizAttempt', function($query) use ($user) {
+                $query->where('user_id', $user->id)
+                      ->where('status', 'completed')
+                      ->where('created_at', '>=', now()->subDays($this->selectedTimeframe));
+            })->where('is_assessed', true)->get();
+            
+            foreach ($assessmentGains as $assessment) {
+                // Assessment gain = total_deposit - base_points_used
+                $assessmentGain = ($assessment->total_deposit ?? 0) - $basePoints;
+                $totalGainedPoints += max(0, $assessmentGain);
+            }
+        }
+        
+        return $basePoints + $totalGainedPoints;
     }
     
     /**
@@ -706,66 +764,38 @@ class UserProgress extends Component
     }
     
     /**
-     * Calculate detailed team points breakdown for a user
+     * Calculate detailed team points breakdown for a user using same logic as DashboardStats
      */
     private function calculateUserTeamPointsBreakdown($user, $attempts)
     {
-        $completedAttempts = $attempts->where('status', QuizAttempt::STATUS_COMPLETED);
-        
         $basePoints = $user->team ? ($user->team->initial_points ?? 1000) : 1000;
         
-        if ($completedAttempts->isEmpty()) {
-            return [
-                'total' => $basePoints,
-                'base_points' => $basePoints,
-                'earned_points' => 0,
-                'assessment_bonus' => 0,
-                'breakdown_text' => $basePoints . ' (base)',
-            ];
-        }
+        // Get all gained points from correct answers in completed attempts within timeframe
+        $userAnswers = UserAnswer::whereHas('quizAttempt', function($query) use ($user) {
+            $query->where('user_id', $user->id)
+                  ->where('status', 'completed')
+                  ->where('created_at', '>=', now()->subDays($this->selectedTimeframe));
+        })->with(['question'])->where('is_correct', true)->get();
         
-        // Get the best attempt for points calculation
-        $bestAttempt = null;
-        $maxTeamPoints = 0;
-        
-        foreach ($completedAttempts as $attempt) {
-            $teamPoints = $this->calculateTeamPoints($attempt);
-            if ($teamPoints > $maxTeamPoints) {
-                $maxTeamPoints = $teamPoints;
-                $bestAttempt = $attempt;
+        $earnedPoints = 0;
+        foreach ($userAnswers as $answer) {
+            if ($answer->question) {
+                $earnedPoints += $answer->question->points ?? 0;
             }
         }
         
-        if (!$bestAttempt) {
-            return [
-                'total' => $basePoints,
-                'base_points' => $basePoints,
-                'earned_points' => 0,
-                'assessment_bonus' => 0,
-                'breakdown_text' => $basePoints . ' (base)',
-            ];
-        }
+        // Add assessment gains (bonus from fun games)
+        $assessmentGains = GameAssessment::whereHas('quizAttempt', function($query) use ($user) {
+            $query->where('user_id', $user->id)
+                  ->where('status', 'completed')
+                  ->where('created_at', '>=', now()->subDays($this->selectedTimeframe));
+        })->where('is_assessed', true)->get();
         
-        // Calculate detailed breakdown
-        $userAnswers = UserAnswer::where('quiz_attempt_id', $bestAttempt->id)
-            ->with(['question'])
-            ->where('is_correct', true)
-            ->get();
-            
-        $earnedPoints = $userAnswers->sum(function($answer) {
-            return $answer->question->points ?? 0;
-        });
-        
-        // Assessment bonus
-        $assessments = GameAssessment::where('quiz_attempt_id', $bestAttempt->id)
-            ->where('user_id', $bestAttempt->user_id)
-            ->where('is_assessed', true)
-            ->get();
-            
         $assessmentBonus = 0;
-        foreach ($assessments as $assessment) {
-            $bonus = ($assessment->total_deposit ?? 0) - $basePoints;
-            $assessmentBonus += max(0, $bonus);
+        foreach ($assessmentGains as $assessment) {
+            // Assessment gain = total_deposit - base_points_used
+            $assessmentGain = ($assessment->total_deposit ?? 0) - $basePoints;
+            $assessmentBonus += max(0, $assessmentGain);
         }
         
         // Create breakdown text
@@ -888,5 +918,93 @@ class UserProgress extends Component
             'assessment_notes' => $assessmentNotes,
             'team_points_breakdown' => $teamPointsBreakdown,
         ];
+    }
+
+    public function viewVerificationPhotos($userId)
+    {
+        $user = User::findOrFail($userId);
+        
+        // Get game assessments with verification photos for this user
+        $gameAssessments = GameAssessment::with(['quizAttempt.user', 'quizAttempt.questionnaire'])
+            ->whereHas('quizAttempt', function($query) use ($userId) {
+                $query->where('user_id', $userId)
+                      ->whereNotNull('verification_photo')
+                      ->where('verification_photo', '!=', '');
+            })
+            ->where('is_assessed', true)
+            ->orderBy('created_at', 'desc')
+            ->get();
+        
+        $assessmentsData = $gameAssessments->map(function($assessment) {
+            $quizAttempt = $assessment->quizAttempt;
+            return [
+                'id' => $assessment->id,
+                'user_name' => $quizAttempt->user->name ?? 'Unknown',
+                'questionnaire_title' => $quizAttempt->questionnaire->title ?? 'Unknown Quiz',
+                'total_deposit' => $assessment->total_deposit ?? 0,
+                'completed_at' => $quizAttempt->completed_at?->format('M d, Y H:i'),
+                'photo_captured_at' => $quizAttempt->photo_captured_at?->format('M d, Y H:i'),
+                'verification_photo' => $quizAttempt->verification_photo
+            ];
+        });
+        
+        $modalData = [
+            'user_id' => $user->id,
+            'user_name' => $user->name,
+            'assessments' => $assessmentsData->toArray()
+        ];
+        
+        $this->dispatch('open-verification-photos-modal', $modalData);
+    }
+    
+    /**
+     * Get brief feedback data from debrief questions
+     */
+    private function getBriefFeedbackData()
+    {
+        // Get all user answers for brief questions within the selected timeframe
+        $briefAnswers = UserAnswer::whereHas('quizAttempt', function($query) {
+            $query->where('created_at', '>=', now()->subDays($this->selectedTimeframe))
+                  ->where('status', QuizAttempt::STATUS_COMPLETED);
+        })
+        ->whereHas('question', function($query) {
+            $query->where('type', 'brief');
+        })
+        ->with(['quizAttempt.user:id,name,email,team_id', 'quizAttempt.user.team:id,name', 'question:id,question', 'quizAttempt.questionnaire:id,title'])
+        ->orderBy('created_at', 'desc')
+        ->get();
+
+        // Apply team filter if selected
+        if ($this->selectedTeam !== 'all') {
+            $briefAnswers = $briefAnswers->filter(function($answer) {
+                $user = $answer->quizAttempt->user;
+                return $user && $user->team_id == $this->selectedTeam;
+            });
+        }
+
+        // Apply search filter if provided
+        if ($this->searchTerm) {
+            $briefAnswers = $briefAnswers->filter(function($answer) {
+                $user = $answer->quizAttempt->user;
+                return stripos($user->name ?? '', $this->searchTerm) !== false ||
+                       stripos($user->email ?? '', $this->searchTerm) !== false ||
+                       stripos($answer->answer ?? '', $this->searchTerm) !== false;
+            });
+        }
+
+        return $briefAnswers->map(function($answer) {
+            $user = $answer->quizAttempt->user;
+            return [
+                'id' => $answer->id,
+                'user_name' => $user->name ?? 'Unknown User',
+                'user_email' => $user->email ?? '',
+                'team_name' => $user->team->name ?? 'No Team',
+                'questionnaire_title' => $answer->quizAttempt->questionnaire->title ?? 'Unknown Quiz',
+                'question_text' => $answer->question->question ?? 'Unknown Question',
+                'feedback_answer' => $answer->answer,
+                'submitted_at' => $answer->created_at,
+                'quiz_attempt_id' => $answer->quiz_attempt_id,
+            ];
+        })->values();
     }
 }

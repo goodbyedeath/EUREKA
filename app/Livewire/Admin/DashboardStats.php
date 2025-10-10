@@ -16,6 +16,7 @@ class DashboardStats extends Component
 
     public function render()
     {
-        return view('livewire.admin.dashboard-stats');
+        return view('livewire.admin.dashboard-stats')
+            ->layout(null);
     }
 }

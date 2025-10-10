@@ -17,7 +17,12 @@ class User extends Authenticatable
         'team_id',
         'last_login_at',
         'is_active',
+        'session_timeout',
+        'session_workflow_id',
+        'last_activity_at',
+        'session_expired_at',
     ];
+    
 
     protected $hidden = [
         'password',
@@ -30,6 +35,8 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'last_login_at' => 'datetime',
+            'last_activity_at' => 'datetime',
+            'session_expired_at' => 'datetime',
             'is_active' => 'boolean',
         ];
     }
@@ -175,5 +182,43 @@ class User extends Authenticatable
     {
         return $query->where('role', $role);
     }
+
+    /**
+     * Get session timeout in seconds
+     */
+    public function getSessionTimeout(): ?int
+    {
+        return $this->session_timeout;
+    }
+
+    /**
+     * Set session timeout in seconds (null for no timeout)
+     */
+    public function setSessionTimeout(?int $seconds): void
+    {
+        $this->update(['session_timeout' => $seconds]);
+    }
+
+    /**
+     * Get formatted session timeout for display
+     */
+    public function getFormattedSessionTimeout(): string
+    {
+        $timeout = $this->getSessionTimeout();
+        if (!$timeout) {
+            return 'No timeout';
+        }
+
+        $minutes = intval($timeout / 60);
+        $hours = intval($minutes / 60);
+        $remainingMinutes = $minutes % 60;
+
+        if ($hours > 0) {
+            return $hours . 'h ' . $remainingMinutes . 'm';
+        }
+
+        return $minutes . ' minutes';
+    }
+
 
 }

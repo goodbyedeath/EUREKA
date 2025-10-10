@@ -53,11 +53,43 @@
                     <div class="mt-4">
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Manual Entry</label>
                         <div class="flex mt-1">
-                            <input type="text" wire:model="scannedCode" class="flex-1 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400" placeholder="Enter QR code manually">
-                            <button wire:click="manualEntry(scannedCode)" class="ml-2 bg-green-500 hover:bg-green-600 dark:bg-green-600 dark:hover:bg-green-700 text-white px-4 py-2 rounded transition-colors">
+                            <input 
+                                type="text" 
+                                wire:model.live="scannedCode" 
+                                wire:keydown.enter="submitManualCode"
+                                class="flex-1 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400" 
+                                placeholder="Enter QR code manually"
+                                autocomplete="off"
+                                spellcheck="false">
+                            <button 
+                                wire:click="submitManualCode" 
+                                class="ml-2 bg-green-500 hover:bg-green-600 dark:bg-green-600 dark:hover:bg-green-700 text-white px-4 py-2 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                                 Submit
                             </button>
                         </div>
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                            Enter the QR code text manually if scanning doesn't work
+                            @if(!empty($scannedCode))
+                                <span class="text-green-600 dark:text-green-400">• Code entered: {{ strlen($scannedCode) }} characters</span>
+                            @endif
+                        </p>
+                        
+                        <!-- Test Helper (only in development/testing) -->
+                        @if(config('app.debug'))
+                            <div class="mt-2 p-2 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded text-xs">
+                                <p class="font-medium text-yellow-800 dark:text-yellow-200">Test QR Codes:</p>
+                                <div class="flex flex-wrap gap-1 mt-1">
+                                    <button wire:click="$set('scannedCode', '91ccdded-291a-43cc-a626-077cea5bc3b5')" 
+                                            class="px-2 py-1 bg-yellow-100 dark:bg-yellow-800 text-yellow-800 dark:text-yellow-200 rounded text-xs hover:bg-yellow-200 dark:hover:bg-yellow-700">
+                                        Test 1
+                                    </button>
+                                    <button wire:click="$set('scannedCode', '55f2d997-fba1-47eb-8e0e-29b56a70c0fd')" 
+                                            class="px-2 py-1 bg-yellow-100 dark:bg-yellow-800 text-yellow-800 dark:text-yellow-200 rounded text-xs hover:bg-yellow-200 dark:hover:bg-yellow-700">
+                                        Pos 1
+                                    </button>
+                                </div>
+                            </div>
+                        @endif
                     </div>
 
                     <!-- Results -->
@@ -100,10 +132,15 @@
                                     <i class="fas fa-clock"></i> Time Limit: {{ $questionnaire->time_limit }} minutes
                                 </p>
                             @endif
-                            <div class="mt-4">
-                                <button wire:click="startQuiz" class="bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-800 text-white px-6 py-2 rounded transition-colors">
+                            <div class="mt-4 flex gap-2">
+                                <button wire:click="startQuiz" class="bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-800 text-white px-6 py-2 rounded transition-colors flex-1">
                                     Start Quiz
                                 </button>
+                                @if(config('app.debug'))
+                                    <button wire:click="refreshQuestionnaire" class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded transition-colors text-xs">
+                                        🔄
+                                    </button>
+                                @endif
                             </div>
                         </div>
                     @endif
@@ -198,17 +235,50 @@ async function initializeQRScanner() {
             throw new Error('Camera permission denied');
         }
 
-        // Use globally available QR Scanner with fallback
+        // Use new lazy loading approach for QR Scanner
         let QrScanner;
-        if (window.QrScanner) {
-            QrScanner = window.QrScanner;
-        } else {
-            try {
+        try {
+            console.log('Attempting to load QR Scanner...');
+            
+            // Try the global lazy loader function
+            if (typeof window.loadScannerUtils === 'function') {
+                console.log('Using global scanner loader...');
+                QrScanner = await window.loadScannerUtils();
+            } 
+            // Check if already loaded globally
+            else if (window.QrScanner) {
+                console.log('Using already loaded QrScanner...');
+                QrScanner = window.QrScanner;
+            } 
+            // Final fallback - direct import
+            else {
+                console.log('Fallback: Loading QrScanner directly...');
                 const module = await import('qr-scanner');
                 QrScanner = module.default;
-            } catch (importError) {
-                throw new Error('QR Scanner library not available. Please refresh the page.');
+                
+                // Apply canvas optimization inline
+                if (!window.canvasOptimized) {
+                    const originalGetContext = HTMLCanvasElement.prototype.getContext;
+                    HTMLCanvasElement.prototype.getContext = function(contextType, contextAttributes = {}) {
+                        if (contextType === '2d' && !contextAttributes.hasOwnProperty('willReadFrequently')) {
+                            contextAttributes.willReadFrequently = true;
+                        }
+                        return originalGetContext.call(this, contextType, contextAttributes);
+                    };
+                    window.canvasOptimized = true;
+                }
+                
+                window.QrScanner = QrScanner;
             }
+            
+            if (!QrScanner) {
+                throw new Error('QrScanner not loaded after all attempts');
+            }
+            
+            console.log('QrScanner loaded successfully:', typeof QrScanner, !!QrScanner);
+        } catch (importError) {
+            console.error('QrScanner loading failed:', importError);
+            throw new Error('QR Scanner library not available. Please refresh the page and try again.');
         }
         const video = document.getElementById('qr-video');
         

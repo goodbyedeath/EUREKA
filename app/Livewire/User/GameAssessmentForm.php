@@ -185,7 +185,14 @@ class GameAssessmentForm extends Component
             // Continue to the quiz (next question)
             return $this->redirect(route('quiz.continue', ['attemptId' => $this->attempt->id]), navigate: true);
         } else {
-            // This was the last question, go to results
+            // This was the last question, mark quiz as completed and go to results
+            $this->attempt->update([
+                'status' => 'completed',
+                'completed_at' => now(),
+                'total_time_seconds' => $this->attempt->started_at ? 
+                    now()->diffInSeconds($this->attempt->started_at) : 0
+            ]);
+            
             return $this->redirect(route('quiz.results', ['attemptId' => $this->attempt->id]), navigate: true);
         }
     }

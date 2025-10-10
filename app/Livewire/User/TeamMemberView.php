@@ -25,11 +25,18 @@ class TeamMemberView extends Component
     public $is_leader = false;
 
     protected $rules = [
-        'name' => 'required|string|max:255',
+        'name' => 'required|string|max:255|min:2',
         'email' => 'required|email|max:255',
         'phone' => 'nullable|string|max:20',
-        'position' => 'required|string|max:255',
+        'position' => 'nullable|string|max:255',
         'is_leader' => 'boolean'
+    ];
+
+    protected $messages = [
+        'name.required' => 'Team member name is required.',
+        'name.min' => 'Name must be at least 2 characters.',
+        'email.required' => 'Email address is required.',
+        'email.email' => 'Please enter a valid email address.'
     ];
 
     public function render()
@@ -85,22 +92,61 @@ class TeamMemberView extends Component
             return;
         }
 
+        // Leader assignment will automatically transfer from previous leader
+
         $data = [
             'team_id' => $user->team_id,
-            'name' => $this->name,
-            'email' => $this->email,
-            'phone' => $this->phone,
-            'position' => $this->position,
+            'name' => trim($this->name),
+            'email' => strtolower(trim($this->email)),
+            'phone' => $this->phone ?: null,
+            'position' => $this->position ? trim($this->position) : null,
             'is_leader' => $this->is_leader
         ];
 
+        // Check for duplicate email in the same team
+        $duplicateEmailQuery = TeamMember::where('team_id', $user->team_id)
+            ->where('email', $data['email']);
+            
         if ($this->editingMember) {
-            $this->editingMember->update($data);
-            session()->flash('message', 'Team member updated successfully!');
-        } else {
-            TeamMember::create($data);
-            session()->flash('message', 'Team member added successfully!');
+            $duplicateEmailQuery->where('id', '!=', $this->editingMember->id);
         }
+        
+        if ($duplicateEmailQuery->exists()) {
+            session()->flash('error', 'A team member with this email already exists.');
+            return;
+        }
+
+        \DB::transaction(function () use ($data) {
+            $leadershipTransferred = false;
+            
+            // Automatically transfer leadership if new leader is assigned
+            if ($this->is_leader) {
+                $previousLeader = TeamMember::where('team_id', $data['team_id'])
+                    ->where('is_leader', true)
+                    ->first();
+                    
+                if ($previousLeader && ($this->editingMember?->id !== $previousLeader->id)) {
+                    $previousLeader->update(['is_leader' => false]);
+                    $leadershipTransferred = true;
+                }
+            }
+            
+            if ($this->editingMember) {
+                $this->editingMember->update($data);
+                if ($leadershipTransferred) {
+                    session()->flash('message', 'Team member updated and leadership transferred successfully!');
+                } else {
+                    session()->flash('message', 'Team member updated successfully!');
+                }
+            } else {
+                TeamMember::create($data);
+                if ($leadershipTransferred) {
+                    session()->flash('message', 'Team member added and leadership transferred successfully!');
+                } else {
+                    session()->flash('message', 'Team member added successfully!');
+                }
+            }
+        });
 
         $this->closeModal();
     }
@@ -114,6 +160,16 @@ class TeamMemberView extends Component
     public function deleteMember()
     {
         if ($this->deletingMember) {
+            // Prevent deleting the last leader if they're the only one
+            if ($this->deletingMember->is_leader) {
+                $teamMembersCount = TeamMember::where('team_id', $this->deletingMember->team_id)->count();
+                if ($teamMembersCount > 1) {
+                    session()->flash('error', 'Cannot delete the team leader. Please assign leadership to another member first.');
+                    $this->closeDeleteModal();
+                    return;
+                }
+            }
+            
             $this->deletingMember->delete();
             session()->flash('message', 'Team member deleted successfully!');
             $this->closeDeleteModal();

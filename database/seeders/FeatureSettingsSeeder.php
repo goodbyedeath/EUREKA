@@ -84,6 +84,32 @@ class FeatureSettingsSeeder extends Seeder
                     'color' => 'red',
                     'route' => null // Future feature
                 ])
+            ],
+            [
+                'feature_key' => 'user_dashboard_session_timer',
+                'feature_name' => 'Session Timer',
+                'description' => 'Display session timeout timer on user dashboard',
+                'is_enabled' => true,
+                'sort_order' => 7,
+                'metadata' => json_encode([
+                    'icon' => 'fas fa-clock',
+                    'color' => 'blue',
+                    'route' => null
+                ])
+            ],
+            [
+                'feature_key' => 'workflow_timers',
+                'feature_name' => 'Workflow Timers',
+                'description' => 'Enable server-side workflow-based timers for sessions and quizzes',
+                'is_enabled' => false, // Start disabled for gradual rollout
+                'sort_order' => 8,
+                'metadata' => json_encode([
+                    'icon' => 'fas fa-stopwatch',
+                    'color' => 'purple',
+                    'route' => null,
+                    'beta' => true,
+                    'requires_queue' => true
+                ])
             ]
         ];
 

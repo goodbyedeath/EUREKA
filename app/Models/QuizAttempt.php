@@ -21,6 +21,12 @@ class QuizAttempt extends Model
         'total_score',
         'total_time_seconds',
         'status',
+        'verification_photo',
+        'photo_captured_at',
+        'timer_workflow_id',
+        'timer_started_at',
+        'auto_submitted',
+        'submission_reason',
     ];
 
     protected function casts(): array
@@ -28,6 +34,9 @@ class QuizAttempt extends Model
         return [
             'started_at' => 'datetime',
             'completed_at' => 'datetime',
+            'photo_captured_at' => 'datetime',
+            'timer_started_at' => 'datetime',
+            'auto_submitted' => 'boolean',
             'total_score' => 'integer',
             'total_time_seconds' => 'integer',
         ];

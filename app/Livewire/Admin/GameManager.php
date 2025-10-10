@@ -3,415 +3,410 @@
 namespace App\Livewire\Admin;
 
 use App\Models\GameLocation;
+use App\Models\Hotspot;
 use Livewire\Component;
-use Livewire\WithPagination;
 use Livewire\WithFileUploads;
+use Livewire\WithPagination;
 use Illuminate\Support\Facades\Storage;
 
 class GameManager extends Component
 {
-    use WithPagination, WithFileUploads;
+    use WithFileUploads, WithPagination;
 
-    public $showModal = false;
-    public $editMode = false;
-    public $gameId;
-
-    // Form properties
     public $name = '';
     public $description = '';
-    public $what_to_do = '';
-    public $radius = 50;
+    public $map_image_path = '';
+    
+    // Panorama default view coordinates
+    public $default_pitch = 0;  // Vertical view angle (-90 to 90)
+    public $default_yaw = 0;    // Horizontal view angle (-180 to 180)
     public $is_active = true;
-    public $map_image = null;  // Map image
-    public $coordinate_x = '';
-    public $coordinate_y = '';
-    public $existing_map_image_path = null;
+    public $target_type = 'all_users';
+    public $target_user_id = null;
     
-    // Additional missing properties
-    public $quest_points = 10;
-    public $max_check_ins_per_user = 1;
-    public $image = null;  // Regular image
-    public $existing_image_path = null;
-    
-    // Image removal tracking
-    public $pending_remove_image = false;
-    public $pending_remove_map_image = false;
-    public $original_coordinate_x = '';
-    public $original_coordinate_y = '';
-    
-    // Search and filter properties
-    public $search = '';
-    public $filterStatus = 'all'; // all, active, inactive
-    public $selectedGames = [];
-    public $selectAll = false;
+    public $mapImageUpload;
+    public $editingGameId = null;
+    public $showModal = false;
+    public $showPanoramaModal = false;
+    public $selectedGame = null;
 
     protected $rules = [
-        'name' => 'required|string|max:255|unique:game_locations,name',
-        'description' => 'required|string|min:10',
-        'what_to_do' => 'required|string|min:10',
-        'radius' => 'required|integer|min:10|max:1000',
-        'quest_points' => 'required|integer|min:0|max:1000',
-        'max_check_ins_per_user' => 'required|integer|min:1|max:100',
+        'name' => 'required|string|max:255',
+        'description' => 'nullable|string',
+        // Panorama default view coordinates
+        'default_pitch' => 'nullable|numeric|between:-90,90',
+        'default_yaw' => 'nullable|numeric|between:-180,180',
         'is_active' => 'boolean',
-        'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
-        'map_image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
-        'coordinate_x' => 'nullable|integer|min:0',
-        'coordinate_y' => 'nullable|integer|min:0',
+        'target_type' => 'required|in:all_users,specific_user',
+        'target_user_id' => 'nullable|exists:users,id',
+        'mapImageUpload' => 'nullable|image|max:10240' // 10MB max, temporarily removed ratio validation
     ];
 
-    protected function messages()
-    {
-        return [
-            'name.unique' => __('games.name_unique'),
-            'description.min' => __('games.description_min'),
-            'what_to_do.min' => __('games.what_to_do_min'),
-            'radius.min' => __('games.radius_min'),
-            'radius.max' => __('games.radius_max'),
-            'quest_points.required' => __('games.quest_points_required'),
-            'quest_points.min' => __('games.quest_points_min'),
-            'quest_points.max' => __('games.quest_points_max'),
-            'max_check_ins_per_user.min' => __('games.max_check_ins_min'),
-            'max_check_ins_per_user.max' => __('games.max_check_ins_max'),
-            'image.image' => __('validation.image', ['attribute' => __('games.regular_image')]),
-            'image.max' => __('games.image_max'),
-            'image.mimes' => __('games.image_mimes'),
-            'map_image.image' => __('validation.image', ['attribute' => __('games.map_image')]),
-            'map_image.max' => __('games.map_image_max'),
-            'map_image.mimes' => __('games.image_mimes'),
-            'coordinate_x.min' => __('games.coordinate_positive'),
-            'coordinate_y.min' => __('games.coordinate_positive'),
-        ];
-    }
+    protected $messages = [
+        'mapImageUpload.image' => 'Please upload a valid image file.',
+        'mapImageUpload.max' => 'The image size must not exceed 10MB.',
+    ];
 
     public function render()
     {
-        $query = GameLocation::query();
-        
-        // Apply search filter
-        if (!empty($this->search)) {
-            $query->where(function($q) {
-                $q->where('name', 'like', '%' . $this->search . '%')
-                  ->orWhere('description', 'like', '%' . $this->search . '%');
-            });
-        }
-        
-        // Apply status filter
-        if ($this->filterStatus !== 'all') {
-            $isActive = $this->filterStatus === 'active';
-            $query->where('is_active', $isActive);
-        }
-        
         return view('livewire.admin.game-manager', [
-            'games' => $query->latest()->paginate(10)
+            'games' => GameLocation::with('activeHotspots')->orderBy('created_at', 'desc')->paginate(10)
         ]);
     }
-    
-    public function updatingSearch()
-    {
-        $this->resetPage();
-    }
-    
-    public function updatingFilterStatus()
-    {
-        $this->resetPage();
-    }
 
-    public function create()
+    public function openModal($gameId = null)
     {
         $this->resetForm();
-        $this->editMode = false;
-        $this->showModal = true;
-    }
-
-    public function edit($id)
-    {
-        $game = GameLocation::findOrFail($id);
         
-        $this->gameId = $game->id;
-        $this->name = $game->name;
-        $this->description = $game->description;
-        $this->what_to_do = $game->what_to_do;
-        $this->radius = $game->radius;
-        $this->quest_points = $game->quest_points ?? 10;
-        $this->max_check_ins_per_user = $game->max_check_ins_per_user ?? 1;
-        $this->is_active = $game->is_active;
-        $this->coordinate_x = $game->coordinate_x;
-        $this->coordinate_y = $game->coordinate_y;
-        $this->existing_map_image_path = $game->map_image_path;
-        $this->existing_image_path = $game->image_path;
-        $this->pending_remove_image = false;
-        $this->pending_remove_map_image = false;
-        $this->original_coordinate_x = '';
-        $this->original_coordinate_y = '';
-
-        $this->editMode = true;
-        $this->showModal = true;
-    }
-
-    public function save()
-    {
-        // Adjust validation rules for edit mode
-        $rules = $this->rules;
-        if ($this->editMode) {
-            $rules['name'] = 'required|string|max:255|unique:game_locations,name,' . $this->gameId;
+        if ($gameId) {
+            $this->editingGameId = $gameId;
+            $game = GameLocation::findOrFail($gameId);
+            
+            $this->name = $game->name;
+            $this->description = $game->description;
+            $this->map_image_path = $game->map_image_path;
+            $this->default_pitch = $game->default_pitch ?? 0;
+            $this->default_yaw = $game->default_yaw ?? 0;
+            $this->is_active = $game->is_active;
+            $this->target_type = $game->target_type ?? 'all_users';
+            $this->target_user_id = $game->target_user_id;
         }
         
-        $this->validate($rules);
-
-        $data = [
-            'name' => $this->name,
-            'description' => $this->description,
-            'what_to_do' => $this->what_to_do,
-            'radius' => $this->radius,
-            'quest_points' => $this->quest_points,
-            'max_check_ins_per_user' => $this->max_check_ins_per_user,
-            'is_active' => $this->is_active,
-            'coordinate_x' => $this->coordinate_x ?: null,
-            'coordinate_y' => $this->coordinate_y ?: null,
-        ];
-
-        // Handle regular image upload
-        if ($this->image) {
-            try {
-                // Delete old regular image if exists
-                if ($this->editMode && $this->existing_image_path) {
-                    Storage::disk('public')->delete($this->existing_image_path);
-                }
-                
-                // Store new regular image
-                $imagePath = $this->image->store('games/images', 'public');
-                $data['image_path'] = $imagePath;
-                $this->existing_image_path = $imagePath; // Update component property
-                $this->image = null; // Clear uploaded file
-            } catch (\Exception $e) {
-                session()->flash('error', __('games.upload_failed', ['error' => $e->getMessage()]));
-                return;
-            }
-        }
-
-        // Handle pending regular image removal
-        if ($this->editMode && $this->pending_remove_image && $this->existing_image_path) {
-            try {
-                Storage::disk('public')->delete($this->existing_image_path);
-                $data['image_path'] = null;
-            } catch (\Exception $e) {
-                // Log error but don't stop the save process
-                logger()->error('Failed to remove regular image: ' . $e->getMessage());
-            }
-        }
-
-        // Handle map image upload
-        if ($this->map_image) {
-            try {
-                // Delete old map image if exists
-                if ($this->editMode && $this->existing_map_image_path) {
-                    Storage::disk('public')->delete($this->existing_map_image_path);
-                }
-                
-                // Store new map image with proper naming
-                $mapImagePath = $this->map_image->store('games/map-images', 'public');
-                $data['map_image_path'] = $mapImagePath;
-                $this->existing_map_image_path = $mapImagePath; // Update component property
-                $this->map_image = null; // Clear uploaded file
-            } catch (\Exception $e) {
-                session()->flash('error', __('games.upload_failed', ['error' => $e->getMessage()]));
-                return;
-            }
-        }
-
-        // Handle pending map image removal
-        if ($this->editMode && $this->pending_remove_map_image && $this->existing_map_image_path) {
-            try {
-                Storage::disk('public')->delete($this->existing_map_image_path);
-                $data['map_image_path'] = null;
-                // Reset coordinates when map image is removed
-                $data['coordinate_x'] = null;
-                $data['coordinate_y'] = null;
-            } catch (\Exception $e) {
-                // Log error but don't stop the save process
-                logger()->error('Failed to remove map image: ' . $e->getMessage());
-            }
-        }
-
-        try {
-            if ($this->editMode) {
-                $game = GameLocation::findOrFail($this->gameId);
-                $game->update($data);
-                session()->flash('message', __('games.location_updated'));
-            } else {
-                $data['created_by'] = auth()->id();
-                GameLocation::create($data);
-                session()->flash('message', __('games.location_created'));
-            }
-
-            $this->closeModal();
-            $this->resetPage(); // Reset pagination to show new/updated item
-        } catch (\Exception $e) {
-            session()->flash('error', __('games.save_failed', ['error' => $e->getMessage()]));
-        }
+        $this->showModal = true;
     }
-
-    public function delete($id)
-    {
-        try {
-            $game = GameLocation::findOrFail($id);
-            
-            // Delete associated images if they exist
-            if ($game->image_path) {
-                Storage::disk('public')->delete($game->image_path);
-            }
-            if ($game->map_image_path) {
-                Storage::disk('public')->delete($game->map_image_path);
-            }
-            
-            $game->delete();
-            session()->flash('message', __('games.location_deleted'));
-        } catch (\Exception $e) {
-            session()->flash('error', __('games.delete_failed', ['error' => $e->getMessage()]));
-        }
-    }
-
-    public function removeImage($type = 'regular')
-    {
-        if (!$this->editMode) return;
-
-        if ($type === 'regular' && $this->existing_image_path) {
-            $this->pending_remove_image = true;
-            session()->flash('message', __('games.regular_image_marked_for_removal'));
-        } elseif ($type === 'map' && $this->existing_map_image_path) {
-            // Backup current coordinates before marking for removal
-            $this->original_coordinate_x = $this->coordinate_x;
-            $this->original_coordinate_y = $this->coordinate_y;
-            
-            // Reset coordinates when map image is marked for removal
-            $this->coordinate_x = '';
-            $this->coordinate_y = '';
-            
-            $this->pending_remove_map_image = true;
-            session()->flash('message', __('games.map_image_marked_for_removal'));
-        }
-    }
-
-    public function undoRemoveImage($type = 'regular')
-    {
-        if ($type === 'regular') {
-            $this->pending_remove_image = false;
-            session()->flash('message', __('games.regular_image_removal_cancelled'));
-        } elseif ($type === 'map') {
-            // Restore original coordinates when undoing map image removal
-            $this->coordinate_x = $this->original_coordinate_x;
-            $this->coordinate_y = $this->original_coordinate_y;
-            
-            $this->pending_remove_map_image = false;
-            session()->flash('message', __('games.map_image_removal_cancelled'));
-        }
-    }
-
 
     public function closeModal()
     {
         $this->showModal = false;
         $this->resetForm();
     }
-    
-    public function initializeMapInteraction()
+
+    public function save()
     {
-        // This method is called from JavaScript to trigger re-initialization
-        $this->dispatch('map-interaction-ready');
+        try {
+            \Log::info('GameManager save method called', [
+                'editingGameId' => $this->editingGameId,
+                'name' => $this->name,
+                'hasMapImageUpload' => !!$this->mapImageUpload,
+                'mapImageUploadInfo' => $this->mapImageUpload ? [
+                    'originalName' => $this->mapImageUpload->getClientOriginalName(),
+                    'size' => $this->mapImageUpload->getSize(),
+                    'mimeType' => $this->mapImageUpload->getMimeType()
+                ] : null
+            ]);
+
+            $this->validate();
+
+        $data = [
+            'name' => $this->name,
+            'description' => $this->description,
+            'what_to_do' => $this->description, // Use description as what_to_do for now
+            // Panorama default view coordinates
+            'default_pitch' => $this->default_pitch ?: null,
+            'default_yaw' => $this->default_yaw ?: null,
+            'is_active' => $this->is_active,
+            'target_type' => $this->target_type,
+            'target_user_id' => $this->target_user_id,
+            'created_by' => 1, // Default admin user ID
+            'quest_points' => 10, // Default points
+            'radius' => 50, // Default radius
+            'max_check_ins_per_user' => 1, // Default max check-ins
+        ];
+
+        // Handle image upload
+        if ($this->mapImageUpload) {
+            try {
+                \Log::info('Processing image upload', [
+                    'file' => $this->mapImageUpload->getClientOriginalName(),
+                    'size' => $this->mapImageUpload->getSize(),
+                    'mime' => $this->mapImageUpload->getMimeType()
+                ]);
+
+                // Delete old image if updating
+                if ($this->editingGameId && $this->map_image_path) {
+                    \Log::info('Deleting old image: ' . $this->map_image_path);
+                    Storage::disk('public')->delete($this->map_image_path);
+                }
+                
+                $path = $this->mapImageUpload->store('games/map-images', 'public');
+                \Log::info('Image stored successfully at: ' . $path);
+                $data['map_image_path'] = $path;
+            } catch (\Exception $e) {
+                \Log::error('Image upload failed: ' . $e->getMessage());
+                session()->flash('error', 'Image upload failed: ' . $e->getMessage());
+                return;
+            }
+        }
+
+        if ($this->editingGameId) {
+            GameLocation::findOrFail($this->editingGameId)->update($data);
+            session()->flash('success', 'Game location updated successfully!');
+        } else {
+            GameLocation::create($data);
+            session()->flash('success', 'Game location created successfully!');
+        }
+
+        $this->closeModal();
+        } catch (\Exception $e) {
+            \Log::error('GameManager save failed', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            session()->flash('error', 'Save failed: ' . $e->getMessage());
+        }
+    }
+
+    public function delete($gameId)
+    {
+        $game = GameLocation::findOrFail($gameId);
+        
+        // Delete associated image
+        if ($game->map_image_path) {
+            Storage::disk('public')->delete($game->map_image_path);
+        }
+        
+        $game->delete();
+        session()->flash('success', 'Game location deleted successfully!');
+    }
+
+    public function toggleActive($gameId)
+    {
+        $game = GameLocation::findOrFail($gameId);
+        $game->update(['is_active' => !$game->is_active]);
+        
+        session()->flash('success', 'Game location status updated!');
+    }
+
+    public function viewPanorama($gameId)
+    {
+        $this->selectedGame = GameLocation::with('activeHotspots')->findOrFail($gameId);
+        $this->showPanoramaModal = true;
+        
+        // Emit event to initialize Panellum viewer with existing hotspots
+        $this->dispatch('panorama-modal-opened', [
+            'gameId' => $gameId,
+            'imagePath' => $this->selectedGame->map_image_path,
+            'hotspots' => $this->selectedGame->activeHotspots->map(function ($hotspot) {
+                return [
+                    'id' => $hotspot->id,
+                    'pitch' => (float) $hotspot->pitch,
+                    'yaw' => (float) $hotspot->yaw,
+                    'type' => $hotspot->type,
+                    'text' => $hotspot->title,
+                    'description' => $hotspot->description,
+                    'cssClass' => $hotspot->css_class ?: 'custom-admin-hotspot'
+                ];
+            })->toArray()
+        ]);
+    }
+
+    public function closePanoramaModal()
+    {
+        $this->showPanoramaModal = false;
+        $this->selectedGame = null;
+        
+        // Emit cleanup event
+        $this->dispatch('panorama-modal-closed');
+    }
+
+    public function updatePanoramaView($pitch, $yaw)
+    {
+        $this->default_pitch = (float) $pitch;
+        $this->default_yaw = (float) $yaw;
+    }
+
+    // Hotspot Management Methods
+    public function saveHotspot($gameLocationId, $pitch, $yaw, $title, $description = null, $type = 'info', $cssClass = 'custom-admin-hotspot')
+    {
+        try {
+            // Validate inputs
+            if (empty($gameLocationId)) {
+                throw new \InvalidArgumentException('Game location ID is required');
+            }
+            
+            if (empty($title)) {
+                throw new \InvalidArgumentException('Hotspot title is required');
+            }
+
+            // Check if game location exists
+            $gameLocation = GameLocation::find($gameLocationId);
+            if (!$gameLocation) {
+                throw new \InvalidArgumentException('Game location not found');
+            }
+
+            // Validate coordinates
+            $pitch = (float) $pitch;
+            $yaw = (float) $yaw;
+            
+            if ($pitch < -90 || $pitch > 90) {
+                throw new \InvalidArgumentException('Pitch must be between -90 and 90 degrees');
+            }
+            
+            if ($yaw < -180 || $yaw > 180) {
+                throw new \InvalidArgumentException('Yaw must be between -180 and 180 degrees');
+            }
+
+            $hotspot = Hotspot::create([
+                'game_location_id' => $gameLocationId,
+                'title' => $title,
+                'description' => $description,
+                'pitch' => $pitch,
+                'yaw' => $yaw,
+                'type' => $type ?: 'info',
+                'css_class' => $cssClass ?: 'custom-admin-hotspot',
+                'is_active' => true
+            ]);
+
+            $this->dispatch('hotspot-saved', [
+                'id' => $hotspot->id,
+                'pitch' => (float) $hotspot->pitch,
+                'yaw' => (float) $hotspot->yaw,
+                'type' => $hotspot->type,
+                'text' => $hotspot->title,
+                'description' => $hotspot->description,
+                'cssClass' => $hotspot->css_class
+            ]);
+
+            session()->flash('success', 'Hotspot saved successfully!');
+            
+            return $hotspot->id;
+        } catch (\Exception $e) {
+            \Log::error('Failed to save hotspot', [
+                'gameLocationId' => $gameLocationId,
+                'pitch' => $pitch,
+                'yaw' => $yaw,
+                'title' => $title,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            session()->flash('error', 'Failed to save hotspot: ' . $e->getMessage());
+            return false;
+        }
+    }
+
+    public function deleteHotspot($hotspotId)
+    {
+        try {
+            $hotspot = Hotspot::findOrFail($hotspotId);
+            $hotspot->delete();
+            
+            $this->dispatch('hotspot-deleted', ['id' => $hotspotId]);
+            session()->flash('success', 'Hotspot deleted successfully!');
+            
+            return true;
+        } catch (\Exception $e) {
+            session()->flash('error', 'Failed to delete hotspot: ' . $e->getMessage());
+            return false;
+        }
+    }
+
+    public function clearAllHotspots($gameLocationId)
+    {
+        try {
+            $deletedCount = Hotspot::where('game_location_id', $gameLocationId)->delete();
+            
+            $this->dispatch('all-hotspots-cleared');
+            session()->flash('success', "Cleared {$deletedCount} hotspots successfully!");
+            
+            return $deletedCount;
+        } catch (\Exception $e) {
+            session()->flash('error', 'Failed to clear hotspots: ' . $e->getMessage());
+            return false;
+        }
+    }
+
+    public function getHotspots($gameLocationId)
+    {
+        try {
+            $hotspots = Hotspot::where('game_location_id', $gameLocationId)
+                ->where('is_active', true)
+                ->get()
+                ->map(function ($hotspot) {
+                    return [
+                        'id' => $hotspot->id,
+                        'pitch' => (float) $hotspot->pitch,
+                        'yaw' => (float) $hotspot->yaw,
+                        'type' => $hotspot->type,
+                        'text' => $hotspot->title,
+                        'description' => $hotspot->description,
+                        'cssClass' => $hotspot->css_class ?: 'custom-admin-hotspot'
+                    ];
+                })
+                ->toArray();
+
+            return $hotspots;
+        } catch (\Exception $e) {
+            session()->flash('error', 'Failed to load hotspots: ' . $e->getMessage());
+            return [];
+        }
+    }
+
+    public function exportHotspots($gameLocationId)
+    {
+        try {
+            $gameLocation = GameLocation::findOrFail($gameLocationId);
+            $hotspots = $this->getHotspots($gameLocationId);
+            
+            $data = [
+                'location_name' => $gameLocation->name,
+                'location_id' => $gameLocationId,
+                'exported_at' => now()->toISOString(),
+                'hotspots' => $hotspots
+            ];
+
+            $filename = 'hotspots-' . \Str::slug($gameLocation->name) . '-' . now()->format('Y-m-d-H-i-s') . '.json';
+            
+            $this->dispatch('download-hotspots', [
+                'data' => $data,
+                'filename' => $filename
+            ]);
+
+            return $data;
+        } catch (\Exception $e) {
+            session()->flash('error', 'Failed to export hotspots: ' . $e->getMessage());
+            return false;
+        }
+    }
+
+    public function importHotspots($gameLocationId, $hotspotsData)
+    {
+        try {
+            $imported = 0;
+            
+            foreach ($hotspotsData as $hotspotData) {
+                $this->saveHotspot(
+                    $gameLocationId,
+                    $hotspotData['pitch'] ?? 0,
+                    $hotspotData['yaw'] ?? 0,
+                    $hotspotData['text'] ?? $hotspotData['title'] ?? 'Imported Hotspot',
+                    $hotspotData['description'] ?? null,
+                    $hotspotData['type'] ?? 'info',
+                    $hotspotData['cssClass'] ?? 'custom-admin-hotspot'
+                );
+                $imported++;
+            }
+
+            session()->flash('success', "Successfully imported {$imported} hotspots!");
+            return $imported;
+        } catch (\Exception $e) {
+            session()->flash('error', 'Failed to import hotspots: ' . $e->getMessage());
+            return false;
+        }
     }
 
     private function resetForm()
     {
+        $this->editingGameId = null;
         $this->name = '';
         $this->description = '';
-        $this->what_to_do = '';
-        $this->radius = 50;
-        $this->quest_points = 10;
-        $this->max_check_ins_per_user = 1;
+        $this->map_image_path = '';
+        $this->default_pitch = 0;
+        $this->default_yaw = 0;
         $this->is_active = true;
-        $this->image = null;
-        $this->map_image = null;
-        $this->coordinate_x = '';
-        $this->coordinate_y = '';
-        $this->existing_image_path = null;
-        $this->existing_map_image_path = null;
-        $this->pending_remove_image = false;
-        $this->pending_remove_map_image = false;
-        $this->original_coordinate_x = '';
-        $this->original_coordinate_y = '';
-        $this->gameId = null;
-        $this->resetErrorBag();
-    }
-    
-    public function updatedSelectAll($value)
-    {
-        if ($value) {
-            $this->selectedGames = GameLocation::pluck('id')->toArray();
-        } else {
-            $this->selectedGames = [];
-        }
-    }
-    
-    public function bulkActivate()
-    {
-        if (empty($this->selectedGames)) {
-            session()->flash('error', __('games.select_at_least_one'));
-            return;
-        }
-        
-        try {
-            GameLocation::whereIn('id', $this->selectedGames)->update(['is_active' => true]);
-            session()->flash('message', __('games.locations_activated', ['count' => count($this->selectedGames)]));
-            $this->selectedGames = [];
-            $this->selectAll = false;
-        } catch (\Exception $e) {
-            session()->flash('error', __('games.activate_failed', ['error' => $e->getMessage()]));
-        }
-    }
-    
-    public function bulkDeactivate()
-    {
-        if (empty($this->selectedGames)) {
-            session()->flash('error', __('games.select_at_least_one'));
-            return;
-        }
-        
-        try {
-            GameLocation::whereIn('id', $this->selectedGames)->update(['is_active' => false]);
-            session()->flash('message', __('games.locations_deactivated', ['count' => count($this->selectedGames)]));
-            $this->selectedGames = [];
-            $this->selectAll = false;
-        } catch (\Exception $e) {
-            session()->flash('error', __('games.deactivate_failed', ['error' => $e->getMessage()]));
-        }
-    }
-    
-    public function bulkDelete()
-    {
-        if (empty($this->selectedGames)) {
-            session()->flash('error', __('games.select_at_least_one'));
-            return;
-        }
-        
-        try {
-            $games = GameLocation::whereIn('id', $this->selectedGames)->get();
-            
-            foreach ($games as $game) {
-                // Delete associated images
-                if ($game->image_path) {
-                    Storage::disk('public')->delete($game->image_path);
-                }
-                if ($game->map_image_path) {
-                    Storage::disk('public')->delete($game->map_image_path);
-                }
-                $game->delete();
-            }
-            
-            session()->flash('message', __('games.locations_deleted', ['count' => count($this->selectedGames)]));
-            $this->selectedGames = [];
-            $this->selectAll = false;
-        } catch (\Exception $e) {
-            session()->flash('error', __('games.bulk_delete_failed', ['error' => $e->getMessage()]));
-        }
+        $this->target_type = 'all_users';
+        $this->target_user_id = null;
+        $this->mapImageUpload = null;
+        $this->resetValidation();
     }
 }

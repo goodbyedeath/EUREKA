@@ -45,26 +45,14 @@
                     <div class="flex flex-col md:flex-row">
                         <!-- Map Section -->
                         <div class="w-full md:w-1/3 h-48 md:h-auto bg-gray-200 dark:bg-gray-700 relative">
-                            @if(isset($location->google_map_embed_url) && $location->google_map_embed_url)
-                                <iframe 
-                                    src="{{ $location->google_map_embed_url }}" 
-                                    width="100%" 
-                                    height="100%" 
-                                    style="border:0;" 
-                                    allowfullscreen="" 
-                                    loading="lazy"
-                                    referrerpolicy="no-referrer-when-downgrade"
-                                    onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                                </iframe>
-                                <!-- Fallback div that shows when iframe fails -->
-                                <div class="h-full flex items-center justify-center text-gray-500 dark:text-gray-400 absolute inset-0" style="display: none;">
-                                    <div class="text-center">
-                                        <svg class="w-12 h-12 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                                        </svg>
-                                        <p class="text-sm">Map temporarily unavailable</p>
-                                    </div>
+                            @if($location->has_valid_coordinates)
+                                <!-- MapLibre map container with data attributes -->
+                                <div id="map-{{ $location->id }}" 
+                                     class="w-full h-full" 
+                                     data-lat="{{ $location->latitude }}" 
+                                     data-lng="{{ $location->longitude }}" 
+                                     data-name="{{ $location->name }}"
+                                     data-radius="{{ $location->radius }}">
                                 </div>
                             @else
                                 <div class="h-full flex items-center justify-center text-gray-500 dark:text-gray-400">
@@ -73,7 +61,7 @@
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
                                         </svg>
-                                        <p class="text-sm">No map available</p>
+                                        <p class="text-sm">No location data available</p>
                                     </div>
                                 </div>
                             @endif
@@ -149,13 +137,35 @@
                                 <!-- Right Side Actions -->
                                 <div class="w-full md:w-48 space-y-2">
                                     <!-- View Details Button -->
-                                    <button wire:click="openLocationDetails({{ $location->id }})"
+                                    <button wire:click="showLocationDetails({{ $location->id }})"
                                             class="w-full py-2 px-4 rounded text-sm font-medium transition-colors bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600">
                                         <svg class="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                                         </svg>
                                         View Details
                                     </button>
+
+                                    <!-- Find Route Button -->
+                                    @if($locationPermissionGranted)
+                                        <button wire:click="findShortestRoute({{ $location->id }})"
+                                                class="w-full py-2 px-4 rounded text-sm font-medium transition-colors bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-800/40">
+                                            <svg class="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"></path>
+                                            </svg>
+                                            Find Route
+                                        </button>
+                                    @endif
+
+                                    <!-- Fullscreen Map Button -->
+                                    @if($location->has_valid_coordinates)
+                                        <button wire:click="showFullscreenMap({{ $location->id }})"
+                                                class="w-full py-2 px-4 rounded text-sm font-medium transition-colors bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 hover:bg-purple-200 dark:hover:bg-purple-800/40">
+                                            <svg class="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path>
+                                            </svg>
+                                            Fullscreen Map
+                                        </button>
+                                    @endif
 
                                     <!-- Check-in Button -->
                                     @php
@@ -241,27 +251,62 @@
                     <h3 class="text-xl font-semibold text-gray-900 dark:text-gray-100">
                         {{ $selectedLocationDetails->name ?? 'Location Details' }}
                     </h3>
-                    <button wire:click="closeLocationDetails" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                        </svg>
-                    </button>
+                    <div class="flex items-center space-x-2">
+                        @if($selectedLocationDetails->has_valid_coordinates)
+                            <button wire:click="showFullscreenMap({{ $selectedLocationDetails->id }})" 
+                                    class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors" 
+                                    title="Fullscreen Map">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path>
+                                </svg>
+                            </button>
+                        @endif
+                        <button wire:click="closeLocationDetails" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </button>
+                    </div>
                 </div>
 
                 <!-- Modal Body -->
                 <div class="pt-4 space-y-6">
                     <!-- Map Section -->
-                    @if(isset($selectedLocationDetails->google_map_embed_url) && $selectedLocationDetails->google_map_embed_url)
+                    @if($selectedLocationDetails->has_valid_coordinates)
                         <div class="w-full h-64 bg-gray-200 dark:bg-gray-700 rounded-lg overflow-hidden">
-                            <iframe 
-                                src="{{ $selectedLocationDetails->google_map_embed_url }}" 
-                                width="100%" 
-                                height="100%" 
-                                style="border:0;" 
-                                allowfullscreen="" 
-                                loading="lazy"
-                                referrerpolicy="no-referrer-when-downgrade">
-                            </iframe>
+                            <!-- MapLibre modal map container -->
+                            <div id="modalMap" 
+                                 class="w-full h-full"
+                                 data-lat="{{ $selectedLocationDetails->latitude }}" 
+                                 data-lng="{{ $selectedLocationDetails->longitude }}" 
+                                 data-name="{{ $selectedLocationDetails->name }}"
+                                 data-radius="{{ $selectedLocationDetails->radius }}">
+                            </div>
+                            <!-- Fallback for modal -->
+                            <div class="h-full flex items-center justify-center text-gray-500 dark:text-gray-400" style="display: none;">
+                                <div class="text-center">
+                                    <svg class="w-12 h-12 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                    </svg>
+                                    <p class="text-sm">Map temporarily unavailable</p>
+                                </div>
+                            </div>
+                        </div>
+                    @elseif($selectedLocationDetails->has_valid_coordinates)
+                        <!-- Static map fallback for modal -->
+                        <div class="w-full h-64 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 rounded-lg flex items-center justify-center">
+                            <div class="text-center p-6">
+                                <svg class="w-12 h-12 mx-auto mb-3 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                </svg>
+                                <p class="text-sm font-medium text-blue-800 dark:text-blue-200 mb-2">{{ $selectedLocationDetails->formatted_coordinates }}</p>
+                                <button onclick="window.open('https://www.google.com/maps?q={{ $selectedLocationDetails->latitude }},{{ $selectedLocationDetails->longitude }}', '_blank')" 
+                                        class="text-sm text-blue-600 dark:text-blue-400 hover:underline bg-white dark:bg-gray-700 px-3 py-1 rounded">
+                                    Open in Google Maps
+                                </button>
+                            </div>
                         </div>
                     @endif
 
@@ -325,11 +370,45 @@
             </div>
         </div>
     @endif
+
+    <!-- Fullscreen Map Modal -->
+    @if($showFullscreenModal && $selectedFullscreenLocation)
+        <div class="fixed inset-0 bg-black bg-opacity-90 z-50 flex flex-col" wire:click="closeFullscreenMap">
+            <!-- Header with close button -->
+            <div class="flex items-center justify-between p-4 bg-black bg-opacity-50 text-white">
+                <h3 class="text-xl font-semibold">{{ $selectedFullscreenLocation->name ?? 'Location Map' }}</h3>
+                <button wire:click="closeFullscreenMap" 
+                        class="text-white hover:text-gray-300 transition-colors"
+                        title="Close Fullscreen Map">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            
+            <!-- Map container -->
+            <div class="flex-1 relative" wire:click.stop>
+                <div id="livewire-fullscreen-map-{{ $selectedFullscreenLocation->id }}" 
+                     class="w-full h-full bg-gray-200 dark:bg-gray-700"
+                     data-lat="{{ $selectedFullscreenLocation->latitude }}"
+                     data-lng="{{ $selectedFullscreenLocation->longitude }}"
+                     data-name="{{ $selectedFullscreenLocation->name }}"
+                     data-radius="{{ $selectedFullscreenLocation->radius }}">
+                    <div class="flex items-center justify-center h-full text-gray-600">
+                        <div class="text-center">
+                            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-2"></div>
+                            <p>Loading map...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    @endif
 </div>
 
 <script>
 let watchId = null;
-
+let locationRefreshInterval = null;
 
 function requestLocation() {
     if (!navigator.geolocation) {
@@ -337,43 +416,375 @@ function requestLocation() {
         return;
     }
 
+    const options = {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0 // Always get fresh location
+    };
+
     // Get current position
     navigator.geolocation.getCurrentPosition(
         position => {
-            @this.call('locationUpdated', position.coords.latitude, position.coords.longitude);
+            @this.call('locationUpdated', position.coords.latitude, position.coords.longitude, position.coords.accuracy);
         },
         error => {
-            alert('Unable to get your location. Please check your GPS settings.');
+            handleLocationError(error);
         },
-        {
-            enableHighAccuracy: true,
-            timeout: 10000,
-            maximumAge: 300000
-        }
-    );
-
-    // Watch position for updates
-    watchId = navigator.geolocation.watchPosition(
-        position => {
-            @this.call('locationUpdated', position.coords.latitude, position.coords.longitude);
-        },
-        error => {},
-        {
-            enableHighAccuracy: true,
-            timeout: 10000,
-            maximumAge: 60000
-        }
+        options
     );
 }
 
-document.addEventListener('DOMContentLoaded', function() {
-    requestLocation();
-});
+function handleLocationError(error) {
+    let errorMessage = '';
+    
+    switch(error.code) {
+        case error.PERMISSION_DENIED:
+            errorMessage = "Location access denied. Please enable GPS and refresh the page.";
+            break;
+        case error.POSITION_UNAVAILABLE:
+            errorMessage = "Location information is unavailable.";
+            break;
+        case error.TIMEOUT:
+            errorMessage = "Location request timed out. Trying again...";
+            break;
+        default:
+            errorMessage = "An unknown error occurred while retrieving location.";
+            break;
+    }
+    
+    console.error('Location error:', errorMessage);
+    @this.call('showLocationError', errorMessage);
+}
 
-window.addEventListener('beforeunload', () => {
+function startLocationRefresh() {
+    // Clear any existing interval
+    if (locationRefreshInterval) {
+        clearInterval(locationRefreshInterval);
+    }
+    
+    // Get location immediately with flash message
+    requestLocation();
+    
+    // Set up 15-second refresh interval with silent updates
+    locationRefreshInterval = setInterval(function() {
+        requestLocationSilently();
+    }, 15000); // 15 seconds
+
+    console.log('User location refresh started (every 15 seconds)');
+}
+
+function requestLocationSilently() {
+    if (!navigator.geolocation) {
+        return;
+    }
+
+    const options = {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0 // Always get fresh location
+    };
+
+    // Get current position silently (no success flash messages)
+    navigator.geolocation.getCurrentPosition(
+        position => {
+            @this.call('updateLocationSilently', position.coords.latitude, position.coords.longitude, position.coords.accuracy);
+        },
+        error => {
+            // Only handle serious errors silently, don't spam with error messages
+            if (error.code === error.PERMISSION_DENIED) {
+                handleLocationError(error);
+            }
+        },
+        options
+    );
+}
+
+function stopLocationRefresh() {
+    if (locationRefreshInterval) {
+        clearInterval(locationRefreshInterval);
+        locationRefreshInterval = null;
+        console.log('User location refresh stopped');
+    }
+    
     if (watchId) {
         navigator.geolocation.clearWatch(watchId);
+        watchId = null;
+    }
+}
+
+// Initialize location detection when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    startLocationRefresh();
+});
+
+// Restart location detection after Livewire updates
+document.addEventListener('livewire:morph.updated', function() {
+    // Small delay to ensure DOM is ready
+    setTimeout(function() {
+        startLocationRefresh();
+    }, 100);
+});
+
+// Clean up intervals when page is unloaded
+window.addEventListener('beforeunload', function() {
+    stopLocationRefresh();
+});
+
+// Initialize fullscreen map when modal opens
+let fullscreenMapInstance = null;
+
+document.addEventListener('livewire:updated', function () {
+    // Initialize fullscreen map if modal is shown
+    const fullscreenMapContainer = document.querySelector('[id^="livewire-fullscreen-map-"]');
+    if (fullscreenMapContainer && !fullscreenMapInstance) {
+        initializeFullscreenMap(fullscreenMapContainer);
     }
 });
 
+function initializeFullscreenMap(container) {
+    const lat = parseFloat(container.dataset.lat);
+    const lng = parseFloat(container.dataset.lng);
+    const name = container.dataset.name;
+    const radius = parseInt(container.dataset.radius);
+
+    if (typeof window.maplibregl === 'undefined') {
+        container.innerHTML = '<div class="flex items-center justify-center h-full text-red-500"><p>Map library not loaded</p></div>';
+        return;
+    }
+
+    try {
+        fullscreenMapInstance = new window.maplibregl.Map({
+            container: container,
+            style: {
+                'version': 8,
+                'sources': {
+                    'osm': {
+                        'type': 'raster',
+                        'tiles': [
+                            'https://a.tile.openstreetmap.org/{z}/{x}/{y}.png'
+                        ],
+                        'tileSize': 256,
+                        'attribution': '© OpenStreetMap contributors'
+                    }
+                },
+                'layers': [
+                    {
+                        'id': 'osm',
+                        'type': 'raster',
+                        'source': 'osm'
+                    }
+                ]
+            },
+            center: [lng, lat],
+            zoom: 16,
+            interactive: true
+        });
+
+        fullscreenMapInstance.on('load', () => {
+            // Add location marker
+            new window.maplibregl.Marker({ color: '#3B82F6' })
+                .setLngLat([lng, lat])
+                .addTo(fullscreenMapInstance);
+
+            // Add radius circle if radius is provided
+            if (radius > 0) {
+                const circleCoordinates = createCircle([lng, lat], radius);
+                
+                fullscreenMapInstance.addSource('radius-circle', {
+                    'type': 'geojson',
+                    'data': {
+                        'type': 'Feature',
+                        'geometry': {
+                            'type': 'Polygon',
+                            'coordinates': [circleCoordinates]
+                        }
+                    }
+                });
+
+                fullscreenMapInstance.addLayer({
+                    'id': 'radius-fill',
+                    'type': 'fill',
+                    'source': 'radius-circle',
+                    'paint': {
+                        'fill-color': '#3B82F6',
+                        'fill-opacity': 0.2
+                    }
+                });
+
+                fullscreenMapInstance.addLayer({
+                    'id': 'radius-outline',
+                    'type': 'line',
+                    'source': 'radius-circle',
+                    'paint': {
+                        'line-color': '#3B82F6',
+                        'line-width': 2
+                    }
+                });
+            }
+            
+            container.innerHTML = '';
+            container.appendChild(fullscreenMapInstance.getContainer());
+        });
+
+        fullscreenMapInstance.on('error', (error) => {
+            console.error('Fullscreen map error:', error);
+            container.innerHTML = '<div class="flex items-center justify-center h-full text-red-500"><p>Map loading failed</p></div>';
+        });
+
+    } catch (error) {
+        console.error('Error creating fullscreen map:', error);
+        container.innerHTML = '<div class="flex items-center justify-center h-full text-red-500"><p>Error creating map</p></div>';
+    }
+}
+
+// Clean up map when modal closes
+document.addEventListener('livewire:updated', function () {
+    // Clean up fullscreen map if modal is closed
+    if (fullscreenMapInstance && !document.querySelector('[id^="livewire-fullscreen-map-"]')) {
+        fullscreenMapInstance.remove();
+        fullscreenMapInstance = null;
+    }
+});
+
+function createCircle(center, radiusInMeters) {
+    const points = 60;
+    const coords = [];
+    const km = radiusInMeters / 1000;
+    
+    for (let i = 0; i < points; i++) {
+        const angle = (i / points) * 2 * Math.PI;
+        const dx = km * Math.cos(angle);
+        const dy = km * Math.sin(angle);
+        
+        const lat = center[1] + (dy / 111.32);
+        const lng = center[0] + (dx / (111.32 * Math.cos(center[1] * Math.PI / 180)));
+        
+        coords.push([lng, lat]);
+    }
+    
+    coords.push(coords[0]); // Close the polygon
+    return coords;
+}
+
+
+
+
+
+
+
+
+
 </script>
+
+
+    <!-- Route Modal -->
+    @if($showRouteModal && $selectedRouteLocation)
+        <div x-data="{ open: @entangle('showRouteModal') }" 
+             x-show="open" 
+             class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50" 
+             x-cloak>
+            <div class="relative top-20 mx-auto p-5 border w-11/12 md:w-3/4 lg:w-1/2 shadow-lg rounded-md bg-white dark:bg-gray-800">
+                
+                <!-- Modal Header -->
+                <div class="flex items-center justify-between pb-4 border-b border-gray-200 dark:border-gray-600">
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                        <svg class="w-5 h-5 inline mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"></path>
+                        </svg>
+                        Route to {{ $selectedRouteLocation->name }}
+                    </h3>
+                    <button wire:click="closeRouteModal" 
+                            class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Route Map -->
+                <div class="py-4">
+                    <div id="routeMap" class="w-full h-80 bg-gray-200 dark:bg-gray-700 rounded-lg"></div>
+                </div>
+
+                <!-- Route Information -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
+                    <div class="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
+                        <h4 class="font-semibold text-blue-800 dark:text-blue-200 mb-2">Distance</h4>
+                        <p class="text-lg font-bold text-blue-600">
+                            @if(isset($routeData['distance']))
+                                {{ number_format($routeData['distance'], 0) }}m
+                            @else
+                                N/A
+                            @endif
+                        </p>
+                    </div>
+                    <div class="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg">
+                        <h4 class="font-semibold text-green-800 dark:text-green-200 mb-2">Est. Walking Time</h4>
+                        <p class="text-lg font-bold text-green-600">
+                            @if(isset($routeData['duration']))
+                                {{ gmdate('i:s', $routeData['duration']) }}
+                            @else
+                                {{ ceil(($routeData['distance'] ?? 0) / 83) }} min
+                            @endif
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Navigation Instructions -->
+                @if(!empty($routeData['instructions']))
+                    <div class="py-4 border-t border-gray-200 dark:border-gray-600">
+                        <h4 class="font-semibold text-gray-900 dark:text-gray-100 mb-3">Turn-by-turn Directions</h4>
+                        <div class="max-h-48 overflow-y-auto space-y-2">
+                            @foreach(array_slice($routeData['instructions'], 0, 8) as $index => $instruction)
+                                <div class="flex items-start space-x-3 p-2 bg-gray-50 dark:bg-gray-700 rounded">
+                                    <span class="flex-shrink-0 w-6 h-6 bg-blue-100 dark:bg-blue-800 text-blue-800 dark:text-blue-200 rounded-full text-xs flex items-center justify-center font-semibold">
+                                        {{ $index + 1 }}
+                                    </span>
+                                    <div class="flex-1">
+                                        <p class="text-sm text-gray-700 dark:text-gray-300">
+                                            {{ $instruction['instruction'] ?? 'Continue straight' }}
+                                        </p>
+                                        @if(isset($instruction['distance']) && $instruction['distance'] > 0)
+                                            <p class="text-xs text-gray-500">{{ number_format($instruction['distance'], 0) }}m</p>
+                                        @endif
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+                @endif
+
+                <!-- Modal Footer -->
+                <div class="flex justify-end space-x-3 pt-4 border-t border-gray-200 dark:border-gray-600">
+                    <button wire:click="closeRouteModal" 
+                            class="px-4 py-2 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors">
+                        Close
+                    </button>
+                    <button onclick="window.open('https://www.google.com/maps/dir/?api=1&origin={{ $userLatitude }},{{ $userLongitude }}&destination={{ $selectedRouteLocation->latitude }},{{ $selectedRouteLocation->longitude }}&travelmode=walking', '_blank')"
+                            class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors">
+                        Open in Google Maps
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Initialize route on modal show -->
+        <script>
+            document.addEventListener('livewire:init', () => {
+                Livewire.on('showRoute', (data) => {
+                    if (window.showRoute && data.length > 0) {
+                        window.showRoute(data[0].routeData, data[0].destination);
+                    }
+                });
+
+                // Listen for location update on modal open
+                Livewire.on('updateLocationOnModalOpen', () => {
+                    console.log('Updating location on modal open...');
+                    requestLocationSilently();
+                });
+            });
+        </script>
+    @endif
+
+<!-- Quest Location Dashboard JS -->
+<script src="{{ asset('js/quest-location-dashboard.js') }}"></script>

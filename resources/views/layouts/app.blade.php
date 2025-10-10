@@ -1,30 +1,36 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Eureka</title>
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    
+    <title>@yield('title', 'Eureka') - {{ config('app.name', 'Eureka') }}</title>
+    
+    <!-- Preconnect for performance -->
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
     
     <!-- PWA Meta Tags -->
-    <link rel="manifest" href="/manifest.json">
+    <link rel="manifest" href="{{ route('pwa.manifest') }}">
     <meta name="theme-color" content="#6777ef">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="Eureka">
-    <link rel="apple-touch-icon" href="/logo.png">
+    <link rel="apple-touch-icon" href="{{ asset('logo.png') }}">
     
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- User Role Meta (for session timeout) -->
+    @auth
+        <meta name="user-role" content="{{ auth()->user()->role }}">
+        <meta name="user-id" content="{{ auth()->user()->id }}">
+    @endauth
     
-    @livewireStyles
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
+    <!-- Font Awesome with integrity check -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" 
+          integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" 
+          crossorigin="anonymous" referrerpolicy="no-referrer">
     
-    <!-- Fix modal flickering -->
-    <style>
-        [x-cloak] { display: none !important; }
-    </style>
-    
-    <!-- Dark Mode Init Script - runs before page render -->
+    <!-- Dark Mode - User Layout -->
     <script>
         // Apply theme immediately to prevent flash
         (function() {
@@ -33,11 +39,81 @@
                 document.documentElement.classList.add('dark');
             }
         })();
+        
+        // User Dark Mode Implementation  
+        window.UserDarkMode = {
+            init() {
+                const savedTheme = localStorage.getItem('theme') || 'light';
+                this.setTheme(savedTheme);
+                this.attachEventListeners();
+            },
+            
+            setTheme(theme) {
+                if (theme === 'dark') {
+                    document.documentElement.classList.add('dark');
+                } else {
+                    document.documentElement.classList.remove('dark');
+                }
+                localStorage.setItem('theme', theme);
+                this.updateIcons();
+            },
+            
+            toggle() {
+                const isDark = document.documentElement.classList.contains('dark');
+                const newTheme = isDark ? 'light' : 'dark';
+                this.setTheme(newTheme);
+            },
+            
+            updateIcons() {
+                const isDark = document.documentElement.classList.contains('dark');
+                const sunIcons = document.querySelectorAll('.sun-icon');
+                const moonIcons = document.querySelectorAll('.moon-icon');
+                
+                sunIcons.forEach(icon => {
+                    icon.style.display = isDark ? 'block' : 'none';
+                });
+                moonIcons.forEach(icon => {
+                    icon.style.display = isDark ? 'none' : 'block';
+                });
+            },
+            
+            attachEventListeners() {
+                const buttons = document.querySelectorAll('[data-theme-toggle]');
+                buttons.forEach((button) => {
+                    const newButton = button.cloneNode(true);
+                    button.parentNode.replaceChild(newButton, button);
+                    
+                    newButton.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        this.toggle();
+                    });
+                });
+            }
+        };
+        
+        // Initialize when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => {
+                window.UserDarkMode.init();
+            });
+        } else {
+            window.UserDarkMode.init();
+        }
     </script>
+    
+    @livewireStyles
+    
+    <!-- Vite CSS and JS -->
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
+    <script src="{{ asset('js/pwa-installer.js') }}"></script>
     
     <style>
         [x-cloak] { display: none !important; }
+        /* Prevent layout shift */
+        .sun-icon, .moon-icon { transition: opacity 0.2s ease; }
     </style>
+    
+    @stack('styles')
 </head>
 <body class="bg-gray-100 dark:bg-gray-900 transition-colors duration-300">
     <nav class="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 transition-colors duration-300">
@@ -88,32 +164,33 @@
         </footer>
     </main>
 
-    <!-- PWA Install Prompt -->
-    <livewire:pwa-install-prompt />
- 
-    <!-- Service Worker Registration -->
-    <script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', function() {
-                navigator.serviceWorker.register('/sw.js')
-                    .then(function(registration) {
-                        console.log('ServiceWorker registration successful:', registration.scope);
-                    })
-                    .catch(function(error) {
-                        console.log('ServiceWorker registration failed:', error);
-                    });
-            });
-        }
-    </script>
- 
-    <!-- Add this stack for any additional scripts that might be pushed from other components -->
-    @stack('scripts')
+    <!-- PWA Components -->
+    @if(file_exists(app_path('Livewire/PwaInstallPrompt.php')))
+        <livewire:pwa-install-prompt />
+    @endif
+    
+    <!-- Service Worker & Offline Manager -->
+    @if(file_exists(public_path('js/sw-config.js')))
+        <script src="{{ asset('js/sw-config.js') }}"></script>
+    @endif
+    @if(file_exists(public_path('js/offline-manager.js')))
+        <script src="{{ asset('js/offline-manager.js') }}"></script>
+    @endif
+    
     @livewireScripts
+    @stack('scripts')
+    
+    <!-- Flash Messages -->
+    @include('components.flash-messages')
     
     <script>
         document.addEventListener('livewire:init', () => {
-            Livewire.on('console-log', (data) => {
-                console.log('DEBUG:', data.message);
+            // Re-initialize dark mode on Livewire navigation
+            document.addEventListener('livewire:navigated', () => {
+                if (window.UserDarkMode) {
+                    window.UserDarkMode.attachEventListeners();
+                    window.UserDarkMode.updateIcons();
+                }
             });
         });
     </script>

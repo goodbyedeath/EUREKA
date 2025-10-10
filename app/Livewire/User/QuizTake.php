@@ -15,6 +15,8 @@ use Illuminate\Validation\ValidationException as ValidationException;
 use App\Services\AnswerValidationService;
 use Illuminate\Support\Facades\DB;
 use App\Models\GameAssessment;
+use App\Services\WorkflowTimerService;
+use App\Models\FeatureSetting;
 
 
 class QuizTake extends Component
@@ -44,8 +46,12 @@ class QuizTake extends Component
         'submitQuiz' => 'submitQuiz',
         'syncTimer' => 'syncTimer',
         'checkTimer' => 'checkTimer',
-        'confirmExit' => 'handleExitAttempt'
+        'confirmExit' => 'handleExitAttempt',
+        'echo:quiz-time-warning,QuizTimeWarning' => 'handleQuizWarning',
+        'echo:quiz-time-expired,QuizTimeExpired' => 'handleQuizTimeExpired'
     ];
+
+    private ?WorkflowTimerService $workflowTimerService = null;
 
     public function mount($attemptId = null, $questionnaireId = null)
     {
@@ -102,31 +108,46 @@ class QuizTake extends Component
                     ->firstOrFail();
             });
 
-            // Check if user has already completed this quiz (if single attempt)
-            if ($this->questionnaire->max_attempts) {
-                $attemptCount = QuizAttempt::where('questionnaire_id', $questionnaireId)
-                    ->where('user_id', auth()->id())
-                    ->where('status', QuizAttempt::STATUS_COMPLETED)
-                    ->count();
-                    
-                if ($attemptCount >= $this->questionnaire->max_attempts) {
-                    // Only set session flash if one doesn't already exist to prevent duplicates
-                    if (!session()->has('error')) {
-                        session()->flash('error', 'You have reached the maximum number of attempts for this quiz.');
-                    }
-                    return redirect()->route('user.available-quest');
-                }
+            // Check if questionnaire is available (date range, etc.)
+            if (!$this->questionnaire->isAvailable()) {
+                session()->flash('error', 'This questionnaire is not currently available.');
+                return redirect()->route('user.dashboard');
+            }
+
+            // Check if user can attempt this questionnaire (max attempts validation)
+            if (!$this->questionnaire->canUserAttempt(auth()->id())) {
+                session()->flash('error', 'You have reached the maximum number of attempts for this quiz.');
+                return redirect()->route('user.dashboard');
             }
             
             $this->createNewAttempt();
+            
+            // Redirect to continue route to prevent restart on refresh
+            return redirect()->route('quiz.continue', ['attemptId' => $this->attempt->id]);
         } else {
             abort(404, 'Invalid quiz access');
         }
 
+        try {
+            $this->workflowTimerService = app(WorkflowTimerService::class);
+        } catch (\Exception $e) {
+            \Log::error("Failed to initialize WorkflowTimerService in QuizTake: " . $e->getMessage());
+            $this->workflowTimerService = null;
+        }
+        
         $this->loadQuestions();
         $this->calculateTimeRemaining();
         $this->calculateTotalPoints();
         $this->initializeAnswers();
+        
+        // Start workflow timer if workflow timers are enabled and quiz has time limit
+        if ($this->isWorkflowTimersEnabled() && $this->questionnaire->time_limit && $this->workflowTimerService) {
+            try {
+                $this->workflowTimerService->startQuizTimer($this->attempt);
+            } catch (\Exception $e) {
+                \Log::error("Failed to start quiz timer: " . $e->getMessage());
+            }
+        }
         
         // Lock the quiz once mounted to prevent navigation
         $this->quizLocked = true;
@@ -169,7 +190,27 @@ class QuizTake extends Component
             return;
         }
 
-        // Get the quiz start time
+        // Use workflow timer if enabled, otherwise fallback to old calculation
+        if ($this->isWorkflowTimersEnabled() && $this->workflowTimerService) {
+            try {
+                $timerData = $this->workflowTimerService->getQuizRemainingTime($this->attempt);
+                if ($timerData) {
+                    $this->timeRemaining = $timerData['remaining_seconds'];
+                    
+                    // Auto-submit if time is up
+                    if ($this->timeRemaining <= 0 && !$this->isCompleted && !$this->timerExpired) {
+                        $this->timerExpired = true;
+                        $this->handleTimeExpiry();
+                    }
+                    return;
+                }
+            } catch (\Exception $e) {
+                \Log::error("Failed to get quiz remaining time: " . $e->getMessage());
+                // Fall through to fallback calculation
+            }
+        }
+
+        // Fallback to old calculation method
         $startTime = $this->attempt->started_at;
         if (!$startTime) {
             $this->timeRemaining = null;
@@ -192,6 +233,12 @@ class QuizTake extends Component
     
     public function createNewAttempt()
     {
+        // Double-check max attempts as a fail-safe before creating new attempt
+        if (!$this->questionnaire->canUserAttempt(auth()->id())) {
+            session()->flash('error', 'You have reached the maximum number of attempts for this quiz.');
+            return redirect()->route('user.dashboard');
+        }
+
         $this->attempt = QuizAttempt::create([
             'questionnaire_id' => $this->questionnaire->id,
             'user_id' => auth()->id(),
@@ -200,6 +247,15 @@ class QuizTake extends Component
         ]);
 
         $this->startTime = $this->attempt->started_at;
+        
+        // Start workflow timer if enabled and quiz has time limit
+        if ($this->isWorkflowTimersEnabled() && $this->questionnaire->time_limit && $this->workflowTimerService) {
+            try {
+                $this->workflowTimerService->startQuizTimer($this->attempt);
+            } catch (\Exception $e) {
+                \Log::error("Failed to start quiz timer in createNewAttempt: " . $e->getMessage());
+            }
+        }
     }
 
     public function loadExistingAnswers()
@@ -260,10 +316,10 @@ class QuizTake extends Component
             return;
         }
         
-        // Only count points from regular questions (not fun_game)
+        // Only count points from regular questions (not fun_game or brief)
         $this->totalPoints = 0;
         foreach ($this->questions as $question) {
-            if ($question['type'] !== 'fun_game') {
+            if ($question['type'] !== 'fun_game' && $question['type'] !== 'brief') {
                 $this->totalPoints += $question['points'];
             }
         }
@@ -395,6 +451,10 @@ class QuizTake extends Component
                 if ($question['type'] === 'fun_game') {
                     $isCorrect = ($answer === 'completed');
                     $pointsEarned = 0; // Points are handled via game assessments
+                } elseif ($question['type'] === 'brief') {
+                    // Brief questions don't have correct/incorrect answers - they're just feedback
+                    $isCorrect = false;
+                    $pointsEarned = 0;
                 } else {
                     $isCorrect = $this->isAnswerCorrect($question, $answer);
                     $pointsEarned = $isCorrect ? $question['points'] : 0;
@@ -441,6 +501,11 @@ class QuizTake extends Component
 
     protected function validateAnswer($question, $answer)
     {
+        // Brief questions require minimal validation - just sanitize and return
+        if ($question['type'] === 'brief') {
+            return AnswerValidationService::sanitizeAnswer($answer);
+        }
+        
         // Sanitize input
         $answer = AnswerValidationService::sanitizeAnswer($answer);
         
@@ -468,6 +533,13 @@ class QuizTake extends Component
     public function goToNextQuestion()
     {
         $this->flushPendingAnswers();
+        
+        // Check if user has completed fun games behind current position that need assessment
+        if ($this->hasUnassessedCompletedFunGames()) {
+            session()->flash('error', 'You must complete the assessment for the previous fun game before proceeding to the next question.');
+            return;
+        }
+        
         if ($this->currentQuestionIndex < count($this->questions) - 1) {
             $this->currentQuestionIndex++;
         }
@@ -484,6 +556,13 @@ class QuizTake extends Component
     public function goToQuestion($index)
     {
         $this->flushPendingAnswers();
+        
+        // Only allow going to previous questions or if no unassessed fun games
+        if ($index > $this->currentQuestionIndex && $this->hasUnassessedCompletedFunGames()) {
+            session()->flash('error', 'You must complete the assessment for the previous fun game before proceeding.');
+            return;
+        }
+        
         if ($index >= 0 && $index < count($this->questions)) {
             $this->currentQuestionIndex = $index;
         }
@@ -498,11 +577,26 @@ class QuizTake extends Component
         
         $this->autoSubmitted = true;
         $this->timerExpired = true;
-        $this->submitQuiz();
+        $this->submitQuiz(null); // No photo when auto-submitting due to time expiry
     }
 
-    public function submitQuiz()
+    public function submitQuiz($verificationPhoto = null)
     {
+        // Cancel workflow timer when quiz is submitted
+        if ($this->isWorkflowTimersEnabled() && $this->workflowTimerService) {
+            try {
+                $this->workflowTimerService->cancelQuizTimer($this->attempt);
+            } catch (\Exception $e) {
+                \Log::error("Failed to cancel quiz timer: " . $e->getMessage());
+            }
+        }
+        
+        // Block submission if there are unassessed completed fun games (unless auto-submitted due to timer)
+        if (!$this->autoSubmitted && $this->hasUnassessedCompletedFunGames()) {
+            session()->flash('error', 'You must complete the assessment for all fun games before submitting the quiz.');
+            return;
+        }
+        
         // Check if this is a fun-game-only quiz
         if ($this->isFunGameOnlyQuiz()) {
             $this->autoCompleteQuiz();
@@ -510,7 +604,7 @@ class QuizTake extends Component
         }
 
         // Use database transaction with locking to prevent race conditions
-        DB::transaction(function () {
+        DB::transaction(function () use ($verificationPhoto) {
             // Lock the quiz attempt to prevent concurrent submissions
             $lockedAttempt = QuizAttempt::where('id', $this->attempt->id)
                 ->lockForUpdate()
@@ -545,13 +639,26 @@ class QuizTake extends Component
             // Calculate score
             $this->calculateScore();
 
-            // Update attempt with final scores
-            $lockedAttempt->update([
+            // Prepare update data
+            $updateData = [
                 'status' => QuizAttempt::STATUS_COMPLETED,
                 'completed_at' => $this->endTime,
                 'total_score' => $this->getBasePoints() + $this->earnedPoints,
                 'total_time_seconds' => $this->endTime->diffInSeconds($lockedAttempt->started_at),
-            ]);
+            ];
+            
+            // Add verification photo if provided
+            if ($verificationPhoto && is_string($verificationPhoto)) {
+                $updateData['verification_photo'] = $verificationPhoto;
+                $updateData['photo_captured_at'] = now();
+                
+                if (config('app.debug')) {
+                    \Log::debug("QuizTake: Storing verification photo for attempt {$lockedAttempt->id}");
+                }
+            }
+            
+            // Update attempt with final scores and photo
+            $lockedAttempt->update($updateData);
 
             // Update local attempt reference
             $this->attempt = $lockedAttempt;
@@ -589,7 +696,7 @@ class QuizTake extends Component
         return true;
     }
 
-    public function autoCompleteQuiz()
+    public function autoCompleteQuiz($skipRedirect = false)
     {
         // For fun-game-only quizzes, auto-complete when all games are done
         $allGamesCompleted = true;
@@ -601,7 +708,9 @@ class QuizTake extends Component
         }
 
         if (!$allGamesCompleted) {
-            session()->flash('info', 'Please complete all games before finishing the quiz.');
+            if (!$skipRedirect) {
+                session()->flash('info', 'Please complete all games before finishing the quiz.');
+            }
             return;
         }
 
@@ -633,7 +742,10 @@ class QuizTake extends Component
         $this->quizLocked = false;
         $this->preventNavigation = false;
 
-        session()->flash('success', 'All games completed! Results will be available after assessment.');
+        // Only show message if not skipping redirect
+        if (!$skipRedirect) {
+            session()->flash('success', 'All games completed! Results will be available after assessment.');
+        }
 
         $this->dispatch('quizCompleted', [
             'score' => 0,
@@ -642,8 +754,10 @@ class QuizTake extends Component
             'attemptId' => $this->attempt->id
         ]);
 
-        // Redirect to dedicated results page to ensure fresh data
-        return $this->redirect(route('quiz.results', ['attemptId' => $this->attempt->id]), navigate: true);
+        // Only redirect if not skipping
+        if (!$skipRedirect) {
+            return $this->redirect(route('quiz.results', ['attemptId' => $this->attempt->id]), navigate: true);
+        }
     }
 
     public function getBasePoints()
@@ -662,8 +776,8 @@ class QuizTake extends Component
         $this->earnedPoints = 0;
 
         foreach ($this->questions as $question) {
-            // Skip fun_game questions - they are scored via assessments
-            if ($question['type'] === 'fun_game') {
+            // Skip fun_game and brief questions - they are not scored
+            if ($question['type'] === 'fun_game' || $question['type'] === 'brief') {
                 continue;
             }
             
@@ -685,7 +799,7 @@ class QuizTake extends Component
     {
         $totalRegularPoints = 0;
         foreach ($this->questions as $question) {
-            if ($question['type'] !== 'fun_game') {
+            if ($question['type'] !== 'fun_game' && $question['type'] !== 'brief') {
                 $totalRegularPoints += $question['points'];
             }
         }
@@ -819,7 +933,48 @@ class QuizTake extends Component
         session()->flash('error', 'Cannot exit quiz at this time.');
     }
 
-    // Watch for answer changes and auto-save
+    // Dedicated handler for text input blur events
+    public function saveTextAnswer($questionId, $answer)
+    {
+        if (config('app.debug')) {
+            \Log::debug("QuizTake: saveTextAnswer called - QuestionID: {$questionId}, Answer: '{$answer}'");
+        }
+        
+        // Prevent saving answers if quiz is completed
+        if (!$this->attempt->canEditAnswers()) {
+            \Log::warning("QuizTake: Cannot edit answers - quiz has been submitted. AttemptID: {$this->attempt->id}");
+            session()->flash('error', 'Cannot edit answers - quiz has been submitted.');
+            return;
+        }
+        
+        // Check if this is a brief question
+        $question = collect($this->questions)->firstWhere('id', $questionId);
+        if ($question && $question['type'] === 'brief') {
+            // For brief questions, use debounced saving to reduce processing
+            $this->saveBriefAnswer($questionId, $answer);
+        } else {
+            $this->saveAnswer($questionId, $answer);
+        }
+    }
+
+    // Optimized saving method for brief feedback questions
+    public function saveBriefAnswer($questionId, $answer)
+    {
+        // Update the local answer
+        $this->answers[$questionId] = $answer;
+        
+        // Add to pending answers so it gets saved during quiz submission
+        $this->pendingAnswers[$questionId] = $answer;
+        
+        // Use lighter debounced saving for brief questions (longer delay)
+        $this->dispatch('startBriefAutoSaveTimer', [
+            'questionId' => $questionId,
+            'answer' => $answer,
+            'delay' => 3000 // 3 seconds delay for brief questions
+        ]);
+    }
+
+    // Watch for answer changes and auto-save (excluding text inputs)
     public function updatedAnswers($value, $key)
     {
         if (config('app.debug')) {
@@ -837,15 +992,13 @@ class QuizTake extends Component
                 return;
             }
             
-            // For text inputs, we might want to debounce
+            // Skip automatic save for text and brief inputs - they use dedicated methods
             $question = collect($this->questions)->firstWhere('id', $key);
             
-            if ($question && $question['type'] === 'text') {
+            if ($question && ($question['type'] === 'text' || $question['type'] === 'brief')) {
                 if (config('app.debug')) {
-                    \Log::debug("QuizTake: Skipping immediate save for text question: {$key}");
+                    \Log::debug("QuizTake: Skipping updatedAnswers for {$question['type']} question: {$key} - handled by dedicated method");
                 }
-                // Use wire:model.blur instead of immediate saving for text
-                // This is handled in the Blade template
                 return;
             }
             
@@ -856,9 +1009,9 @@ class QuizTake extends Component
             // For radio buttons and other inputs, save immediately
             $this->saveAnswer($key, $value);
             
-            // EMERGENCY FIX: Also force flush after every answer change
+            // Force flush for non-text inputs only
             if (config('app.debug')) {
-                \Log::debug("QuizTake: Force-flushing from updatedAnswers as backup");
+                \Log::debug("QuizTake: Force-flushing from updatedAnswers for non-text input");
             }
             $this->flushPendingAnswers();
         } else {
@@ -913,9 +1066,23 @@ class QuizTake extends Component
     }
 
     /**
+     * Auto-complete a fun game triggered by external systems
+     */
+    public function autoCompleteGame($questionId, $triggerType = 'manual', $triggerData = [])
+    {
+        // Log the trigger for debugging
+        if (config('app.debug')) {
+            \Log::debug("QuizTake: autoCompleteGame triggered - QuestionID: {$questionId}, Trigger: {$triggerType}", $triggerData);
+        }
+        
+        // Call the main completion method
+        return $this->completeGame($questionId, $triggerType, $triggerData);
+    }
+
+    /**
      * Complete a fun game and create assessment record
      */
-    public function completeGame($questionId)
+    public function completeGame($questionId, $triggerType = 'manual', $triggerData = [])
     {
         // Prevent completing if quiz is locked or completed
         if (!$this->attempt->canEditAnswers()) {
@@ -948,6 +1115,15 @@ class QuizTake extends Component
             }
         }
 
+        // Prepare trigger information for notes
+        $triggerInfo = '';
+        if ($triggerType !== 'manual') {
+            $triggerInfo = "Auto-completed via {$triggerType}";
+            if (!empty($triggerData)) {
+                $triggerInfo .= ': ' . json_encode($triggerData);
+            }
+        }
+
         // Create game assessment record
         $assessment = GameAssessment::create([
             'quiz_attempt_id' => $this->attempt->id,
@@ -956,14 +1132,19 @@ class QuizTake extends Component
             'deposit' => 0,
             'penalty' => 0,
             'total_deposit' => 0,
-            'is_assessed' => false
+            'is_assessed' => false,
+            'notes' => $triggerInfo ?: null
         ]);
 
         // Mark as "answered" in the quiz system
         $this->answers[$questionId] = 'completed';
         $this->saveAnswer($questionId, 'completed');
 
-        // Check if this is a fun-game-only quiz and if all games are completed
+        // Always redirect to assessment immediately after game completion
+        // The blocking logic will prevent quiz progression until assessment is completed
+        session()->flash('success', 'Game completed! Please complete the assessment before continuing with the quiz.');
+
+        // For fun-game-only quizzes, auto-complete quiz if all games are done
         if ($this->isFunGameOnlyQuiz()) {
             $allGamesCompleted = true;
             foreach ($this->questions as $question) {
@@ -974,16 +1155,12 @@ class QuizTake extends Component
             }
 
             if ($allGamesCompleted) {
-                // Auto-complete the quiz
-                $this->autoCompleteQuiz();
-                // Still redirect to assessment page for the current game
-                return $this->redirect(route('game.assessment', ['assessmentId' => $assessment->id]), navigate: true);
+                // Auto-complete the quiz first (skip redirect since we're going to assessment)
+                $this->autoCompleteQuiz(true);
             }
         }
-
-        session()->flash('success', 'Game completed! Please fill out the assessment form.');
         
-        // Always redirect to assessment page after completing any fun game
+        // Always redirect to assessment immediately after any fun game completion
         return $this->redirect(route('game.assessment', ['assessmentId' => $assessment->id]), navigate: true);
     }
 
@@ -1010,7 +1187,7 @@ class QuizTake extends Component
             'progressPercentage' => $this->getProgressPercentage(),
             'answeredPercentage' => $this->getAnsweredPercentage(),
             'formattedTimeRemaining' => $this->getFormattedTimeRemaining(),
-        ]);
+        ])->layout('layouts.quiz');
     }
 
     /**
@@ -1063,5 +1240,77 @@ class QuizTake extends Component
         \Log::debug("QuizTake: DIAGNOSTIC RESULTS", $diagnostic);
         
         return $diagnostic;
+    }
+
+    /**
+     * Check if there are completed fun games behind current position that haven't been assessed
+     */
+    protected function hasUnassessedCompletedFunGames(): bool
+    {
+        // Look at all questions up to current position
+        for ($i = 0; $i < $this->currentQuestionIndex; $i++) {
+            $question = $this->questions[$i];
+            
+            // If it's a fun game that has been completed
+            if ($question['type'] === 'fun_game' && $this->isGameCompleted($question['id'])) {
+                // Check if there's an assessment record for this game
+                $assessment = GameAssessment::where('user_id', auth()->id())
+                    ->where('quiz_attempt_id', $this->attempt->id)
+                    ->where('question_id', $question['id'])
+                    ->first();
+                
+                // If no assessment exists or assessment is not completed
+                if (!$assessment || !$assessment->is_assessed) {
+                    return true;
+                }
+            }
+        }
+        
+        return false;
+    }
+
+    /**
+     * Handle quiz time warning event from workflow
+     */
+    public function handleQuizWarning($event)
+    {
+        $data = $event['data'] ?? [];
+        $remainingMinutes = $data['remaining_minutes'] ?? 0;
+        
+        session()->flash('warning', "Time warning: Only {$remainingMinutes} minutes remaining!");
+        
+        // Recalculate time remaining
+        $this->calculateTimeRemaining();
+        
+        // Dispatch browser notification
+        $this->dispatch('showTimeWarning', [
+            'message' => "Only {$remainingMinutes} minutes remaining!",
+            'remainingTime' => $this->timeRemaining
+        ]);
+    }
+
+    /**
+     * Handle quiz time expired event from workflow
+     */
+    public function handleQuizTimeExpired($event)
+    {
+        if ($this->isCompleted || $this->timerExpired) {
+            return;
+        }
+        
+        session()->flash('warning', 'Quiz time has expired. Submitting automatically.');
+        $this->handleTimeExpiry();
+    }
+
+    /**
+     * Check if workflow timers are enabled
+     */
+    public function isWorkflowTimersEnabled(): bool
+    {
+        try {
+            return FeatureSetting::isEnabled('workflow_timers');
+        } catch (\Exception $e) {
+            return false; // Default to false if feature settings not available
+        }
     }
 }

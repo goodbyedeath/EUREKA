@@ -6,24 +6,41 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     
-    <title>@yield('title', 'Dashboard') - {{ config('app.name', 'Laravel') }}</title>
-
-    <!-- Fonts -->
+    <title>@yield('title', 'Dashboard') - {{ config('app.name', 'Eureka') }}</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="{{ asset('favicon.png') }}">
+    <link rel="shortcut icon" type="image/png" href="{{ asset('favicon.png') }}">
+    
+    <!-- Preconnect for performance -->
     <link rel="preconnect" href="https://fonts.bunny.net">
-    <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+    
+    <!-- PWA Meta Tags -->
+    <link rel="manifest" href="{{ route('pwa.manifest') }}">
+    <meta name="theme-color" content="#6777ef">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Eureka">
+    <link rel="apple-touch-icon" href="{{ asset('logo.png') }}">
+    
+    <!-- User Role Meta (for session timeout) -->
+    @auth
+        <meta name="user-role" content="{{ auth()->user()->role }}">
+        <meta name="user-id" content="{{ auth()->user()->id }}">
+    @endauth
 
-    <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Fonts with display=swap for better performance -->
+    <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet">
 
-    <!-- App & QR Scanner Styles and Scripts via Vite -->
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
-
-    <!-- Livewire Styles -->
-    @livewireStyles
+    <!-- Font Awesome with integrity check -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" 
+          integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" 
+          crossorigin="anonymous" referrerpolicy="no-referrer">
 
     <!-- Dark Mode Init Script - runs before page render -->
     <script>
-        // Apply theme immediately to prevent flash
         (function() {
             const savedTheme = localStorage.getItem('theme') || 'light';
             if (savedTheme === 'dark') {
@@ -32,8 +49,25 @@
         })();
     </script>
 
+    <!-- Tailwind via Vite -->
+
+    @livewireStyles
+
+    <!-- Custom CSS -->
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
+
+    <!-- Panellum 360° Viewer (Local) -->
+    <link rel="stylesheet" href="{{ asset('js/pannellum/pannellum.css') }}">
+    <script src="{{ asset('js/pannellum/pannellum.js') }}"></script>
+
+    <!-- MapLibre GL JS (CDN) -->
+    <link href="https://unpkg.com/maplibre-gl@latest/dist/maplibre-gl.css" rel="stylesheet">
+    <script src="https://unpkg.com/maplibre-gl@latest/dist/maplibre-gl.js"></script>
+
     <style>
         [x-cloak] { display: none !important; }
+        /* Optimize font loading */
+        .font-sans { font-display: swap; }
     </style>
 
     @stack('styles')
@@ -47,24 +81,37 @@
         </footer>
     </div>
 
-    <!-- Livewire Scripts -->
     @livewireScripts
+    
+    <!-- QR Scanner functionality is handled by npm package via Vite -->
 
-    <!-- External QR Library -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jsqr/1.4.0/jsQR.min.js"></script>
+    <!-- Session Timer is loaded via Vite in app.js -->
 
     @stack('scripts')
 
-    <!-- Flash Messages -->
-    @if (session('message'))
-        <div x-data="{ show: true }" 
-             x-show="show" 
-             x-transition
-             x-init="setTimeout(() => show = false, 3000)"
-             role="alert"
-             class="fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50">
-            {{ session('message') }}
-        </div>
-    @endif
+    <!-- Flash Messages Component -->
+    @include('components.flash-messages')
+    
+    <!-- Initialize user-specific features -->
+    <script>
+        document.addEventListener('livewire:init', () => {
+            // Initialize dark mode on Livewire navigation
+            document.addEventListener('livewire:navigated', () => {
+                if (window.DarkMode) {
+                    window.DarkMode.updateToggleButtons();
+                }
+            });
+            
+            // User-specific initialization
+            @auth
+                @if(auth()->user()->role === 'user')
+                    // Initialize session timeout monitoring
+                    if (typeof initSessionTimeout === 'function') {
+                        initSessionTimeout();
+                    }
+                @endif
+            @endauth
+        });
+    </script>
 </body>
 </html>

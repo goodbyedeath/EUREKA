@@ -5,6 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin - Eureka</title>
     
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="{{ asset('favicon.png') }}">
+    <link rel="shortcut icon" type="image/png" href="{{ asset('favicon.png') }}">
+    
     <!-- PWA Meta Tags -->
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#6777ef">
@@ -16,8 +20,21 @@
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
+    <!-- Panellum 360° Viewer (Local) -->
+    <link rel="stylesheet" href="{{ asset('js/pannellum/pannellum.css') }}">
+    <script src="{{ asset('js/pannellum/pannellum.js') }}"></script>
+    
     @livewireStyles
+    
+    <!-- Vite CSS and JS -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    
+    <!-- PWA Functions only -->
+    <script src="{{ asset('js/pwa-installer.js') }}"></script>
+    
+    <!-- MapLibre GL JS (CDN Fallback) -->
+    <link href="https://unpkg.com/maplibre-gl@latest/dist/maplibre-gl.css" rel="stylesheet">
+    <script src="https://unpkg.com/maplibre-gl@latest/dist/maplibre-gl.js"></script>
     
     <!-- Fix modal flickering -->
     <style>
@@ -133,10 +150,7 @@
                             </div>
                             
                             <!-- Action Buttons -->
-                            <a href="{{ route('user.dashboard') }}" class="text-white/80 hover:text-white hover:bg-white/10 transition-all duration-200 px-2 py-1 rounded text-sm flex items-center space-x-1">
-                                <i class="fas fa-tachometer-alt text-xs"></i>
-                                <span class="hidden sm:inline">{{ __('common.dashboard') }}</span>
-                            </a>
+                            
                             
                             <form method="POST" action="{{ route('logout') }}" class="inline">
                                 @csrf
@@ -253,61 +267,9 @@
                     </div>
                 @endif
 
-                <!-- Enhanced Tab Navigation -->
+                <!-- Card-Based Navigation -->
                 <div class="mb-6">
-                    <!-- Desktop Navigation -->
-                    <div class="hidden md:block bg-white dark:bg-gray-800 rounded-xl shadow-md border border-gray-100 dark:border-gray-700 overflow-hidden transition-colors duration-300">
-                        <nav class="flex" aria-label="Admin Tabs">
-                            <a href="{{ route('admin.dashboard') }}" 
-                               class="nav-item {{ request()->routeIs('admin.dashboard') ? 'active bg-gradient-to-r from-indigo-500 to-purple-600 text-white' : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-700' }} flex-1 px-4 py-3 text-center font-medium text-sm transition-all duration-200">
-                                <i class="fas fa-tachometer-alt mr-2"></i>
-                                Dashboard
-                            </a>
-                            <a href="{{ route('admin.users') }}" 
-                               class="nav-item {{ request()->routeIs('admin.users') ? 'active bg-gradient-to-r from-indigo-500 to-purple-600 text-white' : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-700' }} flex-1 px-4 py-3 text-center font-medium text-sm transition-all duration-200 border-l border-gray-100 dark:border-gray-600">
-                                <i class="fas fa-users mr-2"></i>
-                                Users
-                            </a>
-                            <a href="{{ route('admin.quest-locations') }}" 
-                               class="nav-item {{ request()->routeIs('admin.quest-locations') ? 'active bg-gradient-to-r from-indigo-500 to-purple-600 text-white' : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-700' }} flex-1 px-4 py-3 text-center font-medium text-sm transition-all duration-200 border-l border-gray-100 dark:border-gray-600">
-                                <i class="fas fa-map-marked-alt mr-2"></i>
-                                Maps
-                            </a>
-                            <a href="{{ route('admin.games') }}" 
-                               class="nav-item {{ request()->routeIs('admin.games') ? 'active bg-gradient-to-r from-indigo-500 to-purple-600 text-white' : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-700' }} flex-1 px-4 py-3 text-center font-medium text-sm transition-all duration-200 border-l border-gray-100 dark:border-gray-600">
-                                <i class="fas fa-gamepad mr-2"></i>
-                                Games
-                            </a>
-                            <a href="{{ route('admin.user-progress') }}" 
-                               class="nav-item {{ request()->routeIs('admin.user-progress') ? 'active bg-gradient-to-r from-indigo-500 to-purple-600 text-white' : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-700' }} flex-1 px-4 py-3 text-center font-medium text-sm transition-all duration-200 border-l border-gray-100 dark:border-gray-600">
-                                <i class="fas fa-chart-line mr-2"></i>
-                                Progress
-                            </a>
-                            <a href="{{ route('admin.hero-slides') }}" 
-                               class="nav-item {{ request()->routeIs('admin.hero-slides') ? 'active bg-gradient-to-r from-indigo-500 to-purple-600 text-white' : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-700' }} flex-1 px-4 py-3 text-center font-medium text-sm transition-all duration-200 border-l border-gray-100 dark:border-gray-600">
-                                <i class="fas fa-images mr-2"></i>
-                                Slides
-                            </a>
-                            <a href="{{ route('admin.team-management') }}" 
-                               class="nav-item {{ request()->routeIs('admin.team-management') ? 'active bg-gradient-to-r from-indigo-500 to-purple-600 text-white' : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-700' }} flex-1 px-4 py-3 text-center font-medium text-sm transition-all duration-200 border-l border-gray-100 dark:border-gray-600">
-                                <i class="fas fa-users-cog mr-2"></i>
-                                Teams
-                            </a>
-                        </nav>
-                    </div>
-                    
-                    <!-- Mobile Navigation Dropdown -->
-                    <div class="md:hidden">
-                        <select id="mobile-admin-nav" class="block w-full px-3 py-3 border border-gray-300 dark:border-gray-600 rounded-xl shadow-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors duration-300" onchange="window.location.href=this.value">
-                            <option value="{{ route('admin.dashboard') }}" {{ request()->routeIs('admin.dashboard') ? 'selected' : '' }}>📊 Dashboard</option>
-                            <option value="{{ route('admin.users') }}" {{ request()->routeIs('admin.users') ? 'selected' : '' }}>👥 User Management</option>
-                            <option value="{{ route('admin.quest-locations') }}" {{ request()->routeIs('admin.quest-locations') ? 'selected' : '' }}>🗺️ Map Management</option>
-                            <option value="{{ route('admin.games') }}" {{ request()->routeIs('admin.games') ? 'selected' : '' }}>🎮 Game Management</option>
-                            <option value="{{ route('admin.user-progress') }}" {{ request()->routeIs('admin.user-progress') ? 'selected' : '' }}>📈 User Progress</option>
-                            <option value="{{ route('admin.hero-slides') }}" {{ request()->routeIs('admin.hero-slides') ? 'selected' : '' }}>🖼️ Hero Slides</option>
-                            <option value="/livewire/admin/team-manager" {{ request()->is('livewire/admin/team-manager*') ? 'selected' : '' }}>👥 Team Management</option>
-                        </select>
-                    </div>
+                    @include('admin.partials.navigation-cards')
                 </div>
 
                 <!-- Enhanced Main Content -->
@@ -329,24 +291,71 @@
             window.addEventListener('load', function() {
                 navigator.serviceWorker.register('/sw.js')
                     .then(function(registration) {
-                        console.log('ServiceWorker registration successful:', registration.scope);
                     })
                     .catch(function(error) {
-                        console.log('ServiceWorker registration failed:', error);
                     });
             });
         }
         
     </script>
  
+    <!-- MapLibre GL JS - Global Loading for Admin -->
+    <!-- MapLibre GL JS is now loaded via CDN -->
+    
+    <script>
+        // Global MapLibre availability checker for Admin - updated for lazy loading
+        window.waitForMapLibre = async function(callback, timeout = 5000) {
+            try {
+                if (window.loadMapUtils) {
+                    await window.loadMapUtils();
+                    callback(true);
+                    return;
+                }
+                
+                // Fallback to checking if it's already loaded
+                const startTime = Date.now();
+                
+                function check() {
+                    if (typeof window.maplibregl !== 'undefined') {
+                        callback(true);
+                    } else if (Date.now() - startTime > timeout) {
+                        console.error('[ADMIN LAYOUT] MapLibre GL JS failed to load within timeout');
+                        callback(false);
+                    } else {
+                        setTimeout(check, 50);
+                    }
+                }
+                
+                check();
+            } catch (error) {
+                console.error('[ADMIN LAYOUT] Failed to load MapLibre:', error);
+                callback(false);
+            }
+        };
+        
+        // Log when MapLibre is loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            waitForMapLibre(function(loaded) {
+                if (loaded) {
+                    document.dispatchEvent(new CustomEvent('maplibre:loaded'));
+                } else {
+                    console.error('[ADMIN LAYOUT] ✗ MapLibre GL JS failed to load');
+                    document.dispatchEvent(new CustomEvent('maplibre:failed'));
+                }
+            });
+        });
+    </script>
+
     <!-- Add this stack for any additional scripts that might be pushed from other components -->
     @stack('scripts')
+    
+    <!-- Marzipano is now loaded via Vite as npm package -->
+    
     @livewireScripts
     
     <script>
         document.addEventListener('livewire:init', () => {
             Livewire.on('console-log', (data) => {
-                console.log('DEBUG:', data.message);
             });
         });
     </script>

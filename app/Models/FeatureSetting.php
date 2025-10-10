@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 
 class FeatureSetting extends Model
 {
@@ -43,8 +44,25 @@ class FeatureSetting extends Model
      */
     public static function isEnabled(string $featureKey): bool
     {
-        $enabledFeatures = self::getEnabledFeatures();
-        return $enabledFeatures->has($featureKey);
+        try {
+            $enabledFeatures = self::getEnabledFeatures();
+            return $enabledFeatures->has($featureKey);
+        } catch (\Exception $e) {
+            \Log::warning('FeatureSetting error for key: ' . $featureKey . ' - ' . $e->getMessage());
+            return false; // Default to disabled if there's an error
+        }
+    }
+
+    /**
+     * Safe check if a specific feature is enabled (doesn't throw exceptions)
+     */
+    public static function safeIsEnabled(string $featureKey, bool $default = false): bool
+    {
+        try {
+            return self::isEnabled($featureKey);
+        } catch (\Exception $e) {
+            return $default;
+        }
     }
 
     /**

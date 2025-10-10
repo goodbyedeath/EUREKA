@@ -31,4 +31,10 @@ class UserAnswer extends Model
     {
         return $this->belongsTo(Question::class);
     }
+
+    // Get the user through the quizAttempt relationship
+    public function user()
+    {
+        return $this->hasOneThrough(User::class, QuizAttempt::class, 'id', 'id', 'quiz_attempt_id', 'user_id');
+    }
 }

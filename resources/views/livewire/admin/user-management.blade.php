@@ -5,10 +5,16 @@
         <p class="text-gray-600 dark:text-gray-400 mt-2">Kelola pengguna dan akses sistem</p>
     </div>
 
-    <!-- Flash Message -->
+    <!-- Flash Messages -->
     @if (session()->has('message'))
         <div class="mb-4 bg-green-100 dark:bg-green-800 border border-green-400 dark:border-green-600 text-green-700 dark:text-green-200 px-4 py-3 rounded relative">
             {{ session('message') }}
+        </div>
+    @endif
+
+    @if (session()->has('error'))
+        <div class="mb-4 bg-red-100 dark:bg-red-800 border border-red-400 dark:border-red-600 text-red-700 dark:text-red-200 px-4 py-3 rounded relative">
+            {{ session('error') }}
         </div>
     @endif
 
@@ -157,7 +163,7 @@
                                 <i class="fas fa-edit mr-1"></i>Edit
                             </button>
                             <button wire:click="delete({{ $user->id }})" 
-                                    onclick="return confirm('Yakin ingin menghapus user ini?')"
+                                    wire:confirm="Are you sure you want to delete this user? This action cannot be undone."
                                     class="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300 text-sm transition-colors duration-200">
                                 <i class="fas fa-trash mr-1"></i>Hapus
                             </button>
@@ -179,6 +185,7 @@
                         <th class="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">User</th>
                         <th class="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Role</th>
                         <th class="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden lg:table-cell">Team</th>
+                        <th class="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden xl:table-cell">Session Timeout</th>
                         <th class="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden xl:table-cell">Created Team</th>
                         <th class="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden lg:table-cell">Joined</th>
                         <th class="px-4 lg:px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
@@ -212,6 +219,25 @@
                                 {{ $user->team ? $user->team->name : '-' }}
                             </td>
                             <td class="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100 hidden xl:table-cell">
+                                @if($user->role === 'user')
+                                    <div class="flex items-center space-x-2">
+                                        <span class="px-2 py-1 text-xs rounded-full {{ $user->session_timeout ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-800 dark:text-yellow-200' : 'bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-200' }}">
+                                            {{ $user->getFormattedSessionTimeout() }}
+                                        </span>
+                                        <select wire:change="setSessionTimeout({{ $user->id }}, $event.target.value)" 
+                                                class="text-xs border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 rounded px-1 py-0.5">
+                                            @foreach($sessionTimeoutOptions as $seconds => $label)
+                                                <option value="{{ $seconds }}" {{ $user->getSessionTimeout() == $seconds ? 'selected' : '' }}>
+                                                    {{ $label }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                @else
+                                    <span class="text-gray-400 text-xs">N/A (Admin)</span>
+                                @endif
+                            </td>
+                            <td class="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100 hidden xl:table-cell">
                                 {{ $user->createdTeam ? $user->createdTeam->name : '-' }}
                             </td>
                             <td class="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 hidden lg:table-cell">
@@ -225,7 +251,7 @@
                                         <span class="hidden lg:inline ml-1">Edit</span>
                                     </button>
                                     <button wire:click="delete({{ $user->id }})" 
-                                            onclick="return confirm('Yakin ingin menghapus user ini?')"
+                                            wire:confirm="Are you sure you want to delete this user? This action cannot be undone."
                                             class="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300 p-1 transition-colors duration-200">
                                         <i class="fas fa-trash"></i>
                                         <span class="hidden lg:inline ml-1">Hapus</span>
@@ -235,7 +261,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6" class="px-4 lg:px-6 py-4 text-center text-gray-500 dark:text-gray-400">
+                            <td colspan="7" class="px-4 lg:px-6 py-4 text-center text-gray-500 dark:text-gray-400">
                                 Tidak ada user yang ditemukan
                             </td>
                         </tr>
@@ -252,7 +278,7 @@
 
     <!-- Modal for Add/Edit User -->
     @if($showModal)
-        <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50" wire:click="closeModal">
+        <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
             <div class="relative top-20 mx-auto p-5 border w-11/12 md:w-1/2 lg:w-1/3 shadow-lg rounded-md bg-white dark:bg-gray-800" wire:click.stop>
                 <!-- Modal Header -->
                 <div class="flex items-center justify-between pb-3">
@@ -348,6 +374,25 @@
                                 <span class="text-red-500 text-sm mt-1">{{ $message }}</span> 
                             @enderror
                         </div>
+
+                        <!-- Session Timeout (Only for users) -->
+                        <div x-show="$wire.role === 'user'" x-transition>
+                            <label for="session_timeout" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                Session Timeout
+                                <span class="text-xs text-gray-500">(Auto logout timer)</span>
+                            </label>
+                            <select id="session_timeout" 
+                                    wire:model="session_timeout"
+                                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-100">
+                                @foreach($sessionTimeoutOptions as $seconds => $label)
+                                    <option value="{{ $seconds }}">{{ $label }}</option>
+                                @endforeach
+                            </select>
+                            @error('session_timeout') 
+                                <span class="text-red-500 text-sm mt-1">{{ $message }}</span> 
+                            @enderror
+                            <p class="text-xs text-gray-500 mt-1">User will be automatically logged out after this period of inactivity</p>
+                        </div>
                     </div>
 
                     <!-- Modal Footer -->
@@ -358,8 +403,17 @@
                             Batal
                         </button>
                         <button type="submit"
+                                wire:loading.attr="disabled"
+                                wire:loading.class="opacity-50 cursor-not-allowed"
                                 class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors duration-200">
-                            {{ $editMode ? 'Update' : 'Simpan' }}
+                            <span wire:loading.remove wire:target="save">{{ $editMode ? 'Update' : 'Simpan' }}</span>
+                            <span wire:loading wire:target="save" class="flex items-center">
+                                <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                Saving...
+                            </span>
                         </button>
                     </div>
                 </form>

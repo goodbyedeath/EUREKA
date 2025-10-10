@@ -55,4 +55,10 @@ class DashboardController extends Controller
     {
         return view('admin.feature-management');
     }
+
+    public function dashboardManagement()
+    {
+        return view('admin.dashboard-management');
+    }
+
 }

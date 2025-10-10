@@ -15,11 +15,14 @@ class QRCodeManager extends Component
 
      public function mount(Questionnaire $questionnaire)
     {
-        $this->questionnaire = $questionnaire;
+        // Load the questionnaire with questions count
+        $this->questionnaire = $questionnaire->loadCount('questions');
+        
         // Ensure the questionnaire has a QR code
         QuestionnaireService::ensureQrCode($this->questionnaire);
-        // Refresh the model to get the updated qr_code
+        // Refresh the model to get the updated qr_code while preserving the count
         $this->questionnaire->refresh();
+        $this->questionnaire->loadCount('questions');
     }
 
     public function generateQrCode($size = 200)
@@ -84,6 +87,12 @@ class QRCodeManager extends Component
             'title' => $this->questionnaire->title,
             'code' => $this->questionnaire->qr_code
         ]);
+    }
+
+    public function getQuestionsCountProperty()
+    {
+        // Fallback for questions count if not loaded via withCount
+        return $this->questionnaire->questions_count ?? $this->questionnaire->questions()->count();
     }
 
 

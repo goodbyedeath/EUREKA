@@ -1,6 +1,6 @@
 {{-- resources/views/livewire/pwa-install-prompt.blade.php --}}
 <div x-data="pwaInstaller()" 
-     x-show="showInstallPrompt && @entangle('showPrompt')" 
+     x-show="showInstallPrompt" 
      x-cloak
      x-transition:enter="transition ease-out duration-300"
      x-transition:enter-start="opacity-0 transform translate-y-2"
@@ -38,64 +38,3 @@
         </div>
     </div>
 </div>
-
-<script>
-function pwaInstaller() {
-    return {
-        deferredPrompt: null,
-        showInstallPrompt: false,
-        
-        init() {
-            // Check if PWA is already installed
-            if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) {
-                this.showInstallPrompt = false;
-                @this.call('hidePrompt');
-                return;
-            }
-            
-            // Check if user has dismissed the prompt in this session
-            if (sessionStorage.getItem('pwa-prompt-dismissed') === 'true') {
-                this.showInstallPrompt = false;
-                @this.call('hidePrompt');
-                return;
-            }
-            
-            // Listen for the beforeinstallprompt event
-            window.addEventListener('beforeinstallprompt', (e) => {
-                e.preventDefault();
-                this.deferredPrompt = e;
-                this.showInstallPrompt = true;
-            });
-            
-            // Hide prompt if app gets installed
-            window.addEventListener('appinstalled', () => {
-                this.showInstallPrompt = false;
-                this.deferredPrompt = null;
-                @this.call('hidePrompt');
-            });
-        },
-        
-        async installPwa() {
-            if (!this.deferredPrompt) {
-                return;
-            }
-            
-            this.deferredPrompt.prompt();
-            const { outcome } = await this.deferredPrompt.userChoice;
-            
-            if (outcome === 'accepted') {
-                this.showInstallPrompt = false;
-                @this.call('hidePrompt');
-            }
-            
-            this.deferredPrompt = null;
-        },
-        
-        dismissPrompt() {
-            this.showInstallPrompt = false;
-            // Store dismissal in session storage
-            sessionStorage.setItem('pwa-prompt-dismissed', 'true');
-        }
-    }
-}
-</script>

@@ -9,6 +9,7 @@
         "php": "^8.2",
         "ladumor/laravel-pwa": "^0.0.5",
         "laravel-lang/common": "^6.7",
+        "laravel-workflow/laravel-workflow": "^1.0",
         "laravel/framework": "^12.0",
         "laravel/tinker": "^2.10.1",
         "livewire/livewire": "^3.4",

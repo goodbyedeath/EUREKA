@@ -9,7 +9,7 @@
                     <tr>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quiz</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Score</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quiz Points Earned</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                     </tr>
@@ -34,9 +34,12 @@
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
                             @if($attempt->status === \App\Models\QuizAttempt::STATUS_COMPLETED && $attempt->total_score !== null)
-                                <span class="text-sm font-medium {{ $this->getScoreColor($attempt->total_score) }}">
-                                    {{ $this->formatScore($attempt) }}
-                                </span>
+                                <div class="flex flex-col">
+                                    <span class="text-sm font-semibold {{ $this->getScoreColor($this->calculatePercentage($attempt)) }}">
+                                        {{ $this->formatScore($attempt) }}
+                                    </span>
+                                    <span class="text-xs text-gray-500">{{ $this->calculatePercentage($attempt) }}% correct</span>
+                                </div>
                             @elseif($attempt->status === \App\Models\QuizAttempt::STATUS_STARTED)
                                 @php
                                     $progress = $this->getAttemptProgress($attempt);
@@ -65,7 +68,7 @@
                                         View Results
                                     </button>
 
-                                    @if($attempt->questionnaire && $attempt->questionnaire->canUserAttempt(Auth::id()))
+                                    @if($this->canRetakeQuiz($attempt->questionnaire))
                                         <span class="text-gray-300">|</span>
                                         <button wire:click="retakeQuiz({{ $attempt->questionnaire->id }})" 
                                                 class="text-green-600 hover:text-green-900 focus:outline-none">
@@ -92,7 +95,7 @@
                                     @endif
 
                                 @elseif(in_array($attempt->status, [\App\Models\QuizAttempt::STATUS_ABANDONED]))
-                                    @if($attempt->questionnaire && $attempt->questionnaire->canUserAttempt(Auth::id()))
+                                    @if($this->canRetakeQuiz($attempt->questionnaire))
                                         <button wire:click="retakeQuiz({{ $attempt->questionnaire->id }})" 
                                                 class="text-green-600 hover:text-green-900 focus:outline-none">
                                             Try Again

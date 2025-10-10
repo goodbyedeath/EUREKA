@@ -54,12 +54,29 @@
 </head>
 <body>
     <div class="container">
-        <div class="icon">📱</div>
+        <div class="icon">📡❌</div>
         <h1>You're Offline</h1>
-        <p>It looks like you've lost your internet connection. Don't worry, you can still use some features of this app!</p>
-        <button class="retry-btn" onclick="window.location.reload()">
-            Try Again
-        </button>
+        <p>No internet connection detected, but EUREKA still works offline!</p>
+        
+        <div style="background: rgba(0,0,0,0.2); padding: 1.5rem; border-radius: 15px; margin: 1.5rem 0; text-align: left;">
+            <h3 style="margin-top: 0; color: #FFD700;">🔋 Available Offline:</h3>
+            <ul style="list-style: none; padding: 0;">
+                <li style="padding: 0.3rem 0;">✓ Dashboard (cached data)</li>
+                <li style="padding: 0.3rem 0;">✓ Team information</li>
+                <li style="padding: 0.3rem 0;">✓ Quiz attempts (saved locally)</li>
+                <li style="padding: 0.3rem 0;">✓ Quest locations</li>
+                <li style="padding: 0.3rem 0;">✓ LED kiosk display</li>
+            </ul>
+        </div>
+        
+        <div style="margin: 1rem 0;">
+            <button class="retry-btn" onclick="window.location.reload()" style="margin: 0.5rem;">
+                🔄 Try Again
+            </button>
+            <button class="retry-btn" onclick="window.location.href='/user/dashboard'" style="margin: 0.5rem;">
+                📊 Dashboard
+            </button>
+        </div>
     </div>
     
     <script>

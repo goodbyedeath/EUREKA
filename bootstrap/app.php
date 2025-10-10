@@ -28,6 +28,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'preventbackhistory' => \App\Http\Middleware\PreventBackHistory::class,
             'team' => \App\Http\Middleware\EnsureTeamRegistration::class,
             'locale' => \App\Http\Middleware\SetLocale::class,
+            'session.timeout' => \App\Http\Middleware\UserSessionTimeout::class,
         ]);
 
         // Middleware groups
@@ -39,6 +40,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->group('user', [
             'role:user',
             'preventbackhistory',
+            'session.timeout',
         ]);
         
         $middleware->group('quiz', [

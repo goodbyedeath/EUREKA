@@ -8,6 +8,7 @@ enum QuestionType: string
     case MULTIPLE_CHOICE = 'multiple_choice';
     case TRUE_FALSE = 'true_false';
     case FUN_GAME = 'fun_game';
+    case BRIEF = 'brief';
 
     /**
      * Get all question type values
@@ -27,6 +28,7 @@ enum QuestionType: string
             self::MULTIPLE_CHOICE => 'Multiple Choice',
             self::TRUE_FALSE => 'True/False',
             self::FUN_GAME => 'Fun Game',
+            self::BRIEF => 'Brief Feedback',
         };
     }
 
@@ -40,6 +42,7 @@ enum QuestionType: string
             self::MULTIPLE_CHOICE => 'Users select from predefined options',
             self::TRUE_FALSE => 'Users choose between True and False',
             self::FUN_GAME => 'Interactive game activity with manual assessment',
+            self::BRIEF => 'User experience feedback question (not scored)',
         };
     }
 
@@ -74,6 +77,9 @@ enum QuestionType: string
                 'images' => 'nullable|array|max:10',
                 'images.*' => 'nullable|string',
             ],
+            self::BRIEF => [
+                'description' => 'nullable|string|max:1000', // Optional description/guidance
+            ],
         };
     }
 
@@ -102,6 +108,20 @@ enum QuestionType: string
                 'description' => '',
                 'images' => [],
             ],
+            self::BRIEF => [
+                'options' => null,
+                'correct_answer' => null, // No correct answer for feedback
+                'points' => 0, // No points for feedback questions
+                'description' => '',
+            ],
         };
+    }
+
+    /**
+     * Check if this question type is scored
+     */
+    public function isScored(): bool
+    {
+        return $this !== self::BRIEF;
     }
 }

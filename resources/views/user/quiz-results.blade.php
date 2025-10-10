@@ -703,11 +703,13 @@
                 $user = auth()->user();
                 $basePoints = $user->team ? ($user->team->initial_points ?? 1000) : 1000;
                 
-                // Calculate bonus points from correct answers
-                $userAnswers = \App\Models\UserAnswer::where('quiz_attempt_id', $attempt->id)
+                // Get all user answers for this attempt
+                $allUserAnswers = \App\Models\UserAnswer::where('quiz_attempt_id', $attempt->id)
                     ->with(['question'])
-                    ->where('is_correct', true)
                     ->get();
+                    
+                // Calculate bonus points from correct answers only
+                $userAnswers = $allUserAnswers->where('is_correct', true);
                     
                 $bonusPoints = $userAnswers->sum(function($answer) {
                     return $answer->question->points ?? 0;
@@ -776,7 +778,7 @@
                     </div>
                     
                     <div class="action-buttons">
-                        <a href="{{ route('user.dashboard') }}" class="btn-back">
+                        <a href="{{ route('user.dashboard') }}" class="btn-back" onclick="return confirm('Are you sure you want to leave this quiz results page? You can always access your results from the dashboard.')">
                             <i class="fas fa-arrow-left"></i>
                             <span>Back to Dashboard</span>
                         </a>
@@ -839,6 +841,7 @@
                 $allQuestions = $attempt->questionnaire->questions ?? collect();
                 $automaticQuestions = $allQuestions->whereIn('type', ['text', 'multiple_choice', 'true_false']);
                 $funGameQuestions = $allQuestions->where('type', 'fun_game');
+                $briefQuestions = $allQuestions->where('type', 'brief');
                 
                 // Get manual assessments (fun_game only)
                 $manualAssessments = \App\Models\GameAssessment::where('quiz_attempt_id', $attempt->id)
@@ -880,7 +883,7 @@
                                 $correctAutomatic = 0;
                                 $totalAutomaticPoints = 0;
                                 foreach($automaticQuestions as $question) {
-                                    $userAnswer = $userAnswers->firstWhere('question_id', $question->id);
+                                    $userAnswer = $allUserAnswers->firstWhere('question_id', $question->id);
                                     if($userAnswer && $userAnswer->is_correct) {
                                         $correctAutomatic++;
                                         $totalAutomaticPoints += $question->points ?? 0;
@@ -919,15 +922,15 @@
                                 $tfCorrect = 0;
                                 
                                 foreach($textQuestions as $q) {
-                                    $ua = $userAnswers->firstWhere('question_id', $q->id);
+                                    $ua = $allUserAnswers->firstWhere('question_id', $q->id);
                                     if($ua && $ua->is_correct) $textCorrect++;
                                 }
                                 foreach($mcQuestions as $q) {
-                                    $ua = $userAnswers->firstWhere('question_id', $q->id);
+                                    $ua = $allUserAnswers->firstWhere('question_id', $q->id);
                                     if($ua && $ua->is_correct) $mcCorrect++;
                                 }
                                 foreach($tfQuestions as $q) {
-                                    $ua = $userAnswers->firstWhere('question_id', $q->id);
+                                    $ua = $allUserAnswers->firstWhere('question_id', $q->id);
                                     if($ua && $ua->is_correct) $tfCorrect++;
                                 }
                             @endphp
@@ -1055,6 +1058,101 @@
                                         {{ number_format($completedManualAssessments->sum(function($a) use ($basePoints) { return max(0, ($a->total_deposit ?? 0) - $basePoints); })) }}
                                     </div>
                                     <div class="assessment-summary-label" style="font-size: 10px; color: #64748b; font-weight: 600;">Bonus</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    @endif
+
+                    <!-- Brief Questions (User Feedback) -->
+                    @if($briefQuestions->count() > 0)
+                    <div class="assessment-card" style="background: rgba(255, 255, 255, 0.9); border-radius: 16px; padding: 20px; border: 1px solid rgba(226, 232, 240, 0.8); backdrop-filter: blur(10px);">
+                        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+                            <div style="width: 40px; height: 40px; background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%); border-radius: 12px; display: flex; align-items: center; justify-content: center;">
+                                <i class="fas fa-comment-dots" style="color: white; font-size: 18px;"></i>
+                            </div>
+                            <div>
+                                <h3 class="assessment-title-text" style="font-size: 16px; font-weight: 700; color: #1e293b; margin: 0;">Feedback Questions</h3>
+                                <p class="assessment-subtitle-text" style="font-size: 12px; color: #64748b; margin: 0; font-weight: 500;">User Experience & Brief Questions</p>
+                            </div>
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: 1fr; gap: 12px; margin-bottom: 16px;">
+                            <div class="assessment-stat-blue" style="text-align: center; padding: 12px; background: rgba(239, 246, 255, 0.6); border-radius: 12px;">
+                                <div style="font-size: 20px; font-weight: 800; color: #1e40af; font-family: 'SF Mono', monospace;">
+                                    {{ $briefQuestions->count() }}
+                                </div>
+                                <div class="assessment-breakdown-label" style="font-size: 11px; color: #64748b; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">
+                                    Feedback Questions Answered
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Individual Brief Questions -->
+                        @foreach($briefQuestions as $question)
+                            @php
+                                $briefAnswer = $allUserAnswers->firstWhere('question_id', $question->id);
+                            @endphp
+                            <div class="assessment-card" style="background: rgba(240, 249, 255, 0.8); border-radius: 12px; padding: 16px; margin-bottom: 12px; border: 1px solid rgba(186, 230, 253, 0.6);">
+                                <div style="margin-bottom: 12px;">
+                                    <h5 class="assessment-title-text" style="font-size: 14px; font-weight: 700; color: #1e293b; margin: 0 0 8px 0;">{{ $question->question }}</h5>
+                                    @if($question->description)
+                                        <p class="assessment-subtitle-text" style="font-size: 12px; color: #64748b; margin: 0;">{{ $question->description }}</p>
+                                    @endif
+                                </div>
+                                
+                                @if($briefAnswer)
+                                <div class="assessment-notes" style="background: rgba(255, 255, 255, 0.8); border-radius: 8px; padding: 12px; border-left: 3px solid #0891b2;">
+                                    <div class="assessment-notes-label" style="font-size: 10px; color: #0369a1; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">
+                                        Your Response
+                                    </div>
+                                    <div class="assessment-title-text" style="font-size: 13px; color: #374151; line-height: 1.5;">
+                                        {{ $briefAnswer->answer ?? 'No response provided' }}
+                                    </div>
+                                </div>
+                                @else
+                                <div class="assessment-notes" style="background: rgba(254, 243, 199, 0.8); border-radius: 8px; padding: 12px; border-left: 3px solid #f59e0b;">
+                                    <div class="assessment-notes-label" style="font-size: 10px; color: #92400e; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">
+                                        Status
+                                    </div>
+                                    <div class="assessment-title-text" style="font-size: 13px; color: #a16207; line-height: 1.5;">
+                                        No response provided
+                                    </div>
+                                </div>
+                                @endif
+                            </div>
+                        @endforeach
+
+                        <!-- Brief Questions Summary -->
+                        <div class="assessment-summary" style="margin-top: 16px; padding: 16px; background: rgba(248, 250, 252, 0.8); border-radius: 12px; border: 1px solid rgba(226, 232, 240, 0.6);">
+                            <h4 class="assessment-summary-title" style="font-size: 12px; font-weight: 700; color: #374151; margin: 0 0 12px 0; text-transform: uppercase; letter-spacing: 0.5px;">
+                                Feedback Summary
+                            </h4>
+                            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;">
+                                <div style="text-align: center;">
+                                    <div class="assessment-summary-value" style="font-size: 16px; font-weight: 800; color: #1e293b; font-family: 'SF Mono', monospace;">
+                                        {{ $briefQuestions->count() }}
+                                    </div>
+                                    <div class="assessment-summary-label" style="font-size: 10px; color: #64748b; font-weight: 600;">Total Questions</div>
+                                </div>
+                                <div style="text-align: center;">
+                                    @php
+                                        $answeredBrief = 0;
+                                        foreach($briefQuestions as $q) {
+                                            $ua = $allUserAnswers->firstWhere('question_id', $q->id);
+                                            if($ua && !empty(trim($ua->answer))) $answeredBrief++;
+                                        }
+                                    @endphp
+                                    <div class="assessment-summary-value" style="font-size: 16px; font-weight: 800; color: #0891b2; font-family: 'SF Mono', monospace;">
+                                        {{ $answeredBrief }}
+                                    </div>
+                                    <div class="assessment-summary-label" style="font-size: 10px; color: #64748b; font-weight: 600;">Answered</div>
+                                </div>
+                                <div style="text-align: center;">
+                                    <div class="assessment-summary-value" style="font-size: 16px; font-weight: 800; color: #64748b; font-family: 'SF Mono', monospace;">
+                                        0
+                                    </div>
+                                    <div class="assessment-summary-label" style="font-size: 10px; color: #64748b; font-weight: 600;">Points (N/A)</div>
                                 </div>
                             </div>
                         </div>

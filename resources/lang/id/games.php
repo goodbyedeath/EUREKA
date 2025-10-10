@@ -21,6 +21,12 @@ return [
     'bulk_deactivate' => 'Nonaktifkan Massal',
     'bulk_delete' => 'Hapus Massal',
     
+    // Dashboard buttons
+    'outdoor_games' => 'Game Outdoor',
+    'quest_locations' => 'Lokasi Quest',
+    'interactive_game_maps' => 'Peta Game Interaktif',
+    'explore_quest_locations' => 'Jelajahi Lokasi Quest',
+    
     // Form fields
     'name' => 'Nama Game',
     'name_placeholder' => 'Masukkan nama lokasi game yang unik',
@@ -104,6 +110,11 @@ return [
     'interactive_positioning' => 'Posisi Interaktif',
     'interactive_map_controls' => 'Kontrol Peta Interaktif',
     'no_map_available' => 'Tidak ada peta interaktif tersedia',
+    
+    // Panoramic viewer
+    'panoramic_view' => 'Tampilan Panorama 360°',
+    'panoramic_controls' => 'Kontrol Panorama',
+    'panoramic_image' => 'Gambar Panorama',
     'map_instructions_1' => 'Klik dan seret untuk menggeser • Scroll untuk zoom • Klik dua kali untuk zoom',
     'map_instructions_2' => 'Mode layar penuh untuk kontrol yang lebih baik dengan indikator zoom',
     'map_instructions_3' => 'Keyboard: Spasi = layar penuh, + = perbesar, - = perkecil, R = reset',

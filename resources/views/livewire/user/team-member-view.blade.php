@@ -2,7 +2,7 @@
     <!-- Header -->
     <div class="flex justify-between items-center mb-6">
         <div>
-            <h2 class="text-2xl font-bold text-gray-900 dark:text-gray-100 dark:text-gray-100">Team Members</h2>
+            <h2 class="text-2xl font-bold text-gray-900 dark:text-gray-100">Team Members</h2>
             @if($userTeam)
                 <p class="text-gray-600 dark:text-gray-400">{{ $userTeam->name }} - {{ $userTeam->department }}</p>
             @endif
@@ -85,12 +85,14 @@
 
                         <!-- Member Info -->
                         <div class="space-y-2">
-                            <div class="flex items-center text-sm text-gray-600 dark:text-gray-400">
-                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2-2v2m8 0V6a2 2 0 012 2v6a2 2 0 01-2 2H8a2 2 0 01-2-2V8a2 2 0 012-2V6"/>
-                                </svg>
-                                {{ $member->position }}
-                            </div>
+                            @if($member->position)
+                                <div class="flex items-center text-sm text-gray-600 dark:text-gray-400">
+                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2-2v2m8 0V6a2 2 0 012 2v6a2 2 0 01-2 2H8a2 2 0 01-2-2V8a2 2 0 012-2V6"/>
+                                    </svg>
+                                    {{ $member->position }}
+                                </div>
+                            @endif
                             <div class="flex items-center text-sm text-gray-600 dark:text-gray-400">
                                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207"/>
@@ -137,46 +139,56 @@
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Name</label>
                                 <input type="text" wire:model="name" 
-                                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                       class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 transition-colors duration-200">
                                 @error('name') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                             </div>
                             
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Email</label>
                                 <input type="email" wire:model="email" 
-                                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                       class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 transition-colors duration-200">
                                 @error('email') <span class="text-red-500 text-sm">{{ $message ?? '' }}</span> @enderror
                             </div>
                             
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Phone</label>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Phone (Optional)</label>
                                 <input type="text" wire:model="phone" 
-                                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                       class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 transition-colors duration-200">
                                 @error('phone') <span class="text-red-500 text-sm">{{ $message ?? '' }}</span> @enderror
                             </div>
                             
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Position</label>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Position (Optional)</label>
                                 <input type="text" wire:model="position" 
-                                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                       class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 transition-colors duration-200">
                                 @error('position') <span class="text-red-500 text-sm">{{ $message ?? ''  }}</span> @enderror
                             </div>
                             
                             <div class="flex items-center">
                                 <input type="checkbox" wire:model="is_leader" 
-                                       class="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                       class="rounded border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-indigo-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 transition-colors duration-200">
                                 <label class="ml-2 block text-sm text-gray-900 dark:text-gray-100">Team Leader</label>
+                                <span class="ml-2 text-xs text-gray-500 dark:text-gray-400">(Only one leader per team)</span>
                             </div>
                         </div>
                         
                         <div class="flex justify-end space-x-3 mt-6">
                             <button type="button" wire:click="closeModal" 
-                                    class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-200 rounded-md hover:bg-gray-300">
+                                    class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-200 dark:bg-gray-600 rounded-md hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors duration-200">
                                 Cancel
                             </button>
                             <button type="submit" 
-                                    class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700">
-                                Save
+                                    wire:loading.attr="disabled"
+                                    wire:loading.class="opacity-50 cursor-not-allowed"
+                                    class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors duration-200">
+                                <span wire:loading.remove wire:target="saveMember">Save</span>
+                                <span wire:loading wire:target="saveMember" class="flex items-center">
+                                    <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                    Saving...
+                                </span>
                             </button>
                         </div>
                     </form>
@@ -246,10 +258,12 @@
                         
                         <div class="border-t pt-4">
                             <dl class="space-y-3">
-                                <div>
-                                    <dt class="text-sm font-medium text-gray-500">Position</dt>
-                                    <dd class="text-sm text-gray-900 dark:text-gray-100">{{ $viewingMember->position }}</dd>
-                                </div>
+                                @if($viewingMember->position)
+                                    <div>
+                                        <dt class="text-sm font-medium text-gray-500">Position</dt>
+                                        <dd class="text-sm text-gray-900 dark:text-gray-100">{{ $viewingMember->position }}</dd>
+                                    </div>
+                                @endif
                                 <div>
                                     <dt class="text-sm font-medium text-gray-500">Email</dt>
                                     <dd class="text-sm text-gray-900 dark:text-gray-100">{{ $viewingMember->email }}</dd>

@@ -20,10 +20,7 @@ class TeamMember extends Model
 
     public function user()
     {
-        // Try user_id first, fallback to email
-        return $this->user_id 
-            ? $this->belongsTo(User::class, 'user_id')
-            : $this->belongsTo(User::class, 'email', 'email');
+        return $this->belongsTo(User::class, 'user_id');
     }
 
     protected $casts = [

@@ -48,7 +48,7 @@
                             @endif
                             
                             <!-- Stats Grid - Responsive -->
-                            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 text-sm text-gray-500 dark:text-gray-400">
+                            <div class="grid grid-cols-2 sm:grid-cols-5 gap-3 sm:gap-4 text-sm text-gray-500 dark:text-gray-400">
                                 <div class="flex items-center">
                                     <svg class="w-4 h-4 mr-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
@@ -61,6 +61,21 @@
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                                     </svg>
                                     <span class="truncate">{{ $questionnaire->time_limit }}min</span>
+                                </div>
+                                
+                                <div class="flex items-center">
+                                    <svg class="w-4 h-4 mr-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                                    </svg>
+                                    <span class="truncate {{ $questionnaire->max_attempts <= 1 ? 'text-red-600 font-medium' : ($questionnaire->max_attempts <= 3 ? 'text-orange-600 font-medium' : '') }}">
+                                        {{ $questionnaire->max_attempts ?? '∞' }} 
+                                        {{ ($questionnaire->max_attempts ?? 0) === 1 ? 'attempt' : 'attempts' }}
+                                        @if($questionnaire->max_attempts && $questionnaire->users_at_max_attempts > 0)
+                                            <span class="ml-1 inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800" title="{{ $questionnaire->users_at_max_attempts }} users have reached max attempts">
+                                                {{ $questionnaire->users_at_max_attempts }}
+                                            </span>
+                                        @endif
+                                    </span>
                                 </div>
                                 
                                 <div class="flex items-center col-span-2 sm:col-span-1">
@@ -105,6 +120,16 @@
                                     </svg>
                                     Activate
                                 @endif
+                            </button>
+                            
+                            <!-- Edit Button -->
+                            <button wire:click="openEditModal({{ $questionnaire->id }})" 
+                                    class="inline-flex items-center justify-center px-3 py-2 text-sm font-medium text-blue-600 border border-blue-600 rounded-md hover:bg-blue-50 transition-colors duration-200 w-full sm:w-auto">
+                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                </svg>
+                                <span class="hidden sm:inline">Edit</span>
+                                <span class="sm:hidden">Edit</span>
                             </button>
                             
                             <!-- QR Code Button -->
@@ -162,6 +187,156 @@
                 <!-- Modal Body -->
                 <div class="p-6">
                     <livewire:admin.questionnaire-create-form />
+                </div>
+            </div>
+        </div>
+    @endif
+
+    <!-- Edit Modal -->
+    @if($showEditModal && $editQuestionnaire)
+        <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4" 
+             wire:click.self="closeEditModal">
+            <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full mx-auto max-h-[90vh] overflow-y-auto">
+                <!-- Modal Header -->
+                <div class="flex justify-between items-center p-6 border-b border-gray-200 dark:border-gray-700 sticky top-0 bg-white dark:bg-gray-800 rounded-t-lg">
+                    <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">Edit Questionnaire</h3>
+                    <button wire:click="closeEditModal" 
+                            class="text-gray-400 hover:text-gray-600 dark:text-gray-400 transition-colors duration-200 p-1">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+                
+                <!-- Modal Body -->
+                <div class="p-6">
+                    <form wire:submit.prevent="updateQuestionnaire" class="space-y-6">
+                        <!-- Title Field -->
+                        <div>
+                            <label for="editTitle" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                Title <span class="text-red-500">*</span>
+                            </label>
+                            <input type="text" 
+                                   id="editTitle"
+                                   wire:model.defer="editTitle" 
+                                   class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-100"
+                                   placeholder="Enter questionnaire title">
+                            @error('editTitle') 
+                                <span class="text-red-500 text-sm mt-1">{{ $message }}</span> 
+                            @enderror
+                        </div>
+
+                        <!-- Description Field -->
+                        <div>
+                            <label for="editDescription" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                Description
+                            </label>
+                            <textarea id="editDescription"
+                                      wire:model.defer="editDescription" 
+                                      rows="3"
+                                      class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-100"
+                                      placeholder="Enter questionnaire description (optional)"></textarea>
+                            @error('editDescription') 
+                                <span class="text-red-500 text-sm mt-1">{{ $message }}</span> 
+                            @enderror
+                        </div>
+
+                        <!-- Settings Grid -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <!-- Time Limit -->
+                            <div>
+                                <label for="editTimeLimit" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    Time Limit (minutes)
+                                </label>
+                                <input type="number" 
+                                       id="editTimeLimit"
+                                       wire:model.defer="editTimeLimit" 
+                                       min="1" 
+                                       max="1440"
+                                       class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-100"
+                                       placeholder="No limit">
+                                @error('editTimeLimit') 
+                                    <span class="text-red-500 text-sm mt-1">{{ $message }}</span> 
+                                @enderror
+                            </div>
+
+                            <!-- Max Attempts -->
+                            <div>
+                                <label for="editMaxAttempts" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    Max Attempts
+                                </label>
+                                <input type="number" 
+                                       id="editMaxAttempts"
+                                       wire:model.defer="editMaxAttempts" 
+                                       min="1" 
+                                       max="10"
+                                       class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-100"
+                                       placeholder="Unlimited">
+                                @error('editMaxAttempts') 
+                                    <span class="text-red-500 text-sm mt-1">{{ $message }}</span> 
+                                @enderror
+                            </div>
+
+                            <!-- Pass Percentage -->
+                            <div>
+                                <label for="editPassPercentage" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    Pass Percentage (%)
+                                </label>
+                                <input type="number" 
+                                       id="editPassPercentage"
+                                       wire:model.defer="editPassPercentage" 
+                                       min="1" 
+                                       max="100"
+                                       class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-100"
+                                       placeholder="No requirement">
+                                @error('editPassPercentage') 
+                                    <span class="text-red-500 text-sm mt-1">{{ $message }}</span> 
+                                @enderror
+                            </div>
+
+                            <!-- QR Code -->
+                            <div>
+                                <label for="editQrCode" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    QR Code
+                                </label>
+                                <input type="text" 
+                                       id="editQrCode"
+                                       wire:model.defer="editQrCode" 
+                                       class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-100"
+                                       placeholder="Optional QR code">
+                                @error('editQrCode') 
+                                    <span class="text-red-500 text-sm mt-1">{{ $message }}</span> 
+                                @enderror
+                            </div>
+                        </div>
+
+                        <!-- Active Status -->
+                        <div class="flex items-center">
+                            <input type="checkbox" 
+                                   id="editIsActive"
+                                   wire:model.defer="editIsActive" 
+                                   class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                            <label for="editIsActive" class="ml-2 block text-sm text-gray-900 dark:text-gray-100">
+                                Active (users can access this questionnaire)
+                            </label>
+                        </div>
+
+                        <!-- Form Actions -->
+                        <div class="flex justify-end space-x-3 pt-4 border-t border-gray-200 dark:border-gray-600">
+                            <button type="button" 
+                                    wire:click="closeEditModal"
+                                    class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-600 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200">
+                                Cancel
+                            </button>
+                            <button type="submit" 
+                                    wire:loading.attr="disabled"
+                                    wire:loading.class="opacity-50 cursor-not-allowed"
+                                    class="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200">
+                                <span wire:loading.remove wire:target="updateQuestionnaire">Update Questionnaire</span>
+                                <span wire:loading wire:target="updateQuestionnaire">Updating...</span>
+                            </button>
+                        </div>
+                    </form>
                 </div>
             </div>
         </div>

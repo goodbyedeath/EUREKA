@@ -82,8 +82,7 @@ class DashboardTabs extends Component
         // Switch to quizzes tab when QR code is scanned
         $this->switchTab('quizzes');
         
-        // Dispatch to the AvailableQuest component
-        $this->dispatch('qr-code-scanned', qr_code: $qr_code);
+        // No need to re-dispatch - other components already listening to the original event
     }
 
     #[On('tab-switched')]

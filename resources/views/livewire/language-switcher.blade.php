@@ -10,7 +10,7 @@
     <div>
         <button type="button" 
                 @click="open = !open; console.log('Dropdown toggled, open:', open)"
-                class="inline-flex items-center justify-center w-full rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500" 
+                class="inline-flex items-center justify-center w-full rounded-md border border-gray-300 dark:border-gray-600 shadow-sm px-4 py-2 bg-white dark:bg-gray-800 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-indigo-400" 
                 id="language-menu-button">
             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129"></path>
@@ -30,13 +30,13 @@
          x-transition:leave="transition ease-in duration-75"
          x-transition:leave-start="transform opacity-100 scale-100"
          x-transition:leave-end="transform opacity-0 scale-95"
-         class="origin-top-right absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none z-50"
+         class="origin-top-right absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black dark:ring-gray-600 ring-opacity-5 dark:ring-opacity-50 focus:outline-none z-50"
          style="display: none;">
         <div class="py-1" role="none">
             @foreach($availableLocales as $locale => $name)
                 <button wire:click="switchLanguage('{{ $locale }}')" 
                         @click="console.log('Switching to {{ $locale }}')"
-                        class="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900 {{ $currentLocale === $locale ? 'bg-gray-100 font-medium' : '' }}" 
+                        class="flex items-center w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100 {{ $currentLocale === $locale ? 'bg-gray-100 dark:bg-gray-700 font-medium' : '' }}" 
                         role="menuitem" 
                         tabindex="-1">
                     @if($locale === 'en')
@@ -46,7 +46,7 @@
                     @elseif($locale === 'id')
                         <div class="w-4 h-4 mr-3 rounded-sm overflow-hidden">
                             <div class="w-full h-2 bg-red-500"></div>
-                            <div class="w-full h-2 bg-white border-b border-gray-200"></div>
+                            <div class="w-full h-2 bg-white dark:bg-gray-100 border-b border-gray-200 dark:border-gray-600"></div>
                         </div>
                     @endif
                     {{ $name }}

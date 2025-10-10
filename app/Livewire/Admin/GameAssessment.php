@@ -117,6 +117,6 @@ class GameAssessment extends Component
     {
         return view('livewire.admin.game-assessment', [
             'totalDeposit' => $this->getTotalDeposit()
-        ]);
+        ])->layout(null);
     }
 }

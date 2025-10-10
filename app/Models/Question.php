@@ -50,6 +50,11 @@ class Question extends Model
      */
     public function checkAnswer(string $userAnswer): bool
     {
+        // Brief questions are always considered "correct" as they are feedback
+        if ($this->type === 'brief') {
+            return true;
+        }
+        
         return AnswerValidationService::isAnswerCorrect($this, $userAnswer);
     }
 
@@ -58,6 +63,11 @@ class Question extends Model
      */
     public function calculatePointsEarned(string $userAnswer): int
     {
+        // Brief questions never give points
+        if ($this->type === 'brief') {
+            return 0;
+        }
+        
         return AnswerValidationService::calculatePointsEarned($this, $userAnswer);
     }
 
@@ -94,6 +104,27 @@ class Question extends Model
             }
         }
 
+        // Brief questions don't need validation as they're just feedback
+        if ($this->type === 'brief') {
+            // No specific validation needed for brief questions
+        }
+
         return $errors;
+    }
+
+    /**
+     * Check if this question is scored
+     */
+    public function isScored(): bool
+    {
+        return $this->type !== 'brief';
+    }
+
+    /**
+     * Check if this question is a feedback question
+     */
+    public function isFeedback(): bool
+    {
+        return $this->type === 'brief';
     }
 }

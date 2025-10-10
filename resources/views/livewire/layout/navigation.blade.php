@@ -33,7 +33,7 @@ new class extends Component
                     <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')" wire:navigate>
                         {{ __('Dashboard') }}
                     </x-nav-link>
-                    <x-nav-link :href="route('user.quest-location-dashboard')" :active="request()->routeIs('user.quest-location-dashboard')" wire:navigate>
+                    <x-nav-link :href="route('user.quest-locations')" :active="request()->routeIs('user.quest-locations')" wire:navigate>
                         {{ __('common.quest_locations') }}
                     </x-nav-link>
                 </div>
@@ -87,7 +87,7 @@ new class extends Component
             <x-responsive-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')" wire:navigate>
                 {{ __('Dashboard') }}
             </x-responsive-nav-link>
-            <x-responsive-nav-link :href="route('user.quest-location-dashboard')" :active="request()->routeIs('user.quest-location-dashboard')" wire:navigate>
+            <x-responsive-nav-link :href="route('user.quest-locations')" :active="request()->routeIs('user.quest-locations')" wire:navigate>
                 Quest Locations
             </x-responsive-nav-link>
         </div>

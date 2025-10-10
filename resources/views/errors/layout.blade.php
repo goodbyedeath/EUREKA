@@ -13,7 +13,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <!-- Styles -->
-    @vite(['resources/css/app.css'])
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
     
     <style>
         [x-cloak] { display: none !important; }
@@ -104,7 +104,7 @@
     </div>
     
     <!-- Scripts -->
-    @vite(['resources/js/app.js'])
+    <!-- Production JS -->
     
     <script>
         // Automatically refresh page after 30 seconds for 500 errors
