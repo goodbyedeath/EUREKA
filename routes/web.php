@@ -11,7 +11,6 @@ use App\Http\Controllers\User\QuestLocationController;
 use App\Http\Controllers\KioskController;
 use App\Http\Controllers\Api\KioskController as ApiKioskController;
 
-use App\Livewire\User\QuizTake;
 use App\Livewire\User\GameDashboard;
 
 use App\Livewire\User\GameAssessmentForm;
@@ -119,23 +118,32 @@ Route::middleware(['auth', 'preventbackhistory'])->group(function () {
         Route::middleware(['team'])->group(function () {
             Route::get('/user/dashboard', [UserDashboardController::class, 'index'])->name('user.dashboard');
             Route::middleware('quiz')->group(function () {
-                Route::get('/quiz/start/{questionnaireId}', QuizTake::class)->name('quiz.start');
-                Route::get('/quiz/take/{questionnaireId}', QuizTake::class)->name('quiz.take');
-                Route::get('/quiz/continue/{attemptId}', QuizTake::class)->name('quiz.continue');
-                Route::get('/quiz/results/{attemptId}', function($attemptId) {
-                    $attempt = \App\Models\QuizAttempt::with(['questionnaire.questions'])
-                        ->where('id', $attemptId)
-                        ->where('user_id', Auth::id())
-                        ->whereIn('status', ['completed', 'time_expired'])
-                        ->firstOrFail();
-                        
-                    return view('user.quiz-results', compact('attempt'));
-                })->name('quiz.results');
+                Route::get('/quiz/start/{questionnaireId}', [App\Http\Controllers\User\UserQuizController::class, 'start'])->name('quiz.start');
+                Route::get('/quiz/take/{questionnaireId}', [App\Http\Controllers\User\UserQuizController::class, 'start'])->name('quiz.take');
+                Route::get('/quiz/continue/{attemptId}', [App\Http\Controllers\User\UserQuizController::class, 'continue'])->name('quiz.continue');
+                Route::get('/quiz/results/{attemptId}', [App\Http\Controllers\User\UserQuizController::class, 'results'])->name('quiz.results');
                 Route::get('/game/assessment/{assessmentId}', GameAssessmentForm::class)->name('game.assessment');
             });
             Route::get('/quest-locations', [QuestLocationController::class, 'index'])->name('user.quest-locations');
             Route::get('/quest-locations/dashboard', [QuestLocationController::class, 'dashboardContent'])->name('user.quest-locations.dashboard');
+
+            // Quest Location API routes
             Route::post('/quest-locations/checkin', [QuestLocationController::class, 'checkIn'])->name('user.quest-locations.checkin');
+            Route::get('/api/quest-locations', [QuestLocationController::class, 'getLocations'])->name('user.quest-locations.api.list');
+            Route::post('/api/quest-locations/update-location', [QuestLocationController::class, 'updateLocation'])->name('user.quest-locations.api.update-location');
+            Route::post('/api/quest-locations/get-route', [QuestLocationController::class, 'getRoute'])->name('user.quest-locations.api.route');
+
+            // QR Scanner API routes
+            Route::post('/api/qr-scanner/lookup', [App\Http\Controllers\Api\QRScannerController::class, 'lookup'])->name('api.qr-scanner.lookup');
+
+            // Quiz API routes
+            Route::get('/api/quiz/start/{questionnaireId}', [App\Http\Controllers\Api\QuizController::class, 'start'])->name('api.quiz.start');
+            Route::get('/api/quiz/continue/{attemptId}', [App\Http\Controllers\Api\QuizController::class, 'continue'])->name('api.quiz.continue');
+            Route::post('/api/quiz/save-answer', [App\Http\Controllers\Api\QuizController::class, 'saveAnswer'])->name('api.quiz.save-answer');
+            Route::post('/api/quiz/submit', [App\Http\Controllers\Api\QuizController::class, 'submit'])->name('api.quiz.submit');
+            Route::get('/api/quiz/timer/{attemptId}', [App\Http\Controllers\Api\QuizController::class, 'timer'])->name('api.quiz.timer');
+            Route::post('/api/quiz/complete-game', [App\Http\Controllers\Api\QuizController::class, 'completeGame'])->name('api.quiz.complete-game');
+
             Route::get('/game-dashboard', GameDashboard::class)->name('user.game-dashboard');
             Route::get('/panorama/{id}', [App\Http\Controllers\User\UserPanoramaController::class, 'show'])->name('user.panorama.view');
             Route::get('/panorama/{id}/hotspots', [App\Http\Controllers\User\UserPanoramaController::class, 'getHotspots'])->name('user.panorama.hotspots');

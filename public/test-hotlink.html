@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hotlink Protection Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .success { color: green; font-weight: bold; }
+        .error { color: red; font-weight: bold; }
+        h1 { color: #333; }
+        h2 { color: #666; }
+        code {
+            background: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+        .info {
+            background: #e3f2fd;
+            padding: 15px;
+            border-left: 4px solid #2196f3;
+            margin: 15px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔒 Hotlink Protection Test</h1>
+
+    <div class="test-section">
+        <h2>✅ What's Protected:</h2>
+        <ul>
+            <li>All image files: .jpg, .jpeg, .png, .gif, .bmp, .webp, .svg, .ico</li>
+            <li>Images can only be accessed from <code>eureka-performa.com</code></li>
+            <li>Direct access (typing URL in browser) is allowed</li>
+            <li>External websites CANNOT embed your images</li>
+        </ul>
+    </div>
+
+    <div class="test-section">
+        <h2>🧪 How to Test:</h2>
+        <ol>
+            <li><strong>Test 1 - Direct Access (Should Work):</strong>
+                <br>Copy any image URL from your site and paste it directly in browser address bar
+                <br>Example: <code>https://eureka-performa.com/storage/quest-locations/image.jpg</code>
+                <br><span class="success">✓ Image should load</span>
+            </li>
+            <br>
+            <li><strong>Test 2 - Same Domain (Should Work):</strong>
+                <br>Images displayed on your own website pages
+                <br><span class="success">✓ All images should display normally</span>
+            </li>
+            <br>
+            <li><strong>Test 3 - External Hotlinking (Should Fail):</strong>
+                <br>Create a test HTML file on another domain with:
+                <br><code>&lt;img src="https://eureka-performa.com/storage/quest-locations/image.jpg"&gt;</code>
+                <br><span class="error">✗ Image should return 403 Forbidden</span>
+            </li>
+        </ol>
+    </div>
+
+    <div class="info">
+        <strong>📋 Note:</strong> If you need to allow specific external domains (like a mobile app or partner site),
+        you can modify the .htaccess file to whitelist them.
+    </div>
+
+    <div class="test-section">
+        <h2>🔧 Protected File Types:</h2>
+        <code>.jpg .jpeg .png .gif .bmp .webp .svg .ico</code>
+    </div>
+
+    <div class="test-section">
+        <h2>⚙️ Configuration Location:</h2>
+        <p><code>/public/.htaccess</code> (lines 8-13)</p>
+    </div>
+
+    <div class="info">
+        <strong>⚠️ Important:</strong> This protection is now active. Clear your browser cache if you experience any issues viewing images on your own site.
+    </div>
+</body>
+</html>

@@ -5,6 +5,13 @@
 
     RewriteEngine On
 
+    # Hotlink Protection - Prevent unauthorized image access
+    # Allow access from own domain, direct access, and empty referrers
+    RewriteCond %{HTTP_REFERER} !^$
+    RewriteCond %{HTTP_REFERER} !^https?://(www\.)?eureka-performa\.com [NC]
+    RewriteCond %{REQUEST_URI} \.(jpg|jpeg|png|gif|bmp|webp|svg|ico)$ [NC]
+    RewriteRule \.(jpg|jpeg|png|gif|bmp|webp|svg|ico)$ - [F,L]
+
     # Handle Authorization Header
     RewriteCond %{HTTP:Authorization} .
     RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]

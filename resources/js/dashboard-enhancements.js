@@ -3,6 +3,15 @@
  * Provides better user experience with animations, interactions, and feedback
  */
 
+// Feature interaction tracking object
+let featureInteractions = {
+    quiz_clicks: 0,
+    qr_clicks: 0,
+    quest_clicks: 0,
+    game_clicks: 0,
+    team_clicks: 0
+};
+
 // Enhanced Feature Card Initialization
 function initializeFeatureCards() {
     const featureCards = document.querySelectorAll('.feature-card');

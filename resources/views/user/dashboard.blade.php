@@ -234,9 +234,6 @@
                 @livewire('user.dashboard-tabs')
             </div>
 
-            <!-- GPS Tracker Widget -->
-            @livewire('user.gps-tracker')
-
             <!-- Main Content Area -->
             <div class="main-content-area">
                 <div class="content-card">
@@ -247,8 +244,8 @@
     </div>
 </div>
 
-{{-- Include QR Scanner Modal --}}
-@livewire('user.q-r-scanner-modal')
+{{-- Include QR Scanner Modal (Alpine.js) --}}
+@include('components.qr-scanner-modal')
 
 {{-- Include Score Breakdown Modal --}}
 @livewire('user.score-breakdown')
@@ -1224,9 +1221,6 @@
 @endpush
 
 @push('scripts')
-<!-- GPS Footprint Tracker -->
-<script src="{{ asset('js/gps-footprint-tracker.js') }}"></script>
-
 <script>
     // Error handling for Livewire components
     window.addEventListener('error', function(e) {

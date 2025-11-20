@@ -162,14 +162,14 @@ class CameraCapture {
                                     Camera Permission Required
                                 </h3>
                                 <p class="text-sm text-gray-600 dark:text-gray-400 mb-6">
-                                    We need to take a verification photo before submitting your quiz. Please allow camera access when prompted.
+                                    <strong>Required:</strong> We need to take a verification photo before submitting your quiz. Please allow camera access when prompted.
                                 </p>
                                 <div class="flex space-x-3">
                                     <button id="allow-camera" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-medium transition-colors">
-                                        Allow Camera
+                                        <i class="fas fa-camera mr-2"></i>Take Photo Now
                                     </button>
-                                    <button id="skip-camera" class="flex-1 bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500 text-gray-700 dark:text-gray-300 px-4 py-2 rounded-md font-medium transition-colors">
-                                        Skip Photo
+                                    <button id="skip-camera" class="flex-1 bg-red-500 dark:bg-red-600 hover:bg-red-600 dark:hover:bg-red-700 text-white px-4 py-2 rounded-md font-medium transition-colors">
+                                        <i class="fas fa-times mr-2"></i>Cancel
                                     </button>
                                 </div>
                             </div>

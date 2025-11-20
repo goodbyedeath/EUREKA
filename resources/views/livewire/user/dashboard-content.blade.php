@@ -63,8 +63,8 @@
                         
                         @if($this->featureEnabled('quiz_system'))
                         <div class="feature-card group">
-                            <button 
-                                wire:click="openQRScanner"
+                            <button
+                                onclick="window.dispatchEvent(new Event('open-qr-scanner'))"
                                 class="w-full p-6 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl hover:border-green-300 dark:hover:border-green-600 hover:shadow-lg transition-all duration-300 text-left group-hover:transform group-hover:scale-105">
                                 <div class="flex items-center justify-between mb-4">
                                     <div class="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center group-hover:bg-green-200 dark:group-hover:bg-green-900/50 transition-colors">
@@ -495,11 +495,13 @@ let featureInteractions = {
 
 // Enhanced page initialization
 document.addEventListener('DOMContentLoaded', () => {
-    // Initialize enhanced dashboard features
-    initializeFeatureCards();
-    loadUserStats();
-    addInteractiveEffects();
-    handleEnhancedFlashMessages();
+    // Wait for dashboard enhancements to be loaded
+    if (window.dashboardEnhancements) {
+        window.dashboardEnhancements.initializeFeatureCards();
+        window.dashboardEnhancements.loadUserStats();
+        window.dashboardEnhancements.addInteractiveEffects();
+        window.dashboardEnhancements.handleEnhancedFlashMessages();
+    }
     
     // Auto-hide flash messages
     setTimeout(() => {
@@ -673,12 +675,14 @@ async function checkIn(locationId) {
         return;
     }
 
+    // Use currentTarget to ensure we get the button, not a child element
+    const button = event.currentTarget;
+    const originalText = button.innerHTML;
+
     try {
         // Show loading state
-        const button = event.target;
-        const originalText = button.innerHTML;
         button.disabled = true;
-        button.innerHTML = 'Checking in...';
+        button.innerHTML = '<span class="flex items-center justify-center"><svg class="animate-spin h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Checking...</span>';
 
         const response = await fetch('{{ route("user.quest-locations.checkin") }}', {
             method: 'POST',
@@ -699,10 +703,16 @@ async function checkIn(locationId) {
             alert(result.message);
             location.reload(); // Reload to show updated progress
         } else {
+            // Reset button on validation failure
+            button.disabled = false;
+            button.innerHTML = originalText;
             alert(result.message || 'Check-in failed. Please try again.');
         }
 
     } catch (error) {
+        // Reset button on error
+        button.disabled = false;
+        button.innerHTML = originalText;
         alert('Check-in failed. Please try again.');
     }
 }

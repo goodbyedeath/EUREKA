@@ -2,574 +2,609 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <title>EUREKA Learning Management System - User Progress Report</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <title>Laporan Kemajuan Pengguna EUREKA</title>
     <style>
+        @page {
+            margin: 180px 50px 120px 50px;
+        }
+
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
-        
+
         body {
             font-family: 'DejaVu Sans', sans-serif;
             font-size: 9px;
-            line-height: 1.3;
+            line-height: 1.4;
             color: #2D3748;
-            background-color: #FFFFFF;
-            margin: 0;
-            padding: 0;
         }
-        
-        .container {
-            max-width: 100%;
-            margin: 0;
-            padding: 3px;
+
+        /* Fixed Header */
+        header {
+            position: fixed;
+            top: -160px;
+            left: 0;
+            right: 0;
+            height: 140px;
+            background: white;
+            border-bottom: 3px solid #1A365D;
+            padding: 15px 20px;
         }
-        
-        /* Corporate Header */
-        .corporate-header {
-            border-bottom: 2px solid #1A365D;
-            margin-bottom: 8px;
-            padding-bottom: 4px;
+
+        .header-content {
+            display: table;
+            width: 100%;
         }
-        
-        .company-info {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 4px;
+
+        .header-left {
+            display: table-cell;
+            width: 50%;
+            vertical-align: top;
         }
-        
-        .company-logo {
-            margin-bottom: 1px;
+
+        .header-right {
+            display: table-cell;
+            width: 50%;
+            vertical-align: top;
+            text-align: right;
         }
-        
-        .company-logo img {
-            height: 60px;
+
+        .logo-section {
+            margin-bottom: 10px;
+        }
+
+        .logo-section img {
+            height: 50px;
             width: auto;
         }
-        
+
+        .company-name {
+            font-size: 18px;
+            font-weight: bold;
+            color: #1A365D;
+            margin-bottom: 3px;
+        }
+
         .company-tagline {
             font-size: 8px;
             color: #4A5568;
             font-style: italic;
         }
-        
-        .report-info {
-            text-align: right;
+
+        .report-metadata {
             font-size: 8px;
             color: #4A5568;
+            line-height: 1.6;
         }
-        
-        .report-title {
+
+        .report-metadata strong {
+            color: #2D3748;
+        }
+
+        .report-title-section {
             text-align: center;
-            background: linear-gradient(135deg, #2D3748 0%, #1A365D 100%);
+            background: linear-gradient(135deg, #1A365D 0%, #2D3748 100%);
             color: white;
-            padding: 6px 10px;
-            margin-bottom: 6px;
-            border-radius: 3px;
+            padding: 12px 15px;
+            margin-top: 10px;
+            border-radius: 4px;
         }
-        
-        .report-title h1 {
+
+        .report-title-section h1 {
             font-size: 16px;
             font-weight: bold;
-            margin-bottom: 3px;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .report-subtitle {
+            font-size: 9px;
+            opacity: 0.9;
+        }
+
+        /* Fixed Footer */
+        footer {
+            position: fixed;
+            bottom: -100px;
+            left: 0;
+            right: 0;
+            height: 80px;
+            background: #F7FAFC;
+            border-top: 2px solid #CBD5E0;
+            padding: 10px 20px;
+            font-size: 7px;
+            color: #4A5568;
+        }
+
+        .footer-content {
+            display: table;
+            width: 100%;
+        }
+
+        .footer-left {
+            display: table-cell;
+            width: 50%;
+            vertical-align: top;
+        }
+
+        .footer-right {
+            display: table-cell;
+            width: 50%;
+            vertical-align: top;
+            text-align: right;
+        }
+
+        .footer-divider {
+            border-top: 1px solid #CBD5E0;
+            margin: 5px 0;
+        }
+
+        .page-number {
+            text-align: center;
+            font-size: 8px;
+            color: #4A5568;
+            margin-top: 5px;
+        }
+
+        .page-number:after {
+            content: "Halaman " counter(page);
+        }
+
+        .confidential-notice {
+            background: #FED7D7;
+            border: 1px solid #FC8181;
+            color: #C53030;
+            padding: 4px 8px;
+            border-radius: 2px;
+            font-size: 7px;
+            text-align: center;
+            font-weight: bold;
+            display: inline-block;
+        }
+
+        /* Main Content Styles */
+        .container {
+            width: 100%;
+        }
+
+        /* Executive Summary */
+        .executive-summary {
+            background: #F7FAFC;
+            border-left: 4px solid #2B6CB0;
+            padding: 10px;
+            margin-bottom: 15px;
+            page-break-inside: avoid;
+        }
+
+        .executive-summary h3 {
+            font-size: 11px;
+            font-weight: bold;
+            color: #1A365D;
+            margin-bottom: 8px;
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
-        
-        .report-title .subtitle {
-            font-size: 10px;
-            opacity: 0.9;
-            margin-bottom: 5px;
-        }
-        
-        .report-title .period {
-            font-size: 8px;
-            background-color: rgba(255, 255, 255, 0.15);
-            padding: 3px 8px;
-            border-radius: 10px;
-            display: inline-block;
-        }
-        
-        /* Executive Summary Box */
-        .executive-summary {
-            background: #F7FAFC;
-            border-left: 3px solid #2B6CB0;
-            padding: 4px;
-            margin-bottom: 5px;
-        }
-        
-        .executive-summary h3 {
-            font-size: 10px;
-            font-weight: bold;
+
+        .executive-summary p {
+            font-size: 9px;
+            line-height: 1.6;
             color: #2D3748;
-            margin-bottom: 2px;
-            text-transform: uppercase;
+            margin-bottom: 10px;
         }
-        
-        .summary-grid {
+
+        .summary-stats-grid {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 6px;
+            margin-top: 10px;
         }
-        
-        .summary-grid td {
+
+        .summary-stats-grid td {
             text-align: center;
-            padding: 2px;
+            padding: 8px;
             background: white;
             border: 1px solid #E2E8F0;
             width: 25%;
         }
-        
-        .summary-item .number {
-            font-size: 12px;
+
+        .stat-number {
+            font-size: 16px;
             font-weight: bold;
             color: #2B6CB0;
             display: block;
-            margin-bottom: 1px;
+            margin-bottom: 4px;
         }
-        
-        .summary-item .label {
+
+        .stat-label {
             font-size: 7px;
             color: #4A5568;
             text-transform: uppercase;
+            letter-spacing: 0.3px;
         }
-        
-        /* Report Parameters Section */
+
+        /* Report Parameters */
         .report-parameters {
             background: #EDF2F7;
             border: 1px solid #CBD5E0;
-            padding: 3px;
-            margin-bottom: 5px;
+            border-radius: 3px;
+            padding: 8px;
+            margin-bottom: 15px;
+            page-break-inside: avoid;
         }
-        
+
         .report-parameters h3 {
-            font-size: 9px;
+            font-size: 10px;
             font-weight: bold;
             color: #2D3748;
-            margin-bottom: 1px;
+            margin-bottom: 8px;
             text-transform: uppercase;
         }
-        
-        .parameters-grid {
+
+        .parameters-table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 7px;
+            font-size: 8px;
         }
-        
-        .parameters-grid td {
+
+        .parameters-table td {
             background: white;
-            padding: 2px;
+            padding: 6px 8px;
             border: 1px solid #E2E8F0;
             width: 25%;
         }
-        
-        .parameter-label {
+
+        .param-label {
             font-weight: bold;
             color: #4A5568;
             display: block;
-            margin-bottom: 1px;
+            margin-bottom: 2px;
         }
-        
-        .parameter-value {
+
+        .param-value {
             color: #2D3748;
-            font-weight: 500;
         }
-        
-        /* Enhanced Statistics Cards */
-        .summary-stats {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 12px;
-            margin-bottom: 25px;
-        }
-        
-        .stat-card {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 16px;
-            border-radius: 8px;
-            text-align: center;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-        }
-        
-        .stat-number {
-            font-size: 24px;
-            font-weight: bold;
-            margin-bottom: 6px;
-            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-        }
-        
-        .stat-label {
-            font-size: 11px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            opacity: 0.9;
-        }
-        
-        /* Professional Section Headers */
+
+        /* Section Headers */
         .section-header {
             background: #2D3748;
             color: white;
-            padding: 3px 6px;
-            margin: 4px 0 2px 0;
-            font-size: 9px;
+            padding: 6px 10px;
+            margin: 15px 0 10px 0;
+            font-size: 10px;
             font-weight: bold;
             text-transform: uppercase;
-            border-left: 3px solid #2B6CB0;
+            border-left: 4px solid #2B6CB0;
+            letter-spacing: 0.5px;
         }
-        
-        .section-divider {
-            border-top: 1px solid #CBD5E0;
-            margin: 3px 0;
-        }
-        
-        /* Professional Data Table */
-        .table-container {
-            background-color: #FFFFFF;
-            overflow: hidden;
+
+        /* Data Table */
+        .data-table-container {
+            background: white;
             border: 1px solid #CBD5E0;
-            margin-bottom: 5px;
+            margin-bottom: 15px;
+            page-break-inside: auto;
         }
-        
+
         .data-table {
             width: 100%;
             border-collapse: collapse;
             font-size: 8px;
         }
-        
-        .data-table th {
+
+        .data-table thead {
             background: #2D3748;
             color: white;
-            font-weight: bold;
-            padding: 3px 2px;
+        }
+
+        .data-table th {
+            padding: 6px 4px;
             text-align: center;
-            border-right: 1px solid #4A5568;
+            font-weight: bold;
             font-size: 8px;
             text-transform: uppercase;
+            border-right: 1px solid #4A5568;
         }
-        
+
         .data-table th:last-child {
             border-right: none;
         }
-        
+
         .data-table td {
-            padding: 2px 1px;
+            padding: 5px 4px;
             border-bottom: 1px solid #E2E8F0;
-            border-right: 1px solid #EDF2F7;
+            border-right: 1px solid #F7FAFC;
             text-align: center;
             vertical-align: middle;
         }
-        
+
         .data-table td:last-child {
             border-right: none;
         }
-        
+
         .data-table tbody tr:nth-child(even) {
             background-color: #F7FAFC;
         }
-        
+
         .data-table tbody tr:nth-child(odd) {
             background-color: #FFFFFF;
         }
-        
-        /* Enhanced Styling Elements */
+
+        .data-table tbody tr {
+            page-break-inside: avoid;
+        }
+
+        /* User Details */
         .user-name {
             font-weight: bold;
             color: #1F2937;
+            font-size: 8px;
         }
-        
+
         .user-email {
             font-size: 6px;
             color: #6B7280;
+            margin-top: 1px;
         }
-        
+
+        /* Team Badge */
+        .team-badge {
+            background: linear-gradient(135deg, #E0E7FF 0%, #C7D2FE 100%);
+            color: #1E3A8A;
+            padding: 3px 8px;
+            border-radius: 10px;
+            font-size: 7px;
+            font-weight: bold;
+            display: inline-block;
+            border: 1px solid #A5B4FC;
+        }
+
+        /* Completion Rate Badge */
+        .completion-rate {
+            font-weight: bold;
+            padding: 3px 8px;
+            border-radius: 10px;
+            font-size: 8px;
+            display: inline-block;
+        }
+
+        .completion-rate.high {
+            background-color: #D1FAE5;
+            color: #059669;
+            border: 1px solid #10B981;
+        }
+
+        .completion-rate.medium {
+            background-color: #FEF3C7;
+            color: #D97706;
+            border: 1px solid #F59E0B;
+        }
+
+        .completion-rate.low {
+            background-color: #FEE2E2;
+            color: #DC2626;
+            border: 1px solid #EF4444;
+        }
+
+        /* Points Display */
+        .total-points {
+            font-weight: bold;
+            font-size: 9px;
+            color: #1F2937;
+        }
+
         .points-breakdown {
             font-size: 6px;
             color: #6B7280;
-            margin-top: 1px;
-            line-height: 1.1;
+            margin-top: 2px;
+            line-height: 1.2;
         }
-        
-        .completion-rate {
-            font-weight: bold;
-            padding: 4px 8px;
-            border-radius: 12px;
-            font-size: 9px;
-        }
-        
-        .completion-rate.high { 
-            background-color: #D1FAE5; 
-            color: #059669; 
-        }
-        .completion-rate.medium { 
-            background-color: #FEF3C7; 
-            color: #D97706; 
-        }
-        .completion-rate.low { 
-            background-color: #FEE2E2; 
-            color: #DC2626; 
-        }
-        
-        .team-badge {
-            background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
-            color: #1F2937;
-            padding: 4px 8px;
-            border-radius: 12px;
-            font-size: 9px;
-            font-weight: bold;
-            border: 1px solid #E5E7EB;
-        }
-        
-        .total-points {
-            font-weight: bold;
-            font-size: 11px;
-            color: #1F2937;
-        }
-        
+
+        /* Activity Date */
         .activity-date {
-            font-size: 9px;
+            font-size: 7px;
             color: #6B7280;
         }
-        
-        /* Corporate Footer */
-        .corporate-footer {
-            margin-top: 25px;
-            border-top: 2px solid #2D3748;
-            padding-top: 15px;
-            font-size: 8px;
-            color: #4A5568;
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-        }
-        
-        .footer-left {
-            text-align: left;
-        }
-        
-        .footer-right {
-            text-align: right;
-        }
-        
-        .confidentiality {
-            background: #FED7D7;
-            border: 1px solid #FC8181;
-            color: #C53030;
-            padding: 5px;
-            border-radius: 2px;
-            margin-bottom: 8px;
-            font-size: 7px;
-            text-align: center;
-            font-weight: bold;
-        }
-        
-        /* Analytics Sections */
+
+        /* Analytics Section */
         .analytics-section {
             background: #F7FAFC;
             border: 1px solid #E2E8F0;
-            border-radius: 5px;
-            padding: 12px;
+            border-radius: 4px;
+            padding: 10px;
             margin-bottom: 15px;
+            page-break-inside: avoid;
         }
-        
+
         .analytics-title {
-            font-size: 12px;
+            font-size: 10px;
             font-weight: bold;
             color: #2D3748;
             margin-bottom: 8px;
             padding-bottom: 4px;
             border-bottom: 1px solid #CBD5E0;
         }
-        
+
         .analytics-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 12px;
-            font-size: 9px;
+            display: table;
+            width: 100%;
         }
-        
+
+        .analytics-column {
+            display: table-cell;
+            width: 50%;
+            padding: 5px;
+            vertical-align: top;
+        }
+
         .analytics-item {
             background: white;
             padding: 8px;
             border-radius: 3px;
             border: 1px solid #E2E8F0;
+            font-size: 8px;
+            line-height: 1.5;
+            margin-bottom: 8px;
         }
-        
+
         .metric-label {
             font-weight: bold;
             color: #4A5568;
-            margin-bottom: 4px;
+            margin-bottom: 5px;
+            display: block;
         }
-        
-        /* Print Optimization */
-        @page {
-            margin: 10mm;
-            size: A4 portrait;
-        }
-        
+
+        /* Page Break Utilities */
         .page-break {
             page-break-before: always;
         }
-        
-        /* Responsive adjustments for portrait */
-        .narrow-table th,
-        .narrow-table td {
-            padding: 8px 4px;
-            font-size: 9px;
-        }
-        
-        .compact-stats {
-            grid-template-columns: repeat(2, 1fr);
-            gap: 8px;
-        }
-        
-        .compact-stats .stat-card {
-            padding: 12px;
-        }
-        
-        .compact-stats .stat-number {
-            font-size: 20px;
+
+        .no-break {
+            page-break-inside: avoid;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <!-- Corporate Header -->
-        <div class="corporate-header">
-            <div class="company-info">
-                <div>
-                    <div class="company-logo">
-                        <img src="{{ public_path('logo/horizonlogo.png') }}" alt="EUREKA LMS">
-                    </div>
-                    <div class="company-tagline">Advanced Learning Management & Analytics Platform</div>
+    <!-- Fixed Header -->
+    <header>
+        <div class="header-content">
+            <div class="header-left">
+                <div class="logo-section">
+                    <img src="{{ public_path('logo/horizonlogo.png') }}" alt="EUREKA LMS">
                 </div>
-                <div class="report-info">
-                    <strong>Report Type:</strong> User Progress Analysis<br>
-                    <strong>Generated:</strong> {{ now()->format('M j, Y g:i A') }}<br>
-                    <strong>Report ID:</strong> UPR-{{ now()->format('YmdHi') }}
+                <div class="company-name">EUREKA LMS</div>
+                <div class="company-tagline">Platform Manajemen Pembelajaran & Analitik</div>
+            </div>
+            <div class="header-right">
+                <div class="report-metadata">
+                    <strong>Jenis Laporan:</strong> Analisis Kemajuan Pengguna<br>
+                    <strong>Dibuat:</strong> {{ now()->format('d F Y - H:i') }}<br>
+                    <strong>ID Laporan:</strong> UPR-{{ now()->format('YmdHis') }}<br>
+                    <strong>Periode:</strong> {{ $filters['selectedTimeframe'] }} Hari<br>
+                    <strong>Status:</strong> <span class="confidential-notice">RAHASIA</span>
                 </div>
             </div>
         </div>
-
-        <!-- Report Title -->
-        <div class="report-title">
-            <h1>User Progress & Performance Report</h1>
-            <div class="subtitle">Comprehensive Learning Analytics and Assessment Overview</div>
-            <div class="period">Reporting Period: {{ $filters['selectedTimeframe'] }} Days | {{ count($users) }} Users Analyzed</div>
+        <div class="report-title-section">
+            <h1>Laporan Kemajuan & Kinerja Pengguna</h1>
+            <div class="report-subtitle">Analitik Pembelajaran dan Tinjauan Penilaian Komprehensif</div>
         </div>
+    </header>
 
-        <!-- Confidentiality Notice -->
-        <div class="confidentiality">
-            ⚠️ CONFIDENTIAL - This report contains sensitive educational data. Distribution restricted to authorized personnel only.
+    <!-- Fixed Footer -->
+    <footer>
+        <div class="footer-content">
+            <div class="footer-left">
+                <strong>Sistem Manajemen Pembelajaran EUREKA</strong><br>
+                Platform Analitik Pendidikan<br>
+                <div class="footer-divider"></div>
+                <strong>Info Laporan:</strong> {{ count($users) }} Pengguna | Periode {{ $filters['selectedTimeframe'] }} Hari
+            </div>
+            <div class="footer-right">
+                <strong>Klasifikasi Dokumen</strong><br>
+                Rahasia - Hanya untuk Personel yang Berwenang<br>
+                <div class="footer-divider"></div>
+                ID Laporan: UPR-{{ now()->format('YmdHis') }}
+            </div>
         </div>
+        <div class="page-number"></div>
+    </footer>
 
+    <!-- Main Content -->
+    <div class="container">
         <!-- Executive Summary -->
-        <div class="executive-summary">
-            <h3>Executive Summary</h3>
-            <p style="font-size: 10px; line-height: 1.4; margin-bottom: 10px;">
-                This report provides a comprehensive analysis of user learning progress and performance metrics within the EUREKA Learning Management System. 
-                The data encompasses user engagement, completion rates, assessment scores, and comparative performance analytics across 
-                {{ $filters['selectedTeam'] === 'all' ? 'all teams' : 'the selected team' }} over the past {{ $filters['selectedTimeframe'] }} days.
+        <div class="executive-summary no-break">
+            <h3>Ringkasan Eksekutif</h3>
+            <p>
+                Laporan komprehensif ini menganalisis kemajuan pembelajaran dan metrik kinerja pengguna dalam Sistem Manajemen Pembelajaran EUREKA.
+                Analisis mencakup {{ count($users) }} pengguna di {{ $filters['selectedTeam'] === 'all' ? 'semua tim' : 'tim yang dipilih' }}
+                selama periode {{ $filters['selectedTimeframe'] }} hari yang berakhir pada {{ now()->format('d F Y') }}.
             </p>
-            
-            <table class="summary-grid">
+
+            <table class="summary-stats-grid">
                 <tr>
                     <td>
-                        <div class="summary-item">
-                            <span class="number">{{ $stats['totalUsers'] }}</span>
-                            <span class="label">Active Users</span>
-                        </div>
+                        <span class="stat-number">{{ $stats['totalUsers'] }}</span>
+                        <span class="stat-label">Pengguna Aktif</span>
                     </td>
                     <td>
-                        <div class="summary-item">
-                            <span class="number">{{ $stats['totalAttempts'] }}</span>
-                            <span class="label">Total Attempts</span>
-                        </div>
+                        <span class="stat-number">{{ $stats['totalAttempts'] }}</span>
+                        <span class="stat-label">Total Percobaan</span>
                     </td>
                     <td>
-                        <div class="summary-item">
-                            <span class="number">{{ $stats['completedAttempts'] }}</span>
-                            <span class="label">Completed</span>
-                        </div>
+                        <span class="stat-number">{{ $stats['completedAttempts'] }}</span>
+                        <span class="stat-label">Diselesaikan</span>
                     </td>
                     <td>
-                        <div class="summary-item">
-                            <span class="number">{{ $stats['completionRate'] }}%</span>
-                            <span class="label">Success Rate</span>
-                        </div>
+                        <span class="stat-number">{{ $stats['completionRate'] }}%</span>
+                        <span class="stat-label">Tingkat Keberhasilan</span>
                     </td>
                 </tr>
             </table>
         </div>
 
         <!-- Report Parameters -->
-        <div class="report-parameters">
-            <h3>Report Parameters & Filters</h3>
-            <table class="parameters-grid">
+        <div class="report-parameters no-break">
+            <h3>Parameter Laporan & Filter yang Diterapkan</h3>
+            <table class="parameters-table">
                 <tr>
                     <td>
-                        <span class="parameter-label">Time Period</span><br>
-                        <span class="parameter-value">{{ $filters['selectedTimeframe'] }} days</span>
+                        <span class="param-label">Periode Waktu</span>
+                        <span class="param-value">{{ $filters['selectedTimeframe'] }} hari</span>
                     </td>
                     <td>
-                        <span class="parameter-label">Team Scope</span><br>
-                        <span class="parameter-value">{{ $filters['selectedTeam'] === 'all' ? 'All Teams' : $teamName ?? 'Selected Team' }}</span>
+                        <span class="param-label">Cakupan Tim</span>
+                        <span class="param-value">{{ $filters['selectedTeam'] === 'all' ? 'Semua Tim' : ($teamName ?? 'Tim Terpilih') }}</span>
                     </td>
                     <td>
-                        <span class="parameter-label">User Role</span><br>
-                        <span class="parameter-value">{{ ucfirst($filters['selectedRole']) }}</span>
+                        <span class="param-label">Peran Pengguna</span>
+                        <span class="param-value">{{ ucfirst($filters['selectedRole']) }}</span>
                     </td>
                     <td>
-                        <span class="parameter-label">Search Filter</span><br>
-                        <span class="parameter-value">{{ $filters['searchTerm'] ?: 'None Applied' }}</span>
+                        <span class="param-label">Filter Pencarian</span>
+                        <span class="param-value">{{ $filters['searchTerm'] ?: 'Tidak Ada' }}</span>
                     </td>
                 </tr>
             </table>
         </div>
-        
-        <!-- Section Header -->
-        <div class="section-header">
-            User Performance Analysis
-        </div>
-        
-        <!-- Enhanced User Data Table -->
-        <div class="table-container">
-            <table class="data-table narrow-table">
+
+        <!-- User Performance Data -->
+        <div class="section-header">Analisis Kinerja Pengguna</div>
+
+        <div class="data-table-container">
+            <table class="data-table">
                 <thead>
                     <tr>
-                        <th style="width: 22%;">User Details</th>
-                        <th style="width: 15%;">Team</th>
-                        <th style="width: 12%;">Attempts</th>
-                        <th style="width: 12%;">Completed</th>
-                        <th style="width: 13%;">Success Rate</th>
-                        <th style="width: 15%;">Total Points</th>
-                        <th style="width: 11%;">Last Activity</th>
+                        <th style="width: 20%;">Detail Pengguna</th>
+                        <th style="width: 13%;">Tim</th>
+                        <th style="width: 10%;">Percobaan</th>
+                        <th style="width: 10%;">Selesai</th>
+                        <th style="width: 12%;">Tingkat Keberhasilan</th>
+                        <th style="width: 18%;">Total Poin</th>
+                        <th style="width: 12%;">Aktivitas Terakhir</th>
                     </tr>
                 </thead>
                 <tbody>
                     @foreach($users as $index => $user)
-                        @if($index > 0 && $index % 20 === 0)
+                        @if($index > 0 && $index % 25 === 0)
                             </tbody>
                             </table>
                         </div>
                         <div class="page-break"></div>
-                        <div class="section-header">
-                            📋 Detailed User Performance Data (Continued)
-                        </div>
-                        <div class="table-container">
-                            <table class="data-table narrow-table">
+                        <div class="section-header">Analisis Kinerja Pengguna (Lanjutan)</div>
+                        <div class="data-table-container">
+                            <table class="data-table">
                                 <thead>
                                     <tr>
-                                        <th style="width: 22%;">User Details</th>
-                                        <th style="width: 15%;">Team</th>
-                                        <th style="width: 12%;">Attempts</th>
-                                        <th style="width: 12%;">Completed</th>
-                                        <th style="width: 13%;">Success Rate</th>
-                                        <th style="width: 15%;">Total Points</th>
-                                        <th style="width: 11%;">Last Activity</th>
+                                        <th style="width: 20%;">Detail Pengguna</th>
+                                        <th style="width: 13%;">Tim</th>
+                                        <th style="width: 10%;">Percobaan</th>
+                                        <th style="width: 10%;">Selesai</th>
+                                        <th style="width: 12%;">Tingkat Keberhasilan</th>
+                                        <th style="width: 18%;">Total Poin</th>
+                                        <th style="width: 12%;">Aktivitas Terakhir</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -591,19 +626,21 @@
                             </td>
                             <td>
                                 <div class="total-points">{{ number_format($user['total_points']) }}</div>
-                                @if(isset($user['team_points_breakdown']) && $user['team_points_breakdown']['earned_points'] > 0)
+                                @if(isset($user['team_points_breakdown']))
                                     <div class="points-breakdown">
-                                        Base: {{ $user['team_points_breakdown']['base_points'] ?? 0 }} |
-                                        Earned: {{ $user['team_points_breakdown']['earned_points'] ?? 0 }}
-                                        @if(($user['team_points_breakdown']['assessment_bonus'] ?? 0) != 0)
-                                            | Bonus: {{ $user['team_points_breakdown']['assessment_bonus'] }}
+                                        Dasar: {{ number_format($user['team_points_breakdown']['base_points'] ?? 0) }}
+                                        @if(($user['team_points_breakdown']['earned_points'] ?? 0) > 0)
+                                            | Diperoleh: {{ number_format($user['team_points_breakdown']['earned_points']) }}
+                                        @endif
+                                        @if(($user['team_points_breakdown']['assessment_bonus'] ?? 0) > 0)
+                                            | Bonus: {{ number_format($user['team_points_breakdown']['assessment_bonus']) }}
                                         @endif
                                     </div>
                                 @endif
                             </td>
                             <td>
                                 <div class="activity-date">
-                                    {{ $user['last_activity'] ? $user['last_activity']->format('M j, Y') : 'Never' }}
+                                    {{ $user['last_activity'] ? $user['last_activity']->format('d M Y') : 'Belum Ada' }}
                                 </div>
                             </td>
                         </tr>
@@ -611,50 +648,49 @@
                 </tbody>
             </table>
         </div>
-        
-        <!-- Performance Analytics Section -->
+
+        <!-- Performance Analytics -->
         @if(count($users) > 5 && isset($analytics))
-        <div class="section-header">
-            Advanced Analytics & Performance Insights
-        </div>
-        
-        <!-- Performance Distribution Analysis -->
+        <div class="page-break"></div>
+        <div class="section-header">Analitik Lanjutan & Wawasan Kinerja</div>
+
         <div class="analytics-section">
-            <div class="analytics-title">Performance Distribution Analysis</div>
+            <div class="analytics-title">Analisis Distribusi Kinerja</div>
             <div class="analytics-grid">
-                <div class="analytics-item">
-                    <div class="metric-label">Top Performers ({{ count($analytics['topPerformers']) }})</div>
-                    @foreach($analytics['topPerformers'] as $index => $performer)
-                        {{ $index + 1 }}. {{ $performer['name'] }} ({{ number_format($performer['points']) }} pts, {{ $performer['completion_rate'] }}%)<br>
-                    @endforeach
+                <div class="analytics-column">
+                    <div class="analytics-item">
+                        <div class="metric-label">Pengguna Terbaik</div>
+                        @foreach($analytics['topPerformers'] as $index => $performer)
+                            {{ $index + 1 }}. {{ $performer['name'] }} - {{ number_format($performer['points']) }} poin ({{ $performer['completion_rate'] }}%)<br>
+                        @endforeach
+                    </div>
                 </div>
-                <div class="analytics-item">
-                    <div class="metric-label">Performance Segmentation</div>
-                    • High Performers (≥80%): {{ $analytics['performanceDistribution']['high_performers'] }} users<br>
-                    • Medium Performers (50-79%): {{ $analytics['performanceDistribution']['medium_performers'] }} users<br>
-                    • Needs Support (<50%): {{ $analytics['performanceDistribution']['low_performers'] }} users<br>
-                    • Inactive Users: {{ $analytics['performanceDistribution']['inactive_users'] }} users
+                <div class="analytics-column">
+                    <div class="analytics-item">
+                        <div class="metric-label">Segmentasi Kinerja</div>
+                        • Berkinerja Tinggi (≥80%): <strong>{{ $analytics['performanceDistribution']['high_performers'] }}</strong> pengguna<br>
+                        • Berkinerja Sedang (50-79%): <strong>{{ $analytics['performanceDistribution']['medium_performers'] }}</strong> pengguna<br>
+                        • Perlu Dukungan (<50%): <strong>{{ $analytics['performanceDistribution']['low_performers'] }}</strong> pengguna<br>
+                        • Pengguna Tidak Aktif: <strong>{{ $analytics['performanceDistribution']['inactive_users'] }}</strong> pengguna
+                    </div>
                 </div>
             </div>
         </div>
 
-        <!-- Team Comparison Analysis -->
         @if(count($analytics['teamComparison']) > 1)
         <div class="analytics-section">
-            <div class="analytics-title">Comparative Team Performance</div>
+            <div class="analytics-title">Perbandingan Kinerja Tim</div>
             <div class="analytics-grid">
-                @php 
+                @php
                     $teamChunks = collect($analytics['teamComparison'])->chunk(ceil(count($analytics['teamComparison'])/2));
                 @endphp
-                @foreach($teamChunks as $column)
-                    <div class="analytics-item">
+                @foreach($teamChunks as $chunkIndex => $column)
+                    <div class="analytics-column">
                         @foreach($column as $team)
-                            <div style="margin-bottom: 6px; padding: 6px; background: #F7FAFC; border-radius: 3px; border: 1px solid #E2E8F0;">
-                                <strong>{{ $team['team'] }}</strong><br>
-                                <span style="font-size: 8px;">
-                                Users: {{ $team['users'] }} | Avg Points: {{ number_format($team['avg_points']) }}<br>
-                                Completion: {{ $team['avg_completion'] }}% | Attempts: {{ $team['total_attempts'] }}
-                                </span>
+                            <div class="analytics-item">
+                                <strong style="color: #2D3748;">{{ $team['team'] }}</strong><br>
+                                Pengguna: {{ $team['users'] }} | Rata-rata Poin: {{ number_format($team['avg_points']) }}<br>
+                                Penyelesaian: {{ $team['avg_completion'] }}% | Percobaan: {{ $team['total_attempts'] }}
                             </div>
                         @endforeach
                     </div>
@@ -663,49 +699,30 @@
         </div>
         @endif
 
-        <!-- Engagement and Activity Metrics -->
         <div class="analytics-section">
-            <div class="analytics-title">Engagement & Activity Analysis</div>
+            <div class="analytics-title">Analisis Keterlibatan & Aktivitas</div>
             <div class="analytics-grid">
-                <div class="analytics-item">
-                    <div class="metric-label">Activity Statistics</div>
-                    • Avg Attempts per User: {{ $analytics['engagementMetrics']['average_attempts_per_user'] }}<br>
-                    • Most Active User: {{ $analytics['engagementMetrics']['most_active_user'] }}<br>
-                    • Highest Completion Rate: {{ $analytics['engagementMetrics']['highest_completion_rate'] }}%<br>
-                    • Active Users ({{ $analytics['completionTrends']['timeframe'] }}): {{ $analytics['completionTrends']['active_users'] }}
+                <div class="analytics-column">
+                    <div class="analytics-item">
+                        <div class="metric-label">Statistik Aktivitas</div>
+                        • Rata-rata Percobaan/Pengguna: <strong>{{ $analytics['engagementMetrics']['average_attempts_per_user'] }}</strong><br>
+                        • Paling Aktif: {{ $analytics['engagementMetrics']['most_active_user'] }}<br>
+                        • Penyelesaian Tertinggi: <strong>{{ $analytics['engagementMetrics']['highest_completion_rate'] }}%</strong><br>
+                        • Pengguna Aktif: {{ $analytics['completionTrends']['active_users'] }}
+                    </div>
                 </div>
-                <div class="analytics-item">
-                    <div class="metric-label">Score Distribution</div>
-                    • Highest Score: {{ number_format($analytics['engagementMetrics']['points_range']['highest']) }} points<br>
-                    • Lowest Score: {{ number_format($analytics['engagementMetrics']['points_range']['lowest']) }} points<br>
-                    • Median Score: {{ number_format($analytics['engagementMetrics']['points_range']['median']) }} points<br>
-                    • Daily Completion Velocity: {{ $analytics['completionTrends']['completion_velocity'] }}
+                <div class="analytics-column">
+                    <div class="analytics-item">
+                        <div class="metric-label">Distribusi Skor</div>
+                        • Skor Tertinggi: <strong>{{ number_format($analytics['engagementMetrics']['points_range']['highest']) }}</strong> poin<br>
+                        • Skor Terendah: {{ number_format($analytics['engagementMetrics']['points_range']['lowest']) }} poin<br>
+                        • Skor Median: {{ number_format($analytics['engagementMetrics']['points_range']['median']) }} poin<br>
+                        • Kecepatan Harian: {{ $analytics['completionTrends']['completion_velocity'] }}
+                    </div>
                 </div>
             </div>
         </div>
         @endif
-        
-        <div class="section-divider"></div>
-        
-        <!-- Corporate Footer -->
-        <div class="corporate-footer">
-            <div class="footer-left">
-                <strong>EUREKA Learning Management System</strong><br>
-                Advanced Educational Analytics Platform<br><br>
-                <strong>Report Summary:</strong><br>
-                • Total Records Analyzed: {{ count($users) }}<br>
-                • Data Period: {{ $filters['selectedTimeframe'] }} days<br>
-                • Generated: {{ now()->format('M j, Y g:i A') }}
-            </div>
-            <div class="footer-right">
-                <strong>Document Information</strong><br>
-                Report ID: UPR-{{ now()->format('YmdHi') }}<br>
-                Classification: Confidential<br>
-                Distribution: Authorized Personnel Only<br><br>
-                For technical support or data inquiries,<br>
-                contact your system administrator.
-            </div>
-        </div>
     </div>
 </body>
 </html>

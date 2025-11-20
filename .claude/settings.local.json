@@ -18,7 +18,12 @@
       "Bash(npm install:*)",
       "Bash(npm pkg set:*)",
       "Bash(php:*)",
-      "Bash(mv:*)"
+      "Bash(mv:*)",
+      "Bash(cat:*)",
+      "Bash(readlink:*)",
+      "Bash(curl:*)",
+      "Bash(find:*)",
+      "Bash(NODE_OPTIONS=\"--max-old-space-size=64\" timeout 180s npm run build:*)"
     ],
     "deny": [],
     "ask": []

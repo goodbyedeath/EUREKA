@@ -19,16 +19,22 @@ class AnswerValidationService
             return true;
         }
 
+        // Fun game questions are considered "correct" if answered with 'completed'
+        // Points are handled separately via game assessments
+        if ($questionType === QuestionType::FUN_GAME) {
+            return trim($userAnswer) === 'completed';
+        }
+
         if (empty(trim($userAnswer))) {
             return false;
         }
 
         $correctAnswer = $question->correct_answer;
-        
+
         if (empty($correctAnswer)) {
             return false;
         }
-        
+
         return match ($questionType) {
             QuestionType::MULTIPLE_CHOICE => self::validateMultipleChoice($question, $userAnswer, $correctAnswer),
             QuestionType::TRUE_FALSE => self::validateTrueFalse($userAnswer, $correctAnswer),
@@ -98,12 +104,18 @@ class AnswerValidationService
     public static function calculatePointsEarned(Question $question, string $userAnswer): int
     {
         $questionType = QuestionType::tryFrom($question->type);
-        
+
         // Brief questions never award points
         if ($questionType === QuestionType::BRIEF) {
             return 0;
         }
-        
+
+        // Fun game questions never award points directly
+        // Points are handled via game assessments
+        if ($questionType === QuestionType::FUN_GAME) {
+            return 0;
+        }
+
         return self::isAnswerCorrect($question, $userAnswer) ? $question->points : 0;
     }
 
@@ -142,6 +154,14 @@ class AnswerValidationService
                     $errors[] = 'Feedback exceeds maximum length of 2000 characters';
                 }
                 // Brief questions are always valid as they're feedback
+                break;
+
+            case QuestionType::FUN_GAME:
+                // Fun game questions accept 'completed' or game-specific answers
+                // Validation is minimal as these are manually assessed
+                if (strlen($userAnswer) > 500) {
+                    $errors[] = 'Answer exceeds maximum length of 500 characters';
+                }
                 break;
 
             default:

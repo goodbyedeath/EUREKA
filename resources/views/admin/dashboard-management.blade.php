@@ -46,7 +46,7 @@
             <!-- Tab Content -->
             <div class="min-h-96">
                 <!-- Questionnaire Manager -->
-                <div x-show="activeTab === 'questionnaires'" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100">
+                <template x-if="activeTab === 'questionnaires'">
                     <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
                         <div class="flex items-center space-x-3 mb-4">
                             <div class="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
@@ -57,12 +57,12 @@
                                 <p class="text-sm text-gray-500 dark:text-gray-400">Create, edit, and manage questionnaires</p>
                             </div>
                         </div>
-                        <livewire:admin.questionnaire-manager />
+                        <livewire:admin.questionnaire-manager key="questionnaire-manager-tab" />
                     </div>
-                </div>
+                </template>
 
                 <!-- Game Assessment -->
-                <div x-show="activeTab === 'assessments'" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100">
+                <template x-if="activeTab === 'assessments'">
                     <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
                         <div class="flex items-center space-x-3 mb-4">
                             <div class="w-10 h-10 bg-purple-100 dark:bg-purple-900/30 rounded-lg flex items-center justify-center">
@@ -73,12 +73,12 @@
                                 <p class="text-sm text-gray-500 dark:text-gray-400">Review and assess game performance</p>
                             </div>
                         </div>
-                        <livewire:admin.game-assessment />
+                        <livewire:admin.game-assessment key="game-assessment-tab" />
                     </div>
-                </div>
+                </template>
 
                 <!-- Team Manager -->
-                <div x-show="activeTab === 'teams'" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100">
+                <template x-if="activeTab === 'teams'">
                     <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
                         <div class="flex items-center space-x-3 mb-4">
                             <div class="w-10 h-10 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg flex items-center justify-center">
@@ -89,9 +89,9 @@
                                 <p class="text-sm text-gray-500 dark:text-gray-400">Manage teams and team members</p>
                             </div>
                         </div>
-                        <livewire:admin.team-manager />
+                        <livewire:admin.team-manager key="team-manager-tab" />
                     </div>
-                </div>
+                </template>
             </div>
         </div>
     </div>

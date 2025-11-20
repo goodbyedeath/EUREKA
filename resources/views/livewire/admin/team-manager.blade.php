@@ -169,17 +169,17 @@
                                             class="text-blue-600 hover:text-blue-900">
                                         <i class="fas fa-edit"></i>
                                     </button>
-                                    <button wire:click="deleteTeam({{ $team->id }})" 
+                                    <button wire:click="deleteTeam({{ $team->id }})"
+                                            wire:confirm="Are you sure you want to delete this team? This only works for empty teams."
                                             class="text-red-600 hover:text-red-900"
-                                            onclick="return confirm('Are you sure you want to delete this team?')"
                                             title="Delete team (requires empty team)">
                                         <i class="fas fa-trash"></i>
                                     </button>
                                     @if($team->members->count() > 0 || $team->users_count > 0)
-                                        <button wire:click="forceDeleteTeam({{ $team->id }})" 
+                                        <button wire:click="forceDeleteTeam({{ $team->id }})"
+                                                wire:confirm="⚠️ FORCE DELETE: This will PERMANENTLY delete the team, remove ALL users from the team, and DELETE all their quiz attempts, answers, and game assessments. This will reset user accounts to NEW. This action CANNOT be undone! Are you absolutely sure?"
                                                 class="text-red-800 hover:text-red-900"
-                                                onclick="return confirm('This will PERMANENTLY delete the team and remove ALL users and members. Are you absolutely sure?')"
-                                                title="Force delete with all members">
+                                                title="Force delete with all members and reset user accounts">
                                             <i class="fas fa-exclamation-triangle"></i>
                                         </button>
                                     @endif
@@ -382,7 +382,8 @@
                                         </span>
                                     </template>
                                     <span class="text-xs text-gray-500 dark:text-gray-400" x-text="'Joined ' + member.joined_date"></span>
-                                    <button @click="if(confirm('Are you sure you want to remove this team member?')) { $wire.call('removeMemberFromTeam', teamData.id, member.id) }"
+                                    <button @click="$wire.call('removeMemberFromTeam', teamData.id, member.id)"
+                                            wire:confirm="Are you sure you want to remove this team member? This will remove them from the team_members table."
                                             class="text-red-600 hover:text-red-900 text-xs px-2 py-1 border border-red-300 rounded hover:bg-red-50"
                                             title="Remove member">
                                         <i class="fas fa-user-minus"></i>
@@ -582,7 +583,8 @@
                                 </div>
                                 <div class="flex items-center space-x-2">
                                     <span class="text-xs text-gray-500 dark:text-gray-400" x-text="'Joined ' + member.joined_date"></span>
-                                    <button @click="if(confirm('Are you sure you want to remove this user from the team?')) { $wire.call('removeUserFromTeam', teamData.id, member.id) }"
+                                    <button @click="$wire.call('removeUserFromTeam', teamData.id, member.id)"
+                                            wire:confirm="Are you sure you want to remove this user from the team? This will set their team_id to NULL."
                                             class="text-red-600 hover:text-red-900 text-xs px-2 py-1 border border-red-300 rounded hover:bg-red-50"
                                             title="Remove user from team">
                                         <i class="fas fa-user-times"></i>

@@ -437,11 +437,12 @@ class UserProgress extends Component
                 'selectedTeam' => $this->selectedTeam,
                 'selectedRole' => $this->selectedRole,
                 'searchTerm' => $this->searchTerm,
+                'timestamp' => now()->timestamp, // Add timestamp for cache busting
             ]
         ]);
 
-        // Redirect to export controller
-        return redirect()->route('admin.user-progress.export');
+        // Redirect to export controller with cache-busting parameter
+        return redirect()->route('admin.user-progress.export', ['t' => now()->timestamp]);
     }
     
     public function updatedSearchTerm()
@@ -580,9 +581,10 @@ class UserProgress extends Component
             ->with(['question'])
             ->where('is_correct', true)
             ->get();
-            
+
+        // Use points_earned from user_answers table, not question->points
         $bonusPoints = $userAnswers->sum(function($answer) {
-            return $answer->question->points ?? 0;
+            return $answer->points_earned ?? 0;
         });
         
         // Add assessment bonus
@@ -606,18 +608,17 @@ class UserProgress extends Component
     {
         $basePoints = $user->team ? ($user->team->initial_points ?? 1000) : 1000;
         $totalGainedPoints = 0;
-        
+
         // Get all gained points from correct answers in completed attempts
         $userAnswers = UserAnswer::whereHas('quizAttempt', function($query) use ($user) {
             $query->where('user_id', $user->id)
                   ->where('status', 'completed')
                   ->where('created_at', '>=', now()->subDays($this->selectedTimeframe));
         })->with(['question'])->where('is_correct', true)->get();
-        
+
         foreach ($userAnswers as $answer) {
-            if ($answer->question) {
-                $totalGainedPoints += $answer->question->points ?? 0;
-            }
+            // Use points_earned from user_answers table, not question->points
+            $totalGainedPoints += $answer->points_earned ?? 0;
         }
         
         // Add assessment gains (bonus from fun games)
@@ -650,20 +651,19 @@ class UserProgress extends Component
                   ->where('status', 'completed')
                   ->where('created_at', '>=', now()->subDays($this->selectedTimeframe));
         })->with(['question'])->where('is_correct', true)->get();
-        
+
         foreach ($userAnswers as $answer) {
-            if ($answer->question) {
-                $totalGainedPoints += $answer->question->points ?? 0;
-            }
+            // Use points_earned from user_answers table, not question->points
+            $totalGainedPoints += $answer->points_earned ?? 0;
         }
-        
+
         // Add assessment gains (bonus from fun games)
         $assessmentGains = GameAssessment::whereHas('quizAttempt', function($query) use ($user) {
             $query->where('user_id', $user->id)
                   ->where('status', 'completed')
                   ->where('created_at', '>=', now()->subDays($this->selectedTimeframe));
         })->where('is_assessed', true)->get();
-        
+
         foreach ($assessmentGains as $assessment) {
             // Assessment gain = total_deposit - base_points_used
             $assessmentGain = ($assessment->total_deposit ?? 0) - $basePoints;
@@ -693,11 +693,10 @@ class UserProgress extends Component
             })->with(['question'])->where('is_correct', true)->get();
             
             foreach ($userAnswers as $answer) {
-                if ($answer->question) {
-                    $totalGainedPoints += $answer->question->points ?? 0;
-                }
+                // Use points_earned from user_answers table, not question->points
+                $totalGainedPoints += $answer->points_earned ?? 0;
             }
-            
+
             // Add assessment gains (bonus from fun games) for this user
             $assessmentGains = GameAssessment::whereHas('quizAttempt', function($query) use ($user) {
                 $query->where('user_id', $user->id)
@@ -779,9 +778,9 @@ class UserProgress extends Component
         
         $earnedPoints = 0;
         foreach ($userAnswers as $answer) {
-            if ($answer->question) {
-                $earnedPoints += $answer->question->points ?? 0;
-            }
+            // Use points_earned from user_answers table, not question->points
+            // This ensures fun_game questions (which have points_earned = 0) are handled correctly
+            $earnedPoints += $answer->points_earned ?? 0;
         }
         
         // Add assessment gains (bonus from fun games)

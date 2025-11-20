@@ -2565,3 +2565,233 @@ Stack trace:
 [16-Sep-2025 16:57:54 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value '+7UTC', using 'UTC' instead in Unknown on line 0
 [16-Sep-2025 16:58:06 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value '+7UTC', using 'UTC' instead in Unknown on line 0
 [17-Sep-2025 04:55:52 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value '+7UTC', using 'UTC' instead in Unknown on line 0
+[12-Nov-2025 06:24:37 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value '+7UTC', using 'UTC' instead in Unknown on line 0
+[12-Nov-2025 06:30:20 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value '+7UTC', using 'UTC' instead in Unknown on line 0
+[12-Nov-2025 06:30:20 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value '+7UTC', using 'UTC' instead in Unknown on line 0
+[12-Nov-2025 06:30:21 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value '+7UTC', using 'UTC' instead in Unknown on line 0
+[12-Nov-2025 06:34:36 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value '+7UTC', using 'UTC' instead in Unknown on line 0
+[12-Nov-2025 06:40:43 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value '+7UTC', using 'UTC' instead in Unknown on line 0
+[12-Nov-2025 06:40:44 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value '+7UTC', using 'UTC' instead in Unknown on line 0
+[12-Nov-2025 07:42:30 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value '+7UTC', using 'UTC' instead in Unknown on line 0
+[12-Nov-2025 07:42:38 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value '+7UTC', using 'UTC' instead in Unknown on line 0
+[12-Nov-2025 07:42:49 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value '+7UTC', using 'UTC' instead in Unknown on line 0
+[12-Nov-2025 07:43:01 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value '+7UTC', using 'UTC' instead in Unknown on line 0
+[12-Nov-2025 07:44:04 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value '+7UTC', using 'UTC' instead in Unknown on line 0
+[12-Nov-2025 07:45:20 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value '+7UTC', using 'UTC' instead in Unknown on line 0
+[12-Nov-2025 07:45:20 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value '+7UTC', using 'UTC' instead in Unknown on line 0
+[12-Nov-2025 07:45:21 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value '+7UTC', using 'UTC' instead in Unknown on line 0
+[12-Nov-2025 07:47:45 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value '+7UTC', using 'UTC' instead in Unknown on line 0
+[12-Nov-2025 12:19:43 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value '+7UTC', using 'UTC' instead in Unknown on line 0
+[12-Nov-2025 12:19:44 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value '+7UTC', using 'UTC' instead in Unknown on line 0
+[12-Nov-2025 12:19:44 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value '+7UTC', using 'UTC' instead in Unknown on line 0
+[12-Nov-2025 12:20:00 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value '+7UTC', using 'UTC' instead in Unknown on line 0
+[12-Nov-2025 12:20:19 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value '+7UTC', using 'UTC' instead in Unknown on line 0
+[12-Nov-2025 12:20:20 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value '+7UTC', using 'UTC' instead in Unknown on line 0
+[12-Nov-2025 12:20:42 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value '+7UTC', using 'UTC' instead in Unknown on line 0
+[12-Nov-2025 12:20:43 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value '+7UTC', using 'UTC' instead in Unknown on line 0
+[12-Nov-2025 12:22:16 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value '+7UTC', using 'UTC' instead in Unknown on line 0
+[12-Nov-2025 12:24:08 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value '+7UTC', using 'UTC' instead in Unknown on line 0
+[12-Nov-2025 12:24:08 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value '+7UTC', using 'UTC' instead in Unknown on line 0
+[12-Nov-2025 12:26:43 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value '+7UTC', using 'UTC' instead in Unknown on line 0
+[12-Nov-2025 12:26:43 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value '+7UTC', using 'UTC' instead in Unknown on line 0
+[12-Nov-2025 12:26:44 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value '+7UTC', using 'UTC' instead in Unknown on line 0
+[12-Nov-2025 12:28:49 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value '+7UTC', using 'UTC' instead in Unknown on line 0
+[12-Nov-2025 12:29:03 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value '+7UTC', using 'UTC' instead in Unknown on line 0
+[12-Nov-2025 12:36:21 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value '+7UTC', using 'UTC' instead in Unknown on line 0
+[12-Nov-2025 12:36:30 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value '+7UTC', using 'UTC' instead in Unknown on line 0
+[12-Nov-2025 12:40:24 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value '+7UTC', using 'UTC' instead in Unknown on line 0
+[12-Nov-2025 12:40:43 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value '+7UTC', using 'UTC' instead in Unknown on line 0
+[12-Nov-2025 12:42:05 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value '+7UTC', using 'UTC' instead in Unknown on line 0
+[12-Nov-2025 12:42:15 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value '+7UTC', using 'UTC' instead in Unknown on line 0
+[12-Nov-2025 12:42:15 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value '+7UTC', using 'UTC' instead in Unknown on line 0
+[12-Nov-2025 12:42:24 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value '+7UTC', using 'UTC' instead in Unknown on line 0
+[12-Nov-2025 12:42:25 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value '+7UTC', using 'UTC' instead in Unknown on line 0
+[12-Nov-2025 12:42:25 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value '+7UTC', using 'UTC' instead in Unknown on line 0
+[12-Nov-2025 12:42:25 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value '+7UTC', using 'UTC' instead in Unknown on line 0
+[12-Nov-2025 12:51:28 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value '+7UTC', using 'UTC' instead in Unknown on line 0
+[12-Nov-2025 12:51:28 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value '+7UTC', using 'UTC' instead in Unknown on line 0
+[12-Nov-2025 13:00:17 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value '+7UTC', using 'UTC' instead in Unknown on line 0
+[12-Nov-2025 13:08:53 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value '+7UTC', using 'UTC' instead in Unknown on line 0
+[12-Nov-2025 13:09:04 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value '+7UTC', using 'UTC' instead in Unknown on line 0
+[12-Nov-2025 13:09:22 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value '+7UTC', using 'UTC' instead in Unknown on line 0
+[12-Nov-2025 13:09:22 UTC] [2025-11-12 13:09:22] production.ERROR: Command "session:clear" is not defined.
+
+Did you mean one of these?
+    auth:clear-resets
+    cache:clear
+    config:clear
+    event:clear
+    optimize:clear
+    queue:clear
+    route:clear
+    schedule:clear-cache
+    session:table
+    structure-scouts:clear
+    view:clear {"exception":"[object] (Symfony\\Component\\Console\\Exception\\CommandNotFoundException(code: 0): Command \"session:clear\" is not defined.
+
+Did you mean one of these?
+    auth:clear-resets
+    cache:clear
+    config:clear
+    event:clear
+    optimize:clear
+    queue:clear
+    route:clear
+    schedule:clear-cache
+    session:table
+    structure-scouts:clear
+    view:clear at /home/u397377946/domains/eureka-performa.com/public_html/vendor/symfony/console/Application.php:725)
+[stacktrace]
+#0 /home/u397377946/domains/eureka-performa.com/public_html/vendor/symfony/console/Application.php(283): Symfony\\Component\\Console\\Application->find()
+#1 /home/u397377946/domains/eureka-performa.com/public_html/vendor/symfony/console/Application.php(192): Symfony\\Component\\Console\\Application->doRun()
+#2 /home/u397377946/domains/eureka-performa.com/public_html/vendor/laravel/framework/src/Illuminate/Foundation/Console/Kernel.php(197): Symfony\\Component\\Console\\Application->run()
+#3 /home/u397377946/domains/eureka-performa.com/public_html/vendor/laravel/framework/src/Illuminate/Foundation/Application.php(1234): Illuminate\\Foundation\\Console\\Kernel->handle()
+#4 /home/u397377946/domains/eureka-performa.com/public_html/artisan(16): Illuminate\\Foundation\\Application->handleCommand()
+#5 {main}
+"} 
+
+[15-Nov-2025 04:50:32 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value '+7UTC', using 'UTC' instead in Unknown on line 0
+[15-Nov-2025 04:57:00 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value '+7UTC', using 'UTC' instead in Unknown on line 0
+[15-Nov-2025 05:04:02 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value '+7UTC', using 'UTC' instead in Unknown on line 0
+[15-Nov-2025 11:39:50 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value '+7UTC', using 'UTC' instead in Unknown on line 0
+[15-Nov-2025 11:46:25 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value '+7UTC', using 'UTC' instead in Unknown on line 0
+[15-Nov-2025 11:46:25 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value '+7UTC', using 'UTC' instead in Unknown on line 0
+[15-Nov-2025 11:51:23 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value '+7UTC', using 'UTC' instead in Unknown on line 0
+[15-Nov-2025 11:51:48 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value '+7UTC', using 'UTC' instead in Unknown on line 0
+[15-Nov-2025 11:51:56 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value '+7UTC', using 'UTC' instead in Unknown on line 0
+[15-Nov-2025 11:54:55 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value '+7UTC', using 'UTC' instead in Unknown on line 0
+[15-Nov-2025 11:54:55 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value '+7UTC', using 'UTC' instead in Unknown on line 0
+[15-Nov-2025 11:59:37 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value '+7UTC', using 'UTC' instead in Unknown on line 0
+[15-Nov-2025 11:59:37 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value '+7UTC', using 'UTC' instead in Unknown on line 0
+[15-Nov-2025 12:05:00 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value '+7UTC', using 'UTC' instead in Unknown on line 0
+[15-Nov-2025 12:09:38 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value '+7UTC', using 'UTC' instead in Unknown on line 0
+[15-Nov-2025 12:13:42 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value '+7UTC', using 'UTC' instead in Unknown on line 0
+[15-Nov-2025 12:19:44 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value '+7UTC', using 'UTC' instead in Unknown on line 0
+[16-Nov-2025 15:21:37 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value '+7UTC', using 'UTC' instead in Unknown on line 0
+[16-Nov-2025 15:29:29 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value '+7UTC', using 'UTC' instead in Unknown on line 0
+[16-Nov-2025 15:29:59 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value '+7UTC', using 'UTC' instead in Unknown on line 0
+[16-Nov-2025 15:34:19 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value '+7UTC', using 'UTC' instead in Unknown on line 0
+[16-Nov-2025 15:35:38 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value '+7UTC', using 'UTC' instead in Unknown on line 0
+[16-Nov-2025 15:41:50 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value '+7UTC', using 'UTC' instead in Unknown on line 0
+[16-Nov-2025 15:49:14 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value '+7UTC', using 'UTC' instead in Unknown on line 0
+[16-Nov-2025 15:55:33 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value '+7UTC', using 'UTC' instead in Unknown on line 0
+[16-Nov-2025 16:13:10 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value '+7UTC', using 'UTC' instead in Unknown on line 0
+[16-Nov-2025 16:13:11 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value '+7UTC', using 'UTC' instead in Unknown on line 0
+[16-Nov-2025 16:13:11 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value '+7UTC', using 'UTC' instead in Unknown on line 0
+[17-Nov-2025 05:06:17 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value '+7UTC', using 'UTC' instead in Unknown on line 0
+[17-Nov-2025 05:08:19 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value '+7UTC', using 'UTC' instead in Unknown on line 0
+[17-Nov-2025 05:08:19 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value '+7UTC', using 'UTC' instead in Unknown on line 0
+[17-Nov-2025 05:15:21 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value '+7UTC', using 'UTC' instead in Unknown on line 0
+[17-Nov-2025 05:17:20 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value '+7UTC', using 'UTC' instead in Unknown on line 0
+[17-Nov-2025 05:17:20 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value '+7UTC', using 'UTC' instead in Unknown on line 0
+[17-Nov-2025 05:18:54 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value '+7UTC', using 'UTC' instead in Unknown on line 0
+[17-Nov-2025 05:20:41 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value '+7UTC', using 'UTC' instead in Unknown on line 0
+[17-Nov-2025 05:22:46 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value '+7UTC', using 'UTC' instead in Unknown on line 0
+[17-Nov-2025 05:22:46 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value '+7UTC', using 'UTC' instead in Unknown on line 0
+[17-Nov-2025 05:24:15 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value '+7UTC', using 'UTC' instead in Unknown on line 0
+[17-Nov-2025 05:25:48 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value '+7UTC', using 'UTC' instead in Unknown on line 0
+[17-Nov-2025 05:25:48 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value '+7UTC', using 'UTC' instead in Unknown on line 0
+[17-Nov-2025 05:30:11 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value '+7UTC', using 'UTC' instead in Unknown on line 0
+[17-Nov-2025 05:30:11 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value '+7UTC', using 'UTC' instead in Unknown on line 0
+[17-Nov-2025 05:39:40 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value '+7UTC', using 'UTC' instead in Unknown on line 0
+[17-Nov-2025 05:39:40 UTC] [2025-11-17 05:39:40] production.ERROR: The "--show" option does not exist. {"exception":"[object] (Symfony\\Component\\Console\\Exception\\RuntimeException(code: 0): The \"--show\" option does not exist. at /home/u397377946/domains/eureka-performa.com/public_html/vendor/symfony/console/Input/ArgvInput.php:226)
+[stacktrace]
+#0 /home/u397377946/domains/eureka-performa.com/public_html/vendor/symfony/console/Input/ArgvInput.php(155): Symfony\\Component\\Console\\Input\\ArgvInput->addLongOption()
+#1 /home/u397377946/domains/eureka-performa.com/public_html/vendor/symfony/console/Input/ArgvInput.php(88): Symfony\\Component\\Console\\Input\\ArgvInput->parseLongOption()
+#2 /home/u397377946/domains/eureka-performa.com/public_html/vendor/symfony/console/Input/ArgvInput.php(77): Symfony\\Component\\Console\\Input\\ArgvInput->parseToken()
+#3 /home/u397377946/domains/eureka-performa.com/public_html/vendor/symfony/console/Input/Input.php(53): Symfony\\Component\\Console\\Input\\ArgvInput->parse()
+#4 /home/u397377946/domains/eureka-performa.com/public_html/vendor/symfony/console/Command/Command.php(276): Symfony\\Component\\Console\\Input\\Input->bind()
+#5 /home/u397377946/domains/eureka-performa.com/public_html/vendor/laravel/framework/src/Illuminate/Console/Command.php(180): Symfony\\Component\\Console\\Command\\Command->run()
+#6 /home/u397377946/domains/eureka-performa.com/public_html/vendor/symfony/console/Application.php(1092): Illuminate\\Console\\Command->run()
+#7 /home/u397377946/domains/eureka-performa.com/public_html/vendor/symfony/console/Application.php(341): Symfony\\Component\\Console\\Application->doRunCommand()
+#8 /home/u397377946/domains/eureka-performa.com/public_html/vendor/symfony/console/Application.php(192): Symfony\\Component\\Console\\Application->doRun()
+#9 /home/u397377946/domains/eureka-performa.com/public_html/vendor/laravel/framework/src/Illuminate/Foundation/Console/Kernel.php(197): Symfony\\Component\\Console\\Application->run()
+#10 /home/u397377946/domains/eureka-performa.com/public_html/vendor/laravel/framework/src/Illuminate/Foundation/Application.php(1234): Illuminate\\Foundation\\Console\\Kernel->handle()
+#11 /home/u397377946/domains/eureka-performa.com/public_html/artisan(16): Illuminate\\Foundation\\Application->handleCommand()
+#12 {main}
+"} 
+
+[17-Nov-2025 05:40:07 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value '+7UTC', using 'UTC' instead in Unknown on line 0
+[17-Nov-2025 05:40:20 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value '+7UTC', using 'UTC' instead in Unknown on line 0
+[17-Nov-2025 05:40:24 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value '+7UTC', using 'UTC' instead in Unknown on line 0
+[17-Nov-2025 05:40:24 UTC] [2025-11-17 05:40:24] production.ERROR: SQLSTATE[42S21]: Column already exists: 1060 Duplicate column name 'additional_points' (Connection: mysql, SQL: alter table `game_assessments` add `additional_points` int not null default '0' after `penalty`) {"exception":"[object] (Illuminate\\Database\\QueryException(code: 42S21): SQLSTATE[42S21]: Column already exists: 1060 Duplicate column name 'additional_points' (Connection: mysql, SQL: alter table `game_assessments` add `additional_points` int not null default '0' after `penalty`) at /home/u397377946/domains/eureka-performa.com/public_html/vendor/laravel/framework/src/Illuminate/Database/Connection.php:822)
+[stacktrace]
+#0 /home/u397377946/domains/eureka-performa.com/public_html/vendor/laravel/framework/src/Illuminate/Database/Connection.php(776): Illuminate\\Database\\Connection->runQueryCallback()
+#1 /home/u397377946/domains/eureka-performa.com/public_html/vendor/laravel/framework/src/Illuminate/Database/Connection.php(557): Illuminate\\Database\\Connection->run()
+#2 /home/u397377946/domains/eureka-performa.com/public_html/vendor/laravel/framework/src/Illuminate/Database/Schema/Blueprint.php(119): Illuminate\\Database\\Connection->statement()
+#3 /home/u397377946/domains/eureka-performa.com/public_html/vendor/laravel/framework/src/Illuminate/Database/Schema/Builder.php(618): Illuminate\\Database\\Schema\\Blueprint->build()
+#4 /home/u397377946/domains/eureka-performa.com/public_html/vendor/laravel/framework/src/Illuminate/Database/Schema/Builder.php(460): Illuminate\\Database\\Schema\\Builder->build()
+#5 /home/u397377946/domains/eureka-performa.com/public_html/vendor/laravel/framework/src/Illuminate/Support/Facades/Facade.php(361): Illuminate\\Database\\Schema\\Builder->table()
+#6 /home/u397377946/domains/eureka-performa.com/public_html/database/migrations/2025_11_17_054008_add_facilitator_photo_and_additional_points_to_game_assessments.php(14): Illuminate\\Support\\Facades\\Facade::__callStatic()
+#7 /home/u397377946/domains/eureka-performa.com/public_html/vendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php(514): Illuminate\\Database\\Migrations\\Migration@anonymous->up()
+#8 /home/u397377946/domains/eureka-performa.com/public_html/vendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php(439): Illuminate\\Database\\Migrations\\Migrator->runMethod()
+#9 /home/u397377946/domains/eureka-performa.com/public_html/vendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php(448): Illuminate\\Database\\Migrations\\Migrator->Illuminate\\Database\\Migrations\\{closure}()
+#10 /home/u397377946/domains/eureka-performa.com/public_html/vendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php(250): Illuminate\\Database\\Migrations\\Migrator->runMigration()
+#11 /home/u397377946/domains/eureka-performa.com/public_html/vendor/laravel/framework/src/Illuminate/Console/View/Components/Task.php(41): Illuminate\\Database\\Migrations\\Migrator->Illuminate\\Database\\Migrations\\{closure}()
+#12 /home/u397377946/domains/eureka-performa.com/public_html/vendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php(805): Illuminate\\Console\\View\\Components\\Task->render()
+#13 /home/u397377946/domains/eureka-performa.com/public_html/vendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php(250): Illuminate\\Database\\Migrations\\Migrator->write()
+#14 /home/u397377946/domains/eureka-performa.com/public_html/vendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php(210): Illuminate\\Database\\Migrations\\Migrator->runUp()
+#15 /home/u397377946/domains/eureka-performa.com/public_html/vendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php(137): Illuminate\\Database\\Migrations\\Migrator->runPending()
+#16 /home/u397377946/domains/eureka-performa.com/public_html/vendor/laravel/framework/src/Illuminate/Database/Console/Migrations/MigrateCommand.php(116): Illuminate\\Database\\Migrations\\Migrator->run()
+#17 /home/u397377946/domains/eureka-performa.com/public_html/vendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php(665): Illuminate\\Database\\Console\\Migrations\\MigrateCommand->Illuminate\\Database\\Console\\Migrations\\{closure}()
+#18 /home/u397377946/domains/eureka-performa.com/public_html/vendor/laravel/framework/src/Illuminate/Database/Console/Migrations/MigrateCommand.php(109): Illuminate\\Database\\Migrations\\Migrator->usingConnection()
+#19 /home/u397377946/domains/eureka-performa.com/public_html/vendor/laravel/framework/src/Illuminate/Database/Console/Migrations/MigrateCommand.php(88): Illuminate\\Database\\Console\\Migrations\\MigrateCommand->runMigrations()
+#20 /home/u397377946/domains/eureka-performa.com/public_html/vendor/laravel/framework/src/Illuminate/Container/BoundMethod.php(36): Illuminate\\Database\\Console\\Migrations\\MigrateCommand->handle()
+#21 /home/u397377946/domains/eureka-performa.com/public_html/vendor/laravel/framework/src/Illuminate/Container/Util.php(43): Illuminate\\Container\\BoundMethod::Illuminate\\Container\\{closure}()
+#22 /home/u397377946/domains/eureka-performa.com/public_html/vendor/laravel/framework/src/Illuminate/Container/BoundMethod.php(96): Illuminate\\Container\\Util::unwrapIfClosure()
+#23 /home/u397377946/domains/eureka-performa.com/public_html/vendor/laravel/framework/src/Illuminate/Container/BoundMethod.php(35): Illuminate\\Container\\BoundMethod::callBoundMethod()
+#24 /home/u397377946/domains/eureka-performa.com/public_html/vendor/laravel/framework/src/Illuminate/Container/Container.php(754): Illuminate\\Container\\BoundMethod::call()
+#25 /home/u397377946/domains/eureka-performa.com/public_html/vendor/laravel/framework/src/Illuminate/Console/Command.php(211): Illuminate\\Container\\Container->call()
+#26 /home/u397377946/domains/eureka-performa.com/public_html/vendor/symfony/console/Command/Command.php(318): Illuminate\\Console\\Command->execute()
+#27 /home/u397377946/domains/eureka-performa.com/public_html/vendor/laravel/framework/src/Illuminate/Console/Command.php(180): Symfony\\Component\\Console\\Command\\Command->run()
+#28 /home/u397377946/domains/eureka-performa.com/public_html/vendor/symfony/console/Application.php(1092): Illuminate\\Console\\Command->run()
+#29 /home/u397377946/domains/eureka-performa.com/public_html/vendor/symfony/console/Application.php(341): Symfony\\Component\\Console\\Application->doRunCommand()
+#30 /home/u397377946/domains/eureka-performa.com/public_html/vendor/symfony/console/Application.php(192): Symfony\\Component\\Console\\Application->doRun()
+#31 /home/u397377946/domains/eureka-performa.com/public_html/vendor/laravel/framework/src/Illuminate/Foundation/Console/Kernel.php(197): Symfony\\Component\\Console\\Application->run()
+#32 /home/u397377946/domains/eureka-performa.com/public_html/vendor/laravel/framework/src/Illuminate/Foundation/Application.php(1234): Illuminate\\Foundation\\Console\\Kernel->handle()
+#33 /home/u397377946/domains/eureka-performa.com/public_html/artisan(16): Illuminate\\Foundation\\Application->handleCommand()
+#34 {main}
+
+[previous exception] [object] (PDOException(code: 42S21): SQLSTATE[42S21]: Column already exists: 1060 Duplicate column name 'additional_points' at /home/u397377946/domains/eureka-performa.com/public_html/vendor/laravel/framework/src/Illuminate/Database/Connection.php:568)
+[stacktrace]
+#0 /home/u397377946/domains/eureka-performa.com/public_html/vendor/laravel/framework/src/Illuminate/Database/Connection.php(568): PDOStatement->execute()
+#1 /home/u397377946/domains/eureka-performa.com/public_html/vendor/laravel/framework/src/Illuminate/Database/Connection.php(809): Illuminate\\Database\\Connection->Illuminate\\Database\\{closure}()
+#2 /home/u397377946/domains/eureka-performa.com/public_html/vendor/laravel/framework/src/Illuminate/Database/Connection.php(776): Illuminate\\Database\\Connection->runQueryCallback()
+#3 /home/u397377946/domains/eureka-performa.com/public_html/vendor/laravel/framework/src/Illuminate/Database/Connection.php(557): Illuminate\\Database\\Connection->run()
+#4 /home/u397377946/domains/eureka-performa.com/public_html/vendor/laravel/framework/src/Illuminate/Database/Schema/Blueprint.php(119): Illuminate\\Database\\Connection->statement()
+#5 /home/u397377946/domains/eureka-performa.com/public_html/vendor/laravel/framework/src/Illuminate/Database/Schema/Builder.php(618): Illuminate\\Database\\Schema\\Blueprint->build()
+#6 /home/u397377946/domains/eureka-performa.com/public_html/vendor/laravel/framework/src/Illuminate/Database/Schema/Builder.php(460): Illuminate\\Database\\Schema\\Builder->build()
+#7 /home/u397377946/domains/eureka-performa.com/public_html/vendor/laravel/framework/src/Illuminate/Support/Facades/Facade.php(361): Illuminate\\Database\\Schema\\Builder->table()
+#8 /home/u397377946/domains/eureka-performa.com/public_html/database/migrations/2025_11_17_054008_add_facilitator_photo_and_additional_points_to_game_assessments.php(14): Illuminate\\Support\\Facades\\Facade::__callStatic()
+#9 /home/u397377946/domains/eureka-performa.com/public_html/vendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php(514): Illuminate\\Database\\Migrations\\Migration@anonymous->up()
+#10 /home/u397377946/domains/eureka-performa.com/public_html/vendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php(439): Illuminate\\Database\\Migrations\\Migrator->runMethod()
+#11 /home/u397377946/domains/eureka-performa.com/public_html/vendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php(448): Illuminate\\Database\\Migrations\\Migrator->Illuminate\\Database\\Migrations\\{closure}()
+#12 /home/u397377946/domains/eureka-performa.com/public_html/vendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php(250): Illuminate\\Database\\Migrations\\Migrator->runMigration()
+#13 /home/u397377946/domains/eureka-performa.com/public_html/vendor/laravel/framework/src/Illuminate/Console/View/Components/Task.php(41): Illuminate\\Database\\Migrations\\Migrator->Illuminate\\Database\\Migrations\\{closure}()
+#14 /home/u397377946/domains/eureka-performa.com/public_html/vendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php(805): Illuminate\\Console\\View\\Components\\Task->render()
+#15 /home/u397377946/domains/eureka-performa.com/public_html/vendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php(250): Illuminate\\Database\\Migrations\\Migrator->write()
+#16 /home/u397377946/domains/eureka-performa.com/public_html/vendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php(210): Illuminate\\Database\\Migrations\\Migrator->runUp()
+#17 /home/u397377946/domains/eureka-performa.com/public_html/vendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php(137): Illuminate\\Database\\Migrations\\Migrator->runPending()
+#18 /home/u397377946/domains/eureka-performa.com/public_html/vendor/laravel/framework/src/Illuminate/Database/Console/Migrations/MigrateCommand.php(116): Illuminate\\Database\\Migrations\\Migrator->run()
+#19 /home/u397377946/domains/eureka-performa.com/public_html/vendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php(665): Illuminate\\Database\\Console\\Migrations\\MigrateCommand->Illuminate\\Database\\Console\\Migrations\\{closure}()
+#20 /home/u397377946/domains/eureka-performa.com/public_html/vendor/laravel/framework/src/Illuminate/Database/Console/Migrations/MigrateCommand.php(109): Illuminate\\Database\\Migrations\\Migrator->usingConnection()
+#21 /home/u397377946/domains/eureka-performa.com/public_html/vendor/laravel/framework/src/Illuminate/Database/Console/Migrations/MigrateCommand.php(88): Illuminate\\Database\\Console\\Migrations\\MigrateCommand->runMigrations()
+#22 /home/u397377946/domains/eureka-performa.com/public_html/vendor/laravel/framework/src/Illuminate/Container/BoundMethod.php(36): Illuminate\\Database\\Console\\Migrations\\MigrateCommand->handle()
+#23 /home/u397377946/domains/eureka-performa.com/public_html/vendor/laravel/framework/src/Illuminate/Container/Util.php(43): Illuminate\\Container\\BoundMethod::Illuminate\\Container\\{closure}()
+#24 /home/u397377946/domains/eureka-performa.com/public_html/vendor/laravel/framework/src/Illuminate/Container/BoundMethod.php(96): Illuminate\\Container\\Util::unwrapIfClosure()
+#25 /home/u397377946/domains/eureka-performa.com/public_html/vendor/laravel/framework/src/Illuminate/Container/BoundMethod.php(35): Illuminate\\Container\\BoundMethod::callBoundMethod()
+#26 /home/u397377946/domains/eureka-performa.com/public_html/vendor/laravel/framework/src/Illuminate/Container/Container.php(754): Illuminate\\Container\\BoundMethod::call()
+#27 /home/u397377946/domains/eureka-performa.com/public_html/vendor/laravel/framework/src/Illuminate/Console/Command.php(211): Illuminate\\Container\\Container->call()
+#28 /home/u397377946/domains/eureka-performa.com/public_html/vendor/symfony/console/Command/Command.php(318): Illuminate\\Console\\Command->execute()
+#29 /home/u397377946/domains/eureka-performa.com/public_html/vendor/laravel/framework/src/Illuminate/Console/Command.php(180): Symfony\\Component\\Console\\Command\\Command->run()
+#30 /home/u397377946/domains/eureka-performa.com/public_html/vendor/symfony/console/Application.php(1092): Illuminate\\Console\\Command->run()
+#31 /home/u397377946/domains/eureka-performa.com/public_html/vendor/symfony/console/Application.php(341): Symfony\\Component\\Console\\Application->doRunCommand()
+#32 /home/u397377946/domains/eureka-performa.com/public_html/vendor/symfony/console/Application.php(192): Symfony\\Component\\Console\\Application->doRun()
+#33 /home/u397377946/domains/eureka-performa.com/public_html/vendor/laravel/framework/src/Illuminate/Foundation/Console/Kernel.php(197): Symfony\\Component\\Console\\Application->run()
+#34 /home/u397377946/domains/eureka-performa.com/public_html/vendor/laravel/framework/src/Illuminate/Foundation/Application.php(1234): Illuminate\\Foundation\\Console\\Kernel->handle()
+#35 /home/u397377946/domains/eureka-performa.com/public_html/artisan(16): Illuminate\\Foundation\\Application->handleCommand()
+#36 {main}
+"} 
+
+[17-Nov-2025 05:40:37 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value '+7UTC', using 'UTC' instead in Unknown on line 0
+[17-Nov-2025 05:40:37 UTC] PHP Warning:  PHP Startup: Invalid date.timezone value '+7UTC', using 'UTC' instead in Unknown on line 0

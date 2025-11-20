@@ -93,11 +93,12 @@ class UserProgressExportController extends Controller
             // Basic PDF configuration
             $pdf->setPaper('A4', 'portrait');
 
-            // Generate filename
-            $filename = 'eureka-user-progress-' . now()->format('Y-m-d-H-i-s') . '.pdf';
+            // Generate filename with unique timestamp
+            $timestamp = $filters['timestamp'] ?? now()->timestamp;
+            $filename = 'eureka-user-progress-' . now()->format('Y-m-d-H-i-s') . '-' . $timestamp . '.pdf';
 
-            // Don't clear session data yet - keep for potential download
-            // session()->forget('export_filters');
+            // Clear session data to prevent stale data
+            session()->forget('export_filters');
 
             // Stream PDF for preview in browser (inline display)
             return response()->stream(
@@ -108,9 +109,10 @@ class UserProgressExportController extends Controller
                 [
                     'Content-Type' => 'application/pdf',
                     'Content-Disposition' => 'inline; filename="' . $filename . '"', // inline instead of attachment
-                    'Cache-Control' => 'no-cache, no-store, must-revalidate',
+                    'Cache-Control' => 'no-cache, no-store, must-revalidate, max-age=0',
                     'Pragma' => 'no-cache',
-                    'Expires' => '0',
+                    'Expires' => 'Mon, 01 Jan 1990 00:00:00 GMT',
+                    'Last-Modified' => gmdate('D, d M Y H:i:s') . ' GMT',
                 ]
             );
 
@@ -170,9 +172,10 @@ class UserProgressExportController extends Controller
             // Configure PDF options
             $pdf->setPaper('A4', 'portrait');
 
-            // Generate filename
+            // Generate filename with unique timestamp
+            $timestamp = $filters['timestamp'] ?? now()->timestamp;
             $teamSlug = $filters['selectedTeam'] !== 'all' ? '-' . Str::slug($teamName ?? 'team') : '';
-            $filename = 'eureka-user-progress' . $teamSlug . '-' . now()->format('Y-m-d-H-i-s') . '.pdf';
+            $filename = 'eureka-user-progress' . $teamSlug . '-' . now()->format('Y-m-d-H-i-s') . '-' . $timestamp . '.pdf';
 
             // Clear session data after download
             session()->forget('export_filters');
@@ -186,9 +189,10 @@ class UserProgressExportController extends Controller
                 [
                     'Content-Type' => 'application/pdf',
                     'Content-Disposition' => 'attachment; filename="' . $filename . '"', // attachment for download
-                    'Cache-Control' => 'no-cache, no-store, must-revalidate',
+                    'Cache-Control' => 'no-cache, no-store, must-revalidate, max-age=0',
                     'Pragma' => 'no-cache',
-                    'Expires' => '0',
+                    'Expires' => 'Mon, 01 Jan 1990 00:00:00 GMT',
+                    'Last-Modified' => gmdate('D, d M Y H:i:s') . ' GMT',
                 ]
             );
             

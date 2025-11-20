@@ -20,6 +20,7 @@ class GameAssessmentForm extends Component
     public $additionalPoints = 0; // Additional points from questionnaire total
     public $notes = '';
     public $totalDeposit = 0;
+    public $facilitatorPhoto = null;
 
     protected $rules = [
         'penalty' => 'required|integer|min:0|max:999999',
@@ -100,7 +101,7 @@ class GameAssessmentForm extends Component
         $this->validate();
 
         // Update the assessment
-        $this->assessment->update([
+        $updateData = [
             'deposit' => $this->deposit,
             'penalty' => $this->penalty,
             'additional_points' => $this->additionalPoints,
@@ -109,7 +110,15 @@ class GameAssessmentForm extends Component
             'is_assessed' => true,
             'assessed_by' => auth()->id(),
             'assessed_at' => now()
-        ]);
+        ];
+
+        // Add facilitator photo if provided
+        if ($this->facilitatorPhoto) {
+            $updateData['facilitator_photo'] = $this->facilitatorPhoto;
+            $updateData['facilitator_photo_captured_at'] = now();
+        }
+
+        $this->assessment->update($updateData);
 
         // Update team points based on assessment
         $user = auth()->user();
@@ -125,7 +134,7 @@ class GameAssessmentForm extends Component
         }
 
         session()->flash('success', 'Assessment saved successfully! Team points updated.');
-        
+
         // Check if there are more questions in the quiz
         return $this->handlePostAssessmentNavigation();
     }

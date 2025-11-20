@@ -1,4 +1,35 @@
-<div class="min-h-screen bg-gray-50 py-6">
+<div class="min-h-screen bg-gray-50 py-6" x-data="{
+    capturePhoto: async function() {
+        if (window.CameraCapture && window.CameraCapture.isSupported()) {
+            try {
+                const camera = new window.CameraCapture();
+                const photoResult = await camera.capturePhoto();
+
+                if (!photoResult.error) {
+                    @this.set('facilitatorPhoto', photoResult.photo);
+                    return true;
+                } else {
+                    alert('Camera error: ' + photoResult.message);
+                    return false;
+                }
+            } catch (error) {
+                console.error('Camera capture error:', error);
+                alert('Failed to capture photo: ' + error.message);
+                return false;
+            }
+        } else {
+            @this.set('facilitatorPhoto', null);
+            return true;
+        }
+    },
+    async handleSaveAssessment(event) {
+        event.preventDefault();
+        const photosCaptured = await this.capturePhoto();
+        if (photosCaptured) {
+            @this.saveAssessment();
+        }
+    }
+}">
     <div class="max-w-4xl mx-auto px-4">
         {{-- Header --}}
         <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
@@ -60,7 +91,7 @@
         <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <h3 class="text-lg font-semibold text-gray-900 mb-6">Performance Assessment</h3>
             
-            <form wire:submit="saveAssessment" class="space-y-6">
+            <form @submit="handleSaveAssessment($event)" class="space-y-6">
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                     {{-- Deposit (Read-only) --}}
                     <div>
@@ -167,10 +198,11 @@
                            class="px-6 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors">
                             Cancel
                         </a>
-                        <button type="submit" 
-                                class="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors">
-                            <i class="fas fa-save mr-2"></i>
-                            Save Assessment
+                        <button type="submit"
+                                class="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors flex items-center gap-2">
+                            <i class="fas fa-camera"></i>
+                            <i class="fas fa-save"></i>
+                            <span>Take Photo & Save</span>
                         </button>
                     </div>
                 </div>

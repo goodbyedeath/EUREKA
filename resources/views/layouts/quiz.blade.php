@@ -62,7 +62,7 @@
     <div class="min-h-screen bg-gray-100 dark:bg-gray-900">
         <!-- Quiz Content Area - No Navigation -->
         <main class="w-full">
-            {{ $slot }}
+            @yield('content')
         </main>
         
         <!-- Quiz Protection Scripts -->

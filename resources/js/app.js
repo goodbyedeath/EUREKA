@@ -1,5 +1,25 @@
 import './bootstrap';
 
+// Import dashboard enhancements
+import './dashboard-enhancements';
+
+// Import Alpine components
+import questLocationsComponent from './components/quest-locations';
+import qrScannerComponent from './components/qr-scanner';
+import quizTakeComponent from './components/quiz-take';
+
+// Register Alpine components using Livewire's bundled Alpine
+// Livewire includes Alpine.js and starts it automatically
+document.addEventListener('livewire:init', () => {
+    // Get Livewire's Alpine instance
+    const Alpine = window.Alpine;
+
+    // Register our custom Alpine components
+    questLocationsComponent(Alpine);
+    qrScannerComponent(Alpine);
+    quizTakeComponent(Alpine);
+});
+
 // Dark Mode functionality - improved version
 window.DarkMode = {
     init() {

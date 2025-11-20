@@ -14,20 +14,25 @@ class GameAssessment extends Model
         'assessed_by',
         'deposit',
         'penalty',
+        'additional_points',
         'notes',
         'total_deposit',
         'is_assessed',
-        'assessed_at'
+        'assessed_at',
+        'facilitator_photo',
+        'facilitator_photo_captured_at'
     ];
 
     protected function casts(): array
     {
         return [
             'deposit' => 'integer',
-            'penalty' => 'integer', 
+            'penalty' => 'integer',
+            'additional_points' => 'integer',
             'total_deposit' => 'integer',
             'is_assessed' => 'boolean',
-            'assessed_at' => 'datetime'
+            'assessed_at' => 'datetime',
+            'facilitator_photo_captured_at' => 'datetime'
         ];
     }
 
