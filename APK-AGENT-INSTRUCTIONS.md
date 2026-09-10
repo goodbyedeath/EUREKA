@@ -12,11 +12,24 @@ instead of reading the server's source or waiting for a hand-written note.
 ════════════════════════════════════════════════════════════════════════════
 CONTRACT SOURCE
 ════════════════════════════════════════════════════════════════════════════
-  repo:      github.com/goodbyedeath/EUREKA   (branch: main)
-  contract:  openapi.json          — 27 operations, generated from the running router
-  companion: APK-BUILD-GUIDE.md    — behaviour a schema cannot express. READ it, do not parse it
-             API-V1-CONTRACT.md    — endpoint reference for humans
-             APK-SYNC-FEEDBACK.md  — what changed for you, and why
+  Fetch it over HTTP. No git, no credentials, no one emailing you a file.
+
+    GET https://questerra-series.com/api/v1/contract/version    <- poll this one
+    GET https://questerra-series.com/api/v1/contract            <- the OpenAPI document
+    GET https://questerra-series.com/api/v1/contract/guide/build     APK-BUILD-GUIDE.md
+    GET https://questerra-series.com/api/v1/contract/guide/contract  API-V1-CONTRACT.md
+    GET https://questerra-series.com/api/v1/contract/guide/sync      APK-SYNC-FEEDBACK.md
+    GET https://questerra-series.com/api/v1/contract/guide/agent     these instructions
+
+  All public, no token needed, ETag'd so a poll is cheap. /contract/version returns:
+    { contract_sha, operations, guides { filename: sha }, generated_at, guide_urls }
+
+  Keep the last contract_sha you generated from. When it differs, the API changed. When a
+  value inside `guides` differs, the PROSE rules changed even though no endpoint did — fetch
+  that guide and RE-READ it before building. A schema only carries shape; the rules that
+  actually break a client live in the guide.
+
+  The same files are in github.com/goodbyedeath/EUREKA (branch main) if you prefer git.
 
   Base URL comes from the contract's servers[0].url. Do not hardcode it anywhere else.
 
@@ -235,11 +248,10 @@ A 429 carries Retry-After — honour it, and back off rather than retrying in a 
 ════════════════════════════════════════════════════════════════════════════
 ON EVERY SYNC
 ════════════════════════════════════════════════════════════════════════════
-  1. Fetch and diff openapi.json against the revision you last generated from.
-  2. Check info.x-behaviour-guides — a map of { filename: sha }. If a hash moved, the PROSE
-     rules changed even when no endpoint did, and you must RE-READ that file before building.
-     A schema can only describe shape; the rules that actually break a client live in the
-     guide. This is how you are told they moved, so nobody has to relay it by hand.
+  1. GET /api/v1/contract/version. Nothing moved? Stop — there is nothing to do.
+  2. contract_sha changed -> GET /api/v1/contract and diff it.
+     A hash in `guides` changed -> GET that guide and re-read it. Behaviour moved, and no
+     schema diff will show it.
   3. Regenerate the network layer only. Rebuild, run tests, report what changed and what broke.
   4. If the diff shows an operation REMOVED or a field NOW REQUIRED, STOP AND ASK — a build
      already in the field will start failing. Everything else is safe to apply.

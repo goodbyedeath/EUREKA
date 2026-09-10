@@ -20,6 +20,16 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
     // TokenController caps 5 attempts per email+IP, so one address could still try five
     // passwords against unlimited accounts. The web login has had both halves since
     // 2026-09-09; this is the same protection for the app.
+    // The contract itself, served over HTTP so the Android build agent can read it without
+    // git credentials for a private repo. Public on purpose: it describes shapes and limits,
+    // never data, and authorisation is enforced by middleware whatever the document says.
+    Route::get('/contract', [\App\Http\Controllers\Api\ContractController::class, 'show'])
+        ->middleware('throttle:kiosk')->name('contract.show');
+    Route::get('/contract/version', [\App\Http\Controllers\Api\ContractController::class, 'version'])
+        ->middleware('throttle:kiosk')->name('contract.version');
+    Route::get('/contract/guide/{name}', [\App\Http\Controllers\Api\ContractController::class, 'guide'])
+        ->middleware('throttle:kiosk')->name('contract.guide');
+
     Route::post('/auth/login', [TokenController::class, 'login'])
         ->middleware('throttle:auth')->name('auth.login');
 

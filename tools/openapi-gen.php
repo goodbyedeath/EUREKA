@@ -241,7 +241,9 @@ foreach (app('router')->getRoutes() as $route) {
         }
 
         // Response shape, probed live. GET only: a POST here has side effects.
-        if ($sample && $verb === 'get' && ! str_contains($uri, '{')) {
+        // Never probe the contract endpoints: they return this very document, and embedding
+        // its own shape inside itself doubled the file from 67 KB to 141 KB.
+        if ($sample && $verb === 'get' && ! str_contains($uri, '{') && ! str_contains($uri, '/contract')) {
             $headers = ['HTTP_ACCEPT' => 'application/json'];
             if ($tokenAuth && $sampleToken) $headers['HTTP_AUTHORIZATION'] = 'Bearer ' . $sampleToken;
             $res = $kernel->handle(Illuminate\Http\Request::create('/' . $uri, 'GET', [], [], [], $headers));

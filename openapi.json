@@ -217,6 +217,58 @@
                 }
             }
         },
+        "/api/v1/contract": {
+            "get": {
+                "operationId": "api.v1.contract.show",
+                "summary": "api.v1.contract.show",
+                "x-auth": "public",
+                "x-access-window": false,
+                "x-rate-limit": "kiosk",
+                "responses": {
+                    "200": {
+                        "description": "Not probed — POST endpoints are not called by the generator"
+                    }
+                }
+            }
+        },
+        "/api/v1/contract/guide/{name}": {
+            "get": {
+                "operationId": "api.v1.contract.guide",
+                "summary": "api.v1.contract.guide",
+                "x-auth": "public",
+                "x-access-window": false,
+                "x-rate-limit": "kiosk",
+                "parameters": [
+                    {
+                        "name": "name",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Not probed — POST endpoints are not called by the generator"
+                    }
+                }
+            }
+        },
+        "/api/v1/contract/version": {
+            "get": {
+                "operationId": "api.v1.contract.version",
+                "summary": "api.v1.contract.version",
+                "x-auth": "public",
+                "x-access-window": false,
+                "x-rate-limit": "kiosk",
+                "responses": {
+                    "200": {
+                        "description": "Not probed — POST endpoints are not called by the generator"
+                    }
+                }
+            }
+        },
         "/api/v1/features": {
             "get": {
                 "operationId": "api.v1.features",
