@@ -111,6 +111,8 @@ SCREENS AND THE CALLS BEHIND THEM
    - `game_location_id` links a spot to an AR outpost when it has one.
 
 8. AR / 3D CAMERA               GET /ar/locations/{id}[?lat=&lng=]
+   Full detail, including the reticle values, is APK-BUILD-GUIDE.md §9 — re-read it whenever
+   its hash moves in x-behaviour-guides. Summary:
 
    ─── THIS IS A DIFFERENT CAMERA FROM THE QR SCANNER ───
    Two camera surfaces, never both alive:
@@ -234,10 +236,14 @@ A 429 carries Retry-After — honour it, and back off rather than retrying in a 
 ON EVERY SYNC
 ════════════════════════════════════════════════════════════════════════════
   1. Fetch and diff openapi.json against the revision you last generated from.
-  2. Regenerate the network layer only. Rebuild, run tests, report what changed and what broke.
-  3. If the diff shows an operation REMOVED or a field NOW REQUIRED, STOP AND ASK — a build
+  2. Check info.x-behaviour-guides — a map of { filename: sha }. If a hash moved, the PROSE
+     rules changed even when no endpoint did, and you must RE-READ that file before building.
+     A schema can only describe shape; the rules that actually break a client live in the
+     guide. This is how you are told they moved, so nobody has to relay it by hand.
+  3. Regenerate the network layer only. Rebuild, run tests, report what changed and what broke.
+  4. If the diff shows an operation REMOVED or a field NOW REQUIRED, STOP AND ASK — a build
      already in the field will start failing. Everything else is safe to apply.
-  4. If the contract and the server disagree, the CONTROLLERS win and openapi.json was not
+  5. If the contract and the server disagree, the CONTROLLERS win and openapi.json was not
      regenerated. Report it. Never edit openapi.json — it is generated server-side.
 
 ════════════════════════════════════════════════════════════════════════════

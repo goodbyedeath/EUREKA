@@ -266,6 +266,20 @@ if ($sampleToken) {
 
 // ---------------------------------------------------------------- emit
 
+// Fingerprint the human-written companions and carry it inside the contract.
+//
+// A schema can only ever describe shape. The rules that actually break a client — that the
+// AR reticle is the interaction model, that submit stays open after time_expired, that a
+// position goes out at most once per 10s — live in prose, and nothing told the client agent
+// when that prose changed. It diffs openapi.json; so now a guide edit moves a hash inside
+// openapi.json, and the change is visible in the file it already watches.
+$guides = [];
+foreach (['APK-BUILD-GUIDE.md', 'API-V1-CONTRACT.md'] as $g) {
+    $p = __DIR__ . '/../' . $g;
+    if (is_file($p)) $guides[$g] = substr(hash_file('sha256', $p), 0, 16);
+}
+ksort($guides);
+
 $doc = [
     'openapi' => '3.0.3',
     'info' => [
@@ -278,6 +292,7 @@ $doc = [
             "Semantics a schema cannot carry — that submit stays open after time_expired, that\n" .
             "fun_game answers score zero, the minimum interval between position posts — live in\n" .
             "APK-BUILD-GUIDE.md and still have to be read.",
+        'x-behaviour-guides' => $guides,
     ],
     'servers' => [['url' => rtrim(config('app.url'), '/')]],
     'components' => [

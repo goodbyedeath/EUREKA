@@ -305,7 +305,81 @@ spot to an AR outpost when it has one.
 
 ---
 
-## 9. Offline
+## 9. AR and the 3D camera
+
+### Two cameras, never both alive
+
+| | Stack |
+|---|---|
+| QR scanner | CameraX + ML Kit, flat 2D preview, no GL, no ARCore session |
+| AR viewer | ARCore session + SceneView, its own Activity, launched by location id |
+
+ARCore takes **exclusive** control of the camera. Opening the AR Activity while the scanner
+preview is still bound throws; the reverse leaves a black frame. Release one fully before
+starting the other — they cannot share a surface or a session. (Sceneform is archived and will
+not build against current Gradle.)
+
+### The reticle is the interaction model, not decoration
+
+The web build draws a circle at the dead centre of the screen. **Without it a player cannot tell
+what is interactive or where to aim, and objects read as scenery.** These values are taken from
+`resources/views/ar/view.blade.php` on the server:
+
+| State | Appearance |
+|---|---|
+| idle | 44 × 44 circle, exact screen centre, 2px border `#ffffff88`, no fill, **not touchable** |
+| hot | border `#4ade80`, 6px glow at `#4ade8033`, scaled to 1.15× |
+
+Every rendered frame: cast a ray from the camera through normalised screen centre `(0,0)`, test
+against the placed objects, walk up to the object's root, and set hot/idle from whether anything
+was hit.
+
+**Selection is aim-then-tap, not tap-the-object.** A tap anywhere opens whatever the reticle is
+currently on; when the reticle is idle the tap does nothing. Do not hit-test from the touch
+point — a player holding a phone at arm's length cannot reliably poke a small object, which is
+the whole reason the reticle exists.
+
+### What opens on tap
+
+A bottom sheet built from the object's own fields:
+
+- `title` as the heading, `description` as the body
+- `points` shown as `+N points`; hide the row entirely when 0 or absent
+- **one** extra, never two: switch on `media_type` — `"image"` renders `image`, `"link"` renders
+  `link` as a button, anything else shows no extra
+
+### Response shape
+
+```
+GET /api/v1/ar/locations/{id}[?lat=&lng=]
+
+location { id, name, model, latitude, longitude, radius,
+           coordinate_source, quest_location_id, access_mode }
+
+objects[] { id, title, description, points, media_type, link, image,
+            model, model_id, scale, distance,
+            position { x, y, z }, rotation { x, y, z },
+            animations [ { type, speed, range } ] }
+```
+
+`access_mode` is `"geofence"` (the radius decides entry) or `"manual"` (a crew member does — show
+a waiting state rather than a distance). `latitude`/`longitude` null means the outpost was never
+bound to a place: render with no geofence at all.
+
+**`position` is already resolved to metres** in a right-handed camera-local frame (−z forward),
+computed server-side from the bearing, pitch and distance an admin authored while standing at the
+outpost. Place it as given. Never recompute anchors from lat/long and never re-derive the bearing
+from the compass — the server's maths is the authority and the two will not agree.
+
+`scale` multiplies the model uniformly, `rotation` is in degrees, and `animations` are looped idle
+motions applied locally rather than synced. `model` is a `.glb` URL: pre-download every one from
+`/offline/manifest` before the event, or AR stalls in the field.
+
+A 200 with an empty `objects` array means the outpost has a model but nothing placed on it yet.
+
+---
+
+## 10. Offline
 
 ```
 GET /api/v1/offline/manifest
@@ -327,7 +401,7 @@ rejected answer will be rejected again.
 
 ---
 
-## 10. Traps — things that have already bitten someone
+## 11. Traps — things that have already bitten someone
 
 | Trap | Detail |
 |---|---|
@@ -362,7 +436,7 @@ A `500` is a real fault: report it, do not retry in a loop.
 
 ---
 
-## 11. Before you ship — checklist
+## 12. Before you ship — checklist
 
 - [ ] Token survives an app restart; `401` sends the player back to login
 - [ ] `expires_at` is respected — the token dies with the access window, so re-login is a

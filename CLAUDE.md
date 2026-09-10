@@ -48,8 +48,12 @@ optimizing.
   `validate()` rule, regenerate and commit it in the same change:
   `$PHP tools/openapi-gen.php --sample`, then `$PHP tools/contract-check.php` (exit 1 = drift).
 - Two hand-written companions at the repo root carry what a schema cannot: `API-V1-CONTRACT.md`
-  (endpoint reference) and `APK-BUILD-GUIDE.md` (screen order, polling budgets, semantics like
-  "submit stays open after time_expired"). Update them when behaviour changes, not just shape.
+  (endpoint reference) and `APK-BUILD-GUIDE.md` (screen order, polling budgets, the AR reticle,
+  semantics like "submit stays open after time_expired"). **Behaviour changes go in the guide,
+  not in a message to the operator** — the generator hashes both files into
+  `info.x-behaviour-guides`, so a prose edit shows up in the contract the client agent already
+  diffs, and `contract-check` names the file that moved. Relaying rules by hand is how the AR
+  reticle got built without one.
 - **Players are on the Android app, not this website.** Anything player-facing has to exist as a
   `/api/v1/*` endpoint (Sanctum token, `throttle:api`); a Livewire component is invisible to them.
   The web participant UI under `resources/views/user/` is retired but still routed — don't build

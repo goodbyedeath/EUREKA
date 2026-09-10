@@ -53,7 +53,13 @@ if (! is_array($fresh)) {
     exit(1);
 }
 
-$a = contractOnly(json_decode(file_get_contents($committed), true) ?: []);
+$committedDoc = json_decode(file_get_contents($committed), true) ?: [];
+
+// The prose companions are part of the contract even though a schema cannot express them.
+$guidesOld = $committedDoc['info']['x-behaviour-guides'] ?? [];
+$guidesNew = $fresh['info']['x-behaviour-guides'] ?? [];
+
+$a = contractOnly($committedDoc);
 $b = contractOnly($fresh);
 
 $added   = array_diff_key($b, $a);
@@ -63,12 +69,20 @@ foreach (array_intersect_key($a, $b) as $k => $old) {
     if (json_encode($old) !== json_encode($b[$k])) $changed[$k] = [$old, $b[$k]];
 }
 
-if (! $added && ! $removed && ! $changed) {
+$guideMoved = $guidesOld !== $guidesNew;
+
+if (! $added && ! $removed && ! $changed && ! $guideMoved) {
     printf("openapi.json matches the code (%d operations).\n", count($b));
     exit(0);
 }
 
 echo "openapi.json is out of date.\n\n";
+
+foreach ($guidesNew as $g => $h) {
+    if (($guidesOld[$g] ?? null) !== $h) {
+        echo "  GUIDE     $g changed   <-- behaviour rules moved; the client must re-read it\n";
+    }
+}
 
 foreach ($added as $k => $_)   echo "  NEW       $k\n";
 foreach ($removed as $k => $_) echo "  REMOVED   $k   <-- a client calling this will break\n";
