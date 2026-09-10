@@ -22,3 +22,9 @@
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# Server error log. It was tracked, and once the repo went public it exposed bcrypt
+# hashes and an email address from failed `insert into users` statements. A log is
+# runtime output; it never belongs in version control.
+error_log
+*.log
