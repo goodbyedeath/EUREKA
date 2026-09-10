@@ -1,0 +1,382 @@
+# Questerra — Android client build guide
+
+Companion to `API-V1-CONTRACT.md` (the endpoint reference). This one is about **how to build the
+app**: the order screens happen in, which call feeds each, and the specific places the API will
+surprise you.
+
+Every shape below was read off the live server, not written from memory.
+
+- Base URL: `https://questerra-series.com`
+- All player endpoints live under `/api/v1/`
+- Auth: Sanctum bearer token, `Authorization: Bearer <token>`
+
+---
+
+## 1. What you are building
+
+A live team treasure hunt run at a physical venue. Teams move between **outposts**, scan a QR code
+to unlock each one, answer a questionnaire or play a facilitator-scored game, and accumulate
+points. A big screen shows the leaderboard. Events run **indoors** (a floor plan, no GPS) or
+**outdoors** (real coordinates, geofenced check-ins) — your app must handle both.
+
+The website is now admin-and-kiosk only. **The app is the entire player experience**, so anything
+a player does has to go through `/api/v1/`.
+
+---
+
+## 2. Start here: auth and the access window
+
+```
+POST /api/v1/auth/login
+{ "email": "...", "password": "...", "device_name": "Pixel 8" }
+
+200 { "success": true,
+      "token": "1|abc…",
+      "expires_at": "2026-09-10T18:00:00+00:00",   // null if the team has no window
+      "user": { "id": 22, "name": "Test", "role": "user",
+                "team_id": null, "locale": "en" } }
+```
+
+Two things about this token that are easy to get wrong:
+
+- **It expires when the access window does.** The server creates it with
+  `expiresAt = accessWindowEndsAt()`, and `expires_at` in the response tells you when. After
+  that the token is dead, not merely the window — you must log in again, so keep the
+  credentials or be ready to ask for them. If `expires_at` is `null` the token does not expire
+  on its own.
+- **`device_name` is a slot, not a label.** Logging in again with the same `device_name` deletes
+  the previous token for that name. Send a stable string per install (not a random value per
+  launch) and the old session is cleaned up for you; send a different one each time and you
+  accumulate tokens nobody can revoke.
+
+`POST /api/v1/auth/logout` revokes the current token.
+
+Two login refusals have no `error` key, only `message` — handle them by status:
+`This account is not active.` for a disabled account, and the access-window message (with
+`access_window_expired: true`) for an expired one.
+
+**Then respect the access window.** An admin grants each team a time window. Outside it, *every*
+authenticated endpoint answers **403**:
+
+```json
+{ "success": false, "expired": true, "access_window_expired": true,
+  "error": "access_window_expired",
+  "message": "Your access period has ended. …" }
+```
+
+This is not an error to retry — it means the session is over. Send the player to a "waiting for
+the crew" screen. `GET /api/v1/auth/me` returns `access_window_ends_at` (ISO 8601, or `null` if no
+window is set) so you can show a countdown and pre-empt the 403.
+
+Login has one more case to handle: an account whose window has **already** expired is refused at
+login, but only **after** the password is correct. Do not treat that message as "wrong password".
+
+---
+
+## 3. The player journey
+
+```
+  login
+    │
+    ├─ GET /branding          ─── app name, logo, theme colour (cache, see §7)
+    ├─ GET /features          ─── which menus to show at all
+    ├─ GET /auth/me           ─── team, access window
+    │
+    ├─ INDOOR event ───────────────────────────────────────────────┐
+    │    POST /race/start          scan the START code, clock on   │
+    │    GET  /race/status         elapsed time, current clue      │
+    │    GET  /indoor-map          floor plan + spots              │
+    │    POST /race/clue/{map}     answer the clue to advance      │
+    │                                                              │
+    ├─ OUTDOOR event ──────────────────────────────────────────────┤
+    │    GET  /quest-locations     outposts + distance to each     │
+    │    POST /quest-locations/checkin   geofenced arrival         │
+    │    POST /tracking/position   background position (§6)        │
+    │                                                              │
+    └─ AT AN OUTPOST (both modes) ─────────────────────────────────┘
+         POST /qr/lookup                  { "qr_code": "<scanned string>" }
+         GET  /ar/locations/{id}          3D/AR scene, if it has one
+         GET  /quiz/start/{id}            begin the questionnaire
+         POST /quiz/save-answer           one call per answer
+         POST /quiz/complete-game         finish a fun_game question
+         POST /quiz/submit                hand it in
+```
+
+---
+
+## 4. Quiz runtime
+
+This is the part that must survive the app being backgrounded, killed, or losing signal.
+
+```
+GET  /quiz/start/{questionnaireId}   → creates an attempt, returns questions + time limit
+GET  /quiz/continue/{attemptId}      → resume after a restart; refuses an expired attempt
+GET  /quiz/timer/{attemptId}         → authoritative seconds remaining
+POST /quiz/save-answer               → { attempt_id, question_id, answer }
+POST /quiz/complete-game             → { attempt_id, question_id }   fun_game only
+POST /quiz/submit                    → { attempt_id, verification_photo }
+```
+
+**The server owns the clock.** Never count down locally and decide on your own that time is up:
+read `/quiz/timer/{attemptId}` and treat its number as truth. A device clock that is wrong, or an
+app that was asleep for ten minutes, will otherwise disagree with the scoreboard.
+
+Two rules that are deliberate and not symmetrical:
+
+- `save-answer` **refuses** after the time limit — `403 error: time_expired`. Stop writing.
+- `submit` **always** accepts. Refusing it would strand an attempt whose clock ran out mid-request
+  and lose the team's work. So on `time_expired`, go straight to `submit`.
+
+`answer` may be `null` (the player cleared a field). That is accepted.
+
+### `submit` requires a verification photo
+
+`verification_photo` is **required** on `POST /quiz/submit` — `required|string`, a base64-encoded
+image. Omit it and the submission fails validation with 422; there is no fallback path. Capture it
+as part of handing in, not as an optional extra, or a team finishes the questionnaire and cannot
+submit it.
+
+The column behind it is `longtext`, and the server's `post_max_size` is generous, so size is not
+the constraint the database imposes — but the venue's connection is. Downscale before encoding:
+a full-resolution photo becomes roughly a third larger again as base64, and that upload happens at
+the worst possible moment, with a team waiting on it. There is no server-side maximum today, so
+the client is the only thing deciding how big this gets.
+
+The server also records `photo_captured_at` when the field is present.
+
+### Question types
+
+`App\Enums\QuestionType` — these five, exactly:
+
+| `type` | Render as | Scored |
+|---|---|---|
+| `text` | free text box | yes |
+| `multiple_choice` | options from the `options` array | yes |
+| `true_false` | two buttons | yes |
+| `fun_game` | instructions + photo upload; a facilitator scores it later | **no, at answer time** |
+| `brief` | free text, informational | no |
+
+`fun_game` is the one that catches clients out. Its answer is stored **correct with zero points**,
+because a facilitator awards the score afterwards. Call `complete-game` for it, not `save-answer`
+alone. And never sum question points locally to show a score — you will double-count every game.
+Display what the server returns.
+
+---
+
+## 5. Outposts, check-in and the unlock gate
+
+### Distance is only computed if you ask for it
+
+```
+GET /api/v1/quest-locations?user_latitude=-6.41697&user_longitude=106.82418
+```
+
+Without those two query parameters, every location comes back with `distance: null` and
+`within_radius: false` — so the app cannot tell whether check-in will succeed. **With** them:
+
+```json
+{ "id": 30, "name": "Pos Demo", "radius": 20,
+  "distance": 1.066192234875042,      // metres
+  "within_radius": true,
+  "checked_in": false, "check_ins_count": 0, "last_checked_at": null }
+```
+
+Also accepts `search=` and `filter_status=visited|not_visited`, and paginates
+(`pagination: { current_page, last_page, per_page, total }`).
+
+### Check-in
+
+```
+POST /api/v1/quest-locations/checkin
+{ "location_id": 30, "user_latitude": -6.41697, "user_longitude": 106.82418 }
+```
+
+### The unlock gate
+
+An AR outpost is not readable until the crew opens it for that team:
+
+```
+GET /api/v1/ar/locations/39
+403 { "success": false, "error": "awaiting_unlock",
+      "message": "Waiting for the crew to open this outpost for your team." }
+```
+
+This is a normal state, not a failure — show "waiting for the crew" and poll sparingly (§6).
+
+---
+
+## 6. Polling and rate limits — read this before writing any timer
+
+Repeated production outages on this install were HTTP 429. The limits key on the **authenticated
+user**, so twenty phones on one venue WiFi get twenty separate budgets — but the hosting edge
+still counts every request from that one address, so restraint matters.
+
+| Limiter | Budget | Applies to |
+|---|---|---|
+| `api` | 120/min per user | everything below except the two named |
+| `tracking` | **30/min per user** | `POST /tracking/position` |
+| `auth` | 5/min per account, 60/min per IP | `POST /auth/login` |
+
+```
+POST /api/v1/tracking/position
+{ "latitude": -6.2, "longitude": 106.8, "accuracy": 12.5, "device_info": "Pixel 8 / Android 15" }
+```
+
+**Do not post on every GPS callback.** `watchPosition`-style updates arrive about once a second
+while walking; at that rate you will exhaust 30/min in two minutes. Keep the marker smooth on
+screen locally and send **at most one fix every 10 seconds**. The web client was changed to do
+exactly this.
+
+`accuracy` (metres) and `device_info` are optional but please send them — without accuracy a
+5-metre fix and a 500-metre fix draw the same dot on the admin map.
+
+Suggested intervals for everything else:
+
+| Call | Interval |
+|---|---|
+| `/tracking/position` | 10s minimum between sends |
+| `/race/status` | 10s while a race screen is open, stop when backgrounded |
+| `/quiz/timer/{id}` | 10s, or on resume — not every second |
+| `/ar/locations/{id}` while `awaiting_unlock` | 15s |
+| `/branding`, `/features` | once per launch (§7) |
+
+A 429 from us carries `Retry-After`. Honour it, and back off rather than retrying in a loop —
+a queue replayed into a rate-limited server is what keeps it rate-limited.
+
+---
+
+## 7. Branding and feature flags are server-driven
+
+The operator renames and re-skins the app from the admin panel. Do not hardcode "Questerra" or
+the logo.
+
+```
+GET /api/v1/branding          (public, no token)
+{ "success": true, "branding": {
+    "app_name": "Questerra", "tagline": "FEXDI X IFSE 2026",
+    "logo_wide": "https://…", "logo_icon": "https://…",
+    "theme_color": "#6777ef", "version": "1788938600" }}
+```
+
+`version` changes whenever branding changes — cache on it and re-fetch when it differs.
+
+```
+GET /api/v1/features
+{ "success": true,
+  "flags": { "quiz_system": true, "quest_locations": true, "leaderboard": false, … },
+  "features": [ { "key", "name", "description", "enabled", "sort_order" } ] }
+```
+
+`flags` is the quick map; `features` carries labels and ordering if you want to render a menu from
+it. **Flags control visibility only, never permission** — the server enforces access with
+middleware regardless, so hiding a menu is a UX decision, not a security one. Most flags are off
+in a fresh event; an empty dashboard is expected, not a bug.
+
+`GET /api/v1/hero-slides` (public) returns the launch carousel: `title`, `subtitle`,
+`background_image`, `background_gradient`, `text_color`, `button_color`, `button_style`,
+`primary_button`, `secondary_button`, `icon_svg`, ordered by `order`.
+
+---
+
+## 8. Indoor mode
+
+```
+GET /api/v1/indoor-map            → the active plan
+GET /api/v1/indoor-map/{id}       → a specific one
+```
+
+```json
+{ "success": true,
+  "map":   { "id": 3, "name": "…", "description": "…", "image": "https://…" },
+  "spots": [ { "id": 26, "name": "test", "x": 88.54, "y": 12.689,
+               "shape": "pin", "color": "#705757", "size": 28,
+               "content": "", "image": "https://…",
+               "game_location_id": null, "is_open": false } ] }
+```
+
+Two things to get right:
+
+- **`spots` is top level, not inside `map`.** Easy to mis-nest.
+- **`x` and `y` are percentages, not pixels** (0–100). Multiply by your rendered image size, so the
+  plan can be displayed at any width.
+
+`is_open` says whether the crew has opened that spot for this team. `game_location_id` links a
+spot to an AR outpost when it has one.
+
+---
+
+## 9. Offline
+
+```
+GET /api/v1/offline/manifest
+{ "bounds": { "north", "south", "east", "west" },
+  "quest_locations": [ { id, name, latitude, longitude, radius, marker_color } ],
+  "game_locations":  [ { id, name, experience_type, model, uses_ar,
+                         latitude, longitude, radius, coordinate_source, quest_location_id } ],
+  "images": [...], "models": [...], "pages": [...],
+  "counts": { … } }
+```
+
+Fetch this once the team is registered and **pre-download everything on it while you still have
+signal** — venue WiFi and mobile data are both unreliable mid-game. `bounds` is the area worth
+pre-caching map tiles for. `models` are the 3D assets; AR will stall without them.
+
+Queue player actions taken offline (`save-answer`, `checkin`) and replay them when signal returns,
+**with backoff** — and drop a queued item on a `4xx` rather than retrying it forever, because a
+rejected answer will be rejected again.
+
+---
+
+## 10. Traps — things that have already bitten someone
+
+| Trap | Detail |
+|---|---|
+| **Two names for a coordinate** | `checkin` wants `user_latitude` / `user_longitude`. `tracking/position` wants `latitude` / `longitude`. Same concept, different keys. |
+| **Lat/long type is inconsistent** | `/quest-locations` returns them as **strings** (`"-6.41697690"`); `/offline/manifest` returns them as **numbers** (`-6.4169769`). Parse defensively. |
+| `spots` nesting | Top level in `/indoor-map`, not under `map`. |
+| `distance` is null | Unless you pass `user_latitude` + `user_longitude` as query params (§5). |
+| `race: null` | `/race/status` returns `race: null` before the START code is scanned — not an error. |
+| `fun_game` scores 0 | At answer time. Never total points client-side. |
+| `awaiting_unlock` | A normal waiting state on AR outposts, not a failure. |
+| Nulls are normal | `team_id`, `access_window_ends_at`, `image_path`, `google_map_embed_url` are all legitimately `null`. |
+| Don't trust the device clock | Read `/quiz/timer/{attemptId}`. |
+
+### Error handling
+
+Every refusal carries a stable `error` string — switch on that, never on `message`, which is
+human-facing prose and is translated.
+
+| `error` | HTTP | Meaning |
+|---|---|---|
+| `access_window_expired` | 403 | Session over; stop, show the waiting screen |
+| `awaiting_unlock` | 403 | Crew has not opened this outpost yet |
+| `time_expired` | 403 | Clock ran out; stop saving, call `submit` |
+| `attempt_not_found` | 404 | No such attempt, or it is not yours |
+| `question_not_found` | 404 | Question is not in this questionnaire |
+| `attempt_submitted` | 409 | Already handed in |
+| `game_already_assessed` | 409 | A facilitator already scored it |
+| `not_a_game_question` | 422 | `complete-game` on a normal question |
+
+A `422` with a Laravel `errors` object is ordinary validation — show it against the field.
+A `500` is a real fault: report it, do not retry in a loop.
+
+---
+
+## 11. Before you ship — checklist
+
+- [ ] Token survives an app restart; `401` sends the player back to login
+- [ ] `expires_at` is respected — the token dies with the access window, so re-login is a
+      normal path, not an error state
+- [ ] `device_name` is stable per install
+- [ ] `access_window_expired` handled on **every** call, not just login
+- [ ] `/tracking/position` sends at most one fix per 10s, even while walking
+- [ ] `429` honours `Retry-After` and backs off; no retry loops
+- [ ] Quiz resumes correctly after the app is killed mid-attempt (`/quiz/continue`)
+- [ ] `time_expired` on `save-answer` goes straight to `submit`
+- [ ] `submit` always carries `verification_photo`, downscaled before encoding
+- [ ] `fun_game` uses `complete-game`; no client-side point totals anywhere
+- [ ] App name, logo and theme come from `/branding`, with nothing hardcoded
+- [ ] Hidden menus follow `/features`, and you never rely on that for security
+- [ ] Indoor spots positioned from `x`/`y` as percentages
+- [ ] Offline manifest pre-downloaded while online; queued actions replay with backoff
+- [ ] Both an indoor event and an outdoor event tested end to end

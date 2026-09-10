@@ -1,0 +1,26 @@
+# The Android client lives inside this Laravel repo, so the repo-root .gitignore does not
+# protect it: `/node_modules` there is anchored to the root and never matches
+# `APK/<project>/node_modules`. Without the rules below, one `git add .` commits the release
+# signing key and its passwords — and a leaked signing key lets anyone publish an APK that
+# Android accepts as an update to the real one. It cannot be rotated without every installed
+# copy breaking.
+
+# Signing material — never commit.
+*/android/keystore.properties
+*/android/keystore/
+*.jks
+*.keystore
+
+# Machine-local SDK path.
+*/android/local.properties
+
+# Build output and caches.
+*/android/.gradle/
+*/android/build/
+*/android/app/build/
+*/android/captures/
+*/android/.externalNativeBuild/
+*/android/.cxx/
+
+# Regenerable from package-lock.json, and 30 MB of it.
+*/node_modules/
