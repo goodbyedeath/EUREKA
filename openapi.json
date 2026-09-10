@@ -7,7 +7,7 @@
         "x-behaviour-guides": {
             "API-V1-CONTRACT.md": "854349df8c91fad8",
             "APK-BUILD-GUIDE.md": "49543f65c84d111a",
-            "APK-WORK-ORDER.md": "7c38691ca4b5d69e"
+            "APK-WORK-ORDER.md": "b02a783afcf29f88"
         }
     },
     "servers": [
@@ -198,7 +198,7 @@
                                                     "type": "string"
                                                 },
                                                 "team_id": {
-                                                    "nullable": true
+                                                    "type": "integer"
                                                 }
                                             }
                                         }
@@ -266,6 +266,68 @@
                 "x-auth": "public",
                 "x-access-window": false,
                 "x-rate-limit": "kiosk",
+                "responses": {
+                    "200": {
+                        "description": "Not probed — POST endpoints are not called by the generator"
+                    }
+                }
+            }
+        },
+        "/api/v1/contract/feedback": {
+            "post": {
+                "operationId": "api.v1.contract.feedback",
+                "summary": "api.v1.contract.feedback",
+                "x-auth": "public",
+                "x-access-window": false,
+                "x-rate-limit": "feedback",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "client_version": {
+                                        "nullable": true,
+                                        "type": "string",
+                                        "maxLength": 32,
+                                        "x-laravel-rules": "nullable|string|max:32"
+                                    },
+                                    "contract_sha": {
+                                        "nullable": true,
+                                        "type": "string",
+                                        "maxLength": 32,
+                                        "x-laravel-rules": "nullable|string|max:32"
+                                    },
+                                    "detail": {
+                                        "type": "string",
+                                        "maxLength": 4000,
+                                        "x-laravel-rules": "required|string|max:4000"
+                                    },
+                                    "kind": {
+                                        "type": "string",
+                                        "x-laravel-rules": "required|string|in:"
+                                    },
+                                    "subject": {
+                                        "type": "string",
+                                        "maxLength": 160,
+                                        "x-laravel-rules": "required|string|max:160"
+                                    }
+                                },
+                                "required": [
+                                    "detail",
+                                    "kind",
+                                    "subject"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "x-unparsed-rules": {
+                    "kind": [
+                        "in:"
+                    ]
+                },
                 "responses": {
                     "200": {
                         "description": "Not probed — POST endpoints are not called by the generator"
@@ -1311,8 +1373,40 @@
                                 "schema": {
                                     "type": "object",
                                     "properties": {
-                                        "race": {
+                                        "clue": {
                                             "nullable": true
+                                        },
+                                        "race": {
+                                            "type": "object",
+                                            "properties": {
+                                                "clue_solved": {
+                                                    "type": "boolean"
+                                                },
+                                                "clue_wrong_attempts": {
+                                                    "type": "integer"
+                                                },
+                                                "elapsed_seconds": {
+                                                    "type": "integer"
+                                                },
+                                                "finished": {
+                                                    "type": "boolean"
+                                                },
+                                                "finished_at": {
+                                                    "nullable": true
+                                                },
+                                                "indoor_map_id": {
+                                                    "type": "integer"
+                                                },
+                                                "mode": {
+                                                    "type": "string"
+                                                },
+                                                "session_id": {
+                                                    "type": "integer"
+                                                },
+                                                "started_at": {
+                                                    "type": "string"
+                                                }
+                                            }
                                         },
                                         "success": {
                                             "type": "boolean"
@@ -1338,21 +1432,76 @@
                     }
                 ],
                 "responses": {
-                    "404": {
+                    "200": {
                         "description": "Observed on a live probe",
                         "content": {
                             "application/json": {
                                 "schema": {
                                     "type": "object",
                                     "properties": {
-                                        "error": {
-                                            "type": "string"
-                                        },
-                                        "message": {
-                                            "type": "string"
-                                        },
                                         "success": {
                                             "type": "boolean"
+                                        },
+                                        "team": {
+                                            "type": "object",
+                                            "properties": {
+                                                "department": {
+                                                    "nullable": true
+                                                },
+                                                "description": {
+                                                    "nullable": true
+                                                },
+                                                "earned": {
+                                                    "type": "integer"
+                                                },
+                                                "id": {
+                                                    "type": "integer"
+                                                },
+                                                "initial_points": {
+                                                    "type": "integer"
+                                                },
+                                                "is_owner": {
+                                                    "type": "boolean"
+                                                },
+                                                "members": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "email": {
+                                                                "description": "nested"
+                                                            },
+                                                            "id": {
+                                                                "description": "nested"
+                                                            },
+                                                            "is_leader": {
+                                                                "description": "nested"
+                                                            },
+                                                            "name": {
+                                                                "description": "nested"
+                                                            },
+                                                            "phone": {
+                                                                "description": "nested"
+                                                            },
+                                                            "position": {
+                                                                "description": "nested"
+                                                            }
+                                                        }
+                                                    }
+                                                },
+                                                "name": {
+                                                    "type": "string"
+                                                },
+                                                "points": {
+                                                    "type": "integer"
+                                                },
+                                                "rank": {
+                                                    "type": "integer"
+                                                },
+                                                "total_teams": {
+                                                    "type": "integer"
+                                                }
+                                            }
                                         }
                                     }
                                 }

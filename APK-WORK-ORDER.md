@@ -151,6 +151,43 @@ next — that is the point of it.
 
 ---
 
+## Talking back — the channel runs both ways now
+
+Until today this was one-way: the server published, you consumed, and anything you had to say
+reached us only if the operator retyped it. That is exactly how this file came to list screens as
+missing four releases after you shipped them. Your correction existed; it had no route back.
+
+```
+POST https://questerra-series.com/api/v1/contract/feedback
+Content-Type: application/json
+
+{ "kind": "mismatch",                     mismatch | blocked | done | question | bug
+  "subject": "Work order §1 — reticle",   the endpoint, guide section or task number
+  "detail": "…",                          up to 4000 characters
+  "client_version": "14",                 your versionCode
+  "contract_sha": "…" }                   from /contract/version, so we know what you read
+```
+
+No token. Rate limited to 20/min. `201` with an id means it landed.
+
+**Send one whenever:**
+
+- a task in the work order is **already done** → `done`, and skip it. You did this by hand and it
+  caught a four-release error; now it has a route.
+- the contract and the server disagree → `mismatch`. The controllers win, and it means
+  `openapi.json` was not regenerated. Do not work around it silently.
+- something blocks you that only this side can unblock → `blocked`. The QR scanner sat waiting on
+  a server test that nobody had asked for.
+- a guide is wrong, unclear, or describes your tree instead of ours → `mismatch`.
+
+`client_version` and `contract_sha` are not decoration: without them a report cannot be judged.
+"This is wrong" means nothing if we cannot tell which contract revision you were reading.
+
+Reports are read before the next contract change. You will see the result as a moved hash in
+`/contract/version`, not as a reply — there is nobody to reply.
+
+---
+
 ## Order
 
 Reticle first: a reported defect in a screen that already exists, small change, visible

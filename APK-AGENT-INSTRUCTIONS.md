@@ -259,7 +259,12 @@ ON EVERY SYNC
   4. If the diff shows an operation REMOVED or a field NOW REQUIRED, STOP AND ASK — a build
      already in the field will start failing. Everything else is safe to apply.
   5. If the contract and the server disagree, the CONTROLLERS win and openapi.json was not
-     regenerated. Report it. Never edit openapi.json — it is generated server-side.
+     regenerated. Never edit openapi.json — it is generated server-side.
+  6. REPORT BACK. POST /api/v1/contract/feedback with { kind, subject, detail, client_version,
+     contract_sha }. kind is one of mismatch | blocked | done | question | bug. No token needed.
+     Send one when a task is already done, when the contract disagrees with the server, or when
+     something blocks you that only the server side can unblock. This is the only way anything
+     you find reaches us — there is no person watching this channel.
 
 ════════════════════════════════════════════════════════════════════════════
 FIX IN YOUR OWN REPO FIRST

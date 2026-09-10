@@ -31,6 +31,10 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         ->middleware('throttle:kiosk')->name('contract.show');
     Route::get('/contract/version', [\App\Http\Controllers\Api\ContractController::class, 'version'])
         ->middleware('throttle:kiosk')->name('contract.version');
+    // The way back. Tighter limit than the reads: this one writes a row.
+    Route::post('/contract/feedback', [\App\Http\Controllers\Api\ContractController::class, 'feedback'])
+        ->middleware('throttle:feedback')->name('contract.feedback');
+
     Route::get('/contract/guide/{name}', [\App\Http\Controllers\Api\ContractController::class, 'guide'])
         ->middleware('throttle:kiosk')->name('contract.guide');
 

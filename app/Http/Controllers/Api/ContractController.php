@@ -81,6 +81,38 @@ class ContractController extends Controller
         ]);
     }
 
+    /**
+     * A report from the client agent, coming the other way.
+     *
+     * The channel was one-way, so a correction from the client team had to travel through a
+     * person retyping it — which is how a work order came to describe screens as missing four
+     * releases after they had shipped. The report existed; it had no route back.
+     *
+     * Open, with no key. A key would have to be handed over by the operator, which is the
+     * relaying this exists to remove, and the thing being protected is a suggestion box: the
+     * risk is noise, not disclosure. Noise is handled by the rate limit, the length caps, and
+     * the fact that nothing here is ever executed or rendered as markup — it is read by a
+     * human, and treated as untrusted text.
+     */
+    public function feedback(Request $request)
+    {
+        $data = $request->validate([
+            'kind' => 'required|string|in:' . implode(',', \App\Models\ClientFeedback::KINDS),
+            'subject' => 'required|string|max:160',
+            'detail' => 'required|string|max:4000',
+            'client_version' => 'nullable|string|max:32',
+            'contract_sha' => 'nullable|string|max:32',
+        ]);
+
+        $row = \App\Models\ClientFeedback::create($data);
+
+        return response()->json([
+            'success' => true,
+            'id' => $row->id,
+            'message' => 'Received. It will be read before the next contract change.',
+        ], 201);
+    }
+
     /** One of the human-written companions, as markdown. */
     public function guide(Request $request, string $name)
     {

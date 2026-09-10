@@ -80,6 +80,12 @@ class AppServiceProvider extends ServiceProvider
                 : Limit::perMinute(10)->by($request->ip());
         });
 
+        // Client-agent reports. Generous enough for a build agent working through a task
+        // list, tight enough that an open write endpoint cannot be used to fill a table.
+        RateLimiter::for('feedback', function (Request $request) {
+            return Limit::perMinute(20)->by($request->ip());
+        });
+
         // Login attempts, keyed on the account being tried **and** the address.
         //
         // Keyed on the address alone this was five attempts a minute for a whole venue:
