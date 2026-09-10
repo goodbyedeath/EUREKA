@@ -51,9 +51,11 @@ class QRScannerController extends Controller
                 ]);
             }
 
-            $questionnaire = Questionnaire::where('qr_code', $qrCode)
-                ->where('is_active', true)
-                ->first();
+            // Looked up by code alone. Filtering is_active inside the query made a
+            // switched-off questionnaire fall through to unknown_code, so a scanner could
+            // not tell a misread QR from a facilitator who forgot to activate the station —
+            // and on event day those need completely different responses from the crew.
+            $questionnaire = Questionnaire::where('qr_code', $qrCode)->first();
 
             // Every other refusal on this endpoint carries an error key and a real status
             // code; these three answered 200 with only a sentence, so a client had to
@@ -62,8 +64,17 @@ class QRScannerController extends Controller
                 return response()->json([
                     'success' => false,
                     'error' => 'unknown_code',
-                    'message' => 'Questionnaire not found or inactive'
+                    'message' => 'This code does not belong to this event.'
                 ], 404);
+            }
+
+            if (!$questionnaire->is_active) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'not_available',
+                    'reason' => 'inactive',
+                    'message' => 'This station is switched off. Ask the crew to enable it.'
+                ], 403);
             }
 
             // Check if questionnaire is available (date range, etc.)
@@ -95,6 +106,9 @@ class QRScannerController extends Controller
 
             return response()->json([
                 'success' => true,
+                // Race starts already answer with a type; questionnaires did not, so a client
+                // had to infer the kind from which key happened to be present.
+                'type' => 'questionnaire',
                 'questionnaire' => [
                     'id' => $questionnaire->id,
                     'title' => $questionnaire->title,

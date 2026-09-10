@@ -242,6 +242,8 @@ Several distinct conditions share 403. Always read `error`. Full list, all curre
   access_window_expired · awaiting_unlock · location_required · out_of_range · scan_required
   race_not_started · unknown_start_code · unknown_code · not_available · max_attempts_reached
   team_registration_required · time_expired · attempt_not_found · attempt_submitted
+  (not_available also carries reason:"inactive" when a station is switched off — that is a
+   crew problem, not a bad scan, and must read differently to the player)
   question_not_found · game_already_assessed · not_a_game_question · no_team · team_exists
   duplicate_emails · not_team_owner · cannot_remove_leader · team_full · member_not_found
 A 429 carries Retry-After — honour it, and back off rather than retrying in a loop.
