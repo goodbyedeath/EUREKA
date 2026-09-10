@@ -348,6 +348,59 @@ A bottom sheet built from the object's own fields:
 - **one** extra, never two: switch on `media_type` — `"image"` renders `image`, `"link"` renders
   `link` as a button, anything else shows no extra
 
+### The frame origin: keep the Start gate
+
+**Answering the v17 question directly: yes, the gate stays. `position` is not absolute.**
+
+`§9` previously said "place it as given" without saying what *given* is relative to. That was an
+omission on this side, and it is the reason your build and your operator disagree.
+
+Checked in `resources/views/ar/view.blade.php`:
+
+```
+line 853   referenceYaw = null;            // this direction becomes "forward"
+line 596   euler.set(beta, alpha - referenceYaw, -gamma, 'YXZ')
+line 1346  const yaw = Math.atan2(aimDir.x, -aimDir.z)
+```
+
+`referenceYaw` is captured the instant the admin taps **Start while pointing at the QR**. Every
+camera angle after that is measured as `alpha − referenceYaw`, and the `yaw` written when an object
+is placed comes from the camera inside that same relative frame.
+
+**So the stored `yaw` means "this many radians from the QR direction". Nothing anywhere records an
+absolute compass heading.** Open the camera and adopt whatever pose the player happens to hold, and
+forward becomes arbitrary: every object at that outpost rotates by the difference between where the
+player was pointing and where the admin was. Your own words for it are right — plausible rather
+than broken, which is the worst kind of wrong to ship.
+
+ARCore's ability to anchor immediately does not help, because the missing information is not
+tracking quality. It is *which way the admin was facing*, and that was never stored.
+
+**Keep the gate, and keep it for this reason rather than the old one.** The web needs it because
+`deviceorientation` has no absolute forward; you need it because the authored layout is expressed
+relative to the QR. Same gate, different justification — so do not remove it when you later
+improve tracking.
+
+Once Start is tapped, treat the camera pose at that instant as the origin and place objects
+camera-local from it, exactly as the response describes. ARCore should then hold that frame far
+better than the web's complementary filter does, which is the real win available to you.
+
+> If an absolute heading were stored at authoring time, the gate could go. It is not, and adding it
+> would mean re-walking every outpost to re-author what exists. Worth doing before a large event,
+> not worth doing mid-build. Say the word and it goes on the list.
+
+### Do not require a plane hit-test
+
+**Drop it — your instinct is right, and the guide should have said so.**
+
+Objects are positioned at a bearing, pitch and distance **from the camera**. They are not on the
+ground and never were: `y = distance · sin(pitch)` puts them wherever the admin aimed, commonly
+above eye level. A plane requirement therefore gates entry on something the scene does not use, and
+on dark or featureless ground it blocks the outpost entirely — a team standing in the right place,
+unable to start, for a reason nobody at the venue can diagnose.
+
+Anchor to the camera pose at Start and place from there. No plane detection, no hit-test.
+
 ### Response shape
 
 ```

@@ -26,6 +26,9 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
     // Which build to be on. Asked at launch, before anything can fail halfway.
     Route::get('/app/release', [\App\Http\Controllers\Api\AppReleaseController::class, 'show'])
         ->middleware('throttle:kiosk')->name('app.release');
+    // The client tells us what it published; only `latest`, never the minimum.
+    Route::post('/app/release', [\App\Http\Controllers\Api\AppReleaseController::class, 'report'])
+        ->middleware('throttle:feedback')->name('app.release.report');
 
     Route::get('/contract', [\App\Http\Controllers\Api\ContractController::class, 'show'])
         ->middleware('throttle:kiosk')->name('contract.show');

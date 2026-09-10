@@ -151,6 +151,26 @@ next — that is the point of it.
 
 ---
 
+### Report your releases
+
+`latest_version` was stale by four builds within a day, because this server cannot see your Drive
+folder. You reported it; now you own it.
+
+```
+POST /api/v1/app/release
+{ "version_code": 18, "version_name": "0.18", "download_url": "…"?, "notes": "…"? }
+```
+
+Post it as part of publishing. Monotonic: a code at or below the highest recorded is refused with
+`409 not_newer`, so releases only ever move up.
+
+**`minimum_version` is not settable from here, and will not be.** A remotely settable minimum is
+one request away from locking every team out of a live event; it stays in server config where only
+the operator reaches it. You report what exists, the operator decides what is required.
+
+Your builds 14–17 are already recorded from your report. `/app/release` now answers
+`latest_version: 17`.
+
 ## Talking back — the channel runs both ways now
 
 Until today this was one-way: the server published, you consumed, and anything you had to say
