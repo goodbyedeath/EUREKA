@@ -22,6 +22,7 @@ differ; the names here are suggestions, not requirements.
 2. **Results screen**
 3. **QR scanner** — was blocked on a server test. It is not any more; see §3.
 4. **Offline write queue** — from your report; added as §4.
+5. **Version header** — one header, and the patching system finally has its safety net. See §5.
 
 Already closed per your report and not repeated here: team setup, team score, outdoor map,
 indoor map, the keystore `.gitignore`, and removing Capacitor.
@@ -110,6 +111,39 @@ the queue itself:
 `submit` is the one that must never be lost: it always succeeds server-side, even after the clock
 expires, so a queued submit stays valid. Prefer failing the *save* and letting the submit carry
 the answers over losing the attempt.
+
+---
+
+## 5 — Send your version, and read ours
+
+The APK is a shell: branding, feature flags, questionnaires, outposts, indoor plans and AR scenes
+all arrive from the server, so most changes reach players **without a new build**. What was
+missing is the other half — the server had no idea which build was talking to it, so a phone
+running an old APK met a changed contract and failed in the field with nothing useful to say.
+
+**Send `X-App-Version: <versionCode>` on every authenticated request.** An integer, the same one
+in `build.gradle`. That single header is what turns a silent mid-quiz failure into a clear
+"update the app" before anything starts.
+
+```
+GET /api/v1/app/release          (public, no token)
+{ latest_version, latest_name, minimum_version, download_url, notes }
+```
+
+Ask it at launch:
+
+- `versionCode < minimum_version` → stop, show the download. The API will refuse you anyway with
+  **426 `update_required`**, carrying `your_version`, `minimum_version` and `download_url`.
+- `versionCode < latest_version` → carry on, but offer the update.
+- `minimum_version: 0` → no gate is armed. That is today's setting.
+
+**A missing header is allowed through, on purpose.** Every build in the field predates this check
+and sends nothing; a strict gate would brick all of them the day it shipped. The gate only bites
+once a build announces itself — so it becomes useful as your releases roll over, not on the day
+the server deploys it. Which also means: until you send the header, you get no protection from it.
+
+Handle 426 anywhere, not just at launch. The minimum can be raised between one request and the
+next — that is the point of it.
 
 ---
 

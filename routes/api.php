@@ -23,6 +23,10 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
     // The contract itself, served over HTTP so the Android build agent can read it without
     // git credentials for a private repo. Public on purpose: it describes shapes and limits,
     // never data, and authorisation is enforced by middleware whatever the document says.
+    // Which build to be on. Asked at launch, before anything can fail halfway.
+    Route::get('/app/release', [\App\Http\Controllers\Api\AppReleaseController::class, 'show'])
+        ->middleware('throttle:kiosk')->name('app.release');
+
     Route::get('/contract', [\App\Http\Controllers\Api\ContractController::class, 'show'])
         ->middleware('throttle:kiosk')->name('contract.show');
     Route::get('/contract/version', [\App\Http\Controllers\Api\ContractController::class, 'version'])
@@ -45,7 +49,7 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
     // all — a looping client could hammer it until the host stepped in and took the whole
     // site down with it. The limiter is keyed on the **user**, not the IP: at a venue every
     // team shares one WiFi address, and a per-IP budget divides among all of them.
-    Route::middleware(['auth:sanctum', 'access.window', 'throttle:api'])->group(function () {
+    Route::middleware(['auth:sanctum', 'access.window', 'app.version', 'throttle:api'])->group(function () {
         Route::post('/auth/logout', [TokenController::class, 'logout'])->name('auth.logout');
         Route::get('/auth/me', [TokenController::class, 'me'])->name('auth.me');
 

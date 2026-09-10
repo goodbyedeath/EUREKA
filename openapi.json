@@ -7,7 +7,7 @@
         "x-behaviour-guides": {
             "API-V1-CONTRACT.md": "854349df8c91fad8",
             "APK-BUILD-GUIDE.md": "49543f65c84d111a",
-            "APK-WORK-ORDER.md": "61fe182324ad0674"
+            "APK-WORK-ORDER.md": "7f9320c36a868e42"
         }
     },
     "servers": [
@@ -25,6 +25,47 @@
         }
     },
     "paths": {
+        "/api/v1/app/release": {
+            "get": {
+                "operationId": "api.v1.app.release",
+                "summary": "api.v1.app.release",
+                "x-auth": "public",
+                "x-access-window": false,
+                "x-rate-limit": "kiosk",
+                "responses": {
+                    "200": {
+                        "description": "Observed on a live probe",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "download_url": {
+                                            "nullable": true
+                                        },
+                                        "latest_name": {
+                                            "type": "string"
+                                        },
+                                        "latest_version": {
+                                            "type": "integer"
+                                        },
+                                        "minimum_version": {
+                                            "type": "integer"
+                                        },
+                                        "notes": {
+                                            "nullable": true
+                                        },
+                                        "success": {
+                                            "type": "boolean"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/ar/locations/{id}": {
             "get": {
                 "operationId": "api.v1.ar.location",
