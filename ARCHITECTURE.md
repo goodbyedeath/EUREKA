@@ -165,8 +165,8 @@ outposts, indoor plans and AR scenes all arrive over `/api/v1`, so most changes 
 without a new build. The half that was missing until 2026-09-10 is the version handshake: the
 client sends `X-App-Version: <versionCode>`, `config/app_release.php` holds `minimum_code`, and
 `EnforceAppVersion` answers **426 `update_required`** below it. `GET /api/v1/app/release` lets an
-app check at launch. A missing header passes deliberately — every build already in the field
-predates the check, and a strict gate would brick all of them on the day it shipped. Arm it by
+app check at launch. When armed, the header is required: a request without one is refused too,
+because the alternative is a gate anyone can skip by omitting it. Arm it by
 raising `APK_MINIMUM_CODE`; it is 0, blocking nothing, until someone decides otherwise before an
 event rather than during one.
 

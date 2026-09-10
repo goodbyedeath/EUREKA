@@ -137,10 +137,14 @@ Ask it at launch:
 - `versionCode < latest_version` → carry on, but offer the update.
 - `minimum_version: 0` → no gate is armed. That is today's setting.
 
-**A missing header is allowed through, on purpose.** Every build in the field predates this check
-and sends nothing; a strict gate would brick all of them the day it shipped. The gate only bites
-once a build announces itself — so it becomes useful as your releases roll over, not on the day
-the server deploys it. Which also means: until you send the header, you get no protection from it.
+**When the gate is armed, the header is required — no header is treated as too old.** An earlier
+draft let headerless requests through to protect installed builds, but there are none: the app
+reaches only your team, and a higher versionCode simply supersedes the last. Protecting a
+population that does not exist would have cost a permanent bypass, since anything armed could then
+be skipped by omitting the header.
+
+The gate is off today (`minimum_version: 0`), so nothing is refused. Add the header now and it
+costs you nothing; leave it out and the day someone arms the gate, every request fails at once.
 
 Handle 426 anywhere, not just at launch. The minimum can be raised between one request and the
 next — that is the point of it.
