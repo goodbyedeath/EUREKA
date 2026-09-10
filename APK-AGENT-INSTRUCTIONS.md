@@ -111,14 +111,71 @@ SCREENS AND THE CALLS BEHIND THEM
    - `game_location_id` links a spot to an AR outpost when it has one.
 
 8. AR / 3D CAMERA               GET /ar/locations/{id}[?lat=&lng=]
-   ARCore + SceneView (Sceneform is archived and will not build). Separate Activity launched by
-   location id, returning found-object ids so the caller can update progress.
-   Gates — all 403, all distinguished by `error`:
+
+   ─── THIS IS A DIFFERENT CAMERA FROM THE QR SCANNER ───
+   Two camera surfaces, never both alive:
+     QR scanner  CameraX + ML Kit, flat 2D preview, no GL, no ARCore session.
+     AR viewer   ARCore session + SceneView, its own Activity, launched by location id,
+                 returning found-object ids so the caller can update progress.
+   ARCore takes exclusive control of the camera. Opening the AR Activity while the scanner
+   preview is still bound throws, and the reverse leaves a black frame. Fully close and
+   release one before starting the other — do not try to share a surface or a session.
+   (Sceneform is archived and will not build against current Gradle. Use SceneView.)
+
+   ─── THE RETICLE: THE PART THE BUILT APK IS MISSING ───
+   The admin preview draws a circle at the dead centre of the screen and the app must too.
+   Without it a player cannot tell what is interactive or where to point — objects look like
+   scenery. This is not decoration; it IS the interaction model.
+
+     Idle   44 x 44 dp circle, exact screen centre, 2 px white border at ~53% alpha
+            (#ffffff88), no fill, NOT touchable — it must never absorb the tap.
+     Hot    border #4ade80, a 6 dp glow ring at ~20% alpha, scaled to 1.15x.
+
+   Every rendered frame: cast a ray from the camera through screen centre (normalised 0,0),
+   test it against the placed objects, walk up to the object's root, and set hot/idle from
+   whether anything was hit. The web build does exactly this inside its render loop.
+
+   Selection is AIM-THEN-TAP, not tap-the-object. A tap anywhere on the surface opens
+   whatever the reticle is currently on; if the reticle is idle, the tap does nothing. Do not
+   implement per-object hit-testing from the touch point — a player aiming with a phone at
+   arm's length cannot reliably poke a small object, which is the whole reason the reticle
+   exists.
+
+   ─── WHAT OPENS ON TAP ───
+   A bottom sheet carrying, from the object's own fields:
+     title            heading
+     description      body
+     points           shown as "+N points"; hide the row entirely when 0 or absent
+     ONE extra        an object carries a picture OR a link, never both. Switch on
+                      `media_type`: "image" -> render `image`; "link" -> render `link` as a
+                      button. Anything else -> no extra.
+
+   ─── RESPONSE SHAPE ───
+   location { id, name, model, latitude, longitude, radius, coordinate_source,
+              quest_location_id, access_mode }
+     access_mode "geofence" -> the radius decides entry; "manual" -> a crew member does, so
+     show a waiting state rather than a distance. latitude/longitude null = never bound to a
+     place: render with no geofence at all.
+
+   objects[] { id, title, description, points, media_type, link, image,
+               model, model_id, scale, distance,
+               position { x, y, z },  rotation { x, y, z },
+               animations [ { type, speed, range } ] }
+
+   position is ALREADY resolved to metres in a right-handed camera-local frame (-z forward),
+   computed server-side from the bearing, pitch and distance the admin authored on site.
+   Place it as given. Never recompute anchors from lat/long, and never re-derive the bearing
+   from the compass: the server's maths is the authority and the two will not agree.
+   `scale` multiplies the model uniformly; `rotation` is in degrees; `animations` are looped
+   idle motions (`type` with `speed` and `range`) applied locally, not synced.
+   `model` is a .glb URL — pre-download every one from /offline/manifest before the event.
+
+   ─── GATES, all 403 and distinguished by `error` ───
      "awaiting_unlock"   the crew has not opened this outpost for your team. A WAITING SCREEN
-                         polled about every 15s, not a failure.
+                         polled about every 15s. A normal state, not a failure.
      "location_required" an outdoor outpost called without ?lat=&lng=. Ask, then retry.
      "out_of_range"      too far. Body carries distance and radius, in metres.
-   Trust the server's placement maths; never recompute anchors locally.
+   A 200 with no `objects` means the outpost has a model but nothing placed on it yet.
 
 9. QUIZ RUNTIME                 GET  /quiz/start/{questionnaireId}
                                 GET  /quiz/continue/{attemptId}
