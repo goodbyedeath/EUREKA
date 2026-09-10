@@ -1227,6 +1227,212 @@
                 }
             }
         },
+        "/api/v1/team": {
+            "get": {
+                "operationId": "api.v1.team.show",
+                "summary": "api.v1.team.show",
+                "x-auth": "sanctum-bearer",
+                "x-access-window": true,
+                "x-rate-limit": "api",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "responses": {
+                    "404": {
+                        "description": "Observed on a live probe",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "type": "string"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "success": {
+                                            "type": "boolean"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "operationId": "api.v1.team.store",
+                "summary": "api.v1.team.store",
+                "x-auth": "sanctum-bearer",
+                "x-access-window": true,
+                "x-rate-limit": "api",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "department": {
+                                        "nullable": true,
+                                        "type": "string",
+                                        "maxLength": 100,
+                                        "x-laravel-rules": "nullable|string|max:100"
+                                    },
+                                    "description": {
+                                        "nullable": true,
+                                        "type": "string",
+                                        "maxLength": 500,
+                                        "x-laravel-rules": "nullable|string|max:500"
+                                    },
+                                    "members": {
+                                        "type": "array",
+                                        "minimum": 1,
+                                        "maximum": 20,
+                                        "x-laravel-rules": "required|array|min:1|max:20"
+                                    },
+                                    "members.*.email": {
+                                        "type": "string",
+                                        "format": "email",
+                                        "maxLength": 150,
+                                        "x-laravel-rules": "required|email|max:150"
+                                    },
+                                    "members.*.name": {
+                                        "type": "string",
+                                        "maxLength": 100,
+                                        "x-laravel-rules": "required|string|max:100"
+                                    },
+                                    "members.*.phone": {
+                                        "nullable": true,
+                                        "type": "string",
+                                        "maxLength": 30,
+                                        "x-laravel-rules": "nullable|string|max:30"
+                                    },
+                                    "members.*.position": {
+                                        "nullable": true,
+                                        "type": "string",
+                                        "maxLength": 100,
+                                        "x-laravel-rules": "nullable|string|max:100"
+                                    },
+                                    "name": {
+                                        "type": "string",
+                                        "minLength": 3,
+                                        "maxLength": 100,
+                                        "x-laravel-rules": "required|string|min:3|max:100"
+                                    }
+                                },
+                                "required": [
+                                    "members",
+                                    "members.*.email",
+                                    "members.*.name",
+                                    "name"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Not probed — POST endpoints are not called by the generator"
+                    }
+                }
+            }
+        },
+        "/api/v1/team/members": {
+            "post": {
+                "operationId": "api.v1.team.members.add",
+                "summary": "api.v1.team.members.add",
+                "x-auth": "sanctum-bearer",
+                "x-access-window": true,
+                "x-rate-limit": "api",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "email": {
+                                        "type": "string",
+                                        "format": "email",
+                                        "maxLength": 150,
+                                        "x-laravel-rules": "required|email|max:150"
+                                    },
+                                    "name": {
+                                        "type": "string",
+                                        "maxLength": 100,
+                                        "x-laravel-rules": "required|string|max:100"
+                                    },
+                                    "phone": {
+                                        "nullable": true,
+                                        "type": "string",
+                                        "maxLength": 30,
+                                        "x-laravel-rules": "nullable|string|max:30"
+                                    },
+                                    "position": {
+                                        "nullable": true,
+                                        "type": "string",
+                                        "maxLength": 100,
+                                        "x-laravel-rules": "nullable|string|max:100"
+                                    }
+                                },
+                                "required": [
+                                    "email",
+                                    "name"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Not probed — POST endpoints are not called by the generator"
+                    }
+                }
+            }
+        },
+        "/api/v1/team/members/{member}": {
+            "delete": {
+                "operationId": "api.v1.team.members.remove",
+                "summary": "api.v1.team.members.remove",
+                "x-auth": "sanctum-bearer",
+                "x-access-window": true,
+                "x-rate-limit": "api",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "member",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Not probed — POST endpoints are not called by the generator"
+                    }
+                }
+            }
+        },
         "/api/v1/tracking/position": {
             "post": {
                 "operationId": "api.v1.tracking.position",

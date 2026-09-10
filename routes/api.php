@@ -81,6 +81,15 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::post('/tracking/position', [\App\Http\Controllers\Api\LiveTrackingController::class, 'updatePosition'])
             ->middleware('throttle:tracking')->name('tracking.position');
         Route::post('/quest-locations/checkin', [\App\Http\Controllers\User\QuestLocationController::class, 'checkIn'])->name('quest.checkin');
+        // The player's own team: naming it, filling it, and reading its score. Team
+        // registration used to exist only as a Livewire page, which a native client cannot
+        // reach — so the app could log a player in and then strand them with no way to form
+        // a team. Rules mirror App\Livewire\Forms\TeamForm exactly.
+        Route::get('/team', [\App\Http\Controllers\Api\TeamController::class, 'show'])->name('team.show');
+        Route::post('/team', [\App\Http\Controllers\Api\TeamController::class, 'store'])->name('team.store');
+        Route::post('/team/members', [\App\Http\Controllers\Api\TeamController::class, 'addMember'])->name('team.members.add');
+        Route::delete('/team/members/{member}', [\App\Http\Controllers\Api\TeamController::class, 'removeMember'])->name('team.members.remove');
+
         Route::get('/quest-locations', [\App\Http\Controllers\User\QuestLocationController::class, 'getLocations'])->name('quest.list');
 
         // Walking directions to an outpost. Needs OPENROUTE_API_KEY in .env; without it the
