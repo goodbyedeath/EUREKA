@@ -16,6 +16,7 @@ CONTRACT SOURCE
 
     GET https://questerra-series.com/api/v1/contract/version    <- poll this one
     GET https://questerra-series.com/api/v1/contract            <- the OpenAPI document
+    GET https://questerra-series.com/api/v1/contract/guide/work      APK-WORK-ORDER.md  <- START HERE
     GET https://questerra-series.com/api/v1/contract/guide/build     APK-BUILD-GUIDE.md
     GET https://questerra-series.com/api/v1/contract/guide/contract  API-V1-CONTRACT.md
     GET https://questerra-series.com/api/v1/contract/guide/sync      APK-SYNC-FEEDBACK.md

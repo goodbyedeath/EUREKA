@@ -27,6 +27,7 @@ class ContractController extends Controller
         'contract'  => 'API-V1-CONTRACT.md',
         'sync'      => 'APK-SYNC-FEEDBACK.md',
         'agent'     => 'APK-AGENT-INSTRUCTIONS.md',
+        'work'      => 'APK-WORK-ORDER.md',
     ];
 
     /** The full OpenAPI document. */

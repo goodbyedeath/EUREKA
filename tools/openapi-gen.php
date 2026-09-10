@@ -276,7 +276,7 @@ if ($sampleToken) {
 // when that prose changed. It diffs openapi.json; so now a guide edit moves a hash inside
 // openapi.json, and the change is visible in the file it already watches.
 $guides = [];
-foreach (['APK-BUILD-GUIDE.md', 'API-V1-CONTRACT.md'] as $g) {
+foreach (['APK-BUILD-GUIDE.md', 'API-V1-CONTRACT.md', 'APK-WORK-ORDER.md'] as $g) {
     $p = __DIR__ . '/../' . $g;
     if (is_file($p)) $guides[$g] = substr(hash_file('sha256', $p), 0, 16);
 }
