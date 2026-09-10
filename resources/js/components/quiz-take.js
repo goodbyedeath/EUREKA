@@ -6,6 +6,7 @@ export default function (Alpine) {
         attempt: null,
         questions: [],
         answers: {},
+        savedAnswers: {},          // JSON of the last value autosave sent, per question
         currentQuestionIndex: 0,
         timeRemaining: null,
         totalPoints: 0,
@@ -79,9 +80,30 @@ export default function (Alpine) {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    'Accept': 'application/json'
                 },
             });
+
+            // Check if response is HTML (login page redirect)
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('text/html')) {
+                console.error('Received HTML response - session expired');
+                this.error = 'Session expired. Redirecting to login...';
+                setTimeout(() => {
+                    window.location.href = '/login';
+                }, 2000);
+                return;
+            }
+
+            // Handle 401 authentication errors
+            if (response.status === 401) {
+                this.error = 'Session expired. Redirecting to login...';
+                setTimeout(() => {
+                    window.location.href = '/login';
+                }, 2000);
+                return;
+            }
 
             const data = await response.json();
 
@@ -122,11 +144,32 @@ export default function (Alpine) {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    'Accept': 'application/json'
                 },
             });
 
             console.log('Response status:', response.status);
+
+            // Check if response is HTML (login page redirect)
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('text/html')) {
+                console.error('Received HTML response - session expired');
+                this.error = 'Session expired. Redirecting to login...';
+                setTimeout(() => {
+                    window.location.href = '/login';
+                }, 2000);
+                return;
+            }
+
+            // Handle 401 authentication errors
+            if (response.status === 401) {
+                this.error = 'Session expired. Redirecting to login...';
+                setTimeout(() => {
+                    window.location.href = '/login';
+                }, 2000);
+                return;
+            }
 
             const data = await response.json();
             console.log('Response data:', data);
@@ -483,15 +526,32 @@ export default function (Alpine) {
             try {
                 this.isSaving = true;
 
-                // Save all current answers
+                // Save only what changed since the last successful autosave.
+                //
+                // This used to re-POST every answered question on every 15s tick, so a paper
+                // with twelve answers cost twelve requests a minute per device — for answers
+                // the server already had. On a venue WiFi, twenty teams doing that is the
+                // whole rate limit spent on writing the same rows over and over.
                 const savePromises = [];
+                const saving = {};
                 for (const [questionId, answer] of Object.entries(this.answers)) {
-                    if (answer && answer !== '') {
-                        savePromises.push(this.saveAnswer(questionId, answer, true)); // true = silent mode
-                    }
+                    if (! answer || answer === '') continue;
+                    // Compare by value: a multi-select answer is an array, and two
+                    // arrays holding the same choices are never === each other.
+                    const encoded = JSON.stringify(answer);
+                    if (this.savedAnswers[questionId] === encoded) continue;
+                    saving[questionId] = encoded;
+                    savePromises.push(this.saveAnswer(questionId, answer, true)); // true = silent mode
+                }
+
+                if (savePromises.length === 0) {
+                    return;                                  // nothing new to say
                 }
 
                 await Promise.all(savePromises);
+                // Only mark them saved once the round-trip actually succeeded; a throw skips
+                // this and leaves them queued for the next tick.
+                Object.assign(this.savedAnswers, saving);
                 this.lastSaveTime = new Date();
                 console.log('Auto-save completed at', this.lastSaveTime.toISOString());
 

@@ -1,8 +1,10 @@
 <div class="container mx-auto px-4 py-6">
+
+    @unless($showEditModal)
     <!-- Header -->
     <div class="mb-6">
         <h1 class="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-2">Feature Management</h1>
-        <p class="text-gray-600 dark:text-gray-400">Control which features are available to users</p>
+        <p class="text-gray-600 dark:text-gray-400">Control which features are available to teams</p>
     </div>
 
     <!-- Bulk Actions -->
@@ -130,15 +132,19 @@
         @endforelse
     </div>
 
+    @endunless
+
     <!-- Edit Modal -->
     @if($showEditModal && $editingFeature)
-    <div class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-        <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-            <!-- Background overlay -->
-            <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" wire:click="closeEditModal"></div>
-
-            <!-- Modal panel -->
-            <div class="inline-block align-bottom bg-white dark:bg-gray-800 rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6">
+    {{-- A page, not a modal. The card wrapper matters: unwrapping the overlay also
+         removes the panel, and the form would otherwise sit on the bare background. --}}
+    <div class="mb-4">
+        <button type="button" wire:click="closeEditModal"
+                class="inline-flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100">
+            &larr; Back to features
+        </button>
+    </div>
+    <div class="max-w-3xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm p-5 sm:p-6">
                 <form wire:submit.prevent="updateFeature">
                     <div class="mb-4">
                         <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">Edit Feature</h3>
@@ -200,8 +206,6 @@
                         </button>
                     </div>
                 </form>
-            </div>
-        </div>
     </div>
     @endif
 </div>

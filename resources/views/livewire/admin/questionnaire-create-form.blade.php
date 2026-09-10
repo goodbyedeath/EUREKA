@@ -52,24 +52,14 @@
             <div class="space-y-1 text-center">
                 @if($photo)
                     <div class="mb-4">
-                        @php
-                            $showPreview = true;
-                            try {
-                                $tempUrl = $photo->temporaryUrl();
-                            } catch (\Exception $e) {
-                                $showPreview = false;
-                            }
-                        @endphp
-                        
-                        @if($showPreview)
-                            <img src="{{ $tempUrl }}" class="mx-auto h-32 w-32 object-cover rounded-lg">
-                            <p class="mt-2 text-sm text-gray-600">{{ $photo->getClientOriginalName() }}</p>
-                        @else
-                            <div class="text-center">
-                                <i class="fas fa-image text-gray-400 text-2xl"></i>
-                                <p class="mt-2 text-sm text-gray-600">Photo selected: {{ $photo->getClientOriginalName() }}</p>
-                            </div>
-                        @endif
+                        {{-- No thumbnail before saving: Livewire's preview URL keeps its signature
+                             in the query string, and this host's image optimisation re-fetches any
+                             path ending in an image extension without it, so it 401s. The upload is
+                             unaffected — the photo saves and is shown from /storage afterwards. --}}
+                        <div class="text-center">
+                            <i class="fas fa-image text-gray-400 text-2xl"></i>
+                            <p class="mt-2 text-sm text-gray-600">Photo selected: {{ $photo->getClientOriginalName() }}</p>
+                        </div>
                         
                         <button type="button" wire:click="$set('photo', null)" class="mt-2 text-sm text-red-600 hover:text-red-800">
                             Remove Photo
@@ -91,7 +81,7 @@
         @error('photo') 
             <p class="mt-2 text-sm text-red-600">{{ $message }}</p> 
         @enderror
-        <p class="mt-1 text-xs text-gray-500">Optional: Add a photo that will be displayed when users view this questionnaire</p>
+        <p class="mt-1 text-xs text-gray-500">Optional: Add a photo that will be displayed when teams view this questionnaire</p>
     </div>
 
     <!-- Time Limit and Max Attempts Row -->
@@ -101,7 +91,7 @@
                 Time Limit (minutes) <span class="text-red-500">*</span>
             </label>
             <input type="number" 
-                   wire:model.live="time_limit" 
+                   wire:model.live.debounce.500ms="time_limit" 
                    id="time_limit"
                    min="1"
                    max="300"

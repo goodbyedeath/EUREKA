@@ -224,8 +224,10 @@ class UserProgress extends Component
                         'total_score' => $this->calculateTeamPoints($attempt), // Team points using quiz-results logic
                         'completion_time' => ($attempt->started_at && $attempt->completed_at && $attempt->total_time_seconds > 0)
                             ? $this->formatDuration($attempt->total_time_seconds)
+                            // started->diff(completed), not the reverse: Carbon 3 returns a
+                            // signed difference, so the natural-reading order gives a negative.
                             : ($attempt->started_at && $attempt->completed_at 
-                                ? $this->formatDuration($attempt->completed_at->diffInSeconds($attempt->started_at))
+                                ? $this->formatDuration($attempt->started_at->diffInSeconds($attempt->completed_at, false))
                                 : null),
                     ];
                 })->sortBy('started_at')->values(),
@@ -347,7 +349,7 @@ class UserProgress extends Component
                     'started_at' => $attempt->started_at,
                     'completed_at' => $attempt->completed_at,
                     'duration' => $attempt->started_at && $attempt->completed_at 
-                        ? $attempt->completed_at->diffInMinutes($attempt->started_at) 
+                        ? $attempt->started_at->diffInMinutes($attempt->completed_at, false) 
                         : null,
                     'answers_count' => $attempt->userAnswers->count(),
                 ];
@@ -355,7 +357,7 @@ class UserProgress extends Component
             'total_time_spent' => $attempts->filter(function($attempt) {
                 return $attempt->started_at && $attempt->completed_at;
             })->sum(function($attempt) {
-                return $attempt->completed_at->diffInMinutes($attempt->started_at);
+                return $attempt->started_at->diffInMinutes($attempt->completed_at, false);
             })
         ];
     }
@@ -443,6 +445,23 @@ class UserProgress extends Component
 
         // Redirect to export controller with cache-busting parameter
         return redirect()->route('admin.user-progress.export', ['t' => now()->timestamp]);
+    }
+
+    public function downloadData()
+    {
+        // Store current filters in session for the download controller
+        session([
+            'export_filters' => [
+                'selectedTimeframe' => $this->selectedTimeframe,
+                'selectedTeam' => $this->selectedTeam,
+                'selectedRole' => $this->selectedRole,
+                'searchTerm' => $this->searchTerm,
+                'timestamp' => now()->timestamp, // Add timestamp for cache busting
+            ]
+        ]);
+
+        // Redirect to download controller with cache-busting parameter
+        return redirect()->route('admin.user-progress.download', ['t' => now()->timestamp]);
     }
     
     public function updatedSearchTerm()

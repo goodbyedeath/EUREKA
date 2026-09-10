@@ -1,7 +1,9 @@
 <div class="container mx-auto px-4 py-6">
+
+    @unless($showModal)
     <!-- Header -->
     <div class="mb-6">
-        <h1 class="text-3xl font-bold text-gray-900 dark:text-gray-100">User Management</h1>
+        <h1 class="text-3xl font-bold text-gray-900 dark:text-gray-100">Account Management</h1>
         <p class="text-gray-600 dark:text-gray-400 mt-2">Kelola pengguna dan akses sistem</p>
     </div>
 
@@ -31,7 +33,7 @@
                 </div>
                 <div class="ml-5 w-0 flex-1">
                     <dl>
-                        <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Total Users</dt>
+                        <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Total Accounts</dt>
                         <dd class="text-lg font-medium text-gray-900 dark:text-gray-100">{{ $totalUsers }}</dd>
                     </dl>
                 </div>
@@ -67,7 +69,7 @@
                 </div>
                 <div class="ml-5 w-0 flex-1">
                     <dl>
-                        <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Regular Users</dt>
+                        <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Teams</dt>
                         <dd class="text-lg font-medium text-gray-900 dark:text-gray-100">{{ $totalRegularUsers }}</dd>
                     </dl>
                 </div>
@@ -83,7 +85,7 @@
                 <div class="relative">
                     <input type="text" 
                            wire:model.live.debounce.300ms="search" 
-                           placeholder="Cari user..."
+                           placeholder="Cari akun..."
                            class="w-full md:w-64 pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200">
                     <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                         <svg class="h-5 w-5 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -96,7 +98,7 @@
                 <select wire:model.live="selectedRole" class="px-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 transition-colors duration-200">
                     <option value="">Semua Role</option>
                     <option value="admin">Admin</option>
-                    <option value="user">User</option>
+                    <option value="user">Team</option>
                 </select>
 
                 <!-- Team Filter -->
@@ -114,7 +116,7 @@
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
                 </svg>
-                <span>Tambah User</span>
+                <span>Tambah Akun</span>
             </button>
         </div>
     </div>
@@ -163,7 +165,7 @@
                                 <i class="fas fa-edit mr-1"></i>Edit
                             </button>
                             <button wire:click="delete({{ $user->id }})" 
-                                    wire:confirm="Are you sure you want to delete this user? This action cannot be undone."
+                                    wire:confirm="Are you sure you want to delete this account? This action cannot be undone."
                                     class="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300 text-sm transition-colors duration-200">
                                 <i class="fas fa-trash mr-1"></i>Hapus
                             </button>
@@ -182,7 +184,7 @@
             <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                 <thead class="bg-gray-50 dark:bg-gray-700 transition-colors duration-200">
                     <tr>
-                        <th class="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">User</th>
+                        <th class="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Account</th>
                         <th class="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Role</th>
                         <th class="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden lg:table-cell">Team</th>
                         <th class="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden xl:table-cell">Session Timeout</th>
@@ -221,8 +223,16 @@
                             <td class="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100 hidden xl:table-cell">
                                 @if($user->role === 'user')
                                     <div class="flex items-center space-x-2">
-                                        <span class="px-2 py-1 text-xs rounded-full {{ $user->session_timeout ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-800 dark:text-yellow-200' : 'bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-200' }}">
-                                            {{ $user->getFormattedSessionTimeout() }}
+                                        @php($window = $user->accessWindowStatus())
+                                        <span title="{{ $user->getFormattedSessionTimeout() }}"
+                                              class="px-2 py-1 text-xs rounded-full whitespace-nowrap
+                                              @class([
+                                                  'bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-200' => $window['tone'] === 'green',
+                                                  'bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-200' => $window['tone'] === 'blue',
+                                                  'bg-yellow-100 text-yellow-800 dark:bg-yellow-800 dark:text-yellow-200' => $window['tone'] === 'yellow',
+                                                  'bg-red-100 text-red-800 dark:bg-red-800 dark:text-red-200 font-semibold' => $window['tone'] === 'red',
+                                              ])>
+                                            {{ $window['label'] }}
                                         </span>
                                         <select wire:change="setSessionTimeout({{ $user->id }}, $event.target.value)" 
                                                 class="text-xs border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 rounded px-1 py-0.5">
@@ -251,7 +261,7 @@
                                         <span class="hidden lg:inline ml-1">Edit</span>
                                     </button>
                                     <button wire:click="delete({{ $user->id }})" 
-                                            wire:confirm="Are you sure you want to delete this user? This action cannot be undone."
+                                            wire:confirm="Are you sure you want to delete this account? This action cannot be undone."
                                             class="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300 p-1 transition-colors duration-200">
                                         <i class="fas fa-trash"></i>
                                         <span class="hidden lg:inline ml-1">Hapus</span>
@@ -276,14 +286,26 @@
         </div>
     </div>
 
+    @endunless
+
     <!-- Modal for Add/Edit User -->
     @if($showModal)
-        <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-            <div class="relative top-20 mx-auto p-5 border w-11/12 md:w-1/2 lg:w-1/3 shadow-lg rounded-md bg-white dark:bg-gray-800" wire:click.stop>
+    {{-- Not a modal: a form this size is a page. As an overlay it ran past the
+         bottom of a phone screen, taking its save button with it, and the only way
+         out was to find the X. --}}
+    <div class="mb-4">
+        <button type="button" wire:click="closeModal"
+                class="inline-flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100">
+            &larr; Back to users
+        </button>
+    </div>
+    {{-- The form kept the modal's fields but lost the modal's panel when it became
+         a page, so it sat on the raw background. This is that container. --}}
+    <div class="max-w-4xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm p-5 sm:p-6">
                 <!-- Modal Header -->
                 <div class="flex items-center justify-between pb-3">
                     <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                        {{ $editMode ? 'Edit User' : 'Tambah User Baru' }}
+                        {{ $editMode ? 'Edit Akun' : 'Tambah Akun Baru' }}
                     </h3>
                     <button wire:click="closeModal" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -349,7 +371,7 @@
                             <select id="role" 
                                     wire:model="role"
                                     class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-100">
-                                <option value="user">User</option>
+                                <option value="user">Team</option>
                                 <option value="admin">Admin</option>
                             </select>
                             @error('role') 
@@ -391,7 +413,7 @@
                             @error('session_timeout') 
                                 <span class="text-red-500 text-sm mt-1">{{ $message }}</span> 
                             @enderror
-                            <p class="text-xs text-gray-500 mt-1">User will be automatically logged out after this period of inactivity</p>
+                            <p class="text-xs text-gray-500 mt-1">Account will be automatically logged out after this period of inactivity</p>
                         </div>
                     </div>
 
@@ -417,7 +439,6 @@
                         </button>
                     </div>
                 </form>
-            </div>
         </div>
     @endif
 

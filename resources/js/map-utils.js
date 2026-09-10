@@ -11,11 +11,11 @@ window.loadMapUtils = async function() {
         // Load MapLibre GL JS CSS
         const cssLink = document.createElement('link');
         cssLink.rel = 'stylesheet';
-        cssLink.href = 'https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css';
+        cssLink.href = '/vendor/maplibre/3.6.2/maplibre-gl.css';
         cssLink.onload = () => {
             // Load MapLibre GL JS
             const script = document.createElement('script');
-            script.src = 'https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js';
+            script.src = '/vendor/maplibre/3.6.2/maplibre-gl.js';
             script.onload = () => {
                 if (window.maplibregl) {
                     console.log('MapLibre GL JS loaded successfully');

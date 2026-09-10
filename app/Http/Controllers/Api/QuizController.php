@@ -11,6 +11,7 @@ use App\Models\GameAssessment;
 use App\Services\AnswerValidationService;
 use App\Services\WorkflowTimerService;
 use App\Models\FeatureSetting;
+use App\Exceptions\QuizRuleException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -38,6 +39,15 @@ class QuizController extends Controller
      */
     public function start(Request $request, $questionnaireId)
     {
+        // Check authentication first
+        if (!Auth::check()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Authentication required. Please log in and try again.',
+                'error' => 'unauthenticated'
+            ], 401);
+        }
+
         // Rate limiting
         $key = 'quiz_attempts:' . Auth::id();
         if (RateLimiter::tooManyAttempts($key, 10)) {
@@ -50,7 +60,7 @@ class QuizController extends Controller
 
         try {
             // Load questionnaire with questions
-            $cacheKey = "questionnaire_{$questionnaireId}";
+            $cacheKey = Questionnaire::apiCacheKey((int) $questionnaireId);
             $questionnaire = Cache::remember($cacheKey, 3600, function () use ($questionnaireId) {
                 return Questionnaire::with('questions')
                     ->where('id', $questionnaireId)
@@ -65,11 +75,31 @@ class QuizController extends Controller
                 ], 404);
             }
 
-            // Check availability
+            // Check availability. Say which of the three reasons it is: every active
+            // questionnaire on this install once sat behind a date window that had quietly
+            // expired, and the old one-size message named none of them — on event day that
+            // reads as a broken app rather than a setting an admin can change.
             if (!$questionnaire->isAvailable()) {
+                $now = now();
+                $reason = match (true) {
+                    ! $questionnaire->is_active => 'inactive',
+                    $questionnaire->start_date && $now->lt($questionnaire->start_date) => 'not_open_yet',
+                    $questionnaire->end_date && $now->gt($questionnaire->end_date) => 'window_closed',
+                    default => 'unavailable',
+                };
+
                 return response()->json([
                     'success' => false,
-                    'message' => 'This questionnaire is not currently available'
+                    'error' => 'not_available',
+                    'reason' => $reason,
+                    'opens_at' => $questionnaire->start_date?->toIso8601String(),
+                    'closes_at' => $questionnaire->end_date?->toIso8601String(),
+                    'message' => match ($reason) {
+                        'inactive' => 'This questionnaire has been switched off by an administrator.',
+                        'not_open_yet' => 'This questionnaire opens on ' . $questionnaire->start_date->format('j M Y') . '.',
+                        'window_closed' => 'This questionnaire closed on ' . $questionnaire->end_date->format('j M Y') . '.',
+                        default => 'This questionnaire is not currently available',
+                    },
                 ], 403);
             }
 
@@ -78,6 +108,17 @@ class QuizController extends Controller
                 return response()->json([
                     'success' => false,
                     'message' => 'You have reached the maximum number of attempts for this quiz'
+                ], 403);
+            }
+
+            // Require the QR scan. The code is the only proof a team actually reached the
+            // outpost, so without this the sequential questionnaire ids let them clear
+            // every quiz from the start line without moving.
+            if (!QrCodeScan::canUserStartQuestionnaire(Auth::id(), $questionnaire->id)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Scan the QR code at this outpost to unlock the quiz',
+                    'error' => 'scan_required'
                 ], 403);
             }
 
@@ -192,6 +233,15 @@ class QuizController extends Controller
      */
     public function continue(Request $request, $attemptId)
     {
+        // Check authentication first
+        if (!Auth::check()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Authentication required. Please log in and try again.',
+                'error' => 'unauthenticated'
+            ], 401);
+        }
+
         try {
             // Load attempt with relations
             $attempt = QuizAttempt::with(['questionnaire.questions', 'userAnswers'])
@@ -225,7 +275,12 @@ class QuizController extends Controller
 
             // Check timer
             if ($attempt->questionnaire->time_limit) {
-                $elapsed = now()->diffInSeconds($attempt->started_at);
+                // Carbon 3 returns a SIGNED diff, so now()->diffInSeconds($past) is
+                // negative and this gate never fired — expired attempts stayed resumable.
+                // Measure forward from the same origin calculateTimeRemaining() uses, so
+                // the gate and the countdown shown to the team always agree.
+                $timerStart = $attempt->timer_started_at ?? $attempt->started_at;
+                $elapsed = $timerStart->diffInSeconds(now(), false);
                 $timeLimit = $attempt->questionnaire->time_limit * 60;
 
                 if ($elapsed >= $timeLimit) {
@@ -300,6 +355,15 @@ class QuizController extends Controller
      */
     public function saveAnswer(Request $request)
     {
+        // Check authentication first
+        if (!Auth::check()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Authentication required. Please log in and try again.',
+                'error' => 'unauthenticated'
+            ], 401);
+        }
+
         $request->validate([
             'attempt_id' => 'required|integer',
             'question_id' => 'required|integer',
@@ -314,9 +378,19 @@ class QuizController extends Controller
                     ->lockForUpdate()
                     ->first();
 
-                if (!$attempt || !$attempt->canEditAnswers()) {
-                    throw new \Exception('Cannot edit answers - quiz has been submitted');
+                if (! $attempt) {
+                    throw QuizRuleException::attemptNotFound();
                 }
+
+                if (! $attempt->canEditAnswers()) {
+                    throw QuizRuleException::submitted();
+                }
+
+                // The clock is the server's to enforce. continue() already refuses an
+                // expired attempt, but a client that ignores the `expired` flag — or simply
+                // keeps the runtime open — could still save and submit a full score long
+                // after time ran out, because this was the one path that never looked.
+                $this->assertWithinTimeLimit($attempt);
 
                 // Load question
                 $question = $attempt->questionnaire->questions()
@@ -324,11 +398,16 @@ class QuizController extends Controller
                     ->first();
 
                 if (!$question) {
-                    throw new \Exception('Question not found');
+                    throw QuizRuleException::questionNotFound();
                 }
 
-                // Validate answer
-                $answer = AnswerValidationService::sanitizeAnswer($request->answer);
+                // Validate answer.
+                //
+                // The rule above is `nullable|string`, but sanitizeAnswer() takes a
+                // non-nullable string. Clearing a field — deselecting a radio, wiping a
+                // text box — sent null and raised a TypeError, which is an \Error and so
+                // slipped past the catch below as an untrapped 500.
+                $answer = AnswerValidationService::sanitizeAnswer((string) ($request->answer ?? ''));
 
                 if ($question->type !== 'brief') {
                     $questionModel = new \App\Models\Question([
@@ -376,6 +455,12 @@ class QuizController extends Controller
                 'message' => 'Answer saved'
             ]);
 
+        } catch (QuizRuleException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+                'error' => $e->errorKey,
+            ], $e->status);
         } catch (ValidationException $e) {
             return response()->json([
                 'success' => false,
@@ -398,10 +483,39 @@ class QuizController extends Controller
     }
 
     /**
+     * Refuse work on an attempt whose clock has run out.
+     *
+     * Measured forward from the same origin calculateTimeRemaining() uses, so this gate and
+     * the countdown the team sees can never disagree.
+     */
+    private function assertWithinTimeLimit(QuizAttempt $attempt): void
+    {
+        if (! $attempt->questionnaire->time_limit) {
+            return;
+        }
+
+        $timerStart = $attempt->timer_started_at ?? $attempt->started_at;
+        $elapsed = $timerStart->diffInSeconds(now(), false);
+
+        if ($elapsed >= $attempt->questionnaire->time_limit * 60) {
+            throw QuizRuleException::timeExpired();
+        }
+    }
+
+    /**
      * Submit quiz
      */
     public function submit(Request $request)
     {
+        // Check authentication first
+        if (!Auth::check()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Authentication required. Please log in and try again.',
+                'error' => 'unauthenticated'
+            ], 401);
+        }
+
         $request->validate([
             'attempt_id' => 'required|integer',
             'verification_photo' => 'required|string',
@@ -416,7 +530,7 @@ class QuizController extends Controller
                     ->first();
 
                 if (!$attempt || !$attempt->canSubmit()) {
-                    throw new \Exception('Quiz has already been submitted');
+                    throw QuizRuleException::submitted();
                 }
 
                 // Cancel workflow timer
@@ -468,7 +582,9 @@ class QuizController extends Controller
                     'status' => QuizAttempt::STATUS_COMPLETED,
                     'completed_at' => $endTime,
                     'total_score' => $basePoints + $earnedPoints,
-                    'total_time_seconds' => $endTime->diffInSeconds($attempt->started_at),
+                    // Past to future. Carbon 3 returns a SIGNED float, so the reverse
+                    // phrasing — now()->diffInSeconds($past) — writes a negative duration.
+                    'total_time_seconds' => (int) max(0, $attempt->started_at?->diffInSeconds($endTime) ?? 0),
                 ];
 
                 if ($request->verification_photo) {
@@ -496,6 +612,12 @@ class QuizController extends Controller
                 'redirect' => route('quiz.results', ['attemptId' => $result['attempt_id']])
             ]);
 
+        } catch (QuizRuleException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+                'error' => $e->errorKey,
+            ], $e->status);
         } catch (\Exception $e) {
             Log::error('Quiz submit error', [
                 'user_id' => Auth::id(),
@@ -515,6 +637,15 @@ class QuizController extends Controller
      */
     public function timer(Request $request, $attemptId)
     {
+        // Check authentication first
+        if (!Auth::check()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Authentication required. Please log in and try again.',
+                'error' => 'unauthenticated'
+            ], 401);
+        }
+
         try {
             $attempt = QuizAttempt::with('questionnaire')
                 ->where('id', $attemptId)
@@ -549,6 +680,15 @@ class QuizController extends Controller
      */
     public function completeGame(Request $request)
     {
+        // Check authentication first
+        if (!Auth::check()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Authentication required. Please log in and try again.',
+                'error' => 'unauthenticated'
+            ], 401);
+        }
+
         $request->validate([
             'attempt_id' => 'required|integer',
             'question_id' => 'required|integer',
@@ -562,8 +702,12 @@ class QuizController extends Controller
                     ->lockForUpdate()
                     ->first();
 
-                if (!$attempt || !$attempt->canEditAnswers()) {
-                    throw new \Exception('Cannot complete game - quiz has been submitted');
+                if (! $attempt) {
+                    throw QuizRuleException::attemptNotFound();
+                }
+
+                if (! $attempt->canEditAnswers()) {
+                    throw QuizRuleException::submitted();
                 }
 
                 // Load question
@@ -572,7 +716,7 @@ class QuizController extends Controller
                     ->first();
 
                 if (!$question || $question->type !== 'fun_game') {
-                    throw new \Exception('Invalid game question');
+                    throw new QuizRuleException('not_a_game_question', 'That question is not a facilitator-scored game.', 422);
                 }
 
                 // Check if already completed
@@ -590,7 +734,7 @@ class QuizController extends Controller
                             'redirect' => route('game.assessment', ['assessmentId' => $existingAssessment->id])
                         ];
                     } else {
-                        throw new \Exception('Game already completed and assessed');
+                        throw QuizRuleException::gameAlreadyAssessed();
                     }
                 }
 
@@ -626,6 +770,12 @@ class QuizController extends Controller
                 ];
             });
 
+        } catch (QuizRuleException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+                'error' => $e->errorKey,
+            ], $e->status);
         } catch (\Exception $e) {
             Log::error('Complete game error', [
                 'user_id' => Auth::id(),

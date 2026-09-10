@@ -13,6 +13,48 @@ class QuizAttempt extends Model
     public const STATUS_COMPLETED = 'completed';
     public const STATUS_ABANDONED = 'abandoned';
 
+    /**
+     * Fill in the duration whenever an attempt is completed.
+     *
+     * There are several ways an attempt finishes — submit, auto-submit on timeout, the
+     * facilitator's assessment form — and each used to compute the duration itself, so
+     * one of them writing nothing (or a negative) was invisible until a report was run.
+     * Doing it here means every path, including any added later, records the same number.
+     */
+    protected static function booted(): void
+    {
+        static::saving(function (self $attempt) {
+            if ($attempt->status !== self::STATUS_COMPLETED || ! $attempt->started_at) {
+                return;
+            }
+
+            // Respect a value a caller deliberately set, but never keep a nonsensical one.
+            if ($attempt->total_time_seconds > 0) {
+                return;
+            }
+
+            $end = $attempt->completed_at ?? now();
+
+            // Past to future: Carbon 3 diffs are signed floats, and the reverse phrasing
+            // silently yields a negative duration.
+            $attempt->total_time_seconds = (int) max(0, $attempt->started_at->diffInSeconds($end));
+        });
+
+        static::saved(function (self $attempt) {
+            if ($attempt->status === self::STATUS_COMPLETED
+                && ($attempt->wasRecentlyCreated || $attempt->wasChanged('status'))) {
+                RaceSession::maybeFinishFor($attempt->user_id);
+            }
+        });
+    }
+
+    /**
+     * The race clock stops itself once the last counting post is cleared.
+     *
+     * Hooked here rather than in a controller because several paths finish an
+     * attempt — submit, auto-submit on timeout, the facilitator's form — and a rule
+     * about finishing should not depend on which one ran.
+     */
     protected $fillable = [
         'user_id',
         'questionnaire_id',

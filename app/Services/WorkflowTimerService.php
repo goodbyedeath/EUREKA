@@ -195,8 +195,8 @@ class WorkflowTimerService
             
             $questionnaire = $attempt->questionnaire;
             $totalSeconds = $questionnaire->time_limit * 60;
-            $elapsedSeconds = now()->diffInSeconds($attempt->timer_started_at);
-            $remainingSeconds = max(0, $totalSeconds - $elapsedSeconds);
+            $elapsedSeconds = (int) $attempt->timer_started_at->diffInSeconds(now(), false);
+            $remainingSeconds = (int) max(0, $totalSeconds - $elapsedSeconds);
             $percentage = $totalSeconds > 0 ? ($remainingSeconds / $totalSeconds) * 100 : 0;
             
             return [
@@ -227,8 +227,8 @@ class WorkflowTimerService
             
             $timeoutMinutes = $user->session_timeout ?? 5;
             $totalSeconds = $timeoutMinutes * 60;
-            $elapsedSeconds = now()->diffInSeconds($user->last_activity_at);
-            $remainingSeconds = max(0, $totalSeconds - $elapsedSeconds);
+            $elapsedSeconds = (int) $user->last_activity_at->diffInSeconds(now(), false);
+            $remainingSeconds = (int) max(0, $totalSeconds - $elapsedSeconds);
             $percentage = $totalSeconds > 0 ? ($remainingSeconds / $totalSeconds) * 100 : 0;
             
             return [

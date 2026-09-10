@@ -8,7 +8,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
-    <title>@yield('title', config('app.name'))</title>
+    <title>@yield('title', \App\Models\BrandSetting::appName())</title>
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.bunny.net">
@@ -30,7 +30,7 @@
     </script>
     
     <!-- MapLibre GL CSS (CDN) -->
-    <link href="https://unpkg.com/maplibre-gl@latest/dist/maplibre-gl.css" rel="stylesheet">
+    <link href="/vendor/maplibre/4.7.1/maplibre-gl.css" rel="stylesheet">
     
     <!-- AlpineJS -->
     <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
@@ -54,7 +54,8 @@
     </div>
 
     <!-- MapLibre GL JS (CDN) -->
-    <script src="https://unpkg.com/maplibre-gl@latest/dist/maplibre-gl.js"></script>
+    @include('partials.map-config')
+    <script src="/vendor/maplibre/4.7.1/maplibre-gl.js"></script>
     
     <!-- QR Scanner CDN -->
     <script type="module">

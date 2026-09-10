@@ -15,7 +15,7 @@
                     <div class="mb-4">
                         <input type="text" 
                                wire:model.live.debounce.300ms="searchTerm"
-                               placeholder="Search by user name or email..."
+                               placeholder="Search by team name or email..."
                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
                     </div>
                 </div>
@@ -259,7 +259,7 @@
                                 <div>
                                     <label for="deposit" class="block text-sm font-medium text-gray-700">Deposit</label>
                                     <input type="number" 
-                                           wire:model.live="deposit" 
+                                           wire:model.live.debounce.500ms="deposit" 
                                            step="1" 
                                            min="0"
                                            class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
@@ -269,7 +269,7 @@
                                 <div>
                                     <label for="penalty" class="block text-sm font-medium text-gray-700">Penalty</label>
                                     <input type="number" 
-                                           wire:model.live="penalty" 
+                                           wire:model.live.debounce.500ms="penalty" 
                                            step="1" 
                                            min="0"
                                            class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">

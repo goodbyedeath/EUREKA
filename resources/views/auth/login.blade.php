@@ -4,10 +4,10 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>{{ __('Log in') }} - {{ config('app.name', 'EUREKA') }}</title>
+    <title>{{ \App\Models\BrandSetting::title(__('Log in')) }}</title>
     
     <!-- Favicon -->
-    <link rel="icon" type="image/png" href="{{ asset('logo/icon.png') }}">
+    <link rel="icon" type="image/png" href="{{ \App\Models\BrandSetting::iconUrl() }}">
     
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.bunny.net">
@@ -33,9 +33,9 @@
             <div class="flex justify-between h-16">
                 <div class="flex items-center">
                     <div class="flex-shrink-0 flex items-center">
-                        <img src="{{ asset('logo/icon.png') }}" alt="EUREKA Logo" class="w-10 h-10">
+                        <img src="{{ \App\Models\BrandSetting::iconUrl() }}" alt="EUREKA Logo" class="w-10 h-10">
                         <div class="mx-3 text-gray-400 text-2xl font-light">|</div>
-                        <h1 class="text-2xl font-bold text-blue-600 dark:text-blue-400">EUREKA!</h1>
+                        <h1 class="text-2xl font-bold text-blue-600 dark:text-blue-400">{{ \App\Models\BrandSetting::appName() }}</h1>
                     </div>
                 </div>
                 <div class="flex items-center space-x-4">
@@ -76,8 +76,8 @@
             
             <div class="relative z-10 flex flex-col justify-center items-center p-12 text-white text-center">
                 <div class="mb-8">
-                    <img src="{{ asset('logo/icon.png') }}" alt="EUREKA Logo" class="w-20 h-20 mx-auto mb-6 drop-shadow-lg">
-                    <h1 class="text-4xl font-bold mb-4">Welcome to EUREKA!</h1>
+                    <img src="{{ \App\Models\BrandSetting::iconUrl() }}" alt="EUREKA Logo" class="w-20 h-20 mx-auto mb-6 drop-shadow-lg">
+                    <h1 class="text-4xl font-bold mb-4">{{ __('Welcome to') }} {{ \App\Models\BrandSetting::appName() }}</h1>
                     <p class="text-xl text-blue-100 leading-relaxed">
                         Interactive Team Building Platform for Modern Education
                     </p>
@@ -117,14 +117,14 @@
             <div class="w-full max-w-md">
                 <!-- Mobile Logo -->
                 <div class="lg:hidden text-center mb-8">
-                    <img src="{{ asset('logo/icon.png') }}" alt="EUREKA Logo" class="w-16 h-16 mx-auto mb-4">
-                    <h1 class="text-2xl font-bold text-gray-900 dark:text-white">EUREKA!</h1>
+                    <img src="{{ \App\Models\BrandSetting::iconUrl() }}" alt="EUREKA Logo" class="w-16 h-16 mx-auto mb-4">
+                    <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{{ \App\Models\BrandSetting::appName() }}</h1>
                     <p class="text-gray-600 dark:text-gray-300 mt-2">Sign in to your account</p>
                 </div>
 
                 <!-- Desktop Header -->
                 <div class="hidden lg:block text-center mb-8">
-                    <img src="{{ asset('logo/horizonlogo.png') }}" alt="EUREKA Logo" class="w-auto h-auto mb-4">
+                    <img src="{{ \App\Models\BrandSetting::horizontalUrl() }}" alt="EUREKA Logo" class="w-auto h-auto mb-4">
                     <p class="text-gray-600 dark:text-gray-300">Please sign in to your account to login</p>
                 </div>
 

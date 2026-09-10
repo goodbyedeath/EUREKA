@@ -3,26 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin - Eureka</title>
+    <title>{{ \App\Models\BrandSetting::title('Admin') }}</title>
     
     <!-- Favicon -->
-    <link rel="icon" type="image/png" href="{{ asset('favicon.png') }}">
-    <link rel="shortcut icon" type="image/png" href="{{ asset('favicon.png') }}">
+    <link rel="icon" type="image/png" href="{{ \App\Models\BrandSetting::iconUrl() }}">
+    <link rel="shortcut icon" type="image/png" href="{{ \App\Models\BrandSetting::iconUrl() }}">
     
     <!-- PWA Meta Tags -->
-    <link rel="manifest" href="/manifest.json">
+    <link rel="manifest" href="{{ route('pwa.manifest.live') }}">
     <meta name="theme-color" content="#6777ef">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <meta name="apple-mobile-web-app-title" content="Eureka">
-    <link rel="apple-touch-icon" href="/logo.png">
+    <meta name="apple-mobile-web-app-title" content="{{ \App\Models\BrandSetting::appName() }}">
+    <link rel="apple-touch-icon" sizes="192x192" href="{{ \App\Services\BrandIconService::url(192) }}">
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <!-- Panellum 360° Viewer (Local) -->
-    <link rel="stylesheet" href="{{ asset('js/pannellum/pannellum.css') }}">
-    <script src="{{ asset('js/pannellum/pannellum.js') }}"></script>
     
     @livewireStyles
     
@@ -33,8 +31,9 @@
     <script src="{{ asset('js/pwa-installer.js') }}"></script>
     
     <!-- MapLibre GL JS (CDN Fallback) -->
-    <link href="https://unpkg.com/maplibre-gl@latest/dist/maplibre-gl.css" rel="stylesheet">
-    <script src="https://unpkg.com/maplibre-gl@latest/dist/maplibre-gl.js"></script>
+    <link href="/vendor/maplibre/4.7.1/maplibre-gl.css" rel="stylesheet">
+    @include('partials.map-config')
+    <script src="/vendor/maplibre/4.7.1/maplibre-gl.js"></script>
     
     <!-- Fix modal flickering -->
     <style>
@@ -91,15 +90,100 @@
             border-radius: 2px;
         }
         
+        /* No transform here, and none anywhere that wraps page content.
+           A transformed element becomes the containing block for its position:fixed
+           descendants, so a hover lift on this wrapper made every modal inside it
+           position against the card instead of the viewport — and, with overflow-hidden
+           on the same element, get clipped to it. The 0.3s transition then animated that
+           on every mouse move across the page, which is the flicker that was reported.
+           A full-width page container has no business lifting on hover in any case. */
         .admin-card {
-            transition: all 0.3s ease;
+            transition: box-shadow 0.3s ease;
         }
-        
+
         .admin-card:hover {
-            transform: translateY(-2px);
             box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
         }
+
+        /* Set by the sidebar while the drawer is open on a phone. The modal repair layer
+           has its own body.modal-open for dialogs; the drawer is not a dialog and is
+           deliberately excluded from that script, so it locks scrolling itself. */
+        body.nav-drawer-open { overflow: hidden; }
+
+        /* Comfortable touch targets. Pointer-coarse rather than a width query: a small
+           tablet with a mouse does not need them, and a large phone does. */
+        @media (pointer: coarse) {
+            aside nav a,
+            aside nav button { min-height: 2.75rem; }
+        }
     </style>
+    @include('partials.modal-fixes')
+    <script>
+        // Sidebar state lives in a store so the topbar toggle and the rail itself can
+        // share it without nesting. Persisted because a tool used during a live event
+        // should not need re-arranging every time it is opened.
+        document.addEventListener('alpine:init', () => {
+            Alpine.store('adminNav', {
+                open: window.innerWidth >= 1024,
+                groups: {},
+
+                init() {
+                    try {
+                        const raw = localStorage.getItem('adminNav');
+                        if (raw) {
+                            const s = JSON.parse(raw);
+                            // Never restore an open rail onto a phone: it would cover the page.
+                            if (window.innerWidth >= 1024 && typeof s.open === 'boolean') this.open = s.open;
+                            if (s.groups) this.groups = s.groups;
+                        }
+                    } catch (e) { /* private mode, cleared storage — defaults are fine */ }
+                },
+
+                save() {
+                    try {
+                        localStorage.setItem('adminNav', JSON.stringify({ open: this.open, groups: this.groups }));
+                    } catch (e) {}
+                },
+
+                toggle() { this.open = !this.open; this.save(); },
+
+                // Rotating a tablet or dragging a window narrow must not leave an overlay
+                // sitting on top of the page. Widening again restores what was saved.
+                onResize() {
+                    const wide = window.innerWidth >= 1024;
+                    if (!wide && this.open) {
+                        this.open = false;              // not saved: this is the window's doing
+                    } else if (wide && !this.open) {
+                        try {
+                            const raw = localStorage.getItem('adminNav');
+                            this.open = raw ? (JSON.parse(raw).open !== false) : true;
+                        } catch (e) { this.open = true; }
+                    }
+                },
+                close()  { this.open = false; this.save(); },
+
+                // A group with no stored preference follows the page: the category holding
+                // the current page starts open, the rest start closed.
+                isOpen(key, fallback) {
+                    return this.groups[key] === undefined ? fallback : this.groups[key];
+                },
+
+                // The fallback is passed in rather than looked up: the template already
+                // knows whether this group holds the current page, and a DOM lookup here
+                // was reading an attribute that does not exist.
+                toggleGroup(key, fallback) {
+                    this.groups[key] = !this.isOpen(key, fallback);
+                    this.save();
+                },
+            });
+            Alpine.store('adminNav').init();
+            // Debounced: a drag-resize fires this continuously otherwise.
+            let t; window.addEventListener('resize', () => {
+                clearTimeout(t);
+                t = setTimeout(() => Alpine.store('adminNav').onResize(), 150);
+            });
+        });
+    </script>
 </head>
 <body class="bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 min-h-screen transition-colors duration-300">
     <div class="min-h-screen">
@@ -109,12 +193,22 @@
                 <div class="flex justify-between h-16">
                     <!-- Logo & Brand -->
                     <div class="flex items-center">
+                        {{-- Collapsing the rail is the point: the tables and the plan editor
+                             want the whole width. --}}
+                        <button type="button" @click="$store.adminNav.toggle()"
+                                title="Show or hide the sidebar"
+                                class="mr-3 w-9 h-9 rounded-lg bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors">
+                            <i class="fas fa-bars"></i>
+                        </button>
                         <div class="flex items-center space-x-2 bg-white/10 backdrop-blur-sm rounded-lg px-3 py-1.5">
-                            <img src="/logo/horizonlogo.png" alt="Eureka! Performa" class="h-8 w-auto">
+                            <img src="{{ \App\Models\BrandSetting::horizontalUrl() }}" alt="Eureka! Performa" class="h-8 w-auto">
                             <div class="border-l border-white/30 h-6"></div>
                             <div>
+                                {{-- The page title is back here now that the brand lives in the
+                                     sidebar; the topbar says where you are, the rail says what
+                                     else there is. --}}
                                 <h1 class="text-lg font-bold text-white">@yield('page-title', 'Admin Panel')</h1>
-                                <div class="text-xs text-indigo-100">Management System</div>
+                                <div class="text-xs text-indigo-100">Team Building Management System</div>
                             </div>
                         </div>
                     </div>
@@ -162,14 +256,13 @@
                         </div>
                     </div>
                     
-                    <!-- Mobile menu button -->
+                    {{-- This menu holds dark mode, language and the account — not navigation,
+                         which now lives in the rail. Two identical hamburgers side by side on a
+                         phone read as a bug, so this one shows what it actually opens. --}}
                     <div class="md:hidden flex items-center">
-                        <button @click="mobileMenuOpen = !mobileMenuOpen" 
-                                class="text-white/80 hover:text-white hover:bg-white/10 transition-all duration-200 p-1.5 rounded">
-                            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path x-show="!mobileMenuOpen" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-                                <path x-show="mobileMenuOpen" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                            </svg>
+                        <button @click="mobileMenuOpen = !mobileMenuOpen" title="Account and settings"
+                                class="text-white/80 hover:text-white hover:bg-white/10 transition-all duration-200 w-9 h-9 rounded-lg flex items-center justify-center">
+                            <i class="fas" :class="mobileMenuOpen ? 'fa-times' : 'fa-ellipsis-v'"></i>
                         </button>
                     </div>
                 </div>
@@ -237,9 +330,17 @@
             </div>
         </nav>
 
-        <!-- Compact Admin Content Area -->
-        <div class="py-4">
-            <div class="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6">
+        <!-- Sidebar + content. The rail folds away and the page takes the full width. -->
+        {{-- x-data is required even though the state lives in a store: Alpine only walks
+             the tree from a root, so directives on an element with no x-data ancestor are
+             never initialised. Without this the sidebar simply never appeared. --}}
+        <div class="flex" x-data>
+            @include('admin.partials.sidebar')
+
+            <div class="flex-1 min-w-0 py-4">
+                {{-- max-w is generous rather than absent: the rail already takes width,
+                     and an unbounded line length is hard to read on a wide monitor. --}}
+                <div class="max-w-[1600px] mx-auto px-3 sm:px-4 lg:px-6">
                 <!-- Modern Flash Messages -->
                 @if(session('message'))
                     <div class="mb-4 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border-l-4 border-green-400 dark:border-green-500 p-3 rounded-r-lg shadow-sm fade-in">
@@ -267,16 +368,13 @@
                     </div>
                 @endif
 
-                <!-- Card-Based Navigation -->
-                <div class="mb-6">
-                    @include('admin.partials.navigation-cards')
-                </div>
-
                 <!-- Enhanced Main Content -->
-                <div class="admin-card bg-white dark:bg-gray-800 overflow-hidden shadow-lg rounded-xl border border-gray-100 dark:border-gray-700 transition-colors duration-300">
+                {{-- No overflow-hidden: it clips any position:fixed modal a page renders inside it. --}}
+                <div class="admin-card bg-white dark:bg-gray-800 shadow-lg rounded-xl border border-gray-100 dark:border-gray-700 transition-colors duration-300">
                     <div class="p-4 lg:p-6">
                         @yield('content')
                     </div>
+                </div>
                 </div>
             </div>
         </div>
@@ -289,7 +387,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', function() {
-                navigator.serviceWorker.register('/sw.js')
+                navigator.serviceWorker.register('/sw.js?v={{ @filemtime(public_path('sw.js')) ?: 0 }}')
                     .then(function(registration) {
                     })
                     .catch(function(error) {

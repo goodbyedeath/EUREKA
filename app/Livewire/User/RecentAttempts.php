@@ -122,7 +122,7 @@ class RecentAttempts extends Component
                     }
                 } else {
                     // Fallback to client-side calculation
-                    $elapsed = now()->diffInSeconds($attempt->started_at);
+                    $elapsed = ($attempt->timer_started_at ?? $attempt->started_at)->diffInSeconds(now(), false);
                     $timeLimit = $attempt->questionnaire->time_limit * 60;
                     
                     if ($elapsed >= $timeLimit) {
@@ -135,7 +135,7 @@ class RecentAttempts extends Component
                 // Log the error but don't block the user - fallback to client-side calculation
                 \Log::warning("Workflow timer check failed in continueQuiz: " . $e->getMessage());
                 
-                $elapsed = now()->diffInSeconds($attempt->started_at);
+                $elapsed = ($attempt->timer_started_at ?? $attempt->started_at)->diffInSeconds(now(), false);
                 $timeLimit = $attempt->questionnaire->time_limit * 60;
                 
                 if ($elapsed >= $timeLimit) {
@@ -191,7 +191,7 @@ class RecentAttempts extends Component
                         $timerData = $this->workflowTimerService->getQuizRemainingTime($existingAttempt);
                         $isExpired = !$timerData || (isset($timerData['remaining_seconds']) && $timerData['remaining_seconds'] <= 0);
                     } else {
-                        $elapsed = now()->diffInSeconds($existingAttempt->started_at);
+                        $elapsed = ($existingAttempt->timer_started_at ?? $existingAttempt->started_at)->diffInSeconds(now(), false);
                         $timeLimit = $existingAttempt->questionnaire->time_limit * 60;
                         $isExpired = $elapsed >= $timeLimit;
                     }
@@ -199,7 +199,7 @@ class RecentAttempts extends Component
                     // Log error and fallback to client-side calculation
                     \Log::warning("Workflow timer check failed in retakeQuiz: " . $e->getMessage());
                     
-                    $elapsed = now()->diffInSeconds($existingAttempt->started_at);
+                    $elapsed = ($existingAttempt->timer_started_at ?? $existingAttempt->started_at)->diffInSeconds(now(), false);
                     $timeLimit = $existingAttempt->questionnaire->time_limit * 60;
                     $isExpired = $elapsed >= $timeLimit;
                 }
@@ -330,7 +330,7 @@ class RecentAttempts extends Component
                     }
                 } else {
                     // Fallback to client-side calculation
-                    $elapsed = now()->diffInSeconds($attempt->started_at);
+                    $elapsed = ($attempt->timer_started_at ?? $attempt->started_at)->diffInSeconds(now(), false);
                     $timeLimit = $attempt->questionnaire->time_limit * 60;
                     
                     if ($elapsed >= $timeLimit) {
@@ -341,7 +341,7 @@ class RecentAttempts extends Component
                 // Log error but don't block user - fallback to client-side calculation
                 \Log::warning("Workflow timer check failed in canContinueAttempt: " . $e->getMessage());
                 
-                $elapsed = now()->diffInSeconds($attempt->started_at);
+                $elapsed = ($attempt->timer_started_at ?? $attempt->started_at)->diffInSeconds(now(), false);
                 $timeLimit = $attempt->questionnaire->time_limit * 60;
                 
                 if ($elapsed >= $timeLimit) {
@@ -382,7 +382,7 @@ class RecentAttempts extends Component
                 }
             } else {
                 // Fallback to client-side calculation
-                $elapsed = now()->diffInSeconds($attempt->started_at);
+                $elapsed = ($attempt->timer_started_at ?? $attempt->started_at)->diffInSeconds(now(), false);
                 $timeLimit = $attempt->questionnaire->time_limit * 60;
                 $remaining = $timeLimit - $elapsed;
 
@@ -403,7 +403,7 @@ class RecentAttempts extends Component
             // Log error and fallback to client-side calculation
             \Log::warning("Workflow timer check failed in getTimeRemaining: " . $e->getMessage());
             
-            $elapsed = now()->diffInSeconds($attempt->started_at);
+            $elapsed = ($attempt->timer_started_at ?? $attempt->started_at)->diffInSeconds(now(), false);
             $timeLimit = $attempt->questionnaire->time_limit * 60;
             $remaining = $timeLimit - $elapsed;
 

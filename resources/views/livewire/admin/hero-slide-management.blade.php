@@ -1,4 +1,6 @@
 <div class="space-y-6">
+
+    @unless($showForm)
     <!-- Success Message -->
     @if (session()->has('success'))
         <div class="bg-green-100 dark:bg-green-800 border border-green-400 dark:border-green-600 text-green-700 dark:text-green-200 px-4 py-3 rounded relative" role="alert">
@@ -61,7 +63,7 @@
                         
                         <div class="mb-3">
                             <h3 class="text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">{{ $slide->title }}</h3>
-                            <p class="text-xs text-gray-500 dark:text-gray-400">{{ Str::limit($slide->subtitle, 50) }}</p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400">{{ Str::limit($slide->subtitle ?? "", 50) }}</p>
                         </div>
                         
                         <div class="mb-3">
@@ -132,7 +134,7 @@
                                     <div class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ $slide->title }}</div>
                                 </td>
                                 <td class="px-6 py-4">
-                                    <div class="text-sm text-gray-500 dark:text-gray-400">{{ Str::limit($slide->subtitle, 100) }}</div>
+                                    <div class="text-sm text-gray-500 dark:text-gray-400">{{ Str::limit($slide->subtitle ?? "", 100) }}</div>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <div class="flex items-center">
@@ -195,13 +197,25 @@
         @endif
     </div>
 
+    @endunless
+
     <!-- Form Modal -->
     @if($showForm)
-        <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50" 
-             wire:key="modal-{{ $editingSlide ? $editingSlide->id : 'new' }}">
-            <div class="relative top-20 mx-auto p-5 border border-gray-300 dark:border-gray-600 w-11/12 max-w-4xl shadow-lg rounded-md bg-white dark:bg-gray-800"
-                 wire:loading.class="opacity-75 pointer-events-none"
-                 wire:target="saveSlide,closeForm,removeBackgroundImage">
+    {{-- Not a modal. Twenty fields is a page, not a dialog: as an overlay this sat
+         below the fold on a phone with its save button out of reach, and there was
+         no way back except finding the X. --}}
+    <div class="mb-4">
+        <button type="button" wire:click="closeForm"
+                class="inline-flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100">
+            &larr; Back to slides
+        </button>
+    </div>
+    {{-- The form kept the modal's fields but lost the modal's panel when it became
+         a page, so it sat on the raw background. This is that container. --}}
+    <div class="max-w-4xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm p-5 sm:p-6"
+         wire:key="form-{{ $editingSlide ? $editingSlide->id : 'new' }}"
+         wire:loading.class="opacity-75 pointer-events-none"
+         wire:target="saveSlide,closeForm,removeBackgroundImage">
                 <div class="mt-3">
                     <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">
                         {{ $editingSlide ? 'Edit Hero Slide' : 'Create New Hero Slide' }}
@@ -211,19 +225,25 @@
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <!-- Title -->
                             <div class="md:col-span-2">
-                                <label for="title" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Title</label>
-                                <input type="text" wire:model="title" id="title" 
+                                <label for="title" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                    Title
+                                    <span class="text-gray-500 dark:text-gray-400 font-normal">(Optional)</span>
+                                </label>
+                                <input type="text" wire:model="title" id="title"
                                        class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition-colors duration-200"
-                                       placeholder="Enter slide title">
+                                       placeholder="Enter slide title (optional)">
                                 @error('title') <span class="text-red-500 dark:text-red-400 text-sm">{{ $message }}</span> @enderror
                             </div>
 
                             <!-- Subtitle -->
                             <div class="md:col-span-2">
-                                <label for="subtitle" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Subtitle</label>
+                                <label for="subtitle" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                    Subtitle
+                                    <span class="text-gray-500 dark:text-gray-400 font-normal">(Optional)</span>
+                                </label>
                                 <textarea wire:model="subtitle" id="subtitle" rows="3"
                                           class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition-colors duration-200"
-                                          placeholder="Enter slide subtitle"></textarea>
+                                          placeholder="Enter slide subtitle (optional)"></textarea>
                                 @error('subtitle') <span class="text-red-500 dark:text-red-400 text-sm">{{ $message }}</span> @enderror
                             </div>
 
@@ -252,9 +272,47 @@
 
                             <div>
                                 <label for="secondary_button_url" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Secondary Button URL (Optional)</label>
-                                <input type="text" wire:model="secondary_button_url" id="secondary_button_url" 
+                                <input type="text" wire:model="secondary_button_url" id="secondary_button_url"
                                        class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition-colors duration-200">
                                 @error('secondary_button_url') <span class="text-red-500 dark:text-red-400 text-sm">{{ $message }}</span> @enderror
+                            </div>
+
+                            <!-- Button Style -->
+                            <div class="md:col-span-2">
+                                <label for="button_style" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Button Style</label>
+                                <div class="grid grid-cols-3 gap-4">
+                                    <div>
+                                        <input type="radio" wire:model="button_style" id="style_solid" value="solid" class="peer sr-only">
+                                        <label for="style_solid" class="flex flex-col items-center justify-center p-4 bg-white dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer peer-checked:border-blue-600 peer-checked:bg-blue-50 dark:peer-checked:bg-blue-900/20 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all">
+                                            <div class="w-full h-10 mb-2 bg-blue-600 rounded-md flex items-center justify-center text-white text-sm font-semibold">
+                                                Solid
+                                            </div>
+                                            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Solid Button</span>
+                                        </label>
+                                    </div>
+
+                                    <div>
+                                        <input type="radio" wire:model="button_style" id="style_outline" value="outline" class="peer sr-only">
+                                        <label for="style_outline" class="flex flex-col items-center justify-center p-4 bg-white dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer peer-checked:border-blue-600 peer-checked:bg-blue-50 dark:peer-checked:bg-blue-900/20 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all">
+                                            <div class="w-full h-10 mb-2 bg-transparent border-2 border-blue-600 rounded-md flex items-center justify-center text-blue-600 text-sm font-semibold">
+                                                Outline
+                                            </div>
+                                            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Outline Button</span>
+                                        </label>
+                                    </div>
+
+                                    <div>
+                                        <input type="radio" wire:model="button_style" id="style_glass" value="glass" class="peer sr-only">
+                                        <label for="style_glass" class="flex flex-col items-center justify-center p-4 bg-white dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer peer-checked:border-blue-600 peer-checked:bg-blue-50 dark:peer-checked:bg-blue-900/20 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all">
+                                            <div class="w-full h-10 mb-2 backdrop-blur-md bg-white/20 border border-white/30 rounded-md flex items-center justify-center text-gray-800 dark:text-white text-sm font-semibold shadow-lg">
+                                                Glass
+                                            </div>
+                                            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Glass Button</span>
+                                        </label>
+                                    </div>
+                                </div>
+                                @error('button_style') <span class="text-red-500 dark:text-red-400 text-sm">{{ $message }}</span> @enderror
+                                <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">Choose the visual style for your buttons</p>
                             </div>
 
                             <!-- Background Image Upload -->
@@ -286,14 +344,15 @@
                                     </div>
                                 @endif
                                 
-                                <!-- Show preview of new upload -->
+                                {{-- No thumbnail before saving. Livewire's preview URL carries its signature in the
+                                     query string, and this host's image optimisation re-fetches any path ending in an
+                                     image extension without it, so the request arrives unsigned and 401s. The upload
+                                     itself is unaffected — the file saves and is shown from /storage afterwards. --}}
                                 @if($background_image)
-                                    <div class="mt-3" wire:ignore.self>
-                                        <p class="text-sm text-gray-600 dark:text-gray-400 mb-2">Preview of new image:</p>
-                                        <img src="{{ $background_image->temporaryUrl() }}" 
-                                             alt="Preview" 
-                                             class="h-20 w-32 object-cover rounded-lg border border-gray-300">
-                                    </div>
+                                    <p class="mt-3 text-sm text-gray-600 dark:text-gray-400">
+                                        <i class="fas fa-image text-gray-400 mr-1"></i>
+                                        New image ready to save: {{ $background_image->getClientOriginalName() }}
+                                    </p>
                                 @endif
                                 
                                 <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">Upload an image to use as background. If no image is uploaded, the gradient background will be used. Max size: 2MB.</p>
@@ -421,7 +480,6 @@
                             </button>
                         </div>
                     </form>
-                </div>
             </div>
         </div>
     @endif

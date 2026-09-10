@@ -3,11 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Team Locations - Kiosk</title>
+    <title>{{ \App\Models\BrandSetting::title('Team Locations') }}</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet">
-    <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
+    <link href="/vendor/maplibre/3.6.2/maplibre-gl.css" rel="stylesheet">
+    @include('partials.map-config')
+    <script src="/vendor/maplibre/3.6.2/maplibre-gl.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
         body { font-family: 'Inter', sans-serif; }
@@ -19,16 +20,16 @@
         }
         
         .team-marker {
-            width: 40px;
-            height: 40px;
+            width: 28px;
+            height: 28px;
             border-radius: 50%;
-            border: 3px solid #fff;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            border: 2px solid #fff;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
             display: flex;
             align-items: center;
             justify-content: center;
             font-weight: bold;
-            font-size: 14px;
+            font-size: 12px;
             color: white;
             cursor: pointer;
             transition: transform 0.2s ease;
@@ -259,16 +260,16 @@
                 markers.push(marker);
             });
             
-            // Fit map to show all markers
-            if (markers.length > 0) {
-                const bounds = new maplibregl.LngLatBounds();
-                teamsData.teams.forEach(team => {
-                    if (team.location) {
-                        bounds.extend([team.location.longitude, team.location.latitude]);
-                    }
-                });
-                map.fitBounds(bounds, { padding: 50 });
-            }
+            // Don't auto zoom - let user control the map view
+            // if (markers.length > 0) {
+            //     const bounds = new maplibregl.LngLatBounds();
+            //     teamsData.teams.forEach(team => {
+            //         if (team.location) {
+            //             bounds.extend([team.location.longitude, team.location.latitude]);
+            //         }
+            //     });
+            //     map.fitBounds(bounds, { padding: 50 });
+            // }
         }
         
         // Update team list in sidebar
@@ -292,7 +293,7 @@
                     <div class="team-list-item p-4 bg-white rounded-lg shadow-sm border cursor-pointer hover:border-blue-300 transition-all" 
                          onclick="focusTeam(${team.location.latitude}, ${team.location.longitude})">
                         <div class="flex items-center mb-2">
-                            <div class="w-6 h-6 rounded-full mr-3 flex items-center justify-center text-white text-xs font-bold" 
+                            <div class="w-5 h-5 rounded-full mr-3 flex items-center justify-center text-white text-xs font-bold"
                                  style="background-color: ${color}">
                                 ${team.name.charAt(0).toUpperCase()}
                             </div>
@@ -373,7 +374,7 @@
         initMap();
         
         // Auto-refresh every 5 seconds
-        setInterval(fetchTeamLocations, 5000);
+        setInterval(fetchTeamLocations, 10000);
         
         // Update time display more frequently
         setInterval(() => {

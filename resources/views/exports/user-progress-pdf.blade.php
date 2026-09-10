@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
-    <title>Laporan Kemajuan Pengguna EUREKA</title>
+    <title>Laporan Kemajuan Pengguna {{ \App\Models\BrandSetting::appName() }}</title>
     <style>
         @page {
             margin: 180px 50px 120px 50px;
@@ -472,9 +472,9 @@
         <div class="header-content">
             <div class="header-left">
                 <div class="logo-section">
-                    <img src="{{ public_path('logo/horizonlogo.png') }}" alt="EUREKA LMS">
+                    <img src="{{ \App\Models\BrandSetting::horizontalFile() }}" alt="{{ \App\Models\BrandSetting::appName() }}">
                 </div>
-                <div class="company-name">EUREKA LMS</div>
+                <div class="company-name">{{ \App\Models\BrandSetting::appName() }}</div>
                 <div class="company-tagline">Platform Manajemen Pembelajaran & Analitik</div>
             </div>
             <div class="header-right">
@@ -497,7 +497,7 @@
     <footer>
         <div class="footer-content">
             <div class="footer-left">
-                <strong>Sistem Manajemen Pembelajaran EUREKA</strong><br>
+                <strong>Sistem Manajemen Pembelajaran {{ \App\Models\BrandSetting::appName() }}</strong><br>
                 Platform Analitik Pendidikan<br>
                 <div class="footer-divider"></div>
                 <strong>Info Laporan:</strong> {{ count($users) }} Pengguna | Periode {{ $filters['selectedTimeframe'] }} Hari

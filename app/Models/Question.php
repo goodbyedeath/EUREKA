@@ -1,6 +1,8 @@
 <?php
 namespace App\Models;
 
+use Illuminate\Support\Facades\Cache;
+
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -8,6 +10,18 @@ use App\Services\AnswerValidationService;
 
 class Question extends Model
 {
+    /**
+     * Editing a question does not touch the questionnaire row, so the parent's cached copy
+     * — which is loaded `with('questions')` — would otherwise keep serving the old wording,
+     * options or points for an hour.
+     */
+    protected static function booted(): void
+    {
+        $forget = fn (self $q) => Cache::forget(Questionnaire::apiCacheKey((int) $q->questionnaire_id));
+        static::saved($forget);
+        static::deleted($forget);
+    }
+
     protected $fillable = [
         'questionnaire_id',
         'question',

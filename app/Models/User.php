@@ -4,10 +4,11 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
-    use HasFactory, Notifiable;
+    use HasApiTokens, HasFactory, Notifiable;
 
     protected $fillable = [
         'name',
@@ -186,6 +187,75 @@ class User extends Authenticatable
     /**
      * Get session timeout in seconds
      */
+    /**
+     * Admin-granted access window.
+     *
+     * `session_timeout` is the length of the grant, in seconds. `session_expired_at`
+     * is when the current grant runs out — it stays NULL until the user's first
+     * login, so the clock starts when they actually begin, not when the admin sets
+     * it. Once it passes, the account is locked out until an admin grants again
+     * (which clears `session_expired_at` back to NULL).
+     */
+    public function hasAccessWindow(): bool
+    {
+        return $this->role === 'user' && $this->session_timeout !== null;
+    }
+
+    public function accessWindowExpired(): bool
+    {
+        return $this->hasAccessWindow()
+            && $this->session_expired_at !== null
+            && $this->session_expired_at->isPast();
+    }
+
+    /**
+     * Start the clock on first login. Deliberately does nothing if the window is
+     * already running, so logging out and back in cannot buy more time.
+     */
+    public function startAccessWindow(): void
+    {
+        if ($this->hasAccessWindow() && $this->session_expired_at === null) {
+            $this->forceFill([
+                'session_expired_at' => now()->addSeconds($this->session_timeout),
+            ])->save();
+        }
+    }
+
+    /**
+     * Re-grant access: clears the expiry so the next login starts a fresh window.
+     */
+    public function grantAccessWindow(?int $seconds): void
+    {
+        $this->forceFill([
+            'session_timeout' => $seconds,
+            'session_expired_at' => null,
+        ])->save();
+    }
+
+    /**
+     * Short status for the admin list, so it is obvious who is locked out.
+     */
+    public function accessWindowStatus(): array
+    {
+        if (! $this->hasAccessWindow()) {
+            return ['label' => 'Unlimited', 'tone' => 'green'];
+        }
+
+        if ($this->session_expired_at === null) {
+            return ['label' => 'Not started', 'tone' => 'blue'];
+        }
+
+        if ($this->accessWindowExpired()) {
+            return ['label' => 'Expired — locked', 'tone' => 'red'];
+        }
+
+        return ['label' => 'Ends ' . $this->session_expired_at->diffForHumans(), 'tone' => 'yellow'];
+    }
+
+    public function accessWindowEndsAt(): ?\Illuminate\Support\Carbon
+    {
+        return $this->hasAccessWindow() ? $this->session_expired_at : null;
+    }
     public function getSessionTimeout(): ?int
     {
         return $this->session_timeout;

@@ -319,10 +319,18 @@ class SessionTimeout {
             this.updateTimerDisplay();
         }, 1000);
         
-        // Also sync with server every 30 seconds
-        this.syncIntervalId = setInterval(() => {
-            this.syncWithServer();
-        }, 30000);
+        // Removed: a 30-second poll of /api/user/session-status.
+        //
+        // It asked "am I still logged in?" and did nothing with the answer except log out
+        // when it was no. But an expired session already announces itself on the next real
+        // request: `access.window` answers 403 with `access_window_expired`, and
+        // network-monitor picks that up. The poll paid two requests a minute, on every
+        // team page, to learn something the app is told for free the moment it matters.
+        //
+        // At a venue that was two requests a minute times every team, from one shared
+        // address, forever — the shape of traffic that trips a host's rate limiter.
+        //
+        // The countdown display is unaffected: it runs locally off `sessionTimeout`.
     }
     
     updateTimerDisplay() {

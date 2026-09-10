@@ -11,7 +11,7 @@
         <meta name="user-id" content="{{ auth()->user()->id }}">
     @endauth
     
-    <title>Quiz - {{ config('app.name', 'Laravel') }}</title>
+    <title>{{ \App\Models\BrandSetting::title('Quiz') }}</title>
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.bunny.net">
@@ -130,5 +130,7 @@
     <script src="{{ asset('js/camera-capture.js') }}"></script>
     
     @stack('scripts')
+    @include('partials.service-worker')
+    @include('partials.resource-loader')
 </body>
 </html>

@@ -109,7 +109,7 @@ class DashboardStats extends Component
         foreach ($assessmentGains as $assessment) {
             // Assessment gain = total_deposit - base_points_used
             $assessmentGain = ($assessment->total_deposit ?? 0) - $basePoints;
-            $totalGainedPoints += max(0, $assessmentGain);
+            $totalGainedPoints += $assessmentGain;
         }
         
         // Load team information
@@ -183,7 +183,7 @@ class DashboardStats extends Component
         foreach ($assessments as $assessment) {
             // Bonus from assessment = total_deposit - base_points_used_in_assessment
             $assessmentBonus = ($assessment->total_deposit ?? 0) - $basePoints;
-            $totalBonusFromAssessments += max(0, $assessmentBonus); // Don't count negative as bonus
+            $totalBonusFromAssessments += $assessmentBonus; // Negative = net penalty
         }
         
         return $totalBonusFromAssessments;

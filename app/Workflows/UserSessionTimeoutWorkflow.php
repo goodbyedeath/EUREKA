@@ -15,9 +15,9 @@ class UserSessionTimeoutWorkflow extends Workflow
      *
      * @param int $userId
      * @param int $timeoutMinutes
-     * @return string
+     * @return \Generator the workflow's final value is read with getReturn()
      */
-    public function execute(int $userId, int $timeoutMinutes = 5): string
+    public function execute(int $userId, int $timeoutMinutes = 5): \Generator
     {
         Log::info("Starting session timeout workflow for user {$userId} with {$timeoutMinutes} minutes timeout");
 
@@ -40,7 +40,11 @@ class UserSessionTimeoutWorkflow extends Workflow
         // Check last activity time
         $lastActivityTime = $user->last_activity_at ?? $user->updated_at;
         $currentTime = WorkflowStub::now();
-        $timeSinceLastActivity = $currentTime->diffInSeconds($lastActivityTime);
+        // Carbon 3 returns a SIGNED difference and no longer takes the absolute value.
+        // now->diffInSeconds(past) is negative, so `< $timeoutSeconds` was always true and
+        // this workflow re-armed itself forever — the logout branch below was unreachable
+        // and no session has ever timed out. Read past->diffInSeconds(now, false) instead.
+        $timeSinceLastActivity = $lastActivityTime->diffInSeconds($currentTime, false);
         
         Log::info("User {$userId} last activity was {$timeSinceLastActivity} seconds ago");
         

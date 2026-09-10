@@ -1,7 +1,13 @@
-<div class="bg-white border rounded-lg p-4 sm:p-6 shadow-sm">
+<div class="bg-white border rounded-lg p-4 sm:p-6 shadow-sm transition-all duration-300" id="question-form" x-data="{ editing: @entangle('isEditing') }">
     <h3 class="text-lg font-medium mb-4 text-gray-900">
         @if($isEditing)
-            Edit Question
+            <div class="flex items-center">
+                <svg class="w-5 h-5 mr-2 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                </svg>
+                <span>Edit Question</span>
+                <span class="ml-2 px-2 py-1 text-xs font-medium bg-indigo-100 text-indigo-800 rounded-full">Editing Mode</span>
+            </div>
         @else
             Add New Question
         @endif
@@ -17,6 +23,17 @@
     @if (session()->has('questions_error'))
         <div class="mb-4 p-4 bg-red-50 border border-red-200 rounded-md">
             <p class="text-sm text-red-800">{{ session('questions_error') }}</p>
+        </div>
+    @endif
+
+    @if (session()->has('questions_warning'))
+        <div class="mb-4 p-4 bg-amber-50 border border-amber-400 rounded-md animate-pulse">
+            <div class="flex items-start">
+                <svg class="w-5 h-5 text-amber-600 mr-2 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+                </svg>
+                <p class="text-sm text-amber-800 font-medium">{{ session('questions_warning') }}</p>
+            </div>
         </div>
     @endif
     
@@ -271,8 +288,12 @@
                                 @foreach($uploadedImages as $index => $uploadedImage)
                                     @if($uploadedImage)
                                         <div class="relative group">
-                                            <div class="aspect-square bg-gray-100 rounded-lg overflow-hidden">
-                                                <img src="{{ $uploadedImage->temporaryUrl() }}" alt="Uploaded image {{ $index + 1 }}" class="w-full h-full object-cover">
+                                            {{-- Filename, not a thumbnail: the signed preview URL is
+                                                 stripped of its query string by this host's image
+                                                 optimisation and 401s. The upload still works. --}}
+                                            <div class="aspect-square bg-gray-100 rounded-lg flex flex-col items-center justify-center p-2 text-center">
+                                                <i class="fas fa-image text-gray-400 text-2xl"></i>
+                                                <p class="mt-2 text-xs text-gray-600 break-all line-clamp-3">{{ $uploadedImage->getClientOriginalName() }}</p>
                                             </div>
                                             <button 
                                                 type="button" 
@@ -359,7 +380,7 @@
                         id="brief-description"
                         wire:model="newQuestion.description" 
                         rows="3"
-                        placeholder="Enter additional guidance or context for users filling out this feedback..."
+                        placeholder="Enter additional guidance or context for teams filling out this feedback..."
                         maxlength="1000"
                         class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 transition-colors duration-200"
                     ></textarea>
@@ -481,4 +502,24 @@
             </button>
         </div>
     </form>
+
+    <script>
+        document.addEventListener('livewire:init', () => {
+            Livewire.on('question-loaded-for-edit', () => {
+                const formElement = document.getElementById('question-form');
+                if (formElement) {
+                    // Scroll to form smoothly
+                    formElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+                    // Add visual highlight effect
+                    formElement.classList.add('ring-4', 'ring-indigo-300', 'ring-opacity-50');
+
+                    // Remove highlight after 2 seconds
+                    setTimeout(() => {
+                        formElement.classList.remove('ring-4', 'ring-indigo-300', 'ring-opacity-50');
+                    }, 2000);
+                }
+            });
+        });
+    </script>
 </div>

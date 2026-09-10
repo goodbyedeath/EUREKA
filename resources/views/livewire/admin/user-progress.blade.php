@@ -2,8 +2,8 @@
     <!-- Enhanced Page Header -->
     <div class="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4">
         <div>
-            <h2 class="text-2xl font-bold text-gray-900 dark:text-gray-100">User Progress Analytics</h2>
-            <p class="text-gray-600 dark:text-gray-400">Track and analyze user learning progress and performance</p>
+            <h2 class="text-2xl font-bold text-gray-900 dark:text-gray-100">Team Progress Analytics</h2>
+            <p class="text-gray-600 dark:text-gray-400">Track and analyze team learning progress and performance</p>
         </div>
         
         <!-- Enhanced Filters -->
@@ -12,7 +12,7 @@
             <div class="relative">
                 <input type="text" 
                        wire:model.live.debounce.300ms="searchTerm" 
-                       placeholder="Search users..."
+                       placeholder="Search teams..."
                        class="pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm transition-colors duration-200">
                 <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <i class="fas fa-search text-gray-400 dark:text-gray-500 text-sm"></i>
@@ -36,7 +36,7 @@
                 </select>
                 
                 <select wire:model.live="selectedRole" class="text-sm rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 transition-colors duration-200">
-                    <option value="user">Regular Users</option>
+                    <option value="user">Teams</option>
                     <option value="admin">Admins</option>
                     <option value="all">All Roles</option>
                 </select>
@@ -63,7 +63,7 @@
                     <i class="fas fa-users text-blue-600 dark:text-blue-400 text-lg"></i>
                 </div>
                 <div class="ml-4">
-                    <p class="text-xs lg:text-sm font-medium text-gray-600 dark:text-gray-400">Total Users</p>
+                    <p class="text-xs lg:text-sm font-medium text-gray-600 dark:text-gray-400">Total Teams</p>
                     <p class="text-xl lg:text-2xl font-bold text-gray-900 dark:text-gray-100">{{ number_format($totalUsers) }}</p>
                 </div>
             </div>
@@ -75,7 +75,7 @@
                     <i class="fas fa-user-check text-green-600 dark:text-green-400 text-lg"></i>
                 </div>
                 <div class="ml-4">
-                    <p class="text-xs lg:text-sm font-medium text-gray-600 dark:text-gray-400">Active Users</p>
+                    <p class="text-xs lg:text-sm font-medium text-gray-600 dark:text-gray-400">Active Teams</p>
                     <p class="text-xl lg:text-2xl font-bold text-gray-900 dark:text-gray-100">{{ number_format($activeUsers) }}</p>
                 </div>
             </div>
@@ -198,7 +198,7 @@
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow transition-colors duration-200">
         <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 transition-colors duration-200">
             <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">Feedback & Debrief Responses</h3>
-            <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">User feedback and debrief answers from questionnaires</p>
+            <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Team feedback and debrief answers from questionnaires</p>
         </div>
         <div class="p-6">
             <div class="overflow-hidden">
@@ -254,9 +254,9 @@
     <!-- Enhanced User Progress Table -->
     <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
         <div class="px-4 lg:px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">User Progress Details</h3>
+            <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">Team Progress Details</h3>
             <div class="flex items-center gap-3 text-sm text-gray-500 dark:text-gray-400">
-                <span>{{ $userProgressData->count() }} users</span>
+                <span>{{ $userProgressData->count() }} teams</span>
                 <div class="flex items-center gap-1">
                     <span>Sort by:</span>
                     <select wire:model.live="sortField" class="text-xs border-gray-300 dark:border-gray-600 rounded focus:ring-indigo-500 focus:border-indigo-500">
@@ -370,7 +370,7 @@
             <table class="min-w-full divide-y divide-gray-200">
                 <thead class="bg-gray-50 dark:bg-gray-700">
                     <tr>
-                        <th class="px-4 xl:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">User</th>
+                        <th class="px-4 xl:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Team</th>
                         <th class="px-4 xl:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Team</th>
                         <th class="px-4 xl:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Attempts</th>
                         <th class="px-4 xl:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Completion Rate</th>
@@ -400,7 +400,7 @@
                                     @endif
                                     <button wire:click="showUserDetail({{ $user['id'] }})" 
                                             class="ml-1 p-1 text-blue-400 hover:text-blue-600 dark:text-blue-400 transition-colors"
-                                            title="View User Progress Details">
+                                            title="View Team Progress Details">
                                         <i class="fas fa-chart-line text-xs"></i>
                                     </button>
                                 </div>
@@ -627,7 +627,7 @@
                                                 <table class="min-w-full text-sm">
                                                     <thead>
                                                         <tr class="text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                                                            <th class="pb-2">User</th>
+                                                            <th class="pb-2">Team</th>
                                                             <th class="pb-2">Status</th>
                                                             <th class="pb-2">Started</th>
                                                             <th class="pb-2">Completed</th>
@@ -1072,7 +1072,7 @@
                                 <i class="fas fa-sticky-note text-gray-400 text-2xl"></i>
                             </div>
                             <h4 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">No Assessment Notes</h4>
-                            <p class="text-gray-500 dark:text-gray-400">This user doesn't have any assessment notes in the selected timeframe.</p>
+                            <p class="text-gray-500 dark:text-gray-400">This team doesn't have any assessment notes in the selected timeframe.</p>
                         </div>
                     @endif
                 </div>
@@ -1163,7 +1163,7 @@
                     <div class="text-center py-8 text-gray-500 dark:text-gray-400">
                         <i class="fas fa-camera text-4xl mb-4"></i>
                         <p>No verification photos found</p>
-                        <p class="text-sm">Photos are captured when users submit fun game assessments</p>
+                        <p class="text-sm">Photos are captured when teams submit fun game assessments</p>
                     </div>
                 </template>
             </div>

@@ -287,12 +287,52 @@ export default function (Alpine) {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'Accept': 'application/json'
                     },
                     body: JSON.stringify({ qr_code: code })
                 });
 
+                // Check if response is HTML (login page redirect)
+                const contentType = response.headers.get('content-type');
+                if (contentType && contentType.includes('text/html')) {
+                    console.error('Received HTML response instead of JSON - likely redirected to login');
+                    this.error = 'Session expired. Please refresh the page and log in again.';
+                    this.questionnaire = null;
+                    this.questionnaireId = null;
+
+                    // Reload page after 2 seconds
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 2000);
+                    return;
+                }
+
                 const result = await response.json();
+
+                // Handle authentication errors
+                if (response.status === 401 || result.error === 'unauthenticated') {
+                    this.error = 'Session expired. Please refresh the page and log in again.';
+                    this.questionnaire = null;
+                    this.questionnaireId = null;
+
+                    // Reload page after 2 seconds
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 2000);
+                    return;
+                }
+
+                // The START code is not a quiz. It comes back as its own type with a
+                // redirect, and the branch below assumes result.questionnaire exists — so
+                // without this, scanning START at the start line threw a TypeError and the
+                // scanner simply died with no message.
+                if (result.success && result.type === 'race_start' && result.redirect) {
+                    this.error = '';
+                    this.closeModal();
+                    window.location.href = result.redirect;
+                    return;
+                }
 
                 if (result.success) {
                     this.questionnaire = result.questionnaire;
@@ -322,7 +362,19 @@ export default function (Alpine) {
                 }
             } catch (error) {
                 console.error('QR Scanner error:', error);
-                this.error = 'An error occurred while processing the QR code. Please try again.';
+
+                // Check if error is JSON parsing error (HTML response)
+                if (error.message && error.message.includes('JSON')) {
+                    this.error = 'Session expired. Please refresh the page and log in again.';
+
+                    // Reload page after 2 seconds
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 2000);
+                } else {
+                    this.error = 'An error occurred while processing the QR code. Please try again.';
+                }
+
                 this.questionnaire = null;
                 this.questionnaireId = null;
             }

@@ -12,17 +12,12 @@
             <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300">
                 <!-- Game Image -->
                 <div class="relative h-48">
-                    @if($game->image_path)
-                        <img src="{{ Storage::url($game->image_path) }}" alt="{{ $game->name }}"
-                             class="w-full h-full object-cover">
-                    @else
                         <div class="w-full h-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center">
                             <svg class="w-16 h-16 text-white opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 0 1-2.827 0l-4.244-4.243a8 8 0 1 1 11.314 0z"></path>
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 1 1-6 0 3 3 0 0 1 6 0z"></path>
                             </svg>
                         </div>
-                    @endif
 
                     <!-- Status Indicator -->
                     <div class="absolute top-3 right-3">
@@ -31,17 +26,6 @@
                         </span>
                     </div>
 
-                    <!-- Map Badge -->
-                    @if($game->map_image_path)
-                    <div class="absolute bottom-3 left-3">
-                        <span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-blue-600 dark:bg-blue-700 text-white">
-                            <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"></path>
-                            </svg>
-                            360° View
-                        </span>
-                    </div>
-                    @endif
                 </div>
 
                 <!-- Game Info -->
@@ -61,9 +45,12 @@
                     </div>
 
                     <!-- Action Button -->
-                    <a href="{{ route('user.panorama.view', $game->id) }}" target="_blank"
-                       class="w-full bg-blue-600 dark:bg-blue-700 hover:bg-blue-700 dark:hover:bg-blue-800 text-white py-2 px-4 rounded-lg text-sm font-medium transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 inline-block text-center">
-                        {{ __('games.view_details') }}
+                    {{-- usesAr() needs both the flag and an uploaded model, so a half-set-up
+                         outpost sends
+                         them elsewhere rather than open an empty camera. --}}
+                    <a href="{{ route('user.ar.view', $game->id) }}"
+                       class="w-full {{ $game->usesAr() ? 'bg-purple-600 dark:bg-purple-700 hover:bg-purple-700 dark:hover:bg-purple-800 focus:ring-purple-500' : 'bg-blue-600 dark:bg-blue-700 hover:bg-blue-700 dark:hover:bg-blue-800 focus:ring-blue-500' }} text-white py-2 px-4 rounded-lg text-sm font-medium transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 inline-block text-center">
+                        <i class="fas fa-cube mr-1"></i>{{ __('View in 3D') }}
                     </a>
                 </div>
             </div>

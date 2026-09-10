@@ -5,10 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     
-    <title>{{ isset($title) ? $title . ' - ' : '' }}{{ config('app.name', 'EUREKA') }}</title>
+    <title>{{ isset($title) ? $title . ' - ' : '' }}{{ \App\Models\BrandSetting::appName() }}</title>
 
     <!-- Favicon -->
-    <link rel="icon" type="image/png" href="{{ asset('logo/icon.png') }}">
+    <link rel="icon" type="image/png" href="{{ \App\Models\BrandSetting::iconUrl() }}">
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.bunny.net">
@@ -90,9 +90,9 @@
                 <div class="flex justify-between h-16">
                     <div class="flex items-center">
                         <div class="flex-shrink-0 flex items-center">
-                            <img src="{{ asset('logo/icon.png') }}" alt="EUREKA Logo" class="w-10 h-10">
+                            <img src="{{ \App\Models\BrandSetting::iconUrl() }}" alt="EUREKA Logo" class="w-10 h-10">
                             <div class="mx-3 text-gray-400 text-2xl font-light">|</div>
-                            <h1 class="text-2xl font-bold text-blue-600">EUREKA!</h1>
+                            <h1 class="text-2xl font-bold text-blue-600">{{ \App\Models\BrandSetting::appName() }}</h1>
                         </div>
                     </div>
                     <div class="flex items-center space-x-4">
@@ -123,7 +123,7 @@
 
         <!-- Footer -->
         <footer class="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 mt-12 text-center text-sm text-gray-500 dark:text-gray-400 py-6 transition-colors duration-300">
-            &copy; {{ date('Y') }} {{ config('app.name', 'EUREKA') }}. All rights reserved.
+            &copy; {{ date('Y') }} {{ \App\Models\BrandSetting::appName() }}. All rights reserved.
         </footer>
     </div>
 
@@ -168,5 +168,7 @@
             {{ session('error') }}
         </div>
     @endif
+    @include("partials.service-worker")
+    @include('partials.resource-loader')
 </body>
 </html>

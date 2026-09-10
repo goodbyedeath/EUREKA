@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Team Leaderboard - Kiosk</title>
+    <title>{{ \App\Models\BrandSetting::title('Leaderboard') }}</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -264,7 +264,7 @@
         fetchLeaderboard();
         
         // Auto-refresh every 5 seconds
-        setInterval(fetchLeaderboard, 5000);
+        setInterval(fetchLeaderboard, 10000);
         
         // Update time display more frequently
         setInterval(updateLastUpdated, 1000);

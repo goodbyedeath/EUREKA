@@ -210,10 +210,13 @@ class UserManagement extends Component
             // Convert empty string or 'null' string to actual null
             $timeoutValue = ($timeout === '' || $timeout === 'null' || $timeout === null) ? null : (int) $timeout;
             
-            // Update the user directly instead of using the model method
-            $user->update(['session_timeout' => $timeoutValue]);
-            
-            session()->flash('message', 'Session timeout updated successfully!');
+            // Setting a timeout IS the "grant access again" action: it clears any
+            // spent window so the next login starts a fresh clock.
+            $user->grantAccessWindow($timeoutValue);
+
+            session()->flash('message', $timeoutValue === null
+                ? 'Timeout removed — this team now has unlimited access.'
+                : 'Access granted. The clock starts at their next login.');
             
         } catch (\Exception $e) {
             session()->flash('error', 'Failed to update session timeout: ' . $e->getMessage());

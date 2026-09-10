@@ -17,10 +17,17 @@ class DashboardContent extends Component
     public $questionnaireId = null;
     public $team = null;
 
+    // Quiz stats
+    public $completedQuizzes = 0;
+    public $averageScore = 0;
+    public $totalTimeSpent = 0;
+    public $currentStreak = 0;
+
     protected $listeners = [
         'active-tab-changed' => 'handleTabChange',
         'qr-code-scanned' => 'handleqr_codeScanned',
         'dashboard-refreshed' => 'refreshData',
+        'refresh-stats' => 'loadQuizStats',
         'echo:session-expired,SessionExpired' => 'handleSessionExpired'
     ];
 
@@ -56,12 +63,140 @@ class DashboardContent extends Component
         // Load user's team
         $user = auth()->user();
         $this->team = $user->createdTeam;
-        
+
         // Check for active questionnaire
         $this->questionnaireId = session('active_questionnaire_id');
-        
+
         // Check for scanned QR code
         $this->scannedqr_code = session('scanned_qr_code');
+
+        // Load quiz statistics
+        $this->loadQuizStats();
+    }
+
+    public function loadQuizStats()
+    {
+        $user = auth()->user();
+
+        // Get completed quizzes count
+        $this->completedQuizzes = \App\Models\QuizAttempt::where('user_id', $user->id)
+            ->where('status', 'completed')
+            ->count();
+
+        // Calculate average score (earned points per completed quiz)
+        $completedAttempts = \App\Models\QuizAttempt::with(['questionnaire.questions'])
+            ->where('user_id', $user->id)
+            ->where('status', 'completed')
+            ->get();
+
+        $totalEarnedPoints = 0;
+        $completedCount = 0;
+
+        // The team's starting balance, which every assessment carries inside total_deposit.
+        $basePoints = (int) ($user->team->initial_points ?? 1000);
+
+        foreach ($completedAttempts as $attempt) {
+            $completedCount++;
+
+            // Points actually awarded, read from the answer row.
+            //
+            // This used to join `questions` and sum `questions.points`, which counts
+            // fun_game answers at full value — they are stored is_correct = true with
+            // points_earned = 0 precisely because a facilitator scores them later. So a
+            // fun game was counted twice: once here, and again through its assessment.
+            $earnedPoints = \App\Models\UserAnswer::where('quiz_attempt_id', $attempt->id)
+                ->sum('points_earned');
+
+            // The assessment's *gain*, not its raw deposit.
+            //
+            // total_deposit = initial_points + additional − penalty, so summing it raw
+            // added the whole starting balance again for every assessed game. Every other
+            // consumer of this column subtracts the base first — DashboardStats,
+            // ScoreBreakdown, KioskController, PointsCalculationService.
+            $assessmentBonus = \App\Models\GameAssessment::where('quiz_attempt_id', $attempt->id)
+                ->where('user_id', $user->id)
+                ->where('is_assessed', true)
+                ->get()
+                ->sum(fn ($a) => ($a->total_deposit ?? 0) - $basePoints);
+
+            $totalEarnedPoints += $earnedPoints + $assessmentBonus;
+        }
+
+        $this->averageScore = $completedCount > 0
+            ? round($totalEarnedPoints / $completedCount, 1)
+            : 0;
+
+        // Calculate total time spent (in seconds, convert to hours and minutes)
+        $this->totalTimeSpent = \App\Models\QuizAttempt::where('user_id', $user->id)
+            ->where('status', 'completed')
+            ->sum('total_time_seconds');
+
+        // Calculate current streak (consecutive days with completed quizzes)
+        $this->currentStreak = $this->calculateStreak($user);
+    }
+
+    private function calculateStreak($user)
+    {
+        $attempts = \App\Models\QuizAttempt::where('user_id', $user->id)
+            ->where('status', 'completed')
+            ->whereNotNull('completed_at')
+            ->orderBy('completed_at', 'desc')
+            ->get();
+
+        if ($attempts->isEmpty()) {
+            return 0;
+        }
+
+        $streak = 0;
+        $currentDate = now()->startOfDay();
+        $lastDate = null;
+
+        foreach ($attempts as $attempt) {
+            $attemptDate = $attempt->completed_at->startOfDay();
+
+            if ($lastDate === null) {
+                // First attempt
+                if ($attemptDate->isSameDay($currentDate) || $attemptDate->isSameDay($currentDate->copy()->subDay())) {
+                    $streak = 1;
+                    $lastDate = $attemptDate;
+                } else {
+                    // Last attempt was more than 1 day ago, no streak
+                    break;
+                }
+            } else {
+                // Check if this attempt is the day before the last one
+                if ($attemptDate->isSameDay($lastDate->copy()->subDay())) {
+                    $streak++;
+                    $lastDate = $attemptDate;
+                } elseif ($attemptDate->isSameDay($lastDate)) {
+                    // Multiple attempts on the same day, continue
+                    continue;
+                } else {
+                    // Streak broken
+                    break;
+                }
+            }
+        }
+
+        return $streak;
+    }
+
+    public function getFormattedTotalTime()
+    {
+        if ($this->totalTimeSpent < 60) {
+            return $this->totalTimeSpent . 's';
+        }
+
+        $minutes = floor($this->totalTimeSpent / 60);
+
+        if ($minutes < 60) {
+            return $minutes . 'm';
+        }
+
+        $hours = floor($minutes / 60);
+        $remainingMinutes = $minutes % 60;
+
+        return $hours . 'h ' . ($remainingMinutes > 0 ? $remainingMinutes . 'm' : '');
     }
 
     public function handleTabChange($tab)

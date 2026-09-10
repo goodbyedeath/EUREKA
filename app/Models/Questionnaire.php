@@ -1,18 +1,40 @@
 <?php
 namespace App\Models;
 
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Questionnaire extends Model
 {
+    /**
+     * The key /api/quiz/start caches this questionnaire under, for an hour.
+     *
+     * It lives here, next to the events that clear it, because nothing cleared it before:
+     * an admin who switched a questionnaire off, moved its date window or corrected its
+     * time limit on the morning of an event kept serving the old values to the app — and
+     * kept letting teams start — for up to sixty minutes.
+     */
+    public static function apiCacheKey(int $id): string
+    {
+        return "questionnaire_{$id}";
+    }
+
+    protected static function booted(): void
+    {
+        static::saved(fn (self $q) => Cache::forget(self::apiCacheKey($q->id)));
+        static::deleted(fn (self $q) => Cache::forget(self::apiCacheKey($q->id)));
+    }
+
     protected $fillable = [
         'title',
         'description',
         'photo_path',
         'qr_code',
         'is_active',
+        // False for a bonus post: it still scores, but does not hold the clock open.
+        'counts_toward_finish',
         'time_limit',
         'created_by',
         'start_date',
@@ -30,6 +52,7 @@ class Questionnaire extends Model
             'end_date' => 'datetime',
             'time_limit' => 'integer',
             'max_attempts' => 'integer',
+            'counts_toward_finish' => 'boolean',
             'pass_percentage' => 'decimal:2',
             'total_points' => 'integer',
         ];

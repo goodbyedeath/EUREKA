@@ -5,19 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     
-    <title>@yield('title', 'Eureka') - {{ config('app.name', 'Eureka') }}</title>
+    <title>@yield('title', 'Home') - {{ \App\Models\BrandSetting::appName() }}</title>
     
     <!-- Preconnect for performance -->
     <link rel="preconnect" href="https://cdnjs.cloudflare.com">
     
     <!-- PWA Meta Tags -->
-    <link rel="manifest" href="{{ route('pwa.manifest') }}">
+    <link rel="manifest" href="{{ route('pwa.manifest.live') }}">
     <meta name="theme-color" content="#6777ef">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <meta name="apple-mobile-web-app-title" content="Eureka">
-    <link rel="apple-touch-icon" href="{{ asset('logo.png') }}">
+    <meta name="apple-mobile-web-app-title" content="{{ \App\Models\BrandSetting::appName() }}">
+    <link rel="apple-touch-icon" sizes="192x192" href="{{ \App\Services\BrandIconService::url(192) }}">
     
     <!-- User Role Meta (for session timeout) -->
     @auth
@@ -120,7 +120,7 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between h-16">
                 <div class="flex items-center">
-                    <a href="/" class="text-xl font-bold text-gray-800 dark:text-gray-200">Eureka</a>
+                    <a href="/" class="text-xl font-bold text-gray-800 dark:text-gray-200">{{ \App\Models\BrandSetting::appName() }}</a>
                 </div>
                 <div class="flex items-center space-x-4">
                     <!-- Dark Mode Toggle -->
@@ -160,7 +160,7 @@
         @yield('content')
 
         <footer class="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 mt-12 text-center text-sm text-gray-500 dark:text-gray-400 py-6 transition-colors duration-300">
-            &copy; {{ date('Y') }} {{ config('app.name', 'Laravel') }}. All rights reserved.
+            &copy; {{ date('Y') }} {{ \App\Models\BrandSetting::appName() }}. All rights reserved.
         </footer>
     </main>
 

@@ -1,4 +1,6 @@
 <div class="container mx-auto px-4 py-8">
+
+    @unless($showModal)
     <!-- Header -->
     <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 space-y-4 lg:space-y-0">
         <div class="flex-1">
@@ -112,7 +114,7 @@
                     </div>
                     
                     <div class="flex justify-between items-center">
-                        <button onclick="openMapModal({{ $location->latitude }}, {{ $location->longitude }}, '{{ addslashes($location->name) }}')" 
+                        <button onclick="openMapModal({{ $location->latitude }}, {{ $location->longitude }}, '{{ addslashes($location->name) }}', '{{ $location->marker_color ?? '#EF4444' }}', event)"
                            class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 text-sm transition-colors duration-200">
                             <i class="fas fa-map-marker-alt mr-1"></i>View in Maps
                         </button>
@@ -207,7 +209,7 @@
                     </td>
                     <td class="px-6 py-4 text-center">
                         <div class="flex justify-center space-x-2">
-                            <button onclick="openMapModal({{ $location->latitude }}, {{ $location->longitude }}, '{{ addslashes($location->name) }}')" 
+                            <button onclick="openMapModal({{ $location->latitude }}, {{ $location->longitude }}, '{{ addslashes($location->name) }}', '{{ $location->marker_color ?? '#EF4444' }}', event)"
                                    class="text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-300 transition-colors duration-200"
                                    title="View on Map">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -254,16 +256,26 @@
             </div>
         @endif
     </div>
+    </div>
+
+    @endunless
 
     <!-- Create/Edit Modal -->
     @if($showModal)
-    <div class="fixed inset-0 z-50 overflow-y-auto">
-        <div class="flex items-center justify-center min-h-screen px-4">
-            <!-- Backdrop -->
-            <div class="fixed inset-0 bg-black opacity-50" wire:click="closeModal"></div>
-            
-            <!-- Modal -->
-            <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full max-h-screen overflow-y-auto transition-colors duration-200">
+    {{-- Not a modal. This form carries twelve fields and opens a map picker of its own;
+         as a centred overlay the picker landed on the same z-index as the form and the
+         two tangled. In place it replaces the list, with a Back button, and the picker
+         is then the only overlay on screen. --}}
+    <div class="mb-4">
+        <button type="button" wire:click="closeModal"
+                class="inline-flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100">
+            &larr; Back to locations
+        </button>
+    </div>
+    {{-- The form kept the modal's fields but lost the modal's panel when it became
+         a page, so it sat on the raw background. This is that container. --}}
+    <div class="max-w-2xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm p-5 sm:p-6">
+
                 <form wire:submit="save">
                     <!-- Header -->
                     <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700 transition-colors duration-200">
@@ -296,11 +308,15 @@
                                 <span class="text-red-500 dark:text-red-400 text-xs mt-1">{{ $message }}</span> 
                             @enderror
                             
+                            {{-- No thumbnail before saving. Livewire's preview URL carries its signature in the
+                                 query string, and this host's image optimisation re-fetches any path ending in an
+                                 image extension without it, so the request arrives unsigned and 401s. The upload
+                                 itself is unaffected — the file saves and is shown from /storage afterwards. --}}
                             @if($image)
-                                <div class="mt-2">
-                                    <img src="{{ $image->temporaryUrl() }}" alt="Preview" 
-                                         class="w-32 h-32 object-cover rounded-lg border">
-                                </div>
+                                <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                                    <i class="fas fa-image text-gray-400 mr-1"></i>
+                                    {{ $image->getClientOriginalName() }}
+                                </p>
                             @endif
                         </div>
 
@@ -321,17 +337,34 @@
                                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Quest Points *</label>
                                 <input type="number" wire:model="quest_points" min="0" step="1"
                                        class="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors duration-200">
-                                @error('quest_points') 
-                                    <span class="text-red-500 dark:text-red-400 text-xs">{{ $errors->first('quest_points') }}</span> 
+                                @error('quest_points')
+                                    <span class="text-red-500 dark:text-red-400 text-xs">{{ $errors->first('quest_points') }}</span>
+                                @enderror
+                            </div>
+
+                            <!-- Marker Color -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Marker Color *</label>
+                                <div class="flex items-center gap-3">
+                                    <input type="color" wire:model.live.debounce.400ms="marker_color"
+                                           class="h-10 w-20 border border-gray-300 dark:border-gray-600 rounded-md cursor-pointer">
+                                    <input type="text" wire:model="marker_color" placeholder="#FF0000"
+                                           class="flex-1 border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors duration-200">
+                                    <div class="w-10 h-10 rounded-md border-2 border-gray-300 dark:border-gray-600"
+                                         style="background-color: {{ $marker_color }}"></div>
+                                </div>
+                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Choose a color for the map marker</p>
+                                @error('marker_color')
+                                    <span class="text-red-500 dark:text-red-400 text-xs">{{ $message }}</span>
                                 @enderror
                             </div>
 
                             <!-- Max Check-ins -->
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Max Check-ins per User</label>
-                                <input type="number" wire:model="max_check_ins_per_user" min="1" step="1" 
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Max Check-ins per Team</label>
+                                <input type="number" wire:model="max_check_ins_per_user" min="1" step="1"
                                        placeholder="Leave empty for unlimited"
-                                       class="w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                       class="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors duration-200">
                                 @error('max_check_ins_per_user') 
                                     <span class="text-red-500 text-xs">{{ $errors->first('max_check_ins_per_user') }}</span> 
                                 @enderror
@@ -355,7 +388,7 @@
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Instructions *</label>
                             <textarea wire:model="what_to_do" rows="3"
                                       class="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors duration-200"
-                                      placeholder="What should users do at this location?"></textarea>
+                                      placeholder="What should teams do at this location?"></textarea>
                             @error('what_to_do') 
                                 <span class="text-red-500 dark:text-red-400 text-xs">{{ $errors->first('what_to_do') }}</span> 
                             @enderror
@@ -456,16 +489,14 @@
                         </button>
                     </div>
                 </form>
-            </div>
-        </div>
     </div>
     @endif
 
     <!-- Map Modal -->
     <div id="mapModal" class="fixed inset-0 z-50 overflow-y-auto hidden">
         <div class="flex items-center justify-center min-h-screen px-4">
-            <div class="fixed inset-0 bg-black opacity-50" onclick="closeMapModal()"></div>
-            <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+            <div class="fixed inset-0 bg-black opacity-50" onclick="event.stopPropagation(); closeMapModal();"></div>
+            <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden" onclick="event.stopPropagation();">
                 <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
                     <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100" id="mapModalTitle">Location Map</h3>
                     <div class="flex items-center space-x-2">
@@ -546,11 +577,46 @@ let mapPicker = null;
 let selectedMarker = null;
 let selectedLat = null;
 let selectedLng = null;
+let mapModalJustOpened = false;
 
-async function openMapModal(lat, lng, title) {
+// A white pin outlined in white is invisible on light tiles (e.g. "Pos Putih" = #ffffff).
+// Pick the outline from the fill's relative luminance instead of hardcoding it.
+window.pinStrokeColor = window.pinStrokeColor || function (fill) {
+    var m = /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(String(fill || '').trim());
+    if (!m) return '#ffffff';
+    var h = m[1];
+    if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+    var lin = function (c) { c /= 255; return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); };
+    var L = 0.2126 * lin(parseInt(h.slice(0, 2), 16))
+          + 0.7152 * lin(parseInt(h.slice(2, 4), 16))
+          + 0.0722 * lin(parseInt(h.slice(4, 6), 16));
+    return L > 0.55 ? '#1f2937' : '#ffffff';
+};
+
+async function openMapModal(lat, lng, title, markerColor, event) {
+    // Prevent event propagation
+    if (event) {
+        event.stopPropagation();
+        event.preventDefault();
+    }
+
+    // Set flag to prevent immediate closing
+    mapModalJustOpened = true;
+
+    // Pause location refresh while modal is open (only on GPS tracking page)
+    if (isGpsTrackingPage()) {
+        console.log('Pausing location refresh for map modal');
+        stopLocationRefresh();
+    }
+
     document.getElementById('mapModal').classList.remove('hidden');
     document.getElementById('mapModalTitle').textContent = title || 'Location Map';
-    
+
+    // Allow backdrop clicks after 300ms
+    setTimeout(() => {
+        mapModalJustOpened = false;
+    }, 300);
+
     // Load MapLibre GL JS if not already loaded
     if (!window.maplibregl) {
         try {
@@ -560,12 +626,12 @@ async function openMapModal(lat, lng, title) {
             return;
         }
     }
-    
+
     setTimeout(() => {
         if (map) {
             map.remove();
         }
-        
+
         map = new window.maplibregl.Map({
             container: 'mapContainer',
             style: {
@@ -573,11 +639,9 @@ async function openMapModal(lat, lng, title) {
                 'sources': {
                     'osm': {
                         'type': 'raster',
-                        'tiles': [
-                            'https://a.tile.openstreetmap.org/{z}/{x}/{y}.png'
-                        ],
+                        'tiles': window.EUREKA_MAP.tiles,
                         'tileSize': 256,
-                        'attribution': '© OpenStreetMap contributors'
+                        'attribution': window.EUREKA_MAP.attribution
                     }
                 },
                 'layers': [
@@ -591,20 +655,54 @@ async function openMapModal(lat, lng, title) {
             center: [lng, lat],
             zoom: 15
         });
-        
-        new window.maplibregl.Marker()
+
+        // Create custom marker element with SVG for proper pin shape pointing down
+        const markerEl = document.createElement('div');
+        markerEl.style.width = '30px';
+        markerEl.style.height = '40px';
+
+        // Create SVG pin shape
+        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svg.setAttribute('width', '30');
+        svg.setAttribute('height', '40');
+        svg.setAttribute('viewBox', '0 0 30 40');
+        svg.style.filter = 'drop-shadow(0px 2px 4px rgba(0,0,0,0.3))';
+
+        // Create the pin path (circle on top, point at bottom)
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        path.setAttribute('d', 'M15,0 C8.373,0 3,5.373 3,12 C3,20.25 15,40 15,40 C15,40 27,20.25 27,12 C27,5.373 21.627,0 15,0 Z');
+        var pinFill = markerColor || '#EF4444';
+        path.setAttribute('fill', pinFill);
+        path.setAttribute('stroke', window.pinStrokeColor(pinFill));
+        path.setAttribute('stroke-width', '2');
+
+        svg.appendChild(path);
+        markerEl.appendChild(svg);
+
+        new window.maplibregl.Marker({ element: markerEl, anchor: 'bottom' })
             .setLngLat([lng, lat])
             .addTo(map);
-            
+
         map.addControl(new window.maplibregl.NavigationControl());
     }, 100);
 }
 
 function closeMapModal() {
+    // Prevent closing if modal just opened
+    if (mapModalJustOpened) {
+        return;
+    }
+
     document.getElementById('mapModal').classList.add('hidden');
     if (map) {
         map.remove();
         map = null;
+    }
+
+    // Resume location refresh when modal is closed (only on GPS tracking page)
+    if (isGpsTrackingPage()) {
+        console.log('Resuming location refresh after map modal closed');
+        startLocationRefresh();
     }
 }
 
@@ -615,7 +713,13 @@ async function showMapPicker() {
         console.error('mapPickerModal not found');
         return;
     }
-    
+
+    // Pause location refresh while modal is open (only on GPS tracking page)
+    if (isGpsTrackingPage()) {
+        console.log('Pausing location refresh for map picker');
+        stopLocationRefresh();
+    }
+
     // Load MapLibre GL JS if not already loaded
     if (!window.maplibregl) {
         try {
@@ -625,7 +729,7 @@ async function showMapPicker() {
             return;
         }
     }
-    
+
     modal.classList.remove('hidden');
     
     setTimeout(() => {
@@ -650,11 +754,9 @@ async function showMapPicker() {
                     'sources': {
                         'osm': {
                             'type': 'raster',
-                            'tiles': [
-                                'https://a.tile.openstreetmap.org/{z}/{x}/{y}.png'
-                            ],
+                            'tiles': window.EUREKA_MAP.tiles,
                             'tileSize': 256,
-                            'attribution': '© OpenStreetMap contributors'
+                            'attribution': window.EUREKA_MAP.attribution
                         }
                     },
                     'layers': [
@@ -714,6 +816,12 @@ function closeMapPicker() {
     if (mapPicker) {
         mapPicker.remove();
         mapPicker = null;
+    }
+
+    // Resume location refresh when modal is closed (only on GPS tracking page)
+    if (isGpsTrackingPage()) {
+        console.log('Resuming location refresh after map picker closed');
+        startLocationRefresh();
     }
 }
 
@@ -840,11 +948,9 @@ async function updateMapPreview() {
                     'sources': {
                         'osm': {
                             'type': 'raster',
-                            'tiles': [
-                                'https://a.tile.openstreetmap.org/{z}/{x}/{y}.png'
-                            ],
+                            'tiles': window.EUREKA_MAP.tiles,
                             'tileSize': 256,
-                            'attribution': '© OpenStreetMap contributors'
+                            'attribution': window.EUREKA_MAP.attribution
                         }
                     },
                     'layers': [
@@ -968,11 +1074,9 @@ async function testMap() {
                 'sources': {
                     'osm': {
                         'type': 'raster',
-                        'tiles': [
-                            'https://a.tile.openstreetmap.org/{z}/{x}/{y}.png'
-                        ],
+                        'tiles': window.EUREKA_MAP.tiles,
                         'tileSize': 256,
-                        'attribution': '© OpenStreetMap contributors'
+                        'attribution': window.EUREKA_MAP.attribution
                     }
                 },
                 'layers': [
@@ -1014,19 +1118,25 @@ let currentMapData = null; // Store current map data for fullscreen
 function openAdminFullscreenMap() {
     const modal = document.getElementById('adminFullscreenMapModal');
     const mapContainer = document.getElementById('adminFullscreenMapContainer');
-    
+
     if (!modal || !mapContainer) {
         console.error('Admin fullscreen map elements not found');
         return;
     }
 
+    // Pause location refresh while modal is open (only on GPS tracking page)
+    if (isGpsTrackingPage()) {
+        console.log('Pausing location refresh for fullscreen map');
+        stopLocationRefresh();
+    }
+
     // Get current map data from the existing map modal
     const mapTitle = document.getElementById('mapModalTitle')?.textContent || 'Location Map';
-    
+
     // Try to get coordinates from the existing map instance or fallback
     let lat = -6.2088; // Jakarta default
     let lng = 106.8456;
-    
+
     if (map && map.getCenter) {
         const center = map.getCenter();
         lat = center.lat;
@@ -1060,11 +1170,9 @@ function openAdminFullscreenMap() {
                     'sources': {
                         'osm': {
                             'type': 'raster',
-                            'tiles': [
-                                'https://a.tile.openstreetmap.org/{z}/{x}/{y}.png'
-                            ],
+                            'tiles': window.EUREKA_MAP.tiles,
                             'tileSize': 256,
-                            'attribution': '© OpenStreetMap contributors'
+                            'attribution': window.EUREKA_MAP.attribution
                         }
                     },
                     'layers': [
@@ -1109,10 +1217,16 @@ function closeAdminFullscreenMap() {
     if (modal) {
         modal.classList.add('hidden');
     }
-    
+
     if (adminFullscreenMap) {
         adminFullscreenMap.remove();
         adminFullscreenMap = null;
+    }
+
+    // Resume location refresh when modal is closed (only on GPS tracking page)
+    if (isGpsTrackingPage()) {
+        console.log('Resuming location refresh after fullscreen map closed');
+        startLocationRefresh();
     }
 }
 
@@ -1135,18 +1249,44 @@ document.addEventListener('keydown', function(e) {
 let locationWatchId = null;
 let locationRefreshInterval = null;
 
+function isGpsTrackingPage() {
+    // Check if current URL is the GPS tracking page
+    return window.location.pathname.includes('/admin/gps-tracking');
+}
+
+function isQuestLocationPage() {
+    return window.location.pathname.includes('/admin/quest-locations');
+}
+
 function initializeAdminLocationDetection() {
+    // Two pages want location, for different reasons. GPS tracking watches a moving
+    // admin, so it polls. Quest Locations only needs one fix, to fill the coordinates
+    // of the post being created — polling there would drain the battery for nothing.
+    const wantsPolling = isGpsTrackingPage();
+    const wantsOneFix  = isQuestLocationPage();
+
+    if (!wantsPolling && !wantsOneFix) {
+        return;
+    }
+
     if (!navigator.geolocation) {
         console.error('Geolocation is not supported by this browser.');
         @this.setLocationError('Geolocation is not supported by this browser.');
         return;
     }
 
+    if (!window.isSecureContext) {
+        @this.setLocationError('Location needs a secure (https) connection.');
+        return;
+    }
+
     // Start location detection immediately
     requestLocationPermission();
-    
-    // Set up 10-second refresh interval
-    startLocationRefresh();
+
+    // Only the tracking screen keeps refreshing.
+    if (wantsPolling) {
+        startLocationRefresh();
+    }
 }
 
 function requestLocationPermission() {
@@ -1234,14 +1374,53 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Restart location detection after Livewire updates
 document.addEventListener('livewire:morph.updated', function() {
+    // Only handle location updates on GPS tracking page
+    if (!isGpsTrackingPage()) {
+        return;
+    }
+
     // Small delay to ensure DOM is ready
     setTimeout(function() {
-        initializeAdminLocationDetection();
+        // Check if any modal is open
+        const isMapModalOpen = !document.getElementById('mapModal')?.classList.contains('hidden');
+        const isMapPickerOpen = !document.getElementById('mapPickerModal')?.classList.contains('hidden');
+        const isFullscreenMapOpen = !document.getElementById('adminFullscreenMapModal')?.classList.contains('hidden');
+
+        // Only restart location detection if no modals are open
+        if (!isMapModalOpen && !isMapPickerOpen && !isFullscreenMapOpen) {
+            initializeAdminLocationDetection();
+        } else {
+            console.log('Modal is open, skipping location refresh restart');
+        }
     }, 100);
 });
 
 // Clean up intervals when page is unloaded
 window.addEventListener('beforeunload', function() {
     stopLocationRefresh();
+});
+
+// Pause/resume location updates when page visibility changes
+document.addEventListener('visibilitychange', function() {
+    if (!isGpsTrackingPage()) {
+        return;
+    }
+
+    if (document.hidden) {
+        // Page is hidden (user switched tabs or minimized browser)
+        console.log('Page hidden, pausing location refresh');
+        stopLocationRefresh();
+    } else {
+        // Page is visible again
+        console.log('Page visible, resuming location refresh');
+        // Check if any modal is open before resuming
+        const isMapModalOpen = !document.getElementById('mapModal')?.classList.contains('hidden');
+        const isMapPickerOpen = !document.getElementById('mapPickerModal')?.classList.contains('hidden');
+        const isFullscreenMapOpen = !document.getElementById('adminFullscreenMapModal')?.classList.contains('hidden');
+
+        if (!isMapModalOpen && !isMapPickerOpen && !isFullscreenMapOpen) {
+            initializeAdminLocationDetection();
+        }
+    }
 });
 </script>

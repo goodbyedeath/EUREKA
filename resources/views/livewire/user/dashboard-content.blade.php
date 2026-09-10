@@ -20,13 +20,19 @@
                     {{-- Welcome Section --}}
                     <div class="bg-gradient-to-r from-blue-50 via-purple-50 to-pink-50 dark:from-gray-800 dark:via-gray-800 dark:to-gray-800 rounded-xl p-6 border border-blue-100 dark:border-gray-700">
                         <div class="flex items-center justify-between">
-                            <div>
+                            <div class="flex-1">
                                 <h2 class="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-1">
                                     Welcome back, {{ auth()->user()->name }}! 👋
                                 </h2>
                                 <p class="text-gray-600 dark:text-gray-400">
                                     Ready to explore? Choose your adventure below.
                                 </p>
+                            </div>
+                            <div id="tracking-status" class="hidden">
+                                <div class="flex items-center gap-2 px-4 py-2 rounded-lg bg-green-100 dark:bg-green-900/30 border border-green-300 dark:border-green-700">
+                                    <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                                    <span class="text-sm text-green-700 dark:text-green-300 font-medium">Live Tracking Active</span>
+                                </div>
                             </div>
                             <div class="hidden sm:block">
                                 <div class="w-16 h-16 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center">
@@ -132,7 +138,7 @@
                         
                         @if($this->featureEnabled('team_management'))
                         <div class="feature-card group">
-                            <button 
+                            <button
                                 wire:click="switchToMembers"
                                 class="w-full p-6 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl hover:border-purple-300 dark:hover:border-purple-600 hover:shadow-lg transition-all duration-300 text-left group-hover:transform group-hover:scale-105">
                                 <div class="flex items-center justify-between mb-4">
@@ -152,61 +158,99 @@
                             </button>
                         </div>
                         @endif
+
+                        {{-- GPS Tracking Card --}}
+                        @if($this->featureEnabled('gps_tracking'))
+                        <div class="feature-card group">
+                            <a
+                                href="{{ route('user.gps-tracking') }}"
+                                class="block w-full p-6 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl hover:border-red-300 dark:hover:border-red-600 hover:shadow-lg transition-all duration-300 text-left group-hover:transform group-hover:scale-105">
+                                <div class="flex items-center justify-between mb-4">
+                                    <div class="w-12 h-12 bg-red-100 dark:bg-red-900/30 rounded-lg flex items-center justify-center group-hover:bg-red-200 dark:group-hover:bg-red-900/50 transition-colors">
+                                        <i class="fas fa-map-marked-alt text-red-600 dark:text-red-400 text-xl"></i>
+                                    </div>
+                                    <div class="text-xs bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-300 px-2 py-1 rounded-full">
+                                        Live
+                                    </div>
+                                </div>
+                                <h3 class="font-bold text-gray-900 dark:text-gray-100 text-lg mb-2">My GPS Location</h3>
+                                <p class="text-sm text-gray-600 dark:text-gray-400 mb-3">View your current GPS location on the map</p>
+                                <div class="flex items-center text-red-600 dark:text-red-400 text-sm font-medium">
+                                    <span>Track Now</span>
+                                    <i class="fas fa-location-arrow ml-2 group-hover:translate-x-1 transition-transform"></i>
+                                </div>
+                            </a>
+                        </div>
+                        @endif
                     </div>
-                    
+
                     {{-- Enhanced Recent Quiz Attempts Section --}}
                     @if($this->featureEnabled('quiz_system'))
                         <div class="space-y-6">
                             {{-- Quick Stats Cards --}}
+                            @if($this->featureEnabled('dashboard_quick_stats'))
                             <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                                {{-- Completed Quizzes Stat --}}
+                                @if($this->featureEnabled('dashboard_quick_stat_completed'))
                                 <div class="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-900/40 rounded-xl p-4 border border-blue-200 dark:border-blue-700">
                                     <div class="flex items-center">
                                         <div class="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center mr-3">
                                             <i class="fas fa-clipboard-check text-white text-sm"></i>
                                         </div>
                                         <div>
-                                            <div class="text-2xl font-bold text-blue-700 dark:text-blue-300" id="completed-quizzes">--</div>
+                                            <div class="text-2xl font-bold text-blue-700 dark:text-blue-300">{{ $completedQuizzes }}</div>
                                             <div class="text-xs text-blue-600 dark:text-blue-400">Completed</div>
                                         </div>
                                     </div>
                                 </div>
-                                
+                                @endif
+
+                                {{-- Average Score Stat --}}
+                                @if($this->featureEnabled('dashboard_quick_stat_average_score'))
                                 <div class="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-900/40 rounded-xl p-4 border border-green-200 dark:border-green-700">
                                     <div class="flex items-center">
                                         <div class="w-10 h-10 bg-green-500 rounded-lg flex items-center justify-center mr-3">
                                             <i class="fas fa-star text-white text-sm"></i>
                                         </div>
                                         <div>
-                                            <div class="text-2xl font-bold text-green-700 dark:text-green-300" id="average-score">--</div>
+                                            <div class="text-2xl font-bold text-green-700 dark:text-green-300">{{ number_format($averageScore, 1) }}</div>
                                             <div class="text-xs text-green-600 dark:text-green-400">Avg Score</div>
                                         </div>
                                     </div>
                                 </div>
-                                
+                                @endif
+
+                                {{-- Total Time Stat --}}
+                                @if($this->featureEnabled('dashboard_quick_stat_total_time'))
                                 <div class="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-900/40 rounded-xl p-4 border border-purple-200 dark:border-purple-700">
                                     <div class="flex items-center">
                                         <div class="w-10 h-10 bg-purple-500 rounded-lg flex items-center justify-center mr-3">
                                             <i class="fas fa-clock text-white text-sm"></i>
                                         </div>
                                         <div>
-                                            <div class="text-2xl font-bold text-purple-700 dark:text-purple-300" id="total-time">--</div>
+                                            <div class="text-2xl font-bold text-purple-700 dark:text-purple-300">{{ $this->getFormattedTotalTime() }}</div>
                                             <div class="text-xs text-purple-600 dark:text-purple-400">Total Time</div>
                                         </div>
                                     </div>
                                 </div>
-                                
+                                @endif
+
+                                {{-- Daily Streak Stat --}}
+                                @if($this->featureEnabled('dashboard_quick_stat_streak'))
                                 <div class="bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-900/20 dark:to-orange-900/40 rounded-xl p-4 border border-orange-200 dark:border-orange-700">
                                     <div class="flex items-center">
                                         <div class="w-10 h-10 bg-orange-500 rounded-lg flex items-center justify-center mr-3">
                                             <i class="fas fa-fire text-white text-sm"></i>
                                         </div>
                                         <div>
-                                            <div class="text-2xl font-bold text-orange-700 dark:text-orange-300" id="streak">--</div>
+                                            <div class="text-2xl font-bold text-orange-700 dark:text-orange-300">{{ $currentStreak }} <span class="text-sm">{{ $currentStreak === 1 ? 'day' : 'days' }}</span></div>
                                             <div class="text-xs text-orange-600 dark:text-orange-400">Streak</div>
                                         </div>
                                     </div>
                                 </div>
+                                @endif
                             </div>
+                            @endif
                             
                             {{-- Recent Attempts with Enhanced Design --}}
                             <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
@@ -502,7 +546,7 @@ document.addEventListener('DOMContentLoaded', () => {
         window.dashboardEnhancements.addInteractiveEffects();
         window.dashboardEnhancements.handleEnhancedFlashMessages();
     }
-    
+
     // Auto-hide flash messages
     setTimeout(() => {
         const messages = document.querySelectorAll('[class*="fixed top-4 right-4"]');
@@ -514,6 +558,9 @@ document.addEventListener('DOMContentLoaded', () => {
             }, 5000);
         });
     }, 100);
+
+    // Start live location tracking
+    startLiveTracking();
 });
 
 // Request user location
@@ -523,6 +570,17 @@ function requestUserLocation() {
             (position) => {
                 userLatitude = position.coords.latitude;
                 userLongitude = position.coords.longitude;
+                // Send initial position to server
+                // Throttle the send, not the watch.
+            //
+            // watchPosition fires as fast as the sensor produces a fix — about once a
+            // second while walking — and each one used to be a POST. Keep the marker
+            // moving smoothly on screen, but tell the server at most every 10 seconds.
+            const now = Date.now();
+            if (now - lastPositionSentAt >= 10000) {
+                lastPositionSentAt = now;
+                sendLivePosition(userLatitude, userLongitude);
+            }
             },
             (error) => {
                 // Location access denied - fail silently
@@ -531,20 +589,92 @@ function requestUserLocation() {
     }
 }
 
+// Send live position to server for admin tracking
+async function sendLivePosition(latitude, longitude) {
+    try {
+        const csrfToken = document.querySelector('meta[name="csrf-token"]');
+        if (!csrfToken) return;
+
+        await fetch('/api/live/position', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': csrfToken.content
+            },
+            body: JSON.stringify({ latitude, longitude })
+        });
+    } catch (error) {
+        console.error('Error sending position:', error);
+    }
+}
+
+// Start continuous live tracking
+let lastPositionSentAt = 0;
+
+function startLiveTracking() {
+    if (!navigator.geolocation) return;
+
+    navigator.geolocation.watchPosition(
+        (position) => {
+            userLatitude = position.coords.latitude;
+            userLongitude = position.coords.longitude;
+
+            // Show tracking status indicator
+            const statusEl = document.getElementById('tracking-status');
+            if (statusEl) {
+                statusEl.classList.remove('hidden');
+            }
+
+            // Throttle the send, not the watch.
+            //
+            // watchPosition fires as fast as the sensor produces a fix — about once a
+            // second while walking — and each one used to be a POST. Keep the marker
+            // moving smoothly on screen, but tell the server at most every 10 seconds.
+            const now = Date.now();
+            if (now - lastPositionSentAt >= 10000) {
+                lastPositionSentAt = now;
+                sendLivePosition(userLatitude, userLongitude);
+            }
+        },
+        (error) => {
+            console.error('Geolocation error:', error.code);
+        },
+        {
+            enableHighAccuracy: true,
+            maximumAge: 10000,
+            timeout: 27000
+        }
+    );
+}
+
 // Open map modal
-async function openMapModal(lat, lng, title, radius = 50) {
+// A white pin outlined in white is invisible on light tiles (e.g. "Pos Putih" = #ffffff).
+// Pick the outline from the fill's relative luminance instead of hardcoding it.
+window.pinStrokeColor = window.pinStrokeColor || function (fill) {
+    var m = /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(String(fill || '').trim());
+    if (!m) return '#ffffff';
+    var h = m[1];
+    if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+    var lin = function (c) { c /= 255; return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); };
+    var L = 0.2126 * lin(parseInt(h.slice(0, 2), 16))
+          + 0.7152 * lin(parseInt(h.slice(2, 4), 16))
+          + 0.0722 * lin(parseInt(h.slice(4, 6), 16));
+    return L > 0.55 ? '#1f2937' : '#ffffff';
+};
+
+async function openMapModal(lat, lng, title, radius = 50, markerColor = '#EF4444') {
     // Request user location when user actually opens map (user gesture)
     if (!userLatitude || !userLongitude) {
         requestUserLocation();
     }
-    
+
     // Update modal content
     document.getElementById('modalLocationName').textContent = title;
     document.getElementById('modalLocationPoints').textContent = '';
-    
+
     // Show modal
     document.getElementById('mapModal').classList.remove('hidden');
-    
+
     // Load MapLibre GL JS if not already loaded
     if (!window.maplibregl) {
         try {
@@ -553,10 +683,10 @@ async function openMapModal(lat, lng, title, radius = 50) {
             return;
         }
     }
-    
+
     // Initialize map
     setTimeout(() => {
-        initializeMap(lat, lng, title, radius);
+        initializeMap(lat, lng, title, radius, markerColor);
     }, 200);
 }
 
@@ -576,7 +706,7 @@ function closeMapModal() {
 }
 
 // Initialize map
-function initializeMap(lat, lng, title, radius = 50) {
+function initializeMap(lat, lng, title, radius = 50, markerColor = '#EF4444') {
     const container = document.getElementById('mapContainer');
     if (!container) {
         return;
@@ -590,11 +720,9 @@ function initializeMap(lat, lng, title, radius = 50) {
                 'sources': {
                     'osm': {
                         'type': 'raster',
-                        'tiles': [
-                            'https://a.tile.openstreetmap.org/{z}/{x}/{y}.png'
-                        ],
+                        'tiles': window.EUREKA_MAP.tiles,
                         'tileSize': 256,
-                        'attribution': '© OpenStreetMap contributors'
+                        'attribution': window.EUREKA_MAP.attribution
                     }
                 },
                 'layers': [
@@ -610,12 +738,33 @@ function initializeMap(lat, lng, title, radius = 50) {
         });
 
         userMap.on('load', () => {
-            // Add location marker
-            new window.maplibregl.Marker({ color: '#3B82F6' })
+            // Add location marker with SVG for proper pin shape pointing down
+            const markerEl = document.createElement('div');
+            markerEl.style.width = '30px';
+            markerEl.style.height = '40px';
+
+            // Create SVG pin shape
+            const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            svg.setAttribute('width', '30');
+            svg.setAttribute('height', '40');
+            svg.setAttribute('viewBox', '0 0 30 40');
+            svg.style.filter = 'drop-shadow(0px 2px 4px rgba(0,0,0,0.3))';
+
+            // Create the pin path (circle on top, point at bottom)
+            const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            path.setAttribute('d', 'M15,0 C8.373,0 3,5.373 3,12 C3,20.25 15,40 15,40 C15,40 27,20.25 27,12 C27,5.373 21.627,0 15,0 Z');
+            path.setAttribute('fill', markerColor);
+            path.setAttribute('stroke', window.pinStrokeColor(markerColor));
+            path.setAttribute('stroke-width', '2');
+
+            svg.appendChild(path);
+            markerEl.appendChild(svg);
+
+            new window.maplibregl.Marker({ element: markerEl, anchor: 'bottom' })
                 .setLngLat([lng, lat])
                 .addTo(userMap);
 
-            // Add radius circle
+            // Add radius circle with matching color
             userMap.addSource('radius', {
                 'type': 'geojson',
                 'data': {
@@ -639,9 +788,9 @@ function initializeMap(lat, lng, title, radius = 50) {
                         ],
                         'base': 2
                     },
-                    'circle-color': '#3B82F6',
+                    'circle-color': markerColor,
                     'circle-opacity': 0.1,
-                    'circle-stroke-color': '#3B82F6',
+                    'circle-stroke-color': markerColor,
                     'circle-stroke-width': 2,
                     'circle-stroke-opacity': 0.8
                 }

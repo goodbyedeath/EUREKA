@@ -12,8 +12,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * 
  * Coordinate System:
  * - Database stores pitch/yaw in RADIANS
- * - Frontend (Pannellum) expects coordinates in DEGREES
- * - Use getPitchDegrees() and getYawDegrees() for Pannellum compatibility
+ * - Degree helpers exist for any viewer that wants them
+ * - Use getPitchDegrees() and getYawDegrees() where degrees are needed
  * 
  * @property float $pitch Vertical angle in radians (-π/2 to π/2)
  * @property float $yaw Horizontal angle in radians (-π to π)
@@ -35,15 +35,57 @@ class Hotspot extends Model
         'type',
         'css_class',
         'extra_data',
-        'is_active'
+        'is_active',
+        'ar_model_path',
+        'ar_model_id',
+        // Interaction payload: media_type is null (message), 'link' or 'image'.
+        'content',
+        'media_type',
+        'media_path',
+        'ar_distance',
+        'ar_scale',
+        // Were missing, so points/type/order set on create were silently dropped.
+        'points_value',
+        'hotspot_type',
+        'tour_order',
+        'is_required',
+        'ar_rotation_x',
+        'ar_rotation_y',
+        'ar_rotation_z',
+        // Idle motion. A list, because motions compose — see
+        // ArExperienceController::ANIMATIONS for the formulas and the rates.
+        'ar_motions',
     ];
 
     protected $casts = [
+        'ar_motions' => 'array',
         'pitch' => 'float',
         'yaw' => 'float',
         'extra_data' => 'array',
-        'is_active' => 'boolean'
+        'is_active' => 'boolean',
+        'ar_distance' => 'float',
+        'ar_scale' => 'float',
+        'ar_rotation_x' => 'float',
+        'ar_rotation_y' => 'float',
+        'ar_rotation_z' => 'float',
     ];
+
+    public function arModel(): BelongsTo
+    {
+        return $this->belongsTo(ArModel::class, 'ar_model_id');
+    }
+
+    /**
+     * This object's own model, if it overrides the location default.
+     */
+    public function modelUrl(): ?string
+    {
+        if ($this->arModel) {
+            return $this->arModel->url();
+        }
+
+        return $this->ar_model_path ? \Illuminate\Support\Facades\Storage::disk('public')->url($this->ar_model_path) : null;
+    }
 
     public function gameLocation(): BelongsTo
     {
@@ -51,7 +93,7 @@ class Hotspot extends Model
     }
 
     /**
-     * Get pitch in degrees (for Pannellum)
+     * Get pitch in degrees
      * Converts from radians (database) to degrees (frontend)
      */
     public function getPitchDegreesAttribute(): float
@@ -60,7 +102,7 @@ class Hotspot extends Model
     }
 
     /**
-     * Get yaw in degrees (for Pannellum)
+     * Get yaw in degrees
      * Converts from radians (database) to degrees (frontend)
      */
     public function getYawDegreesAttribute(): float
@@ -84,44 +126,6 @@ class Hotspot extends Model
         $this->yaw = $degrees * (pi() / 180);
     }
 
-    /**
-     * Get hotspot configuration for Pannellum viewer
-     */
-    public function toPannellumConfig(): array
-    {
-        $config = [
-            'id' => 'hotspot-' . $this->id,
-            'pitch' => $this->pitch_degrees,        // Converted to degrees
-            'yaw' => $this->yaw_degrees,            // Converted to degrees
-            'type' => $this->type ?? 'info',
-            'text' => $this->title,
-            'cssClass' => $this->css_class ?? 'admin-hotspot-marker',
-            'scale' => true,
-            'description' => $this->description
-        ];
-        
-        // Add tour-specific configuration
-        if ($this->isNavigationHotspot()) {
-            $config['clickHandlerFunc'] = 'navigateToScene';
-            $config['targetLocationId'] = $this->getTargetLocationId();
-        } elseif ($this->isQuizHotspot()) {
-            $config['clickHandlerFunc'] = 'openQuiz';
-            $config['quizData'] = $this->getQuizData();
-        } elseif ($this->hasInteractiveContent()) {
-            $config['clickHandlerFunc'] = 'showInteractiveContent';
-            $config['content'] = $this->getContent();
-            $config['mediaType'] = $this->getMediaType();
-            $config['mediaPath'] = $this->getMediaPath();
-            
-            // Add image data for info hotspots
-            if ($this->hasImage()) {
-                $config['hasImage'] = true;
-                $config['imageUrl'] = $this->getImageUrl();
-            }
-        }
-        
-        return $config;
-    }
     
     // Tour feature methods
     public function getHotspotType(): string

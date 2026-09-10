@@ -1,4 +1,6 @@
 <div class="container mx-auto px-4 py-8">
+
+    @unless($showModal)
     <!-- Header -->
     <div class="flex flex-col lg:flex-row lg:justify-between lg:items-center mb-6 gap-4">
         <h1 class="text-2xl font-bold text-gray-800 dark:text-gray-100">Guidance Management</h1>
@@ -7,7 +9,7 @@
         <div class="flex flex-col sm:flex-row gap-3">
             <div class="flex gap-2">
                 <div class="relative">
-                    <input type="text" wire:model.live="search" placeholder="Search guidance..." 
+                    <input type="text" wire:model.live.debounce.300ms="search" placeholder="Search guidance..." 
                            class="pl-8 pr-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm transition-colors duration-200">
                     <svg class="w-4 h-4 absolute left-2.5 top-2.5 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
@@ -22,8 +24,8 @@
                 
                 <select wire:model.live="filterTarget" class="border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm transition-colors duration-200">
                     <option value="all">All Targets</option>
-                    <option value="all_users">For All Users</option>
-                    <option value="specific_user">For Specific User</option>
+                    <option value="all_users">For All Teams</option>
+                    <option value="specific_user">For Specific Team</option>
                 </select>
             </div>
             
@@ -260,13 +262,22 @@
         {{ $guidances->links() }}
     </div>
 
+    @endunless
+
     <!-- Modal -->
     @if($showModal)
-    <div class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-        <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-            <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" wire:click="closeModal"></div>
-            
-            <div class="inline-block align-bottom bg-white dark:bg-gray-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">
+    {{-- Not a modal: a form this size is a page. As an overlay it ran past the
+         bottom of a phone screen, taking its save button with it, and the only way
+         out was to find the X. --}}
+    <div class="mb-4">
+        <button type="button" wire:click="closeModal"
+                class="inline-flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100">
+            &larr; Back to guidance
+        </button>
+    </div>
+    {{-- The form kept the modal's fields but lost the modal's panel when it became
+         a page, so it sat on the raw background. This is that container. --}}
+    <div class="max-w-4xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm p-5 sm:p-6">
                 <form wire:submit.prevent="save">
                     <div class="bg-white dark:bg-gray-800 px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
                         <div class="flex justify-between items-center mb-4">
@@ -339,21 +350,21 @@
                                     <div class="flex items-center">
                                         <input type="radio" wire:model="target_type" value="all_users" id="target_all" 
                                                class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600">
-                                        <label for="target_all" class="ml-2 block text-sm text-gray-900 dark:text-gray-100">All Users</label>
+                                        <label for="target_all" class="ml-2 block text-sm text-gray-900 dark:text-gray-100">All Teams</label>
                                     </div>
                                     
                                     <div class="flex items-center">
                                         <input type="radio" wire:model="target_type" value="specific_user" id="target_specific" 
                                                class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600">
-                                        <label for="target_specific" class="ml-2 block text-sm text-gray-900 dark:text-gray-100">Specific User</label>
+                                        <label for="target_specific" class="ml-2 block text-sm text-gray-900 dark:text-gray-100">Specific Team</label>
                                     </div>
                                 </div>
                                 
                                 @if($target_type === 'specific_user')
                                     <div class="mt-2">
-                                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Select User</label>
+                                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Select Team</label>
                                         <select wire:model="target_user_id" class="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                                            <option value="">Choose a user...</option>
+                                            <option value="">Choose a team...</option>
                                             @foreach($users as $user)
                                                 <option value="{{ $user->id }}">{{ $user->name }} ({{ $user->email }})</option>
                                             @endforeach
@@ -388,8 +399,6 @@
                         </button>
                     </div>
                 </form>
-            </div>
-        </div>
     </div>
     @endif
 </div>

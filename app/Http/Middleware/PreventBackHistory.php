@@ -28,7 +28,24 @@ class PreventBackHistory
             $response->header('X-Content-Type-Options', 'nosniff')
                     ->header('X-Frame-Options', 'DENY')
                     ->header('X-XSS-Protection', '1; mode=block')
-                    ->header('Referrer-Policy', 'strict-origin-when-cross-origin');
+                    ->header('Referrer-Policy', 'strict-origin-when-cross-origin')
+                    ->header('Permissions-Policy', 'geolocation=(self), camera=(self), microphone=()');
+
+            // Add Content Security Policy (permissive for development, tighten in production)
+            $csp = implode('; ', [
+                "default-src 'self'",
+                "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://unpkg.com https://maps.googleapis.com",
+                "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com https://fonts.googleapis.com",
+                "img-src 'self' data: https: blob:",
+                "font-src 'self' data: https://fonts.gstatic.com https://cdn.jsdelivr.net",
+                "connect-src 'self' https://api.maptiler.com https://maps.googleapis.com",
+                "frame-src 'self'",
+                "object-src 'none'",
+                "base-uri 'self'",
+                "form-action 'self'",
+                "upgrade-insecure-requests"
+            ]);
+            $response->header('Content-Security-Policy', $csp);
         } else {
             // For StreamedResponse and other response types, set headers directly
             $response->headers->set('Cache-Control', 'no-cache, no-store, max-age=0, must-revalidate');
@@ -38,6 +55,23 @@ class PreventBackHistory
             $response->headers->set('X-Frame-Options', 'DENY');
             $response->headers->set('X-XSS-Protection', '1; mode=block');
             $response->headers->set('Referrer-Policy', 'strict-origin-when-cross-origin');
+            $response->headers->set('Permissions-Policy', 'geolocation=(self), camera=(self), microphone=()');
+
+            // Add Content Security Policy
+            $csp = implode('; ', [
+                "default-src 'self'",
+                "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://unpkg.com https://maps.googleapis.com",
+                "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com https://fonts.googleapis.com",
+                "img-src 'self' data: https: blob:",
+                "font-src 'self' data: https://fonts.gstatic.com https://cdn.jsdelivr.net",
+                "connect-src 'self' https://api.maptiler.com https://maps.googleapis.com",
+                "frame-src 'self'",
+                "object-src 'none'",
+                "base-uri 'self'",
+                "form-action 'self'",
+                "upgrade-insecure-requests"
+            ]);
+            $response->headers->set('Content-Security-Policy', $csp);
         }
 
         return $response;

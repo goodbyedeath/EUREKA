@@ -10,59 +10,53 @@ use Illuminate\Support\Facades\Session;
 class UserSessionTimeout
 {
     /**
-     * Handle an incoming request.
+     * Enforce the admin-granted access window.
+     *
+     * This used to be an *inactivity* timeout, which reset on every request — so a
+     * team that kept using the app never timed out at all. It is now an absolute
+     * window: the clock starts at first login and, once it runs out, the user is
+     * logged out and cannot log back in until an admin grants access again.
      */
     public function handle(Request $request, Closure $next)
     {
-        // Skip session timeout check for auth routes
         if ($request->is('login') || $request->is('logout') || $request->is('register')) {
             return $next($request);
         }
 
-        if (!Auth::check()) {
+        if (! Auth::check()) {
             return $next($request);
         }
 
         $user = Auth::user();
-        
-        // Only apply timeout to regular users, not admins
-        if ($user->role !== 'user') {
+
+        // Admins are never time-limited; they are the ones handing out the windows.
+        if (! $user->hasAccessWindow()) {
             return $next($request);
         }
 
-        // Use admin-configured session timeout from database
-        $sessionTimeout = $user->session_timeout ?? null;
-        
-        // If session timeout is null (No timeout), skip timeout check entirely
-        if ($sessionTimeout === null) {
-            return $next($request);
-        }
+        // A session that survived from before the grant existed still needs a clock.
+        $user->startAccessWindow();
 
-        $lastActivity = Session::get('last_activity_time');
-        $now = now()->timestamp;
+        if ($user->accessWindowExpired()) {
+            Auth::logout();
+            Session::flush();
 
-        if ($lastActivity) {
-            $inactiveTime = $now - $lastActivity;
-            
-            if ($inactiveTime > $sessionTimeout) {
-                // Session has expired
-                Auth::logout();
-                Session::flush();
-                
-                if ($request->expectsJson()) {
-                    return response()->json([
-                        'message' => 'Session expired due to inactivity.',
-                        'expired' => true
-                    ], 419);
-                }
-                
-                return redirect()->route('login')
-                    ->with('message', 'Your session has expired due to inactivity. Please log in again.');
+            $message = __('Your access period has ended. Please contact an administrator to be granted access again.');
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $message,
+                    'expired' => true,
+                    'redirect' => route('login'),
+                ], 419);
             }
+
+            return redirect()->route('login')->with('error', $message);
         }
 
-        // Update last activity time (only if timeout is configured)
-        Session::put('last_activity_time', $now);
+        // Surfaced to the UI so a countdown can be shown without another query.
+        Session::put('access_window_ends_at', optional($user->accessWindowEndsAt())->timestamp);
 
         return $next($request);
     }

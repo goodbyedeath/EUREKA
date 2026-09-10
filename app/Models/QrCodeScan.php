@@ -108,6 +108,31 @@ class QrCodeScan extends Model
     }
 
     /**
+     * Whether a team may open this questionnaire at all.
+     *
+     * The QR code is the only real proof that a team physically reached the outpost,
+     * so scanning it is the precondition for starting a quiz - without this, the
+     * sequential questionnaire ids let a team walk /quiz/start/1, /quiz/start/2 and
+     * clear the whole hunt from the start line.
+     */
+    public static function canUserStartQuestionnaire(int $userId, int $questionnaireId): bool
+    {
+        if (self::hasUserScannedQuestionnaire($userId, $questionnaireId)) {
+            return true;
+        }
+
+        // A quiz already in progress passed this gate when it was started. The scan is
+        // deactivated on completion, not on start, so this only matters if a scan lapses
+        // mid-quiz - but blocking then would strand a team part-way through at the
+        // outpost, which is worse than the hole this closes.
+        return QuizAttempt::where("user_id", $userId)
+            ->where("questionnaire_id", $questionnaireId)
+            ->where("status", QuizAttempt::STATUS_STARTED)
+            ->whereNull("completed_at")
+            ->exists();
+    }
+
+    /**
      * Deactivate scan when user completes or abandons the questionnaire.
      */
     public static function deactivateScan(int $userId, int $questionnaireId): void

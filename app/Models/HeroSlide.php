@@ -21,6 +21,7 @@ class HeroSlide extends Model
         'background_image',
         'text_color',
         'button_color',
+        'button_style',
         'order',
         'is_active',
         'icon_svg',
@@ -246,6 +247,35 @@ class HeroSlide extends Model
                 return !empty($this->secondary_button_text) && !empty($this->secondary_button_url);
             default:
                 return false;
+        }
+    }
+
+    /**
+     * Get button classes based on style
+     */
+    public function getButtonClasses($buttonType = 'primary')
+    {
+        $baseClasses = 'inline-flex items-center px-8 py-4 text-lg font-medium rounded-lg transition duration-300';
+        $style = $this->button_style ?? 'solid';
+
+        switch ($style) {
+            case 'glass':
+                return $baseClasses . ' backdrop-blur-md bg-white/20 border border-white/30 ' . $this->text_color . ' hover:bg-white/30 shadow-lg';
+
+            case 'outline':
+                if ($buttonType === 'primary') {
+                    return $baseClasses . ' border-2 border-white ' . $this->text_color . ' hover:bg-white hover:text-blue-600';
+                } else {
+                    return $baseClasses . ' border-2 border-white/50 ' . $this->text_color . ' hover:bg-white/10';
+                }
+
+            case 'solid':
+            default:
+                if ($buttonType === 'primary') {
+                    return $baseClasses . ' border border-transparent ' . $this->button_color . ' hover:bg-gray-50 shadow-lg';
+                } else {
+                    return $baseClasses . ' border-2 border-white ' . $this->text_color . ' hover:bg-white hover:text-blue-600';
+                }
         }
     }
 

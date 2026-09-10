@@ -24,7 +24,7 @@ new class extends Component
                 <!-- Logo -->
                 <div class="shrink-0 flex items-center">
                     <a href="{{ route('dashboard') }}" wire:navigate>
-                        <img src="/logo/horizonlogo.png" alt="Eureka! Performa" class="h-9 w-auto">
+                        <img src="{{ \App\Models\BrandSetting::horizontalUrl() }}" alt="Eureka! Performa" class="h-9 w-auto">
                     </a>
                 </div>
 

@@ -85,7 +85,13 @@ class QuestLocationController extends Controller
         $request->validate([
             'location_id' => 'required|exists:quest_locations,id',
             'user_latitude' => 'required|numeric',
-            'user_longitude' => 'required|numeric'
+            'user_longitude' => 'required|numeric',
+            // Declared so they are checked, not merely accepted. `accuracy` was already being
+            // written straight into a decimal column from $request->accuracy with no rule at
+            // all, so a client sending a non-numeric value got a database error reported as a
+            // 500 instead of a 422 naming the field.
+            'accuracy' => 'nullable|numeric|min:0',
+            'device_info' => 'nullable|string|max:255',
         ]);
 
         try {
@@ -101,12 +107,20 @@ class QuestLocationController extends Controller
                 $location->longitude
             ) * 1000; // Convert to meters
 
-            // Check if user is within radius
+            // Check if user is within radius.
+            //
+            // Shaped to match ArExperienceController's out_of_range refusal: an `error` key plus
+            // the two numbers a client needs to tell the team how much further to walk. This used
+            // to answer HTTP 200 with success:false and prose only, so a client branching on the
+            // status saw a successful check-in, and the Android gate matrix could not fire.
             if ($distance > $location->radius) {
                 return response()->json([
                     'success' => false,
+                    'error' => 'out_of_range',
+                    'distance' => round($distance, 1),
+                    'radius' => $location->radius,
                     'message' => "You're " . round($distance) . "m away. Get within {$location->radius}m to check in."
-                ]);
+                ], 403);
             }
 
             // Check if user can still check in (max check-ins limit)
@@ -118,8 +132,10 @@ class QuestLocationController extends Controller
                 if ($currentCheckIns >= $location->max_check_ins_per_user) {
                     return response()->json([
                         'success' => false,
+                        'error' => 'max_attempts_reached',
+                        'limit' => $location->max_check_ins_per_user,
                         'message' => 'Maximum check-ins reached for this location.'
-                    ]);
+                    ], 409);
                 }
             }
 
@@ -130,7 +146,8 @@ class QuestLocationController extends Controller
                 'user_latitude' => $userLat,
                 'user_longitude' => $userLng,
                 'checked_at' => now(),
-                'accuracy' => $request->accuracy,
+                'accuracy' => $request->input('accuracy'),
+                'device_info' => $request->input('device_info'),
                 'distance_from_center' => $distance
             ]);
 
@@ -357,7 +374,13 @@ class QuestLocationController extends Controller
         $request->validate([
             'location_id' => 'required|exists:quest_locations,id',
             'user_latitude' => 'required|numeric',
-            'user_longitude' => 'required|numeric'
+            'user_longitude' => 'required|numeric',
+            // Declared so they are checked, not merely accepted. `accuracy` was already being
+            // written straight into a decimal column from $request->accuracy with no rule at
+            // all, so a client sending a non-numeric value got a database error reported as a
+            // 500 instead of a 422 naming the field.
+            'accuracy' => 'nullable|numeric|min:0',
+            'device_info' => 'nullable|string|max:255',
         ]);
 
         $location = QuestLocation::findOrFail($request->location_id);
@@ -407,8 +430,13 @@ class QuestLocationController extends Controller
      */
     private function fetchRouteFromAPI($startLat, $startLng, $endLat, $endLng)
     {
-        // Using OpenRouteService (free tier: 2000 requests/day)
-        $apiKey = env('OPENROUTE_API_KEY', 'eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6Ijc4ZjAyMDIyYmIyMDRlNDRiZmVjYWVkZGI3M2NjZjBlIiwiaCI6Im11cm11cjY0In0=');
+        $apiKey = config('services.openroute.key');
+
+        // No key configured: say so rather than calling the API unauthenticated and
+        // returning a confusing upstream error.
+        if (empty($apiKey)) {
+            return null;
+        }
 
         $url = "https://api.openrouteservice.org/v2/directions/foot-walking";
 

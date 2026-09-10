@@ -26,6 +26,7 @@ class QuestLocationManager extends Component
     public $is_active = true;
     public $max_check_ins_per_user = null;
     public $quest_points = 0;
+    public $marker_color = '#EF4444'; // Default red color
     public $image = null;
     public $existing_image_path = null;
 
@@ -47,6 +48,7 @@ class QuestLocationManager extends Component
         'is_active' => 'boolean',
         'max_check_ins_per_user' => 'nullable|integer|min:1',
         'quest_points' => 'required|integer|min:0',
+        'marker_color' => 'required|string|regex:/^#[0-9A-Fa-f]{6}$/',
         'image' => 'nullable|image|max:2048', // 2MB max
     ];
 
@@ -55,6 +57,7 @@ class QuestLocationManager extends Component
         'image.max' => 'The image may not be greater than 2MB.',
         'max_check_ins_per_user.min' => 'Maximum check-ins must be at least 1.',
         'quest_points.min' => 'Quest points cannot be negative.',
+        'marker_color.regex' => 'Marker color must be a valid hex color (e.g., #FF0000).',
     ];
 
     public function render()
@@ -85,6 +88,7 @@ class QuestLocationManager extends Component
         $this->is_active = $questLocation->is_active;
         $this->max_check_ins_per_user = $questLocation->max_check_ins_per_user;
         $this->quest_points = $questLocation->quest_points;
+        $this->marker_color = $questLocation->marker_color ?? '#EF4444';
         $this->existing_image_path = $questLocation->image_path;
 
         $this->editMode = true;
@@ -105,6 +109,7 @@ class QuestLocationManager extends Component
             'is_active' => $this->is_active,
             'max_check_ins_per_user' => $this->max_check_ins_per_user,
             'quest_points' => $this->quest_points,
+            'marker_color' => $this->marker_color,
         ];
 
         // Handle image upload
@@ -207,6 +212,7 @@ class QuestLocationManager extends Component
         $this->is_active = true;
         $this->max_check_ins_per_user = null;
         $this->quest_points = 0;
+        $this->marker_color = '#EF4444'; // Default red color
         $this->image = null;
         $this->existing_image_path = null;
         $this->questLocationId = null;

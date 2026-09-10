@@ -126,7 +126,7 @@
                                     @if($team->users_count > 0)
                                         <button wire:click="viewTeamUsers({{ $team->id }})" 
                                                 class="text-green-600 hover:text-green-800 text-xs px-2 py-1 border border-green-300 rounded hover:bg-green-50"
-                                                title="View team users ({{ $team->users_count }})">
+                                                title="View team accounts ({{ $team->users_count }})">
                                             Users ({{ $team->users_count }})
                                         </button>
                                     @endif
@@ -179,7 +179,7 @@
                                         <button wire:click="forceDeleteTeam({{ $team->id }})"
                                                 wire:confirm="⚠️ FORCE DELETE: This will PERMANENTLY delete the team, remove ALL users from the team, and DELETE all their quiz attempts, answers, and game assessments. This will reset user accounts to NEW. This action CANNOT be undone! Are you absolutely sure?"
                                                 class="text-red-800 hover:text-red-900"
-                                                title="Force delete with all members and reset user accounts">
+                                                title="Force delete with all members and reset linked accounts">
                                             <i class="fas fa-exclamation-triangle"></i>
                                         </button>
                                     @endif
@@ -382,8 +382,10 @@
                                         </span>
                                     </template>
                                     <span class="text-xs text-gray-500 dark:text-gray-400" x-text="'Joined ' + member.joined_date"></span>
-                                    <button @click="$wire.call('removeMemberFromTeam', teamData.id, member.id)"
-                                            wire:confirm="Are you sure you want to remove this team member? This will remove them from the team_members table."
+                                    {{-- wire:confirm only guards Livewire's own directives (wire:click, wire:submit). On an
+                                         Alpine @click calling $wire.call() it is inert markup, so this button used to
+                                         delete a member with no prompt at all. --}}
+                                    <button @click="if (confirm('Remove this member from the team?')) $wire.call('removeMemberFromTeam', teamData.id, member.id)"
                                             class="text-red-600 hover:text-red-900 text-xs px-2 py-1 border border-red-300 rounded hover:bg-red-50"
                                             title="Remove member">
                                         <i class="fas fa-user-minus"></i>
@@ -488,7 +490,7 @@
                     <div class="text-center py-8 text-gray-500 dark:text-gray-400">
                         <i class="fas fa-camera text-4xl mb-4"></i>
                         <p>No game assessment photos found</p>
-                        <p class="text-sm">Photos are captured when users submit fun game assessments</p>
+                        <p class="text-sm">Photos are captured when teams submit fun game assessments</p>
                     </div>
                 </template>
             </div>
@@ -583,10 +585,9 @@
                                 </div>
                                 <div class="flex items-center space-x-2">
                                     <span class="text-xs text-gray-500 dark:text-gray-400" x-text="'Joined ' + member.joined_date"></span>
-                                    <button @click="$wire.call('removeUserFromTeam', teamData.id, member.id)"
-                                            wire:confirm="Are you sure you want to remove this user from the team? This will set their team_id to NULL."
+                                    <button @click="if (confirm('Remove this account from the team? Their team_id will be cleared.')) $wire.call('removeUserFromTeam', teamData.id, member.id)"
                                             class="text-red-600 hover:text-red-900 text-xs px-2 py-1 border border-red-300 rounded hover:bg-red-50"
-                                            title="Remove user from team">
+                                            title="Remove account from team">
                                         <i class="fas fa-user-times"></i>
                                     </button>
                                 </div>
@@ -598,7 +599,7 @@
                 <template x-if="!teamData.members || teamData.members.length === 0">
                     <div class="text-center py-8 text-gray-500 dark:text-gray-400">
                         <i class="fas fa-users text-4xl mb-4"></i>
-                        <p>No users assigned to this team</p>
+                        <p>No accounts assigned to this team</p>
                     </div>
                 </template>
             </div>

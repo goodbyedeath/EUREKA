@@ -13,15 +13,17 @@ class PointsCalculationService
 {
     /**
      * Calculate earned points from a single quiz attempt (correct answers only)
+     * IMPORTANT: Uses points_earned from user_answers table, NOT question->points
+     * This ensures fun_game questions (which have points_earned = 0) are handled correctly
      */
     public function calculateEarnedPoints(QuizAttempt $attempt): int
     {
         return UserAnswer::where('quiz_attempt_id', $attempt->id)
-            ->with(['question'])
             ->where('is_correct', true)
             ->get()
             ->sum(function($answer) {
-                return $answer->question->points ?? 0;
+                // Use points_earned from user_answers table to match Livewire logic
+                return $answer->points_earned ?? 0;
             });
     }
 
@@ -91,17 +93,18 @@ class PointsCalculationService
             $earnedPoints = $this->calculateEarnedPoints($attempt);
             $currentPoints += $earnedPoints;
             
-            // Apply assessment adjustments if exists
+            // Apply assessment bonus if exists (following Livewire logic)
             $assessment = GameAssessment::where('quiz_attempt_id', $attempt->id)
                 ->where('user_id', $attempt->user_id)
                 ->where('is_assessed', true)
                 ->first();
-                
+
             if ($assessment && $assessment->total_deposit !== null) {
-                // Calculate the difference and apply it
-                $expectedPoints = $this->getUserBasePoints($user) + $earnedPoints;
-                $assessmentDifference = $assessment->total_deposit - $expectedPoints;
-                $currentPoints += $assessmentDifference;
+                // Assessment gain = total_deposit - base_points (matches Livewire)
+                $assessmentGain = ($assessment->total_deposit ?? 0) - $this->getUserBasePoints($user);
+                // A facilitator's penalty must be able to pull the score down; clamping
+                // this to 0 silently discarded every penalty ever awarded.
+                $currentPoints += $assessmentGain;
             }
         }
         
@@ -163,16 +166,17 @@ class PointsCalculationService
             $earnedPoints = $this->calculateEarnedPoints($attempt);
             $totalEarnedPoints += $earnedPoints;
             
-            // Calculate assessment bonus/penalty
+            // Calculate assessment bonus (following Livewire logic)
             $assessment = GameAssessment::where('quiz_attempt_id', $attempt->id)
                 ->where('user_id', $attempt->user_id)
                 ->where('is_assessed', true)
                 ->first();
-                
+
             if ($assessment && $assessment->total_deposit !== null) {
-                $expectedPoints = $basePoints + $earnedPoints;
-                $assessmentDifference = $assessment->total_deposit - $expectedPoints;
-                $totalAssessmentBonus += $assessmentDifference;
+                // Assessment gain = total_deposit - base_points (NOT base + earned)
+                // This matches the Livewire component calculation
+                $assessmentGain = ($assessment->total_deposit ?? 0) - $basePoints;
+                $totalAssessmentBonus += $assessmentGain;
             }
         }
         
@@ -215,7 +219,7 @@ class PointsCalculationService
             return $team->initial_points ?? 1000;
         }
         
-        $highestPoints = $team->initial_points ?? 1000;
+        $highestPoints = null; // start unset: seeding with initial_points meant a penalised team could never rank below its starting balance
         
         // Group attempts by user to calculate each user's total
         $attemptsByUser = $completedAttempts->groupBy('user_id');
@@ -224,13 +228,13 @@ class PointsCalculationService
             $user = $userAttempts->first()->user;
             if ($user) {
                 $userTotal = $this->calculateUserTotalPoints($user, $userAttempts);
-                if ($userTotal > $highestPoints) {
+                if ($highestPoints === null || $userTotal > $highestPoints) {
                     $highestPoints = $userTotal;
                 }
             }
         }
         
-        return $highestPoints;
+        return $highestPoints ?? ($team->initial_points ?? 1000);
     }
 
     /**

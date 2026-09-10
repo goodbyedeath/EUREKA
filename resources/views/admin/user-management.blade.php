@@ -1,6 +1,6 @@
 @extends('layouts.admin')
 
-@section('page-title', 'User Management')
+@section('page-title', 'Account Management')
 
 @section('content')
 <livewire:admin.user-management />
@@ -69,7 +69,7 @@
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Role</label>
                     <select x-model="userData.role"
                             class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors duration-200">
-                        <option value="user">User</option>
+                        <option value="user">Team</option>
                         <option value="admin">Admin</option>
                     </select>
                 </div>

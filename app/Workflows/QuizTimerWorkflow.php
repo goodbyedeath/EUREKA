@@ -16,9 +16,9 @@ class QuizTimerWorkflow extends Workflow
      *
      * @param int $quizAttemptId
      * @param int $timeLimitMinutes
-     * @return string
+     * @return \Generator the workflow's final value is read with getReturn()
      */
-    public function execute(int $quizAttemptId, int $timeLimitMinutes): string
+    public function execute(int $quizAttemptId, int $timeLimitMinutes): \Generator
     {
         Log::info("Starting quiz timer workflow for attempt {$quizAttemptId} with {$timeLimitMinutes} minutes limit");
 
@@ -81,7 +81,9 @@ class QuizTimerWorkflow extends Workflow
         Log::info("Quiz attempt {$quizAttemptId} timed out, auto-submitting");
         
         $endTime = WorkflowStub::now();
-        $actualDuration = $endTime->diffInSeconds($startTime);
+        // Same Carbon 3 signed-diff trap: end->diffInSeconds(start) is negative, so every
+        // timed-out attempt recorded a negative elapsed time and broadcast it in QuizTimeExpired.
+        $actualDuration = $startTime->diffInSeconds($endTime, false);
         
         // Auto-submit the quiz
         $this->autoSubmitQuiz($attempt, $actualDuration);

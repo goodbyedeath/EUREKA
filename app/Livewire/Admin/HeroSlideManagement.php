@@ -28,6 +28,7 @@ class HeroSlideManagement extends Component
     public $existing_background_image = '';
     public $text_color = 'text-white';
     public $button_color = 'text-blue-600 bg-white';
+    public $button_style = 'solid'; // solid, outline, glass
     public $order = 0;
     public $is_active = true;
     public $icon_svg = '';
@@ -40,8 +41,8 @@ class HeroSlideManagement extends Component
     protected function rules()
     {
         return [
-            'title' => 'required|string|max:255',
-            'subtitle' => 'required|string|max:1000',
+            'title' => 'nullable|string|max:255',
+            'subtitle' => 'nullable|string|max:1000',
             'primary_button_text' => 'required|string|max:50',
             'primary_button_url' => 'required|string|max:255',
             'secondary_button_text' => 'nullable|string|max:50',
@@ -50,6 +51,7 @@ class HeroSlideManagement extends Component
             'background_image' => 'nullable|image|max:2048', // 2MB max
             'text_color' => 'required|string|max:50',
             'button_color' => 'required|string|max:100',
+            'button_style' => 'required|in:solid,outline,glass',
             'order' => 'required|integer|min:0',
             'is_active' => 'boolean',
             'icon_svg' => 'nullable|string|max:2000',
@@ -94,6 +96,7 @@ class HeroSlideManagement extends Component
         $this->background_image = null; // Reset file input
         $this->text_color = $slide->text_color;
         $this->button_color = $slide->button_color;
+        $this->button_style = $slide->button_style ?? 'solid';
         $this->order = $slide->order;
         $this->is_active = $slide->is_active;
         $this->icon_svg = $slide->icon_svg ?? '';
@@ -114,8 +117,8 @@ class HeroSlideManagement extends Component
         $this->validate();
 
         $data = [
-            'title' => $this->title,
-            'subtitle' => $this->subtitle,
+            'title' => $this->title ?: null,
+            'subtitle' => $this->subtitle ?: null,
             'primary_button_text' => $this->primary_button_text,
             'primary_button_url' => $this->primary_button_url,
             'secondary_button_text' => $this->secondary_button_text ?: null,
@@ -123,6 +126,7 @@ class HeroSlideManagement extends Component
             'background_gradient' => $this->background_gradient,
             'text_color' => $this->text_color,
             'button_color' => $this->button_color,
+            'button_style' => $this->button_style,
             'order' => $this->order,
             'is_active' => $this->is_active,
             'icon_svg' => $this->icon_svg ?: null,
@@ -249,6 +253,7 @@ class HeroSlideManagement extends Component
         $this->existing_background_image = '';
         $this->text_color = 'text-white';
         $this->button_color = 'text-blue-600 bg-white';
+        $this->button_style = 'solid';
         $this->order = HeroSlide::max('order') + 1 ?? 0;
         $this->is_active = true;
         $this->icon_svg = '';

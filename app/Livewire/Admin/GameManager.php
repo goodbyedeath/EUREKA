@@ -15,41 +15,41 @@ class GameManager extends Component
 
     public $name = '';
     public $description = '';
-    public $map_image_path = '';
     
-    // Panorama default view coordinates
-    public $default_pitch = 0;  // Vertical view angle (-90 to 90)
-    public $default_yaw = 0;    // Horizontal view angle (-180 to 180)
+    // Default view coordinates (legacy; AR calibrates from the QR instead)
     public $is_active = true;
     public $target_type = 'all_users';
     public $target_user_id = null;
+    /** The post this outpost sits at; its coordinates gate the AR scene. */
+    public $quest_location_id = null;
+    /** 'geofence' = outdoor radius, 'manual' = indoor, opened by crew. */
+    public $access_mode = 'geofence';
     
-    public $mapImageUpload;
+
+    /** 3D model upload for the AR experience (see ArExperienceController). */
+    public $arModelUpload;
     public $editingGameId = null;
     public $showModal = false;
-    public $showPanoramaModal = false;
-    public $selectedGame = null;
 
     protected $rules = [
         'name' => 'required|string|max:255',
         'description' => 'nullable|string',
-        // Panorama default view coordinates
-        'default_pitch' => 'nullable|numeric|between:-90,90',
-        'default_yaw' => 'nullable|numeric|between:-180,180',
+        // Default view coordinates (legacy; AR calibrates from the QR instead)
         'is_active' => 'boolean',
         'target_type' => 'required|in:all_users,specific_user',
         'target_user_id' => 'nullable|exists:users,id',
-        'mapImageUpload' => 'nullable|image|max:10240' // 10MB max, temporarily removed ratio validation
+        'quest_location_id' => 'nullable|exists:quest_locations,id',
+        'access_mode' => 'required|in:geofence,manual',
     ];
 
     protected $messages = [
-        'mapImageUpload.image' => 'Please upload a valid image file.',
-        'mapImageUpload.max' => 'The image size must not exceed 10MB.',
     ];
 
     public function render()
     {
         return view('livewire.admin.game-manager', [
+            'arModels' => \App\Models\ArModel::orderBy('name')->get(),
+            'questLocations' => \App\Models\QuestLocation::where('is_active', true)->orderBy('name')->get(),
             'games' => GameLocation::with('activeHotspots')->orderBy('created_at', 'desc')->paginate(10)
         ]);
     }
@@ -64,12 +64,11 @@ class GameManager extends Component
             
             $this->name = $game->name;
             $this->description = $game->description;
-            $this->map_image_path = $game->map_image_path;
-            $this->default_pitch = $game->default_pitch ?? 0;
-            $this->default_yaw = $game->default_yaw ?? 0;
             $this->is_active = $game->is_active;
             $this->target_type = $game->target_type ?? 'all_users';
             $this->target_user_id = $game->target_user_id;
+            $this->quest_location_id = $game->quest_location_id;
+            $this->access_mode = $game->access_mode ?? 'geofence';
         }
         
         $this->showModal = true;
@@ -87,12 +86,6 @@ class GameManager extends Component
             \Log::info('GameManager save method called', [
                 'editingGameId' => $this->editingGameId,
                 'name' => $this->name,
-                'hasMapImageUpload' => !!$this->mapImageUpload,
-                'mapImageUploadInfo' => $this->mapImageUpload ? [
-                    'originalName' => $this->mapImageUpload->getClientOriginalName(),
-                    'size' => $this->mapImageUpload->getSize(),
-                    'mimeType' => $this->mapImageUpload->getMimeType()
-                ] : null
             ]);
 
             $this->validate();
@@ -100,43 +93,14 @@ class GameManager extends Component
         $data = [
             'name' => $this->name,
             'description' => $this->description,
-            'what_to_do' => $this->description, // Use description as what_to_do for now
-            // Panorama default view coordinates
-            'default_pitch' => $this->default_pitch ?: null,
-            'default_yaw' => $this->default_yaw ?: null,
+            // Default view coordinates (legacy; AR calibrates from the QR instead)
             'is_active' => $this->is_active,
             'target_type' => $this->target_type,
             'target_user_id' => $this->target_user_id,
+            'quest_location_id' => $this->quest_location_id ?: null,
+            'access_mode' => $this->access_mode,
             'created_by' => 1, // Default admin user ID
-            'quest_points' => 10, // Default points
-            'radius' => 50, // Default radius
-            'max_check_ins_per_user' => 1, // Default max check-ins
         ];
-
-        // Handle image upload
-        if ($this->mapImageUpload) {
-            try {
-                \Log::info('Processing image upload', [
-                    'file' => $this->mapImageUpload->getClientOriginalName(),
-                    'size' => $this->mapImageUpload->getSize(),
-                    'mime' => $this->mapImageUpload->getMimeType()
-                ]);
-
-                // Delete old image if updating
-                if ($this->editingGameId && $this->map_image_path) {
-                    \Log::info('Deleting old image: ' . $this->map_image_path);
-                    Storage::disk('public')->delete($this->map_image_path);
-                }
-                
-                $path = $this->mapImageUpload->store('games/map-images', 'public');
-                \Log::info('Image stored successfully at: ' . $path);
-                $data['map_image_path'] = $path;
-            } catch (\Exception $e) {
-                \Log::error('Image upload failed: ' . $e->getMessage());
-                session()->flash('error', 'Image upload failed: ' . $e->getMessage());
-                return;
-            }
-        }
 
         if ($this->editingGameId) {
             GameLocation::findOrFail($this->editingGameId)->update($data);
@@ -160,11 +124,11 @@ class GameManager extends Component
     {
         $game = GameLocation::findOrFail($gameId);
         
-        // Delete associated image
-        if ($game->map_image_path) {
-            Storage::disk('public')->delete($game->map_image_path);
+        // Remove the location's 3D model, if it has one.
+        if ($game->ar_model_path) {
+            Storage::disk('public')->delete($game->ar_model_path);
         }
-        
+
         $game->delete();
         session()->flash('success', 'Game location deleted successfully!');
     }
@@ -177,43 +141,8 @@ class GameManager extends Component
         session()->flash('success', 'Game location status updated!');
     }
 
-    public function viewPanorama($gameId)
-    {
-        $this->selectedGame = GameLocation::with('activeHotspots')->findOrFail($gameId);
-        $this->showPanoramaModal = true;
-        
-        // Emit event to initialize Panellum viewer with existing hotspots
-        $this->dispatch('panorama-modal-opened', [
-            'gameId' => $gameId,
-            'imagePath' => $this->selectedGame->map_image_path,
-            'hotspots' => $this->selectedGame->activeHotspots->map(function ($hotspot) {
-                return [
-                    'id' => $hotspot->id,
-                    'pitch' => (float) $hotspot->pitch,
-                    'yaw' => (float) $hotspot->yaw,
-                    'type' => $hotspot->type,
-                    'text' => $hotspot->title,
-                    'description' => $hotspot->description,
-                    'cssClass' => $hotspot->css_class ?: 'custom-admin-hotspot'
-                ];
-            })->toArray()
-        ]);
-    }
 
-    public function closePanoramaModal()
-    {
-        $this->showPanoramaModal = false;
-        $this->selectedGame = null;
-        
-        // Emit cleanup event
-        $this->dispatch('panorama-modal-closed');
-    }
 
-    public function updatePanoramaView($pitch, $yaw)
-    {
-        $this->default_pitch = (float) $pitch;
-        $this->default_yaw = (float) $yaw;
-    }
 
     // Hotspot Management Methods
     public function saveHotspot($gameLocationId, $pitch, $yaw, $title, $description = null, $type = 'info', $cssClass = 'custom-admin-hotspot')
@@ -400,13 +329,119 @@ class GameManager extends Component
         $this->editingGameId = null;
         $this->name = '';
         $this->description = '';
-        $this->map_image_path = '';
-        $this->default_pitch = 0;
-        $this->default_yaw = 0;
         $this->is_active = true;
         $this->target_type = 'all_users';
         $this->target_user_id = null;
-        $this->mapImageUpload = null;
+        $this->quest_location_id = null;
+        $this->access_mode = 'geofence';
         $this->resetValidation();
+    }
+    /**
+     * Add a model to the shared library and point this location at it.
+     *
+     * The file lands in the library, not on the location, so the same asset can be
+     * reused everywhere without a second upload or a second offline download.
+     */
+    public function uploadArModel($gameId)
+    {
+        $this->validate([
+            'arModelUpload' => 'required|file|max:30720',
+        ], [
+            'arModelUpload.max' => 'The model must be 30 MB or smaller.',
+        ]);
+
+        $extension = strtolower($this->arModelUpload->getClientOriginalExtension());
+
+        if (! in_array($extension, ['glb', 'gltf'], true)) {
+            $this->addError('arModelUpload', 'Only .glb or .gltf models are supported.');
+            return;
+        }
+
+        try {
+            $game = GameLocation::findOrFail($gameId);
+            $path = $this->arModelUpload->store('games/ar-models', 'public');
+
+            $model = \App\Models\ArModel::create([
+                'name' => pathinfo($this->arModelUpload->getClientOriginalName(), PATHINFO_FILENAME),
+                'path' => $path,
+                'size' => Storage::disk('public')->size($path),
+                'created_by' => auth()->id(),
+            ]);
+
+            $game->update([
+                'ar_model_id' => $model->id,
+                'ar_model_path' => null,          // superseded by the library reference
+                'experience_type' => GameLocation::EXPERIENCE_AR,
+            ]);
+
+            $this->arModelUpload = null;
+            session()->flash('message', 'Added "' . $model->name . '" to the library and applied it here.');
+        } catch (\Exception $e) {
+            session()->flash('error', 'Failed to upload the model. Please try again.');
+        }
+    }
+
+    /**
+     * Point a location at a model that is already in the library.
+     */
+    public function setArModel($gameId, $modelId)
+    {
+        $game = GameLocation::findOrFail($gameId);
+
+        if (! $modelId) {
+            $game->update(['ar_model_id' => null, 'experience_type' => GameLocation::EXPERIENCE_PANORAMA]);
+            session()->flash('message', 'Model cleared — this location has no 3D experience yet.');
+            return;
+        }
+
+        $game->update([
+            'ar_model_id' => (int) $modelId,
+            'ar_model_path' => null,
+            'experience_type' => GameLocation::EXPERIENCE_AR,
+        ]);
+
+        session()->flash('message', 'Model updated.');
+    }
+
+    /**
+     * Remove an asset from the library, but never one still in use.
+     */
+    public function deleteArModel($modelId)
+    {
+        $model = \App\Models\ArModel::findOrFail($modelId);
+
+        if ($model->isInUse()) {
+            session()->flash('error', 'That model is still used by a location or an object.');
+            return;
+        }
+
+        Storage::disk('public')->delete($model->path);
+        $model->delete();
+        session()->flash('message', 'Model removed from the library.');
+    }
+
+    /**
+     * Enable or disable the AR experience for a location.
+     */
+    public function setExperienceType($gameId, $type)
+    {
+        $game = GameLocation::findOrFail($gameId);
+
+        // Ask the model where its file is, rather than checking one of the two columns.
+        // uploadArModel() and setArModel() both write ar_model_path = null and record the
+        // reference in ar_model_id, so an admin who picked a model from the library was
+        // still told to "upload a 3D model first" and could never turn AR on.
+        if ($type === GameLocation::EXPERIENCE_AR && $game->modelUrl() === null) {
+            session()->flash('error', 'Upload a 3D model first — AR needs something to show.');
+            return;
+        }
+
+        $game->update([
+            'experience_type' => $type === GameLocation::EXPERIENCE_AR
+                ? GameLocation::EXPERIENCE_AR
+                : GameLocation::EXPERIENCE_PANORAMA,
+        ]);
+
+        session()->flash('message', $game->usesAr() ? 'Now using the 3D / AR experience.' : 'No 3D model yet — upload one to enable AR.');
     }
 }

@@ -3,9 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EUREKA LED Kiosk</title>
-    <script src='https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js'></script>
-    <link href='https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css' rel='stylesheet' />
+    <title>{{ \App\Models\BrandSetting::title('LED Kiosk') }}</title>
+    @include('partials.map-config')
+    <script src='/vendor/maplibre/3.6.2/maplibre-gl.js'></script>
+    <link href='/vendor/maplibre/3.6.2/maplibre-gl.css' rel='stylesheet' />
     <style>
         * {
             margin: 0;
@@ -29,6 +30,26 @@
             100% { background-position: 0% 50%; }
         }
         
+        .brand-mark {
+            position: fixed;
+            top: 18px;
+            right: 26px;
+            height: 42px;
+            width: auto;
+            max-width: 26vw;
+            object-fit: contain;
+            opacity: .82;
+            z-index: 20;
+            pointer-events: none;
+            /* The board is always dark, so a logo drawn for white paper still
+               reads: the shadow gives a dark mark an edge to sit against. */
+            filter: drop-shadow(0 2px 6px rgba(0,0,0,.55));
+        }
+
+        @media (max-width: 1024px) {
+            .brand-mark { height: 30px; top: 12px; right: 14px; }
+        }
+
         .kiosk-container {
             display: flex;
             height: 100vh;
@@ -308,6 +329,32 @@
             opacity: 0.8;
         }
         
+        /* The race clock sits between the team and its score. Tabular figures so the
+           digits do not jitter every second on a screen nobody is standing close to,
+           and deliberately quieter than the points — the score is what a spectator
+           reads first, the clock is what they check second. */
+        .team-clock {
+            font-family: 'Courier New', ui-monospace, monospace;
+            font-variant-numeric: tabular-nums;
+            font-size: 1.6rem;
+            font-weight: 700;
+            color: #9FB3C8;
+            letter-spacing: 0.04em;
+            min-width: 7ch;
+            text-align: right;
+            padding-right: 24px;
+        }
+
+        /* Indoors the map is blank, so this is the only "where is that team" cue. */
+        .at-outpost {
+            color: #00FF88;
+            font-weight: 700;
+        }
+
+        @media (max-width: 1200px) {
+            .team-clock { font-size: 1.3rem; padding-right: 14px; }
+        }
+
         .team-points {
             font-size: 2rem;
             font-weight: 900;
@@ -382,6 +429,11 @@
             height: 100%;
         }
         
+        /* The glass panel belongs to the wrapper, not to the title.
+           It used to sit on .map-title, where a second `background` declaration overrode
+           the gold gradient while `-webkit-text-fill-color: transparent` stayed in force.
+           The text was then clipped to a flat panel and painted with nothing — which is
+           exactly why the screen showed an empty pane of glass. Panel here, gradient there. */
         .map-overlay {
             position: absolute;
             top: 20px;
@@ -389,30 +441,33 @@
             right: 20px;
             z-index: 1000;
             text-align: center;
+            background: rgba(0, 0, 0, 0.4);
+            padding: 15px 15px 12px;
+            border-radius: 20px;
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
-        
+
         .map-title {
             font-size: 2rem;
             font-weight: 900;
+            /* A visible colour first, so anything that cannot clip a background to text
+               still shows the title instead of nothing. */
+            color: #FFD700;
             background: linear-gradient(45deg, #FFD700, #FFA500, #FF8C00);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
             text-shadow: none;
-            background: rgba(0, 0, 0, 0.4);
-            padding: 15px 15px 10px 15px;
-            border-radius: 20px;
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
             animation: mapTitleGlow 4s ease-in-out infinite alternate;
-            margin-bottom: 0;
+            margin: 0 0 10px;
         }
         
         .map-legend {
             display: flex;
             justify-content: center;
             gap: 15px;
-            margin-bottom: 15px;
+            margin-bottom: 0;
         }
         
         .legend-item {
@@ -601,6 +656,11 @@
 </head>
 <body>
     <div class="loading" id="loading">Loading...</div>
+
+    {{-- The event badge. Fixed to a corner rather than placed in the flow: the
+         board is a full-height flex layout and adding a header row would squeeze
+         the leaderboard. Dimmed so it never competes with the scores. --}}
+    <img class="brand-mark" src="{{ \App\Models\BrandSetting::horizontalUrl() }}" alt="">
     
     <div class="kiosk-container">
         <div class="leaderboard-section">
@@ -623,21 +683,26 @@
                     <div>Teams</div>
                 </div>
                 <div class="stat-item">
-                    <div class="stat-value" id="active-locations">0</div>
-                    <div>Active Locations</div>
+                    <div class="stat-value" id="gps-routes">0</div>
+                    <div>GPS Routes</div>
                 </div>
                 <div class="stat-item">
-                    <div class="stat-value" id="total-checkpoints">0</div>
-                    <div>Total Checkpoints</div>
+                    <div class="stat-value" id="gps-markers">0</div>
+                    <div>Route Markers</div>
                 </div>
             </div>
         </div>
     </div>
 
     <script>
+        const TRACKER_API_BASE = 'https://tracker.questerra-series.com/api/export';
+
         let map;
         let markers = [];
-        
+        let routeLayers = {};
+        let routeMarkers = [];
+        let gpsBoundsFitted = false;   // frame the routes once, then hold still
+
         // Initialize map
         function initMap() {
             map = new maplibregl.Map({
@@ -647,9 +712,9 @@
                     sources: {
                         'osm': {
                             type: 'raster',
-                            tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
+                            tiles: window.EUREKA_MAP.tiles,
                             tileSize: 256,
-                            attribution: '© OpenStreetMap contributors'
+                            attribution: window.EUREKA_MAP.attribution
                         }
                     },
                     layers: [
@@ -664,10 +729,246 @@
                 zoom: 12,
                 attributionControl: false
             });
-            
+
             map.addControl(new maplibregl.NavigationControl(), 'top-right');
+
+            // Load GPS tracking data when map is ready
+            map.on('load', function() {
+                loadGPSTrackingData();
+            });
         }
         
+        // Load GPS Tracking Data from Tracker API
+        async function loadGPSTrackingData() {
+            try {
+                // Clear all existing markers before refresh
+                routeMarkers.forEach(marker => marker.remove());
+                routeMarkers = [];
+
+                // Load GPS Tracker routes and markers (admin-built maps)
+                const mapDataResponse = await fetch(`${TRACKER_API_BASE}/map-data?include_active=true&include_completed=true&limit=10`);
+
+                if (!mapDataResponse.ok) {
+                    console.error('Tracker API error:', mapDataResponse.status);
+                } else {
+                    const mapData = await mapDataResponse.json();
+
+                    if (mapData.success && mapData.data && mapData.data.length > 0) {
+                        displayGPSRoutes(mapData.data);
+                    }
+                }
+
+                // EUREKA live positions no longer fetched here: they arrive with
+                // /api/kiosk/data, which updateData() already polls. One screen asking
+                // the same database twice on two timers was four wasted requests a
+                // minute. This function keeps only the tracker call, which is a
+                // different host and does not count against our own limit.
+            } catch (error) {
+                console.error('Error loading GPS tracking data:', error);
+            }
+        }
+
+        // Display GPS routes on map
+        function displayGPSRoutes(sessions) {
+            let totalMarkers = 0;
+            const bounds = new maplibregl.LngLatBounds();
+            let hasPoints = false;
+
+            sessions.forEach((session, index) => {
+                if (!session.route_points || session.route_points.length < 2) return;
+
+                const routeId = `gps-route-${session.session_id}`;
+                const color = session.status === 'active' ? '#10b981' : '#ef4444';
+
+                // Add the route line, or update the one already on the map.
+                //
+                // This used to `return` early whenever the source existed, so a route drawn
+                // on the first load never grew again — the board refreshed every 15s and
+                // showed the same frozen trail for the whole event.
+                const routeData = {
+                    type: 'Feature',
+                    properties: {},
+                    geometry: {
+                        type: 'LineString',
+                        coordinates: session.route_points.map(p => [p.lng, p.lat])
+                    }
+                };
+
+                const existing = map.getSource(routeId);
+                if (existing) {
+                    existing.setData(routeData);
+                } else {
+                    map.addSource(routeId, { type: 'geojson', data: routeData });
+
+                    map.addLayer({
+                        id: routeId,
+                        type: 'line',
+                        source: routeId,
+                        paint: {
+                            'line-color': color,
+                            'line-width': 5,
+                            'line-opacity': 0.8
+                        }
+                    });
+
+                    routeLayers[routeId] = true;
+                }
+
+                // Extend bounds to include route
+                session.route_points.forEach(point => {
+                    bounds.extend([point.lng, point.lat]);
+                    hasPoints = true;
+                });
+
+                // Add markers along the route
+                if (session.markers && session.markers.length > 0) {
+                    totalMarkers += session.markers.length;
+
+                    session.markers.forEach((marker) => {
+                        const el = document.createElement('div');
+                        // textContent, not innerHTML: this comes from the tracker app's
+                        // database over HTTP and lands on a public, unauthenticated screen.
+                        el.textContent = marker.icon || '📍';
+                        el.style.fontSize = '32px';
+                        el.style.cursor = 'pointer';
+                        el.style.textShadow = '2px 2px 4px rgba(0,0,0,0.5)';
+
+                        // Built as nodes rather than an HTML string, for the same reason:
+                        // title, description and user name are all third-party values.
+                        const popupEl = document.createElement('div');
+                        popupEl.style.cssText = 'padding: 15px; font-size: 16px;';
+
+                        const h3 = document.createElement('h3');
+                        h3.style.cssText = 'margin: 0 0 10px 0; color: #333; font-weight: bold; font-size: 18px;';
+                        h3.textContent = marker.title || 'Marker';
+                        popupEl.appendChild(h3);
+
+                        if (marker.description) {
+                            const p = document.createElement('p');
+                            p.style.cssText = 'margin: 0; font-size: 14px; color: #666;';
+                            p.textContent = marker.description;
+                            popupEl.appendChild(p);
+                        }
+
+                        const from = document.createElement('p');
+                        from.style.cssText = 'margin: 8px 0 0 0; font-size: 12px; color: #999;';
+                        from.textContent = 'From: ' + (session.user?.name ?? 'Unknown');
+                        popupEl.appendChild(from);
+
+                        const popup = new maplibregl.Popup({ offset: 30 }).setDOMContent(popupEl);
+
+                        const markerObj = new maplibregl.Marker({ element: el, anchor: 'bottom' })
+                            .setLngLat([parseFloat(marker.lng), parseFloat(marker.lat)])
+                            .setPopup(popup)
+                            .addTo(map);
+
+                        routeMarkers.push(markerObj);
+
+                        // Extend bounds to include marker
+                        bounds.extend([parseFloat(marker.lng), parseFloat(marker.lat)]);
+                    });
+                }
+            });
+
+            // Update stats
+            document.getElementById('gps-routes').textContent = sessions.length;
+            document.getElementById('gps-markers').textContent = totalMarkers;
+
+            // Frame the routes once, not on every refresh.
+            //
+            // This runs every 15 seconds. Re-fitting each time made the big screen lurch and
+            // re-zoom continuously as teams moved, which is unwatchable in a room. Fit on the
+            // first load that has points; after that let the view sit still.
+            if (hasPoints && !gpsBoundsFitted) {
+                gpsBoundsFitted = true;
+                map.fitBounds(bounds, {
+                    padding: { top: 80, bottom: 150, left: 80, right: 80 },
+                    maxZoom: 15
+                });
+            }
+        }
+
+        // Display GPS live locations
+        function displayGPSLiveLocations(userData) {
+            userData.forEach((user) => {
+                if (!user.current_location) return;
+
+                const loc = user.current_location;
+                const el = document.createElement('div');
+                el.innerHTML = `
+                    <div style="
+                        width: 40px;
+                        height: 40px;
+                        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+                        border: 5px solid white;
+                        border-radius: 50%;
+                        box-shadow: 0 0 20px rgba(239, 68, 68, 0.8), 0 4px 16px rgba(0,0,0,0.4);
+                        animation: livePulse 2s ease-in-out infinite;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        font-size: 18px;
+                        color: white;
+                        font-weight: bold;
+                    ">${user.user.name.charAt(0)}</div>
+                `;
+
+                const markerObj = new maplibregl.Marker({ element: el, anchor: 'center' })
+                    .setLngLat([loc.lng, loc.lat])
+                    .setPopup(new maplibregl.Popup({ offset: 25 }).setHTML(`
+                        <div style="padding: 15px; font-size: 16px;">
+                            <h3 style="margin: 0 0 10px 0; font-weight: bold; color: #ef4444; font-size: 18px;">📍 ${user.user.name}</h3>
+                            <p style="margin: 5px 0; font-size: 14px;"><strong>Distance:</strong> ${user.distance_formatted}</p>
+                            <p style="margin: 5px 0; font-size: 14px;"><strong>Speed:</strong> ${loc.speed_kmh} km/h</p>
+                            <p style="margin: 5px 0; font-size: 14px;"><strong>Updated:</strong> ${loc.time_ago}</p>
+                        </div>
+                    `))
+                    .addTo(map);
+
+                routeMarkers.push(markerObj);
+            });
+        }
+
+        // Display EUREKA internal live users
+        function displayEurekaLiveUsers(teams) {
+            teams.forEach(team => {
+                team.active_members.forEach(member => {
+                    const el = document.createElement('div');
+                    el.innerHTML = `
+                        <div style="
+                            width: 45px;
+                            height: 45px;
+                            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+                            border: 5px solid white;
+                            border-radius: 50%;
+                            box-shadow: 0 0 20px rgba(16, 185, 129, 0.8), 0 4px 16px rgba(0,0,0,0.4);
+                            animation: livePulse 2s ease-in-out infinite;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            font-size: 20px;
+                            color: white;
+                            font-weight: bold;
+                        ">${member.name.charAt(0)}</div>
+                    `;
+
+                    const markerObj = new maplibregl.Marker({ element: el, anchor: 'center' })
+                        .setLngLat([member.longitude, member.latitude])
+                        .setPopup(new maplibregl.Popup({ offset: 25 }).setHTML(`
+                            <div style="padding: 15px; font-size: 16px;">
+                                <h3 style="margin: 0 0 10px 0; font-weight: bold; color: #10b981; font-size: 18px;">🌟 ${member.name}</h3>
+                                <p style="margin: 5px 0; font-size: 14px;"><strong>Team:</strong> ${team.name}</p>
+                                <p style="margin: 5px 0; font-size: 14px;"><strong>Status:</strong> Live (EUREKA)</p>
+                                <p style="margin: 5px 0; font-size: 12px; color: #666;">Updated: ${member.last_update}</p>
+                            </div>
+                        `))
+                        .addTo(map);
+
+                    routeMarkers.push(markerObj);
+                });
+            });
+        }
+
         // Update leaderboard
         function updateLeaderboard(teams) {
             const container = document.getElementById('leaderboard-content');
@@ -691,8 +992,9 @@
                     </div>
                     <div class="team-info">
                         <div class="team-name">${team.name}</div>
-                        <div class="team-members">${team.member_count} members</div>
+                        <div class="team-members">${team.member_count} members${outpostLabel(team)}</div>
                     </div>
+                    ${raceClock(team)}
                     <div class="team-points">${team.points}</div>
                 `;
                 
@@ -700,224 +1002,41 @@
             });
         }
         
-        // Update map markers
-        function updateMap(questTeams, liveTeams = []) {
-            // Clear existing markers
-            markers.forEach(marker => marker.remove());
-            markers = [];
-            
-            if ((!questTeams || questTeams.length === 0) && (!liveTeams || liveTeams.length === 0)) {
-                console.log('No location data available');
-                return;
-            }
-            
-            const teamColors = [
-                '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', 
-                '#FFEAA7', '#DDA0DD', '#FFB347', '#87CEEB'
-            ];
-            
-            // Calculate bounds for auto-centering
-            const bounds = new maplibregl.LngLatBounds();
-            let markerIndex = 0;
-            
-            // Add quest checkpoint markers
-            questTeams.forEach((team) => {
-                if (team.location && team.location.latitude && team.location.longitude) {
-                    const color = teamColors[markerIndex % teamColors.length];
-                    const lngLat = [team.location.longitude, team.location.latitude];
-                    
-                    // Extend bounds to include this location
-                    bounds.extend(lngLat);
-                    
-                    // Create simple marker with team name directly visible
-                    const el = document.createElement('div');
-                    el.innerHTML = `
-                        <div style="
-                            display: flex;
-                            flex-direction: column;
-                            align-items: center;
-                            font-family: 'Segoe UI', Arial, sans-serif;
-                        ">
-                            <div style="
-                                width: 60px;
-                                height: 60px;
-                                background: linear-gradient(45deg, ${color}, ${color}dd);
-                                border: 4px solid white;
-                                border-radius: 50%;
-                                box-shadow: 0 0 20px rgba(0,0,0,0.4), 0 0 15px ${color}55;
-                                display: flex;
-                                align-items: center;
-                                justify-content: center;
-                                font-size: 20px;
-                                font-weight: 900;
-                                color: white;
-                                text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
-                                animation: markerPulse 3s ease-in-out infinite;
-                                transition: all 0.3s ease;
-                                cursor: pointer;
-                            ">${team.name.charAt(0)}</div>
-                            <div style="
-                                margin-top: 8px;
-                                background: rgba(0, 0, 0, 0.85);
-                                color: white;
-                                padding: 8px 16px;
-                                border-radius: 20px;
-                                font-size: 16px;
-                                font-weight: 800;
-                                text-shadow: 1px 1px 2px rgba(0,0,0,0.9);
-                                white-space: nowrap;
-                                border: 2px solid rgba(255,255,255,0.4);
-                                min-width: 100px;
-                                text-align: center;
-                                box-shadow: 0 6px 20px rgba(0,0,0,0.6);
-                                backdrop-filter: blur(10px);
-                            ">${team.name}</div>
-                        </div>
-                    `;
-                    
-                    // Add hover effects
-                    const circle = el.querySelector('div > div:first-child');
-                    const label = el.querySelector('div > div:last-child');
-                    
-                    el.addEventListener('mouseenter', () => {
-                        circle.style.transform = 'scale(1.15)';
-                        label.style.backgroundColor = 'rgba(0, 0, 0, 0.95)';
-                        label.style.transform = 'scale(1.05)';
-                    });
-                    el.addEventListener('mouseleave', () => {
-                        circle.style.transform = 'scale(1)';
-                        label.style.backgroundColor = 'rgba(0, 0, 0, 0.85)';
-                        label.style.transform = 'scale(1)';
-                    });
-                    
-                    const marker = new maplibregl.Marker(el)
-                        .setLngLat(lngLat)
-                        .setPopup(new maplibregl.Popup({ offset: 25 })
-                            .setHTML(`
-                                <div style="font-size: 16px; font-weight: bold;">
-                                    <h3 style="margin: 0 0 10px 0; color: ${color};">${team.name}</h3>
-                                    <p style="margin: 5px 0;"><strong>Location:</strong> ${team.location.location_name}</p>
-                                    <p style="margin: 5px 0;"><strong>Members:</strong> ${team.member_count}</p>
-                                    <p style="margin: 5px 0;"><strong>Points:</strong> ${team.points}</p>
-                                    <p style="margin: 5px 0; font-size: 12px; opacity: 0.8;">
-                                        Last update: ${new Date(team.location.last_checkin).toLocaleTimeString()}
-                                    </p>
-                                </div>
-                            `))
-                        .addTo(map);
-                    
-                    markers.push(marker);
-                    markerIndex++;
-                }
+        // ---- indoor additions ------------------------------------------------
+        // Indoors GPS sees nothing through a roof, so the outpost the crew has opened
+        // for a team is the only signal of where that team is. Shown beside the member
+        // count rather than on the map, which stays blank at an indoor venue.
+        function outpostLabel(team) {
+            const at = team.at_outposts || [];
+            if (!at.length) return '';
+            const names = at.map(o => o.name).join(', ');
+            return ` &middot; <span class="at-outpost">&#9679; ${names}</span>`;
+        }
+
+        // The clock is derived from the server's start instant, held in a data attribute
+        // and advanced locally, so a screen that reloads mid-race shows the same number
+        // as one that has been up for an hour.
+        function raceClock(team) {
+            if (!team.race) return '<div class="team-clock">&mdash;</div>';
+            return `<div class="team-clock" data-elapsed="${team.race.elapsed_seconds}"
+                         data-running="${team.race.finished ? 0 : 1}">${team.race.elapsed}</div>`;
+        }
+
+        function tickClocks() {
+            document.querySelectorAll('.team-clock[data-running="1"]').forEach(el => {
+                const s = (parseInt(el.dataset.elapsed, 10) || 0) + 1;
+                el.dataset.elapsed = s;
+                el.textContent =
+                    String(Math.floor(s / 3600)).padStart(2, '0') + ':' +
+                    String(Math.floor((s % 3600) / 60)).padStart(2, '0') + ':' +
+                    String(s % 60).padStart(2, '0');
             });
-            
-            // Add live tracking markers
-            liveTeams.forEach((team) => {
-                if (team.active_members && team.active_members.length > 0) {
-                    team.active_members.forEach((member) => {
-                        const color = teamColors[markerIndex % teamColors.length];
-                        const lngLat = [member.longitude, member.latitude];
-                        
-                        // Extend bounds to include this location
-                        bounds.extend(lngLat);
-                        
-                        // Create live tracking marker (different style)
-                        const el = document.createElement('div');
-                        el.innerHTML = `
-                            <div style="
-                                display: flex;
-                                flex-direction: column;
-                                align-items: center;
-                                font-family: 'Segoe UI', Arial, sans-serif;
-                            ">
-                                <div style="
-                                    width: 50px;
-                                    height: 50px;
-                                    background: linear-gradient(45deg, ${color}, ${color}dd);
-                                    border: 3px solid #00ff00;
-                                    border-radius: 50%;
-                                    box-shadow: 0 0 15px rgba(0,255,0,0.6), 0 0 10px ${color}55;
-                                    display: flex;
-                                    align-items: center;
-                                    justify-content: center;
-                                    font-size: 16px;
-                                    font-weight: 900;
-                                    color: white;
-                                    text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
-                                    animation: livePulse 2s ease-in-out infinite;
-                                    cursor: pointer;
-                                    position: relative;
-                                ">
-                                    <div style="
-                                        position: absolute;
-                                        top: -2px;
-                                        right: -2px;
-                                        width: 16px;
-                                        height: 16px;
-                                        background: #00ff00;
-                                        border-radius: 50%;
-                                        border: 2px solid white;
-                                        animation: liveBlink 1s ease-in-out infinite;
-                                    "></div>
-                                    ${member.name.charAt(0)}
-                                </div>
-                                <div style="
-                                    margin-top: 6px;
-                                    background: rgba(0, 255, 0, 0.85);
-                                    color: white;
-                                    padding: 6px 12px;
-                                    border-radius: 15px;
-                                    font-size: 14px;
-                                    font-weight: 700;
-                                    text-shadow: 1px 1px 2px rgba(0,0,0,0.9);
-                                    white-space: nowrap;
-                                    border: 2px solid rgba(255,255,255,0.6);
-                                    min-width: 80px;
-                                    text-align: center;
-                                    box-shadow: 0 4px 15px rgba(0,255,0,0.4);
-                                ">${member.name}</div>
-                            </div>
-                        `;
-                        
-                        const marker = new maplibregl.Marker(el)
-                            .setLngLat(lngLat)
-                            .setPopup(new maplibregl.Popup({ offset: 25 })
-                                .setHTML(`
-                                    <div style="font-size: 16px; font-weight: bold;">
-                                        <h3 style="margin: 0 0 10px 0; color: #00ff00;">📡 ${member.name}</h3>
-                                        <p style="margin: 5px 0;"><strong>Team:</strong> ${team.name}</p>
-                                        <p style="margin: 5px 0;"><strong>Status:</strong> Live Tracking</p>
-                                        <p style="margin: 5px 0; font-size: 12px; opacity: 0.8;">
-                                            Last update: ${member.last_update}
-                                        </p>
-                                    </div>
-                                `))
-                            .addTo(map);
-                        
-                        markers.push(marker);
-                        markerIndex++;
-                    });
-                }
-            });
-            
-            // Auto-center and zoom to fit all markers
-            if (markers.length > 0) {
-                if (markers.length === 1) {
-                    // Single marker - center on it with reasonable zoom
-                    map.setCenter(bounds.getCenter());
-                    map.setZoom(14);
-                } else {
-                    // Multiple markers - fit bounds with padding
-                    map.fitBounds(bounds, {
-                        padding: { top: 50, bottom: 100, left: 50, right: 50 },
-                        maxZoom: 15
-                    });
-                }
-            } else {
-                // No markers - center on Jakarta (default)
-                map.setCenter([106.8456, -6.2088]);
-                map.setZoom(12);
-            }
+        }
+        setInterval(tickClocks, 1000);
+
+        // Update map with GPS tracking data (replaces quest teams)
+        function updateMap() {
+            // No longer used - GPS tracking is handled by loadGPSTrackingData
         }
         
         // Update statistics
@@ -940,56 +1059,48 @@
         // Fetch and update data
         async function updateData() {
             try {
-                // Fetch both quest checkpoints and live positions in parallel
-                const [kioskResponse, liveResponse] = await Promise.all([
-                    fetch('/api/kiosk/data'),
-                    fetch('/api/live/positions')
-                ]);
-                
+                // Fetch kiosk data for leaderboard only
+                const kioskResponse = await fetch('/api/kiosk/data');
+
                 if (!kioskResponse.ok) {
                     throw new Error(`Kiosk API error: ${kioskResponse.status}`);
                 }
-                
+
                 const kioskResult = await kioskResponse.json();
-                let liveResult = null;
-                
-                // Live positions are optional - don't fail if unavailable
-                if (liveResponse.ok) {
-                    liveResult = await liveResponse.json();
-                }
-                
+
                 if (kioskResult.success && kioskResult.data) {
                     // Hide loading indicator
                     document.getElementById('loading').style.display = 'none';
-                    
+
                     // Update leaderboard
                     if (kioskResult.data.leaderboard?.teams) {
                         updateLeaderboard(kioskResult.data.leaderboard.teams);
                     } else {
-                        document.getElementById('leaderboard-content').innerHTML = 
+                        document.getElementById('leaderboard-content').innerHTML =
                             '<div style="text-align: center; color: #888; padding: 20px;">No team data available</div>';
                     }
-                    
-                    // Combine quest checkpoints and live positions for map
-                    const questTeams = kioskResult.data.locations?.teams || [];
-                    const liveTeams = liveResult?.success ? liveResult.data?.teams || [] : [];
-                    
-                    updateMap(questTeams, liveTeams);
-                    
+
                     // Update stats
                     updateStats(kioskResult.data);
-                    
+
+                    // Live positions now ride along with this same response, so the
+                    // map refreshes without a second request.
+                    const live = kioskResult.data.live_positions;
+                    if (live && live.teams && live.teams.length > 0) {
+                        displayEurekaLiveUsers(live.teams);
+                    }
+
                     // Update last updated time
                     const now = new Date().toLocaleTimeString();
                     console.log(`Data updated at ${now}`);
-                    
+
                 } else {
-                    throw new Error(result.message || 'API returned unsuccessful response');
+                    throw new Error(kioskResult.message || 'API returned unsuccessful response');
                 }
-                
+
             } catch (error) {
                 console.error('Error fetching kiosk data:', error);
-                
+
                 // Show error message in leaderboard if it's empty
                 const leaderboardContent = document.getElementById('leaderboard-content');
                 if (!leaderboardContent.children.length) {
@@ -1008,9 +1119,12 @@
         document.addEventListener('DOMContentLoaded', function() {
             initMap();
             updateData();
-            
-            // Update every 5 seconds
-            setInterval(updateData, 5000);
+
+            // Update leaderboard every 5 seconds
+            setInterval(updateData, 10000);        // scores move every few minutes, not every 5s
+
+            // Update GPS tracking every 10 seconds
+            setInterval(loadGPSTrackingData, 15000);
         });
     </script>
 </body>

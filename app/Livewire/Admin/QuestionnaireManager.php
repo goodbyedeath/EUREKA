@@ -28,6 +28,8 @@ class QuestionnaireManager extends Component
     public ?int $editPassPercentage = null;
     public string $editQrCode = '';
     public bool $editIsActive = true;
+    /** False marks a bonus post: it scores, but does not hold the race clock open. */
+    public bool $editCountsTowardFinish = true;
 
     protected $listeners = [
         'questionnaire-created' => '$refresh',
@@ -64,6 +66,7 @@ class QuestionnaireManager extends Component
             $this->editPassPercentage = $this->editQuestionnaire->pass_percentage;
             $this->editQrCode = $this->editQuestionnaire->qr_code ?? '';
             $this->editIsActive = $this->editQuestionnaire->is_active;
+            $this->editCountsTowardFinish = (bool) $this->editQuestionnaire->counts_toward_finish;
             
             $this->showEditModal = true;
         } catch (\Exception $e) {
@@ -88,6 +91,7 @@ class QuestionnaireManager extends Component
         $this->editPassPercentage = null;
         $this->editQrCode = '';
         $this->editIsActive = true;
+        $this->editCountsTowardFinish = true;
     }
 
     public function updateQuestionnaire()
@@ -126,6 +130,7 @@ class QuestionnaireManager extends Component
                     'pass_percentage' => $this->editPassPercentage,
                     'qr_code' => $this->editQrCode ?: null,
                     'is_active' => $this->editIsActive,
+                    'counts_toward_finish' => $this->editCountsTowardFinish,
                     'updated_at' => now()
                 ]);
                 

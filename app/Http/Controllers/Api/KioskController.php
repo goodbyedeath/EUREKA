@@ -19,6 +19,28 @@ class KioskController extends Controller
     public function leaderboard()
     {
         try {
+            // The race clock, newest run per account. Indoor events start it at the
+            // START scan; an outdoor event simply has none, and the field stays null.
+            //
+            // Ordered ASCENDING on purpose: keyBy() lets a later row overwrite an earlier
+            // one with the same key, so the *last* session read is the one kept. Sorting
+            // descending — which reads as "newest first" — therefore keeps the OLDEST run,
+            // and a team that restarted an aborted run would show a stale, already-finished
+            // clock on the big screen for the rest of the event.
+            $races = \App\Models\RaceSession::whereNotNull('started_at')
+                ->orderBy('started_at')
+                ->orderBy('id')
+                ->get()
+                ->keyBy('user_id');
+
+            // Indoor 'position': GPS cannot see through a roof, so the outpost the crew
+            // has opened for a team is what tells the big screen where that team is.
+            $unlocks = \App\Models\GameLocationUnlock::whereNull('revoked_at')
+                ->whereNotNull('granted_at')
+                ->with('gameLocation:id,name')
+                ->get()
+                ->groupBy('user_id');
+
             $teams = Team::select([
                 'id', 
                 'name', 
@@ -27,12 +49,14 @@ class KioskController extends Controller
                 'department',
                 'created_at'
             ])
-            ->with(['members:id,team_id,name,is_leader'])
+            // users = the team's login accounts; race sessions and outpost unlocks both
+            // hang off those, and indoors they are the only signal of where a team is.
+            ->with(['members:id,team_id,name,is_leader', 'users:id,team_id,name'])
             ->get()
-            ->map(function ($team) {
-                // Calculate detailed total score using same logic as DashboardStats
-                $totalScore = $this->calculateTeamTotalScore($team);
-                
+            ->map(function ($team) use ($races, $unlocks) {
+                // Use the actual points column from database (updated in real-time when quizzes are submitted)
+                $totalScore = $team->points;
+
                 return [
                     'id' => $team->id,
                     'name' => $team->name,
@@ -43,6 +67,37 @@ class KioskController extends Controller
                     'leader' => $team->members->where('is_leader', true)->first()?->name,
                     'members' => $team->members->pluck('name')->toArray(),
                     'created_at' => $team->created_at->format('Y-m-d H:i:s'),
+
+                    // --- added 2026-09-07, so the big screen reflects the indoor build ---
+
+                    // Elapsed run time. Read from the server's start instant rather than
+                    // counted on the screen, so a kiosk that reloads shows the same number.
+                    'race' => (function () use ($team, $races) {
+                        foreach ($team->users as $u) {
+                            if ($r = $races->get($u->id)) {
+                                return [
+                                    'started_at' => $r->started_at->toIso8601String(),
+                                    'elapsed_seconds' => $r->elapsedSeconds(),
+                                    'elapsed' => $r->elapsedForHumans(),
+                                    'finished' => $r->finished_at !== null,
+                                ];
+                            }
+                        }
+                        return null;                      // outdoor, or not started yet
+                    })(),
+
+                    // Which outposts the crew currently has open for this team.
+                    'at_outposts' => (function () use ($team, $unlocks) {
+                        $out = [];
+                        foreach ($team->users as $u) {
+                            foreach ($unlocks->get($u->id, collect()) as $row) {
+                                if ($row->gameLocation) {
+                                    $out[] = ['id' => $row->gameLocation->id, 'name' => $row->gameLocation->name];
+                                }
+                            }
+                        }
+                        return $out;
+                    })(),
                 ];
             })
             ->sortByDesc('points')
@@ -101,19 +156,19 @@ class KioskController extends Controller
                     // Prioritize quest location coordinates for consistency, fallback to user coordinates
                     $lat = $latestCheckpoint->questLocation?->latitude ?? $latestCheckpoint->user_latitude;
                     $lng = $latestCheckpoint->questLocation?->longitude ?? $latestCheckpoint->user_longitude;
-                    
+
                     if ($lat && $lng) {
                         // Determine location name based on whether it's auto-tracking or quest check-in
                         $isAutoTracking = !$latestCheckpoint->quest_location_id;
-                        
+
                         $location = [
                             'latitude' => (float) $lat,
                             'longitude' => (float) $lng,
-                            'location_name' => $isAutoTracking 
-                                ? 'Current Position' 
+                            'location_name' => $isAutoTracking
+                                ? 'Current Position'
                                 : ($latestCheckpoint->questLocation?->name ?? 'Quest Location'),
-                            'address' => $isAutoTracking 
-                                ? 'Live Tracking' 
+                            'address' => $isAutoTracking
+                                ? 'Live Tracking'
                                 : ($latestCheckpoint->questLocation?->description ?? 'Quest Location'),
                             'last_checkin' => $latestCheckpoint->checked_at->format('Y-m-d H:i:s'),
                             'last_checkin_human' => $latestCheckpoint->checked_at->diffForHumans(),
@@ -123,9 +178,9 @@ class KioskController extends Controller
                     }
                 }
 
-                // Calculate total score using same logic as leaderboard
-                $totalScore = $this->calculateTeamTotalScore($team);
-                
+                // Use the actual points column from database (updated in real-time when quizzes are submitted)
+                $totalScore = $team->points;
+
                 return [
                     'id' => $team->id,
                     'name' => $team->name,
@@ -178,11 +233,20 @@ class KioskController extends Controller
                 throw new \Exception('Failed to fetch kiosk data');
             }
 
+            // Live positions ride along here rather than being a second call.
+            //
+            // The LED board polled /api/kiosk/data and /api/live/positions separately, on
+            // two different timers, for one screen — ten requests a minute where six will
+            // do. Both read the same database within milliseconds of each other, so there
+            // was never a reason to ask twice.
+            $positions = app(LiveTrackingController::class)->getCurrentPositions();
+
             return response()->json([
                 'success' => true,
                 'data' => [
                     'leaderboard' => $leaderboardResponse->getData()->data,
                     'locations' => $locationsResponse->getData()->data,
+                    'live_positions' => $positions->getData()->data ?? null,
                     'updated_at' => now()->format('Y-m-d H:i:s'),
                 ]
             ]);
@@ -247,7 +311,7 @@ class KioskController extends Controller
         foreach ($assessmentGains as $assessment) {
             // Assessment gain = total_deposit - base_points_used
             $assessmentGain = ($assessment->total_deposit ?? 0) - $basePoints;
-            $bonusPoints += max(0, $assessmentGain); // Only positive gains
+            $bonusPoints += $assessmentGain; // Penalties count too, so this can be negative
         }
         
         return $bonusPoints;

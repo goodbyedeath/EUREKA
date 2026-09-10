@@ -16,6 +16,15 @@ class QRScannerController extends Controller
      */
     public function lookup(Request $request)
     {
+        // Check authentication first
+        if (!Auth::check()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Authentication required. Please log in and try again.',
+                'error' => 'unauthenticated'
+            ], 401);
+        }
+
         $request->validate([
             'qr_code' => 'required|string|max:255'
         ]);
@@ -23,31 +32,56 @@ class QRScannerController extends Controller
         $qrCode = trim($request->qr_code);
 
         try {
+            // A venue's START code opens the run, not a quiz. Checked first so a start
+            // code can never be mistaken for a missing questionnaire.
+            $startCode = \App\Models\RaceStart::where('code', $qrCode)
+                ->where('is_active', true)
+                ->first();
+
+            if ($startCode) {
+                return response()->json([
+                    'success' => true,
+                    'type' => 'race_start',
+                    // The browser follows the redirect. A native client cannot — it posts
+                    // the code back to /api/v1/race/start, which answers in the body.
+                    'code' => $startCode->code,
+                    'mode' => $startCode->isIndoor() ? 'indoor' : 'outdoor',
+                    'redirect' => route('user.race.start', $qrCode),
+                    'message' => 'Race start code.',
+                ]);
+            }
+
             $questionnaire = Questionnaire::where('qr_code', $qrCode)
                 ->where('is_active', true)
                 ->first();
 
+            // Every other refusal on this endpoint carries an error key and a real status
+            // code; these three answered 200 with only a sentence, so a client had to
+            // string-match to tell "wrong code" from "out of attempts".
             if (!$questionnaire) {
                 return response()->json([
                     'success' => false,
+                    'error' => 'unknown_code',
                     'message' => 'Questionnaire not found or inactive'
-                ]);
+                ], 404);
             }
 
             // Check if questionnaire is available (date range, etc.)
             if (!$questionnaire->isAvailable()) {
                 return response()->json([
                     'success' => false,
+                    'error' => 'not_available',
                     'message' => 'This questionnaire is not currently available'
-                ]);
+                ], 403);
             }
 
             // Check if user can scan this questionnaire
             if (!QrCodeScan::canUserScanQuestionnaire(Auth::id(), $questionnaire)) {
                 return response()->json([
                     'success' => false,
+                    'error' => 'max_attempts_reached',
                     'message' => 'You have reached the maximum number of attempts for this questionnaire'
-                ]);
+                ], 403);
             }
 
             // Record the QR code scan

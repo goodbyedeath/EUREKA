@@ -12,6 +12,8 @@ class NetworkMonitor {
         this.pingInterval = null;
         this.notificationElement = null;
         this.lastSuccessfulPing = Date.now();
+        // Last time the server was heard from by ANY means, not just a ping.
+        this.lastSeenServer = Date.now();
         
         this.init();
     }
@@ -57,6 +59,20 @@ class NetworkMonitor {
                 // Listen for Livewire request failures
                 window.Livewire.hook('request', ({ fail }) => {
                     fail((error) => {
+                        // 429 is not an outage: the server is up and deliberately asking
+                        // us to slow down. At a venue every team shares one public IP, so
+                        // a rate limit is something a whole event can walk into at once —
+                        // and without this branch Livewire renders the empty 429 body over
+                        // the page, which looks exactly like the site dying.
+                        if (error.status === 429) {
+                            this.handleRateLimited(error);
+                            // Swallow it. Livewire's default is to replace the document
+                            // with the response body; for a bodiless 429 that is a blank
+                            // white screen the team cannot get out of.
+                            error.preventDefault?.();
+                            return;
+                        }
+
                         if (error.status === 0 || error.status >= 500) {
                             this.handleLivewireOffline();
                         }
@@ -66,6 +82,10 @@ class NetworkMonitor {
                 // Listen for successful Livewire requests
                 window.Livewire.hook('request', ({ succeed }) => {
                     succeed(() => {
+                        // Every successful request is proof the server is reachable, so
+                        // it counts as a ping. An app in active use then needs none of
+                        // its own — see pingServer().
+                        this.lastSeenServer = Date.now();
                         if (!this.isOnline) {
                             this.handleLivewireOnline();
                         }
@@ -86,13 +106,33 @@ class NetworkMonitor {
     }
 
     startPingMonitoring() {
-        // Ping server every 10 seconds to detect connectivity issues
+        // Every 30 seconds, not 10.
+        //
+        // This runs on every page in every open tab, so at 10s it was six requests a
+        // minute per tab doing nothing — an admin with the panel and the LED board open
+        // was sending steady background traffic all day, which is the kind of thing a
+        // host's rate limiter counts. The browser's own online/offline events already
+        // catch a dropped connection immediately; this only exists to notice the subtler
+        // case of a connection that is up but cannot reach us, and 30s is soon enough
+        // for that.
         this.pingInterval = setInterval(() => {
             this.pingServer();
-        }, 10000);
+        }, 30000);
     }
 
     async pingServer() {
+        // While backing off we do not add to the load we are being asked to reduce.
+        if (this.backoffUntil && Date.now() < this.backoffUntil) return;
+
+        // Adaptive: a request that already succeeded proves the connection, so an app in
+        // use pings not at all. This tick only exists to notice a connection that is up
+        // but cannot reach us, and that only matters while nothing else is talking.
+        //
+        // It runs on every page in every open tab, so at a venue it was multiplied by the
+        // number of teams — a steady cost for information the app was already getting for
+        // free from its own traffic.
+        if (this.lastSeenServer && Date.now() - this.lastSeenServer < 30000) return;
+
         try {
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
@@ -107,6 +147,7 @@ class NetworkMonitor {
             
             if (response.ok) {
                 this.lastSuccessfulPing = Date.now();
+                this.lastSeenServer = Date.now();
                 if (!this.isOnline) {
                     this.handleConnectionRestored();
                 }
@@ -133,6 +174,69 @@ class NetworkMonitor {
 
     handleLivewireOffline() {
         this.handleConnectionLost();
+    }
+
+    /**
+     * The server asked us to slow down (HTTP 429).
+     *
+     * Everything the app polls is put to sleep for a cooling-off period, then woken up.
+     * Backing off is the only thing that actually helps: retrying immediately is what
+     * keeps the limit tripped, and at a venue every team is behind one public IP, so one
+     * device that keeps hammering holds the whole room down.
+     *
+     * The wait doubles each time, capped, and honours Retry-After when the server sends
+     * one. Team-facing wording: nobody at an event needs to read "429".
+     */
+    handleRateLimited(error) {
+        const header = Number(error?.response?.headers?.get?.('Retry-After'));
+        this.rateLimitStrikes = (this.rateLimitStrikes || 0) + 1;
+
+        const wait = Number.isFinite(header) && header > 0
+            ? header * 1000
+            : Math.min(60000, 5000 * Math.pow(2, this.rateLimitStrikes - 1));
+
+        this.pauseBackgroundWork(wait);
+
+        // Mark ourselves offline, not just paint the banner. The recovery paths —
+        // `handleLivewireOnline` on the next successful request, and the timer below —
+        // both do nothing unless this flag says we were down, so leaving it true meant
+        // the banner would stay on screen after the server started answering again.
+        this.isOnline = false;
+        this.showNotification('offline');
+        const msg = this.notificationElement?.querySelector('.network-message');
+        const det = this.notificationElement?.querySelector('.network-details');
+        if (msg) msg.textContent = 'Server sedang sibuk';
+        if (det) det.textContent = 'Mencoba lagi dalam ' + Math.ceil(wait / 1000)
+            + ' detik. Jangan tutup halaman ini — jawaban Anda tersimpan.';
+
+        clearTimeout(this.rateLimitTimer);
+        this.rateLimitTimer = setTimeout(() => {
+            this.resumeBackgroundWork();
+            this.handleConnectionRestored();
+            // Forgive one strike per successful recovery, so a single bad minute does not
+            // leave the app crawling for the rest of the event.
+            this.rateLimitStrikes = Math.max(0, (this.rateLimitStrikes || 1) - 1);
+        }, wait);
+    }
+
+    /**
+     * Stop every timer this class owns while we are backing off.
+     *
+     * Only our own: a quiz countdown is the team's time and must keep running whatever
+     * the network is doing.
+     */
+    pauseBackgroundWork(ms) {
+        clearInterval(this.pingInterval);
+        this.pingInterval = null;
+        this.clearReconnectInterval?.();
+        this.backoffUntil = Date.now() + ms;
+    }
+
+    resumeBackgroundWork() {
+        this.backoffUntil = 0;
+        if (!this.pingInterval) {
+            this.startPingMonitoring();
+        }
     }
 
     handleLivewireOnline() {

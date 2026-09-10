@@ -28,6 +28,15 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+    // Walking directions between outposts. Free tier, 2000 requests/day.
+    //
+    // The key used to sit in QuestLocationController as an env() default, which meant a
+    // live credential was committed and kept working whether or not .env defined it —
+    // so nobody noticed it was never configured. Rotate at openrouteservice.org.
+    'openroute' => [
+        'key' => env('OPENROUTE_API_KEY'),
+    ],
+
     'slack' => [
         'notifications' => [
             'bot_user_oauth_token' => env('SLACK_BOT_USER_OAUTH_TOKEN'),

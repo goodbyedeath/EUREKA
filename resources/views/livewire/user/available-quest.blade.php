@@ -289,13 +289,15 @@
                                 <div class="text-center py-6">
                                     <div x-data="{ count: @entangle('countdownSeconds'), initialCount: @entangle('initialCountdownSeconds') }" 
                                          x-init="
+                                             {{-- The countdown runs in the browser and talks to the server once, at zero.
+                                                  It used to call $wire.updateCountdown() on every tick: a timed quiz
+                                                  counts down time_limit * 60 seconds, so a 30-minute paper opened
+                                                  1,800 Livewire round-trips per device just to draw a number. --}}
                                              const interval = setInterval(() => {
-                                                 if (count > 0) {
-                                                     count--;
-                                                     $wire.updateCountdown();
-                                                 } else {
-                                                     clearInterval(interval);
-                                                 }
+                                                 if (--count > 0) return;
+                                                 count = 0;
+                                                 clearInterval(interval);
+                                                 $wire.startCountdownQuiz();
                                              }, 1000);
                                          ">
                                         @if($selectedQuestionnaire->time_limit)

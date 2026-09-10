@@ -18,6 +18,7 @@ class QuestLocation extends Model
         'latitude',
         'longitude',
         'radius',
+        'marker_color',
         'is_active',
         'created_by',
         'max_check_ins_per_user',

@@ -182,12 +182,12 @@ class QuestionForm extends Component
         if ($hasAnswers) {
             $questionData['type'] = $originalType;
             $questionData['correct_answer'] = $originalCorrectAnswer;
-            
+
             if ($originalType !== $this->newQuestion['type']) {
-                session()->flash('questions_warning', 'Question type cannot be changed as it has existing answers.');
+                session()->flash('questions_warning', 'Warning: Question type and correct answer cannot be changed because users have already submitted answers to this question. Other fields have been updated.');
             }
         }
-        
+
         $question->update($questionData);
 
         $this->resetNewQuestion();
@@ -209,11 +209,11 @@ class QuestionForm extends Component
         
         $this->editingQuestionId = $question->id;
         $this->isEditing = true;
-        
+
         $this->newQuestion = [
             'question' => $question->question,
             'type' => $question->type,
-            'options' => $question->options ?: ['', '', '', ''],
+            'options' => $question->options ?? ['', '', '', ''],
             'correct_answer' => $question->correct_answer,
             'points' => $question->points,
             'game_name' => $question->game_name ?? '',
@@ -227,6 +227,9 @@ class QuestionForm extends Component
                 $this->newQuestion['options'][] = '';
             }
         }
+
+        // Dispatch event to scroll to form and show visual feedback
+        $this->dispatch('question-loaded-for-edit');
     }
 
     public function cancelEdit()

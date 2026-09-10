@@ -30,6 +30,24 @@ class AuthController extends Controller
         $remember = $request->boolean('remember');
 
         if (Auth::attempt($credentials, $remember)) {
+            // Refuse an account whose admin-granted window has already run out.
+            //
+            // Checked AFTER the password, not before. Run first, it answered a distinct
+            // "your access period has ended" to anyone who typed an email — no password
+            // needed — which told an attacker both that the account exists and what state
+            // it is in, and burned an audit log line per probe.
+            if (Auth::user()->accessWindowExpired()) {
+                Auth::logout();
+                $request->session()->invalidate();
+                $request->session()->regenerateToken();
+
+                $this->logAuthEvent('login_blocked_window_expired', $request);
+
+                throw ValidationException::withMessages([
+                    'email' => __('Your access period has ended. Please contact an administrator to be granted access again.'),
+                ]);
+            }
+
             $request->session()->regenerate();
             
             // Clear login attempts
@@ -38,6 +56,9 @@ class AuthController extends Controller
             // Update user login tracking
             $user = Auth::user();
             $user->updateLastLogin();
+
+            // Starts the clock on first login only; a re-login does not extend it.
+            $user->startAccessWindow();
             $this->updateLoginHistory($user, $request);
             
             // Log successful login

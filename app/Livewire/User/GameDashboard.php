@@ -30,11 +30,7 @@ class GameDashboard extends Component
                 return [];
             }
 
-            // Use the official toPannellumConfig method for consistency with UserPanoramaController
             return $game->activeHotspots->map(function ($hotspot) {
-                // Get the official Pannellum configuration
-                $pannellumConfig = $hotspot->toPannellumConfig();
-                
                 // Add additional data needed for user interface
                 $hotspotData = [
                     'id' => $hotspot->id,
@@ -44,12 +40,9 @@ class GameDashboard extends Component
                     'title' => $hotspot->title,
                     'description' => $hotspot->description,
                     
-                    // Tour feature data from Pannellum config
+                    // Tour feature data
                     'hotspot_type' => $hotspot->getHotspotType(),
-                    'content' => $hotspot->getContent(),
-                    
-                    // Include Pannellum-ready data
-                    'pannellum_config' => $pannellumConfig
+                    'content' => $hotspot->getContent()
                 ];
                 
                 // Add navigation data

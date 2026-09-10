@@ -19,7 +19,10 @@ class DebugController extends Controller
                 'user_info' => [
                     'authenticated' => Auth::check(),
                     'user_id' => Auth::id(),
-                    'user_roles' => Auth::user() ? Auth::user()->getRoleNames() : [],
+                    // `getRoleNames()` comes from spatie/laravel-permission, which this app
+                    // does not use — the call threw and took the whole health check to a
+                    // 500. Roles here are a single column on the user.
+                    'user_role' => Auth::user()?->role,
                 ],
                 'database' => [
                     'connection' => 'Unknown',
@@ -55,15 +58,19 @@ class DebugController extends Controller
                 $health['database']['connection'] = 'Failed: ' . $e->getMessage();
             }
 
-            // Check critical files
+            // Check critical files.
+            //
+            // Three entries were dropped: Livewire/User/QuestLocationDashboard.php,
+            // views/livewire/user/quest-location-dashboard.blade.php and
+            // js/quest-location-dashboard-simple.js. None of them exist any more, so the
+            // check reported them missing on every run — a health report that is always
+            // red teaches people to ignore it, which is worse than not having one.
             $criticalFiles = [
-                'QuestLocationDashboard.php' => app_path('Livewire/User/QuestLocationDashboard.php'),
                 'QuestLocationManager.php' => app_path('Livewire/Admin/QuestLocationManager.php'),
                 'QuestLocation.php' => app_path('Models/QuestLocation.php'),
                 'UserQuestCheckpoint.php' => app_path('Models/UserQuestCheckpoint.php'),
-                'quest-location-dashboard.blade.php' => resource_path('views/livewire/user/quest-location-dashboard.blade.php'),
                 'quest-location-manager.blade.php' => resource_path('views/livewire/admin/quest-location-manager.blade.php'),
-                'quest-location-dashboard-simple.js' => public_path('js/quest-location-dashboard-simple.js'),
+                'quest-location-dashboard.blade.php' => resource_path('views/user/quest-location-dashboard.blade.php'),
             ];
 
             foreach ($criticalFiles as $name => $path) {
@@ -150,13 +157,10 @@ class DebugController extends Controller
                 $results['tests']['user_checkpoint_model'] = 'FAILED: ' . $e->getMessage();
             }
 
-            // Test 4: Test Livewire component instantiation
-            try {
-                $component = new \App\Livewire\User\QuestLocationDashboard();
-                $results['tests']['livewire_component'] = 'SUCCESS - Component can be instantiated';
-            } catch (\Exception $e) {
-                $results['tests']['livewire_component'] = 'FAILED: ' . $e->getMessage();
-            }
+            // Removed: a check that instantiated \App\Livewire\User\QuestLocationDashboard,
+            // a class that does not exist. It sat inside a catch, so the report cheerfully
+            // printed "FAILED: Class not found" every time and nobody noticed — a health
+            // check that always fails tells you nothing about health.
 
             return response()->json($results, 200);
 

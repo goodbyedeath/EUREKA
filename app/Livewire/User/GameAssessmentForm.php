@@ -198,8 +198,7 @@ class GameAssessmentForm extends Component
             $this->attempt->update([
                 'status' => 'completed',
                 'completed_at' => now(),
-                'total_time_seconds' => $this->attempt->started_at ? 
-                    now()->diffInSeconds($this->attempt->started_at) : 0
+                'total_time_seconds' => (int) max(0, $this->attempt->started_at?->diffInSeconds(now()) ?? 0),
             ]);
             
             return $this->redirect(route('quiz.results', ['attemptId' => $this->attempt->id]), navigate: true);

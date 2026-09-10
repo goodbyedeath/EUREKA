@@ -3,10 +3,10 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ config('app.name', 'EUREKA') }} Indonesia</title>
+    <title>{{ \App\Models\BrandSetting::appName() }}{{ \App\Models\BrandSetting::tagline() ? ' ' . \App\Models\BrandSetting::tagline() : '' }}</title>
     
     <!-- Favicon -->
-    <link rel="icon" type="image/png" href="{{ asset('logo/icon.png') }}">
+    <link rel="icon" type="image/png" href="{{ \App\Models\BrandSetting::iconUrl() }}">
     
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.bunny.net">
@@ -22,9 +22,9 @@
             <div class="flex justify-between h-16">
                 <div class="flex items-center">
                     <div class="flex-shrink-0 flex items-center">
-                        <img src="{{ asset('logo/icon.png') }}" alt="EUREKA Logo" class="w-10 h-10">
+                        <img src="{{ \App\Models\BrandSetting::iconUrl() }}" alt="EUREKA Logo" class="w-10 h-10">
                         <div class="mx-3 text-gray-400 text-2xl font-light">|</div>
-                        <h1 class="text-2xl font-bold text-blue-600">EUREKA!</h1>
+                        <h1 class="text-2xl font-bold text-blue-600">{{ \App\Models\BrandSetting::appName() }}</h1>
                     </div>
                 </div>
                 <div class="flex items-center space-x-4">
@@ -80,7 +80,7 @@
                                                     @case('primary_button')
                                                         @if($element['content']['text'] && $element['content']['url'])
                                                             <div class="mb-4 flex justify-center">
-                                                                <a href="{{ $element['content']['url'] }}" class="inline-flex items-center px-8 py-4 border border-transparent text-lg font-medium rounded-lg {{ $slide->button_color }} hover:bg-gray-50 transition duration-300 shadow-lg">
+                                                                <a href="{{ $element['content']['url'] }}" class="{{ $slide->getButtonClasses('primary') }}">
                                                                     {{ $element['content']['text'] }}
                                                                     <svg class="ml-2 w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path>
@@ -89,11 +89,11 @@
                                                             </div>
                                                         @endif
                                                         @break
-                                                    
+
                                                     @case('secondary_button')
                                                         @if($element['content']['text'] && $element['content']['url'])
                                                             <div class="mb-4 flex justify-center">
-                                                                <a href="{{ $element['content']['url'] }}" class="inline-flex items-center px-8 py-4 border-2 border-white text-lg font-medium rounded-lg {{ $slide->text_color }} hover:bg-white hover:text-blue-600 transition duration-300">
+                                                                <a href="{{ $element['content']['url'] }}" class="{{ $slide->getButtonClasses('secondary') }}">
                                                                     {{ $element['content']['text'] }}
                                                                 </a>
                                                             </div>
@@ -122,14 +122,14 @@
                                             <div class="flex flex-col sm:flex-row gap-4 justify-center mt-8">
                                                 @foreach($buttonElements->sortBy('position') as $buttonElement)
                                                     @if($buttonElement['type'] === 'primary_button' && $buttonElement['content']['text'] && $buttonElement['content']['url'])
-                                                        <a href="{{ $buttonElement['content']['url'] }}" class="inline-flex items-center px-8 py-4 border border-transparent text-lg font-medium rounded-lg {{ $slide->button_color }} hover:bg-gray-50 transition duration-300 shadow-lg">
+                                                        <a href="{{ $buttonElement['content']['url'] }}" class="{{ $slide->getButtonClasses('primary') }}">
                                                             {{ $buttonElement['content']['text'] }}
                                                             <svg class="ml-2 w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path>
                                                             </svg>
                                                         </a>
                                                     @elseif($buttonElement['type'] === 'secondary_button' && $buttonElement['content']['text'] && $buttonElement['content']['url'])
-                                                        <a href="{{ $buttonElement['content']['url'] }}" class="inline-flex items-center px-8 py-4 border-2 border-white text-lg font-medium rounded-lg {{ $slide->text_color }} hover:bg-white hover:text-blue-600 transition duration-300">
+                                                        <a href="{{ $buttonElement['content']['url'] }}" class="{{ $slide->getButtonClasses('secondary') }}">
                                                             {{ $buttonElement['content']['text'] }}
                                                         </a>
                                                     @endif
@@ -148,7 +148,7 @@
                             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
                                 <div class="max-w-4xl mx-auto">
                                     <h1 class="text-4xl md:text-6xl font-bold text-white mb-6 leading-tight">
-                                        Welcome to EUREKA
+                                        Welcome to {{ \App\Models\BrandSetting::appName() }}
                                     </h1>
                                     <p class="text-xl md:text-2xl text-blue-100 mb-8 leading-relaxed">
                                         Interactive Team Building Platform for Modern Education.
@@ -198,7 +198,7 @@
     <section class="py-20 bg-white">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="text-center mb-16">
-                <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Why Choose EUREKA?</h2>
+                <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Why Choose {{ \App\Models\BrandSetting::appName() }}?</h2>
                 <p class="text-xl text-gray-600 max-w-3xl mx-auto">Experience the future of interactive learning with our innovative platform designed for modern education.</p>
             </div>
             
@@ -262,10 +262,10 @@
     <footer class="bg-gray-900 text-white py-12">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="text-center">
-                <h3 class="text-2xl font-bold mb-4">EUREKA</h3>
+                <h3 class="text-2xl font-bold mb-4">{{ \App\Models\BrandSetting::appName() }}</h3>
                 <p class="text-gray-400 mb-6">Interactive Learning Platform</p>
                 <div class="text-sm text-gray-500">
-                    © {{ date('Y') }} EUREKA. All rights reserved.
+                    © {{ date('Y') }} {{ \App\Models\BrandSetting::appName() }}. All rights reserved.
                 </div>
             </div>
         </div>

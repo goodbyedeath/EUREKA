@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\User;
 
 use App\Http\Controllers\Controller;
+use App\Models\QrCodeScan;
 use App\Models\Questionnaire;
 use App\Models\QuizAttempt;
 use Illuminate\Http\Request;
@@ -35,6 +36,13 @@ class UserQuizController extends Controller
         if (!$questionnaire->canUserAttempt(Auth::id())) {
             return redirect()->route('user.dashboard')
                 ->with('error', 'You have reached the maximum number of attempts for this quiz');
+        }
+
+        // Require the QR scan - see QrCodeScan::canUserStartQuestionnaire. Listing a quiz
+        // is fine; opening one without having scanned its code is not.
+        if (!QrCodeScan::canUserStartQuestionnaire(Auth::id(), $questionnaire->id)) {
+            return redirect()->route('user.dashboard')
+                ->with('error', 'Scan the QR code at this outpost to unlock the quiz');
         }
 
         // Check if user already has an active (started) attempt for this questionnaire
@@ -95,7 +103,12 @@ class UserQuizController extends Controller
 
         // Check timer expiry
         if ($attempt->questionnaire->time_limit) {
-            $elapsed = now()->diffInSeconds($attempt->started_at);
+            // Carbon 3 returns a SIGNED diff, so now()->diffInSeconds($past) is negative
+            // and this gate never fired — expired attempts stayed resumable. Measure
+            // forward from the same origin calculateTimeRemaining() uses, so the gate
+            // and the countdown shown to the team always agree.
+            $timerStart = $attempt->timer_started_at ?? $attempt->started_at;
+            $elapsed = $timerStart->diffInSeconds(now(), false);
             $timeLimit = $attempt->questionnaire->time_limit * 60;
 
             if ($elapsed >= $timeLimit) {

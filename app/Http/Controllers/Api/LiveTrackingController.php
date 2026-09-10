@@ -18,6 +18,11 @@ class LiveTrackingController extends Controller
         $request->validate([
             'latitude' => 'required|numeric|between:-90,90',
             'longitude' => 'required|numeric|between:-180,180',
+            // Optional, and worth sending: the columns exist and nothing was filling them.
+            // A position with no accuracy is impossible to judge on the admin map — 5 m and
+            // 500 m draw the same dot.
+            'accuracy' => 'nullable|numeric|min:0',
+            'device_info' => 'nullable|string|max:255',
         ]);
 
         $user = $request->user();
@@ -31,6 +36,8 @@ class LiveTrackingController extends Controller
             [
                 'user_latitude' => $request->latitude,
                 'user_longitude' => $request->longitude,
+                'accuracy' => $request->input('accuracy'),
+                'device_info' => $request->input('device_info'),
                 'checked_at' => now(),
             ]
         );
@@ -41,6 +48,7 @@ class LiveTrackingController extends Controller
             'data' => [
                 'latitude' => $request->latitude,
                 'longitude' => $request->longitude,
+                'accuracy' => $request->input('accuracy'),
                 'timestamp' => now()->toISOString(),
             ]
         ]);

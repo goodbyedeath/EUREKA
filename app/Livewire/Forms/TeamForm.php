@@ -67,7 +67,7 @@ class TeamForm extends Component
 
     public function addMember()
     {
-        if (count($this->members) < 10) {
+        if (count($this->members) < 100) {
             $this->members[] = [
                 'name' => '',
                 'email' => '',

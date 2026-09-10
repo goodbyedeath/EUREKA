@@ -631,7 +631,7 @@
 
                 <!-- Header -->
                 <div class="preview-header">
-                    <h1>📊 EUREKA Learning Progress Report</h1>
+                    <h1>📊 {{ \App\Models\BrandSetting::appName() }} Learning Progress Report</h1>
                     <div class="subtitle">Comprehensive Analytics & Performance Overview</div>
                     <div class="generated-info">
                         📅 Generated on {{ now()->format('F j, Y \a\t g:i A') }} | 
@@ -832,7 +832,7 @@
                 
                 <!-- Enhanced Footer -->
                 <div class="preview-footer">
-                    <div class="footer-logo">🎓 EUREKA Learning Management System</div>
+                    <div class="footer-logo">🎓 {{ \App\Models\BrandSetting::appName() }} Learning Management System</div>
                     <div class="footer-info">
                         📊 This comprehensive report contains {{ count($users) }} user records<br>
                         Generated using advanced analytics for educational performance tracking<br>
@@ -981,7 +981,7 @@
             }
             
             // Generate filename
-            const filename = `EUREKA-Progress-Report-${new Date().toISOString().slice(0, 19).replace(/[:.]/g, '-')}.pdf`;
+            const filename = `{{ \Illuminate\Support\Str::slug(\App\Models\BrandSetting::appName()) }}-Progress-Report-${new Date().toISOString().slice(0, 19).replace(/[:.]/g, '-')}.pdf`;
             
             // Step 4: Finalizing
             updateProgress(3, 90);

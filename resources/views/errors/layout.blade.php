@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>@yield('title') - {{ config('app.name', 'Laravel') }}</title>
+    <title>@yield('title') - {{ \App\Models\BrandSetting::appName() }}</title>
     
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.bunny.net">
@@ -96,7 +96,7 @@
                         <span class="text-gray-400 dark:text-gray-500">{{ now()->format('Y-m-d H:i:s') }}</span>
                     </p>
                     <p class="text-xs text-gray-400 dark:text-gray-500 mt-2">
-                        &copy; {{ date('Y') }} {{ config('app.name', 'Laravel') }}. All rights reserved.
+                        &copy; {{ date('Y') }} {{ \App\Models\BrandSetting::appName() }}. All rights reserved.
                     </p>
                 </div>
             </div>
