@@ -18,7 +18,7 @@ differ; the names here are suggestions, not requirements.
 
 ## Open (as you last reported, 10 Sep)
 
-1. **The AR reticle** — `ar/ArActivity.kt`
+1. **The 3D Camera** — `ar/ArActivity.kt`. §9 rewritten into a full spec; one earlier answer reversed.
 2. **Results screen**
 3. **QR scanner** — was blocked on a server test. It is not any more; see §3.
 4. **Offline write queue** — from your report; added as §4.
@@ -29,24 +29,28 @@ indoor map, the keystore `.gitignore`, and removing Capacitor.
 
 ---
 
-## 1 — The AR reticle  ·  `ar/ArActivity.kt`  ·  **do this first**
+## 1 — The 3D Camera  ·  `ar/ArActivity.kt`  ·  **do this first**
 
-The 3D camera is built and objects render, but there is no aiming circle, so a player cannot tell
-what is interactive or where to point. Objects read as scenery. Full spec in
-`APK-BUILD-GUIDE.md` §9; the essentials:
+**§9 of `APK-BUILD-GUIDE.md` has been rewritten into a full specification of this feature. Read it
+before touching the code — one earlier answer in it was reversed, and building to the old one wastes
+work.**
 
-- A 44 × 44 dp circle at the exact centre of the screen, drawn above the AR surface and **not
-  touchable** — it must never absorb the tap.
-- Idle: 2 dp border `#ffffff88`, no fill. Hot: border `#4ade80`, 6 dp glow `#4ade8033`, scale 1.15.
-- Every frame, cast a ray from the camera through screen centre, test the placed objects, walk up
-  to the object root, and set hot/idle from whether anything was hit.
-- **Aim-then-tap**: a tap anywhere opens whatever the reticle is on; an idle reticle means the tap
-  does nothing. Do not hit-test from the touch point.
+What changed since you last read it:
 
-**Done when:** pointing the phone at an object turns the circle green before any tap, and tapping
-with the circle white does nothing at all.
+| | |
+|---|---|
+| **No QR, no Start gate, no calibration** | **This reverses what §9 previously said.** The camera opens straight into the scene. Objects carry no real-world anchor, so scene rotation is cosmetic and the gate bought nothing. |
+| **No plane hit-test** | Objects sit above eye level, not on the ground. A plane requirement blocks an outpost outright on dark ground. |
+| **The crosshair is the whole interaction** | 44 dp circle at screen centre, green `#4ade80` when something is aimed at. Aim-then-tap: a tap anywhere opens whatever the crosshair is on; an idle crosshair does nothing, silently. |
+| **Three sheet shapes, chosen by `media_type`** | text · text + image · text + url. Never infer from which fields are non-null. |
+| **The whole screen is specified** | top bar with the found counter, hint line, direction guide, Re-centre — each with its offset, colour and behaviour. The direction guide is the one most often skipped and the one players need most. |
+| **A state machine for opening it** | CHECKING → WAITING_UNLOCK / NEED_LOCATION / OUT_OF_RANGE → PREPARING → SCENE_LIVE → SHEET_OPEN. Indoor and outdoor differ only in which gate fires; `access_mode` says which. |
+| **Edge cases** | including the one with no server answer: leaving the radius mid-session. Hysteresis, not an instant close. |
 
----
+Fetch it: `GET /api/v1/contract/guide/build` — §9.
+
+**Done when:** pointing the phone at an object turns the crosshair green before any tap; tapping
+with it white does nothing at all; and each of the three sheet shapes renders from a real object.
 
 ## 2 — Results screen
 
