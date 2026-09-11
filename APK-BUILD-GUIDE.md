@@ -453,6 +453,101 @@ The sheet shows `title` + `description`, and then **one** extra decided by `medi
 Plus the points row when `points` is non-zero. That is the entire interaction — the same as our
 preview does.
 
+### Opening the feature: the state machine
+
+One endpoint decides everything. `GET /ar/locations/{id}[?lat=&lng=]` runs four checks **in this
+order**, and the client mirrors them as states rather than guessing from HTTP status:
+
+```
+                        ┌─────────────────────────────┐
+                        │ CHECKING                    │
+                        │ GET /ar/locations/{id}       │
+                        └──────────────┬──────────────┘
+                                       │
+        ┌──────────────────────────────┼──────────────────────────────┐
+        │                              │                              │
+   403 awaiting_unlock         403 location_required           403 out_of_range
+        │                              │                         (distance,radius)
+        ▼                              ▼                              ▼
+┌───────────────────┐        ┌───────────────────┐        ┌───────────────────────┐
+│ WAITING_UNLOCK    │        │ NEED_LOCATION     │        │ OUT_OF_RANGE          │
+│ INDOOR            │        │ ask permission,   │        │ "You are 84 m away.   │
+│ "Waiting for the  │        │ get a fix, retry  │        │  Get within 30 m."    │
+│  crew…"  poll 15s │        │ with ?lat=&lng=   │        │ re-check on movement  │
+└─────────┬─────────┘        └─────────┬─────────┘        └───────────┬───────────┘
+          │ 200                        │ 200                          │ 200
+          └──────────────┬─────────────┴──────────────────────────────┘
+                         ▼
+              ┌──────────────────────┐      models missing from cache
+              │ PREPARING            │──────────────► download, or fail with
+              │ resolve .glb from    │                "content not downloaded"
+              │ the offline cache    │
+              └──────────┬───────────┘
+                         ▼
+              ┌──────────────────────┐
+              │ SCENE_LIVE           │  camera + crosshair + counter + guide
+              │ crosshair hot/idle   │  (no gate, no QR, no plane test)
+              └──────────┬───────────┘
+                         │ tap while crosshair is hot
+                         ▼
+              ┌──────────────────────┐
+              │ SHEET_OPEN           │  text | text+image | text+url
+              │ scene stays live     │  close → back to SCENE_LIVE, same pose
+              └──────────────────────┘
+```
+
+**Indoor and outdoor differ only in which gate fires.** `access_mode` in the success payload tells
+you which regime you are in: `"manual"` means a crew member opens it (GPS cannot satisfy a radius
+through a roof), `"geofence"` means the radius decides. Do not branch on anything else — not on
+whether coordinates are null, not on a screen the player came from.
+
+**Admins are exempt from both gates** so they can inspect from a desk. Never assume a 200 means the
+player is on site.
+
+### Admin configuration, as the API actually returns it
+
+This is the live shape, not an illustration:
+
+```json
+{
+  "success": true,
+  "location": {
+    "id": 39,
+    "name": "Test - Demo",
+    "model": "https://…/models/base.glb",
+    "latitude": null,            // null = never bound to a place; no geofence at all
+    "longitude": null,
+    "radius": 50,
+    "coordinate_source": "none", // none | own | quest_location
+    "quest_location_id": null,
+    "access_mode": "geofence"    // geofence | manual
+  },
+  "objects": [
+    {
+      "id": 26,
+      "title": "The Cage",
+      "description": "Free your team-mate.",
+      "points": 10,
+
+      "media_type": "image",     // image | link | null  → decides the sheet
+      "image": "https://…/hotspot-images/x.jpg",
+      "link": null,
+
+      "model": "https://…/models/cage.glb",
+      "model_id": 3,
+      "scale": 1.0,
+      "distance": 2.5,
+      "position": { "x": 1.77, "y": 0.43, "z": -1.72 },
+      "rotation": { "x": 0, "y": 180, "z": 0 },
+      "animations": [ { "type": "spin", "speed": 1, "range": 1 } ]
+    }
+  ]
+}
+```
+
+`position` is already metres, camera-local, `−z` forward. Place as given. `media_type` alone decides
+which of the three sheet shapes to render — do not infer it from which fields are non-null.
+
 ### Do not require a plane hit-test
 
 **Drop it — your instinct is right, and the guide should have said so.**
@@ -531,6 +626,60 @@ rejected answer will be rejected again.
 | `awaiting_unlock` | A normal waiting state on AR outposts, not a failure. |
 | Nulls are normal | `team_id`, `access_window_ends_at`, `image_path`, `google_map_embed_url` are all legitimately `null`. |
 | Don't trust the device clock | Read `/quiz/timer/{attemptId}`. |
+
+### Edge cases, and what to do about each
+
+**The player walks out of the radius while the camera is open.** The server checks the geofence
+**once, at open**, and has no idea afterwards. This is the client's decision, and the obvious answer
+is wrong: do not close the camera the moment they drift past the line. A team that stepped five
+metres out of a thirty-metre radius while turning to look at an object has not cheated, and a camera
+that snatches itself away mid-puzzle gets blamed on the app, loudly, at a live event.
+
+Use hysteresis:
+
+| Distance | Behaviour |
+|---|---|
+| inside `radius` | normal |
+| `radius` … `radius + 50 m` | keep the scene, show a banner: "Move back toward the post" |
+| beyond `radius + 50 m` | close, return to the map, explain why |
+
+Sample position at the interval you already use (10 s is plenty — it is also the cap on position
+posts). Never act on a single fix: GPS jumps, and one bad reading should not end a session.
+
+**The crew revokes an indoor unlock while the camera is open.** Same shape, simpler answer: nothing
+tells you until your next call. Re-check `GET /ar/locations/{id}` when the app returns to the
+foreground, and on a long session roughly every 60 s. On `awaiting_unlock`, close back to
+WAITING_UNLOCK — a revoked unlock is deliberate, unlike a GPS wobble.
+
+**The access window expires mid-session.** Every authenticated call starts answering `403
+access_window_expired`. That is terminal: stop, do not retry, send the player to the waiting screen.
+It will most likely surface on an object-open or a position post rather than on entry.
+
+**Camera permission refused.** A dead end the player can fix, so say so plainly and offer the
+settings route. Never open SCENE_LIVE with no preview — a black screen with a working crosshair
+looks like a broken outpost.
+
+**ARCore missing or unsupported.** Check at launch, not at the outpost: a team discovering this
+while standing at a post has already lost the time. Surface it on the dashboard as "this device
+cannot run the 3D camera" and keep every other feature working.
+
+**Models not downloaded.** `.glb` files come from `/offline/manifest` and must be fetched while
+signal exists. If one is missing at open, say "content not downloaded" and offer a retry — do not
+render an empty scene, which is indistinguishable from an outpost with no objects.
+
+**An outpost with zero objects.** A legitimate 200 with `objects: []`: the admin made the outpost but
+has not placed anything. Say so. Do not show the crosshair over an empty room and let the player
+hunt for nothing.
+
+**Double-counting.** The found counter increments the **first** time each object is opened. Flag the
+object; never count taps. Re-opening the same object must not move the number.
+
+**Offline, scene already loaded.** Everything needed is local: the objects came with the response and
+the models are cached. The camera, the crosshair and the sheets must all keep working with no
+signal — that is the whole reason the manifest exists. Only the found-counter sync waits.
+
+**Tap with an idle crosshair.** Do nothing. No toast, no flash. A player sweeping the room taps
+constantly, and feedback on every miss reads as malfunction.
 
 ### Error handling
 
