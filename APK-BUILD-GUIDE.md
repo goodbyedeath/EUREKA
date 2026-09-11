@@ -625,7 +625,43 @@ rejected answer will be rejected again.
 | `fun_game` scores 0 | At answer time. Never total points client-side. |
 | `awaiting_unlock` | A normal waiting state on AR outposts, not a failure. |
 | Nulls are normal | `team_id`, `access_window_ends_at`, `image_path`, `google_map_embed_url` are all legitimately `null`. |
+| CameraX binds to the **Activity** lifecycle, not the composable | Reported by the client team, 11 Sep. Navigating away from the QR scanner does not release the camera, so ARCore then opens to a black frame. "Two cameras, never both alive" is easy to satisfy by accident and hard to satisfy on purpose: unbind on dispose **and** release any live provider immediately before starting the AR Activity, with one launcher as the only route in. This was the real cause of an earlier "no 3D camera" report; a missing CAMERA permission was a second, separate cause. |
 | Don't trust the device clock | Read `/quiz/timer/{attemptId}`. |
+
+### Guidance and attempt history — both now exist
+
+Reported as blocking, and correctly: both lived only as Livewire pages, so a team holding just the
+app could never reach them. The briefing was the worse of the two — instructions a team is told to
+read, that they had no way to read.
+
+```
+GET /api/v1/guidance          { success, count, guidances[] }
+GET /api/v1/guidance/{id}     { success, guidance }
+GET /api/v1/quiz/attempts?limit=20
+                              { success, total_attempts, attempts[] }
+```
+
+`guidances[]` carries `{ id, title, description, images[], sort_order, updated_at }` — the shape you
+asked for, plus `updated_at` so you can cache on it.
+
+Three things done as you asked, and verified rather than assumed:
+
+- **`active()` → `forUser()` → `ordered()`**, mirroring `GuidanceView` exactly. `forUser()` is the
+  one that matters: a briefing aimed at one team must not reach another. Tested with two accounts
+  and a targeted row — A sees 2, B sees 1.
+- **`images` are absolute URLs.** Stored relative; resolved through the public disk on the way out,
+  because you cache for offline and cannot resolve a relative path from a cold start.
+- **Inactive rows are filtered**, confirmed by a deliberately inactive row not appearing.
+
+`GET /guidance/{id}` answers `404 guidance_not_found` both for a row that does not exist and for one
+that is not yours — deliberately the same, since a distinct "exists but not for you" would tell one
+team that another team has a briefing it cannot see.
+
+`total_attempts` counts everything, not the page: a team that has done thirty outposts sees thirty
+even when listing twenty. `limit` is 1–100; above that is a 422.
+
+Still not built, and still not blocking by your own reckoning: score breakdown, dashboard stats, the
+game assessment form, the player's own GPS map. Ask again if any becomes blocking.
 
 ### Edge cases, and what to do about each
 
@@ -645,6 +681,14 @@ Use hysteresis:
 
 Sample position at the interval you already use (10 s is plenty — it is also the cap on position
 posts). Never act on a single fix: GPS jumps, and one bad reading should not end a session.
+
+**Your out-of-radius decision is accepted as-is — no number from us.** A blocking layer that swallows
+gestures while the scene stays alive and tracking is better than anything proposed here: it keeps
+found objects, resumes where they left off, and leaves Back reachable. Your `radius` → `radius × 0.9`
+hysteresis band is the right shape, and a ratio beats the fixed `+50 m` suggested earlier — it scales
+with the outpost instead of being generous at a 10 m post and meaningless at a 200 m one. Computing
+it locally from the `radius` and coordinates already in the payload is also right: the authoritative
+gate stays on every action, and it costs nothing from the budget.
 
 **The crew revokes an indoor unlock while the camera is open.** Same shape, simpler answer: nothing
 tells you until your next call. Re-check `GET /ar/locations/{id}` when the app returns to the

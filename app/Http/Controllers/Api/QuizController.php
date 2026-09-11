@@ -483,6 +483,47 @@ class QuizController extends Controller
     }
 
     /**
+     * The caller's own attempt history.
+     *
+     * `livewire/user/recent-attempts` gave a team its own record and had no API twin, so after
+     * several outposts a team holding only the app could not see what it had already done. The
+     * query mirrors `App\Livewire\User\RecentAttempts`: scoped to the caller, newest first.
+     */
+    public function attempts(Request $request)
+    {
+        $data = $request->validate([
+            'limit' => 'nullable|integer|min:1|max:100',
+        ]);
+
+        $limit = (int) ($data['limit'] ?? 20);
+
+        $rows = QuizAttempt::with('questionnaire:id,title')
+            ->where('user_id', Auth::id())
+            ->orderByDesc('created_at')
+            ->limit($limit)
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            // The count is of everything, not of this page: a team that has done thirty
+            // outposts should see thirty, not the twenty it asked to list.
+            'total_attempts' => QuizAttempt::where('user_id', Auth::id())->count(),
+            'attempts' => $rows->map(fn (QuizAttempt $a) => [
+                'id' => $a->id,
+                'questionnaire' => $a->questionnaire ? [
+                    'id' => $a->questionnaire->id,
+                    'title' => $a->questionnaire->title,
+                ] : null,
+                'status' => $a->status,
+                'total_score' => $a->total_score !== null ? (float) $a->total_score : null,
+                'total_time_seconds' => $a->total_time_seconds !== null ? (int) $a->total_time_seconds : null,
+                'created_at' => $a->created_at?->toIso8601String(),
+                'completed_at' => $a->completed_at?->toIso8601String(),
+            ])->values(),
+        ]);
+    }
+
+    /**
      * Refuse work on an attempt whose clock has run out.
      *
      * Measured forward from the same origin calculateTimeRemaining() uses, so this gate and

@@ -404,6 +404,12 @@ These are real, verified, and worth deciding on — none of them block the site 
   Fixed 2026-09-09: `throttle:tracking` on both write routes, 10s minimum between sends in the
   browser. Found by code review, not by `tools/traffic-audit.php` — which only looked for
   `setInterval` and `wire:poll`, and now has an UNBOUNDED section for sources with no interval.
+- **AR authoring stores no absolute heading.** `hotspots.yaw` is relative to the direction the admin
+  faced when tapping Start at the outpost, so the web preview needs its QR-aiming gate to reproduce
+  that frame. A native client does not: objects carry no real-world anchor, so scene rotation is
+  cosmetic. Recording an absolute heading at authoring time would let the web gate go too, but it
+  means re-walking every outpost to re-author what exists — worth doing before a large event, not
+  mid-build. The Android team asked for this to be on the list (11 Sep) and is not blocked by it.
 - **The retired web player UI is still fully reachable.** 31 routes behind `UserMiddleware`,
   including a session-authenticated `/api/*` game loop with **no rate limit**, duplicating the
   throttled `/api/v1/*` the APK uses. Nobody owns it now that players are on the APK. A phone
