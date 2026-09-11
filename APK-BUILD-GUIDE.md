@@ -397,62 +397,61 @@ button re-aims the frame the same way the Start gate does — point at the QR ag
 re-zeroed. **Keep it even though ARCore drifts far less**, because it is also the recovery when a
 player walks off and comes back, or when tracking is lost and regained.
 
-**Pre-entry gate** — full screen, `z-50`, solid `#0f172a`, centred:
-
-> **Point at the QR code**
-> Stand where the QR code is and point your phone straight at it, then tap **Start**. Objects are
-> placed relative to this direction.
->
-> `[ Start ]`
-
-Keep that wording, or wording that says the same thing. A player who taps Start while facing
-anywhere else has silently misaligned the whole scene, and nothing afterwards will look wrong
-enough to tell them.
+**No pre-entry gate.** Our web preview has one; yours must not — see the section below. The
+camera opens straight into the scene.
 
 **Object sheet** — slides up from the bottom on tap: title as a heading, description, the points
 row, then at most one extra (image **or** link; a link opens externally), and a Close button. The
 scene stays live behind it; closing returns to the same pose rather than restarting.
 
-### The frame origin: keep the Start gate
+### No QR is involved. Open the camera and show the objects.
 
-**Answering the v17 question directly: yes, the gate stays. `position` is not absolute.**
+**This corrects the previous revision of this section, which told you to keep a Start gate. That
+answer was wrong, and if you have already built to it, stop.**
 
-`§9` previously said "place it as given" without saying what *given* is relative to. That was an
-omission on this side, and it is the reason your build and your operator disagree.
+The 3D camera has nothing to do with QR scanning. It has one job: show the objects an admin
+deployed at *this* outpost, and let a player shoot them with the centre crosshair. Nothing is
+decoded, nothing is matched. The outpost is already identified by the `{id}` in the request.
 
-Checked in `resources/views/ar/view.blade.php`:
+**Why the earlier answer was wrong.** I traced `yaw` to a frame captured when the admin taps Start
+— which is true — and concluded the gate had to stay or "every object rotates". I never asked
+whether that rotation matters. It does not. Checked: `hotspots` has **no latitude, longitude,
+anchor or landmark column**. An object exists only as a bearing, pitch and distance from the
+outpost's viewing position. So rotating the whole scene preserves every object's position
+*relative to the others* — which is the only spatial relationship the data expresses. A player
+still finds all of them by turning around, and the direction guide still points correctly.
+
+Nothing is authored to line up with a physical thing, so absolute orientation is cosmetic.
+
+**What this means for your build:**
+
+- **Drop the Start gate.** Open the camera straight into the scene.
+- Take the camera pose at entry as the origin and place objects camera-local from it.
+- No QR step, no calibration step, no plane hit-test.
+- Keep **Re-centre**: still useful when tracking is lost and regained, or when a player wanders off
+  and returns. It just re-zeroes forward to wherever they are pointing now.
+
+The web build keeps its gate for a reason that does not apply to you: `deviceorientation` has no
+absolute forward at all, so it needs *a* moment to define one, and aiming at a fixed landmark makes
+that repeatable between the admin and the player. ARCore establishes its own frame on start, so the
+step buys you nothing and costs a confusing screen.
+
+### The interaction, which is the whole feature
 
 ```
-line 853   referenceYaw = null;            // this direction becomes "forward"
-line 596   euler.set(beta, alpha - referenceYaw, -gamma, 'YXZ')
-line 1346  const yaw = Math.atan2(aimDir.x, -aimDir.z)
+camera opens  →  objects are there  →  centre crosshair over one  →  tap  →  sheet
 ```
 
-`referenceYaw` is captured the instant the admin taps **Start while pointing at the QR**. Every
-camera angle after that is measured as `alpha − referenceYaw`, and the `yaw` written when an object
-is placed comes from the camera inside that same relative frame.
+The sheet shows `title` + `description`, and then **one** extra decided by `media_type`:
 
-**So the stored `yaw` means "this many radians from the QR direction". Nothing anywhere records an
-absolute compass heading.** Open the camera and adopt whatever pose the player happens to hold, and
-forward becomes arbitrary: every object at that outpost rotates by the difference between where the
-player was pointing and where the admin was. Your own words for it are right — plausible rather
-than broken, which is the worst kind of wrong to ship.
+| `media_type` | Sheet shows |
+|---|---|
+| absent / other | text only |
+| `"image"` | text + the `image` |
+| `"link"` | text + the `link` as a button, opening externally |
 
-ARCore's ability to anchor immediately does not help, because the missing information is not
-tracking quality. It is *which way the admin was facing*, and that was never stored.
-
-**Keep the gate, and keep it for this reason rather than the old one.** The web needs it because
-`deviceorientation` has no absolute forward; you need it because the authored layout is expressed
-relative to the QR. Same gate, different justification — so do not remove it when you later
-improve tracking.
-
-Once Start is tapped, treat the camera pose at that instant as the origin and place objects
-camera-local from it, exactly as the response describes. ARCore should then hold that frame far
-better than the web's complementary filter does, which is the real win available to you.
-
-> If an absolute heading were stored at authoring time, the gate could go. It is not, and adding it
-> would mean re-walking every outpost to re-author what exists. Worth doing before a large event,
-> not worth doing mid-build. Say the word and it goes on the list.
+Plus the points row when `points` is non-zero. That is the entire interaction — the same as our
+preview does.
 
 ### Do not require a plane hit-test
 
