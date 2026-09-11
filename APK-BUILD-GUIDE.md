@@ -348,6 +348,71 @@ A bottom sheet built from the object's own fields:
 - **one** extra, never two: switch on `media_type` — `"image"` renders `image`, `"link"` renders
   `link` as a button, anything else shows no extra
 
+### The screen, element by element
+
+Build the same screen we do. Every value below is read from
+`resources/views/ar/view.blade.php`, and each element exists because something failed without it.
+
+**Top bar** — fixed to the top, above the camera, `z-36`. Background is a gradient from `#000c` to
+transparent so white text stays readable against any scene, with top padding for the status bar /
+notch inset.
+
+| | |
+|---|---|
+| `← Back` | leaves the outpost. Always reachable — a player who cannot find an object must be able to get out. |
+| outpost name | an `h1`. The player needs to know which outpost they are standing at. |
+| found counter | pill, `0/N`, 13 sp bold, green `#4ade80` on `#0008`, fully rounded. |
+
+The counter is `found / total`. It increments the **first** time an object is opened and never
+again — mark the object, do not count taps. When `found == total`, the hint line below changes to
+**"All objects found!"**; that is the only completion signal the screen gives.
+
+**Centre** — the reticle, specified above.
+
+**Bottom, stacked upward from the safe-area inset:**
+
+| Element | Offset | Purpose |
+|---|---|---|
+| hint | `inset + 24`, full width, centred 13 sp | "Look around to find the objects" → "All objects found!" |
+| direction guide | `inset + 52`, centred pill `#0f172ad9`, 13 sp bold, **not touchable** | which way to turn |
+| Re-centre | `inset + 70`, left 16 | re-zero forward |
+
+**The direction guide is the element most likely to be left out, and the one players need most.**
+Objects are authored at any bearing, so a player who opens the camera facing the wrong way sees an
+empty room and concludes the outpost is broken. It shows:
+
+```
+▶ 47°        nearest object is 47° to the right
+◀ 47°        … to the left
+↺ Turn around    when the nearest is more than 150° away
+```
+
+Hidden entirely when **any** object is within `0.42 rad` (~24°) of where the phone is pointing —
+that is "roughly on screen", so the guide disappears exactly when it stops being needed. Our build
+recomputes it every tenth frame, which is far more often than a person can turn; once every few
+frames is plenty and keeps it off the hot path.
+
+**Re-centre** exists because a gyro heading drifts: objects creep sideways over several minutes. The
+button re-aims the frame the same way the Start gate does — point at the QR again, tap, forward is
+re-zeroed. **Keep it even though ARCore drifts far less**, because it is also the recovery when a
+player walks off and comes back, or when tracking is lost and regained.
+
+**Pre-entry gate** — full screen, `z-50`, solid `#0f172a`, centred:
+
+> **Point at the QR code**
+> Stand where the QR code is and point your phone straight at it, then tap **Start**. Objects are
+> placed relative to this direction.
+>
+> `[ Start ]`
+
+Keep that wording, or wording that says the same thing. A player who taps Start while facing
+anywhere else has silently misaligned the whole scene, and nothing afterwards will look wrong
+enough to tell them.
+
+**Object sheet** — slides up from the bottom on tap: title as a heading, description, the points
+row, then at most one extra (image **or** link; a link opens externally), and a Close button. The
+scene stays live behind it; closing returns to the same pose rather than restarting.
+
 ### The frame origin: keep the Start gate
 
 **Answering the v17 question directly: yes, the gate stays. `position` is not absolute.**
