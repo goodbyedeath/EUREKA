@@ -101,7 +101,10 @@ class AppConfigController extends Controller
 
         return response()->json([
             'success' => true,
-            'flags' => $all->pluck('is_enabled', 'feature_key')->map(fn ($v) => (bool) $v),
+            // Cast to object for the same reason as quiz answers: an empty Collection encodes as
+            // [] and a populated key => bool map as {}, so an empty feature_settings table would
+            // hand a client a list where it expects a map.
+            'flags' => (object) $all->pluck('is_enabled', 'feature_key')->map(fn ($v) => (bool) $v)->all(),
             'features' => $all->map(fn (FeatureSetting $f) => [
                 'key' => $f->feature_key,
                 'name' => $f->feature_name,

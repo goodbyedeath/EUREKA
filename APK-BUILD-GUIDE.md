@@ -617,6 +617,8 @@ rejected answer will be rejected again.
 
 | Trap | Detail |
 |---|---|
+| **An empty PHP array encodes as `[]`, not `{}`** | Reported 14 Sep. A field built as a map keyed by id is `{}` when it has entries and `[]` when it has none, so the **type** changes with history. `answers` on `/quiz/start` and `/quiz/continue`, and `flags` on `/features`, all did this; a client modelling them as maps rejected every fresh attempt, and it surfaced as a network error because the reply could not be parsed. **All three now always return an object.** If you find another field that flips, report it — the fix belongs on the server. |
+| **GLB models render solid black** | Reported 14 Sep, verified by the client team in the SceneView 2.2.1 AAR. With `Config.LightEstimationMode.AMBIENT_INTENSITY`, `LightEstimator` has no indirect-light path, so PBR materials — metallic ones especially — have nothing to reflect and render black. Fix: `ENVIRONMENTAL_HDR`, the neutral IBL shipped inside the AAR (`environments/neutral/neutral_ibl.ktx`) as the scene environment **with the skybox dropped** (in AR the camera feed is the background and a skybox paints over it), plus an explicit main light. It looks exactly like a broken model export, so the `.glb` gets blamed first. |
 | **Two names for a coordinate** | `checkin` wants `user_latitude` / `user_longitude`. `tracking/position` wants `latitude` / `longitude`. Same concept, different keys. |
 | **Lat/long type is inconsistent** | `/quest-locations` returns them as **strings** (`"-6.41697690"`); `/offline/manifest` returns them as **numbers** (`-6.4169769`). Parse defensively. |
 | `spots` nesting | Top level in `/indoor-map`, not under `map`. |
@@ -656,6 +658,29 @@ Three things done as you asked, and verified rather than assumed:
 `GET /guidance/{id}` answers `404 guidance_not_found` both for a row that does not exist and for one
 that is not yours — deliberately the same, since a distinct "exists but not for you" would tell one
 team that another team has a briefing it cannot see.
+
+**`attempts[]` row shape — confirmed field by field against the controller:**
+
+```json
+{
+  "id": 412,
+  "questionnaire": { "id": 13, "title": "Field Bomb (Pos Merah)" },   // null if the questionnaire was deleted
+  "status": "completed",            // started | completed | abandoned — exactly these three
+  "total_score": 80,                // a JSON number, never a string
+  "total_time_seconds": 214,        // a JSON integer, never a string
+  "created_at":   "2026-09-14T09:12:03+00:00",   // ISO-8601, always
+  "completed_at": "2026-09-14T09:15:37+00:00"    // ISO-8601, or null while status is "started"
+}
+```
+
+Your field names are right, and so is your status mapping. Two things you can tighten: both dates are
+always ISO-8601 — there is no `Y-m-d H:i:s` variant on this endpoint — and both numbers are always
+JSON numbers, never strings.
+
+**A `started` attempt reports `total_score: 0` and `total_time_seconds: 0`, not `null`.** Verified
+against a live row. So `0` does not mean "scored zero" — it can equally mean "not finished". Tell
+the two apart with `status` (or `completed_at` being null), never with the number. Leniency does no harm, but do not rely on it elsewhere:
+`/quest-locations` still sends lat/long as strings.
 
 `total_attempts` counts everything, not the page: a team that has done thirty outposts sees thirty
 even when listing twenty. `limit` is 1–100; above that is a 422.

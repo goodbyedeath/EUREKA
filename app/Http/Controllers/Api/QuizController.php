@@ -209,7 +209,10 @@ class QuizController extends Controller
                     'time_limit' => $questionnaire->time_limit,
                 ],
                 'questions' => $questions,
-                'answers' => $answers,
+                // Always an object. An empty PHP array encodes as [] and a filled one keyed by
+                // question_id as {}, so a fresh attempt and a resumed one disagreed on the type of
+                // the same field — and a client modelling it as a map rejected every first attempt.
+                'answers' => (object) $answers,
                 'totalPoints' => $totalPoints,
                 'timeRemaining' => $timeRemaining,
             ]);
@@ -330,7 +333,10 @@ class QuizController extends Controller
                     'time_limit' => $attempt->questionnaire->time_limit,
                 ],
                 'questions' => $questions,
-                'answers' => $answers,
+                // Always an object. An empty PHP array encodes as [] and a filled one keyed by
+                // question_id as {}, so a fresh attempt and a resumed one disagreed on the type of
+                // the same field — and a client modelling it as a map rejected every first attempt.
+                'answers' => (object) $answers,
                 'totalPoints' => $totalPoints,
                 'timeRemaining' => $timeRemaining,
                 'continued' => true,
