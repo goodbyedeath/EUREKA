@@ -57,8 +57,10 @@ class QuizController extends Controller
         if (RateLimiter::tooManyAttempts($key, 10)) {
             return response()->json([
                 'success' => false,
-                'message' => 'Too many quiz attempts. Please wait.'
-            ], 429);
+                'message' => 'Too many quiz attempts. Please wait.',
+                'error' => 'too_many_starts',
+                'retry_after' => RateLimiter::availableIn($key),
+            ], 429)->header('Retry-After', (string) RateLimiter::availableIn($key));
         }
         RateLimiter::hit($key, 60);
 
@@ -75,7 +77,8 @@ class QuizController extends Controller
             if (!$questionnaire) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Questionnaire not found'
+                    'message' => 'Questionnaire not found',
+                    'error' => 'questionnaire_not_found',
                 ], 404);
             }
 
@@ -111,7 +114,8 @@ class QuizController extends Controller
             if (!$questionnaire->canUserAttempt(Auth::id())) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'You have reached the maximum number of attempts for this quiz'
+                    'message' => 'You have reached the maximum number of attempts for this quiz',
+                    'error' => 'max_attempts_reached',
                 ], 403);
             }
 
@@ -175,7 +179,8 @@ class QuizController extends Controller
                 ->select('id', 'question', 'type', 'options', 'points', 'order', 'description', 'game_name', 'images')
                 ->orderBy('order', 'asc')
                 ->get()
-                ->toArray();
+                ->map(fn ($q) => $this->questionRow($q))
+                ->all();
 
             // Calculate total points
             $totalPoints = 0;
@@ -304,7 +309,8 @@ class QuizController extends Controller
                 ->select('id', 'question', 'type', 'options', 'points', 'order', 'description', 'game_name', 'images')
                 ->orderBy('order', 'asc')
                 ->get()
-                ->toArray();
+                ->map(fn ($q) => $this->questionRow($q))
+                ->all();
 
             // Load existing answers
             $answers = [];
@@ -861,6 +867,24 @@ class QuizController extends Controller
         }
 
         return $response;
+    }
+
+    /**
+     * One question as the app receives it. `images` stays as stored (disk-relative paths, which a
+     * client that already prefixes a base URL depends on); `image_urls` is the same list made
+     * absolute, because a native client has no page origin to resolve "games/…" against and
+     * showed every game without its picture.
+     */
+    private function questionRow($question): array
+    {
+        $row = $question->toArray();
+        $row['image_urls'] = collect((array) ($question->images ?? []))
+            ->filter(fn ($p) => is_string($p) && $p !== '')
+            ->map(fn ($p) => preg_match('#^https?://#i', $p) ? $p : Storage::disk('public')->url($p))
+            ->values()
+            ->all();
+
+        return $row;
     }
 
     private function ownAssessment(int $id): ?GameAssessment

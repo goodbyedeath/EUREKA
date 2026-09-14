@@ -18,6 +18,8 @@ differ; the names here are suggestions, not requirements.
 
 ## Open (as you last reported, 10 Sep)
 
+0. **Scan does not open the questions — BLOCKER, reported by the operator 14 Sep.** See §7. Every
+   station depends on it, so it goes before everything below.
 1. **The 3D Camera** — `ar/ArActivity.kt`. §9 rewritten into a full spec; one earlier answer reversed.
 2. **Results screen**
 3. **QR scanner** — was blocked on a server test. It is not any more; see §3.
@@ -206,6 +208,36 @@ do, every score is 409 `facilitator_pin_not_set` — show that message, it is no
 - killing the app on the scoring screen then reopening it lands back on the same screen.
 ---
 
+## 7 — Scan opens the questions screen  ·  **blocker, do first**
+
+The operator scanned a questionnaire QR and no questions appeared. The server was tested the same
+day against all 8 active codes: lookup 200, `/quiz/start` 200 with questions, every image loads.
+So the fault is in the app between the scan and the screen.
+
+Spec: `APK-BUILD-GUIDE.md` §4 → *From scan to the questions screen* — the call sequence, the
+verified 200 body, and a render row for every question type.
+
+The most likely cause, from the data: **every active station is a single `fun_game` question.**
+A screen that renders only answerable types, or that treats `fun_game` as "nothing to show",
+is blank at every station. Other candidates worth checking: parsing `answers` as a list (it is an
+object), expecting snake_case `time_remaining` (it is `timeRemaining`), or navigating on
+`questionnaire` from a `race_start` lookup where it is absent.
+
+Also new: `image_urls` (absolute) next to `images` on every question — use it; and `/quiz/start`
+refusals that had no `error` key now carry one: `questionnaire_not_found`, `max_attempts_reached`,
+`too_many_starts` (with `retry_after`).
+
+**Done when:**
+- scanning the Pos Merah code (`98c93a89-6fe3-4b65-9c31-2701537e416b`) shows *Field Bomb (Pos
+  Merah)* — heading, full description with line breaks, the picture, and a Complete button — with
+  no tap between the scan and that screen;
+- killing the app on that screen and reopening it shows the same attempt, not a new one;
+- scanning a switched-off station shows "ask the crew", not a blank screen or "no signal".
+
+If it still fails, send `kind: "bug"` with the lookup status + body and the start status + body.
+
+---
+
 ## Talking back — the channel runs both ways now
 
 Until today this was one-way: the server published, you consumed, and anything you had to say
@@ -244,6 +276,8 @@ Reports are read before the next contract change. You will see the result as a m
 ---
 
 ## Order
+
+§7 first: without it no station works at all. Then:
 
 Reticle first: a reported defect in a screen that already exists, small change, visible
 result. Then the offline queue — it protects work already being done in the field. The facilitator scoring screen (§6) next to Results — both close out an

@@ -109,6 +109,80 @@ login, but only **after** the password is correct. Do not treat that message as 
 
 ## 4. Quiz runtime
 
+### From scan to the questions screen — the core loop of every outpost
+
+Reported by the operator, 14 Sep: **after scanning a questionnaire QR, the questions do not
+appear.** The server was re-tested the same day against all 8 active codes: every lookup is 200 and
+every `/quiz/start` returns its questions. So the break is between the scan and the screen. This is
+the flow, exactly:
+
+```
+ QR decoded
+   │
+   ▼
+ POST /qr/lookup { qr_code }
+   ├─ 200 type = "race_start"     → race flow (§8), not a quiz
+   ├─ 200 type = "questionnaire"  → take questionnaire.id  ─────────────┐
+   ├─ 404 unknown_code            → "This code is not part of the event" │
+   ├─ 403 not_available           → reason "inactive": "Station is off — │
+   │                                 ask the crew"                       │
+   └─ 403 max_attempts_reached    → "No attempts left at this station"   │
+                                                                         ▼
+ Navigate to the QUESTIONS screen immediately (no extra tap), which on open calls
+ GET /quiz/start/{questionnaire.id}
+   ├─ 200 → render `questions` (below). Persist attempt.id for resume.
+   ├─ 403 scan_required        → the scan was not recorded; go back to the scanner
+   ├─ 403 not_available        → reason inactive | not_open_yet | window_closed (+ opens_at/closes_at)
+   ├─ 403 max_attempts_reached → no attempts left
+   ├─ 404 questionnaire_not_found
+   └─ 429 too_many_starts      → wait retry_after seconds; never loop
+```
+
+`/quiz/start` is **idempotent**: calling it again returns the same live attempt with its saved
+answers, so it is safe on screen re-entry. The lookup is what records the scan, and `/quiz/start`
+refuses (`scan_required`) without it — never call start from a local decode alone.
+
+**The 200 body, verified live (Pos Merah):**
+
+```json
+{ "success": true,
+  "attempt": { "id": 504, "started_at": "2026-09-14T07:14:29.000000Z", "status": "started" },
+  "questionnaire": { "id": 13, "title": "Field Bomb (Pos Merah)", "description": "…", "time_limit": 30 },
+  "questions": [
+    { "id": 18, "type": "fun_game", "question": "Field Bomb (Pos Merah)",
+      "game_name": "Field Bomb (Pos Merah)", "description": "Tantangan tim di pos ini …",
+      "options": null, "points": 100, "order": 1,
+      "images": ["games/question-images/yLWQ….jpg"],
+      "image_urls": ["https://questerra-series.com/storage/games/question-images/yLWQ….jpg"] }
+  ],
+  "answers": {},
+  "totalPoints": 0,
+  "timeRemaining": 1799 }
+```
+
+- `answers` is always an **object** keyed by question id (as a string) → the saved answer.
+- `totalPoints` and `timeRemaining` are **camelCase** here, unlike the rest of the API.
+  `timeRemaining` is seconds; `null` means untimed.
+- `images` are disk-relative paths. **Show `image_urls`** — they are absolute and load directly.
+
+**What every station looks like today:** all 8 active questionnaires are **one `fun_game` question**
+with one image. A questions screen that renders only answerable types (`text`, `multiple_choice`,
+`true_false`) shows **nothing** at every station — the exact symptom reported. Render every type:
+
+| `type` | Show | Input → call |
+|---|---|---|
+| `fun_game` | `game_name` as heading, `description` (multi-line, keep line breaks), `image_urls` | a **Complete** button → `POST /quiz/complete-game` → facilitator flow (below) |
+| `multiple_choice` | `question`, `description`, `image_urls`, one choice per `options[]` string | send the option **text**, not its index → `save-answer` |
+| `true_false` | `question`, `description`, `image_urls` | two buttons, send `"true"` / `"false"` → `save-answer` |
+| `text` | `question`, `description`, `image_urls` | text field → `save-answer` (debounced, and on leaving the field) |
+| `brief` | `question`, `description` | optional feedback text → `save-answer`; never blocks submit |
+
+Order by `order`. If a 200 ever arrives with an empty `questions` list, do not show a blank screen:
+send `POST /contract/feedback` (`kind: "bug"`) with the questionnaire id.
+
+**Debugging this on a device:** if a scan still does not reach the questions, report both calls —
+lookup status + body and start status + body — as `kind: "bug"`. Those two bodies decide it at once.
+
 This is the part that must survive the app being backgrounded, killed, or losing signal.
 
 ```
@@ -159,8 +233,8 @@ The server also records `photo_captured_at` when the field is present.
 | `text` | free text box | yes |
 | `multiple_choice` | options from the `options` array | yes |
 | `true_false` | two buttons | yes |
-| `fun_game` | instructions + photo upload; a facilitator scores it later | **no, at answer time** |
-| `brief` | free text, informational | no |
+| `fun_game` | `game_name`, `description`, `image_urls`, a Complete button; a facilitator scores it on the team's phone | **no, at answer time** |
+| `brief` | optional feedback text | no |
 
 `fun_game` is the one that catches clients out. Its answer is stored **correct with zero points**,
 because a facilitator awards the score afterwards. Call `complete-game` for it, not `save-answer`
@@ -849,6 +923,7 @@ A `500` is a real fault: report it, do not retry in a loop.
 - [ ] Quiz resumes correctly after the app is killed mid-attempt (`/quiz/continue`)
 - [ ] `time_expired` on `save-answer` goes straight to `submit`
 - [ ] `submit` always carries `verification_photo`, downscaled before encoding
+- [ ] A scan of any active station code lands on its questions screen, every question type rendered, images from `image_urls`
 - [ ] `fun_game` uses `complete-game`, then the native Facilitator scoring screen; no client-side point totals anywhere
 - [ ] Facilitator scoring: PIN gate with lockout countdown; silent front-camera photo on Confirm; PIN and photo never written to disk
 - [ ] App name, logo and theme come from `/branding`, with nothing hardcoded

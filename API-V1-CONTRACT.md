@@ -6,6 +6,11 @@ Generated from the live router on questerra-series.com. Base URL `https://queste
 
 Act on these — several change responses your app already handles.
 
+**Latest (14 Sep, third change): questions carry `image_urls`, and `/quiz/start` refusals all have
+an `error` key.** `image_urls` is `images` made absolute — show it; `images` stays as it was.
+New keys: `questionnaire_not_found` 404, `max_attempts_reached` 403, `too_many_starts` 429
+(`retry_after`). The scan → questions flow is spelled out in the build guide §4.
+
 **Latest (14 Sep, second change): scoring needs the facilitator PIN and a silent front-camera
 photo.** `POST /quiz/assessments/{id}` now requires `facilitator_pin` and `facilitator_photo`;
 `POST /quiz/assessments/{id}/verify-pin` checks the PIN first. See *Facilitator assessment*.
@@ -109,6 +114,12 @@ the photo as optional cannot submit at all.
 | `time_expired` | 403 | The clock ran out | Stop saving; call `submit` |
 | `game_already_assessed` | 409 | A facilitator already scored this game | Move on |
 | `not_a_game_question` | 422 | `complete-game` called on a normal question | Fix the call |
+| `unknown_code` | 404 | `qr/lookup`: code is not in this event | Show it; let them rescan |
+| `not_available` | 403 | `qr/lookup` or `quiz/start`: `reason` = inactive \| not_open_yet \| window_closed | Show the reason; inactive = ask the crew |
+| `max_attempts_reached` | 403 | `qr/lookup` or `quiz/start`: no attempts left | Show it; stop |
+| `scan_required` | 403 | `quiz/start` without a recorded lookup | Back to the scanner |
+| `questionnaire_not_found` | 404 | `quiz/start`: no such active questionnaire | Back to the scanner |
+| `too_many_starts` | 429 | `quiz/start` more than 10×/min; `retry_after` | Wait, never loop |
 | `assessment_not_found` | 404 | No such assessment, or another team's | Stop; go back to the quiz |
 | `additional_out_of_range` | 422 | `additional_points` above the game's own points | Clamp the input to `max_additional_points` |
 | `penalty_out_of_range` | 422 | `penalty` above `max_penalty` | Clamp the input |
