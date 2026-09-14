@@ -126,11 +126,14 @@ the flow, exactly:
    ├─ 404 unknown_code            → "This code is not part of the event" │
    ├─ 403 not_available           → reason "inactive": "Station is off — │
    │                                 ask the crew"                       │
+   ├─ 409 session_in_progress     → another session is live: open its     │
+   │                                 attempt_id instead                    │
    └─ 403 max_attempts_reached    → "No attempts left at this station"   │
                                                                          ▼
  Navigate to the QUESTIONS screen immediately (no extra tap), which on open calls
  GET /quiz/start/{questionnaire.id}
    ├─ 200 → render `questions` (below). Persist attempt.id for resume.
+   ├─ 409 session_in_progress  → open that attempt_id instead
    ├─ 403 scan_required        → the scan was not recorded; go back to the scanner
    ├─ 403 not_available        → reason inactive | not_open_yet | window_closed (+ opens_at/closes_at)
    ├─ 403 max_attempts_reached → no attempts left
@@ -183,6 +186,56 @@ send `POST /contract/feedback` (`kind: "bug"`) with the questionnaire id.
 **Debugging this on a device:** if a scan still does not reach the questions, report both calls —
 lookup status + body and start status + body — as `kind: "bug"`. Those two bodies decide it at once.
 
+### The question session is a locked room — operator rule, 14 Sep
+
+Once `/quiz/start` returns 200 the team is **inside a session**. There are exactly two ways out:
+
+1. **Every question finished** — `text` / `multiple_choice` / `true_false` answered, and every
+   `fun_game` completed **and scored by the facilitator**. `brief` never blocks.
+2. **The clock runs out.** Whatever is unfinished scores 0.
+
+Why: a team that could leave early went back to the dashboard, scanned again and got a fresh timer.
+The server enforces it, so the app is never the weak point:
+
+- `POST /quiz/submit` → **`409 questions_incomplete`** with `pending`, while anything is unfinished
+  and the clock still runs. After the clock runs out, submit is always accepted.
+- `POST /qr/lookup` or `GET /quiz/start` for **another** station → **`409 session_in_progress`**
+  with `attempt_id` and `questionnaire`. The scan is not recorded, so it burns no attempt.
+  Rescanning the **same** station returns the same attempt; the timer does not reset.
+- After the clock runs out, `complete-game`, `verify-pin` and the scoring POST → `403 time_expired`.
+  A game the facilitator had not scored by then stays at 0.
+
+`completion` — on `/quiz/start`, `/quiz/continue` and the scoring POST — says where the team stands:
+
+```json
+"completion": { "can_submit": false, "time_expired": false,
+  "pending": [ { "question_id": 18, "type": "fun_game", "reason": "awaiting_assessment" } ] }
+```
+
+`reason` is `unanswered` | `game_not_completed` | `awaiting_assessment`. After each `save-answer`,
+recompute it locally with the same rules; the server's answer on submit is final. A `save-answer`
+that comes back 422 changed nothing — the previously saved answer still stands and still counts.
+
+**In the app:**
+
+- While `can_submit` is false: **no Submit button, no back arrow, no bottom navigation, no route to
+  the dashboard or scanner.** Consume Android back (`BackHandler`) and show
+  "Selesaikan semua pertanyaan untuk keluar".
+- When `can_submit` becomes true, go straight to the **Finish** screen: team verification photo →
+  `POST /quiz/submit` → Results. It has no cancel. It is the only exit.
+- A `fun_game` after **Complete** stays on "Menunggu penilaian fasilitator" → hand-over → PIN →
+  scoring. There is no way back to the list and no way out until the score is saved.
+- When `timeRemaining` reaches 0, or any call answers `time_expired`: close every input, show
+  "Waktu habis", then the same Finish screen. Submit is accepted however much is pending.
+- The Home button and recents cannot be blocked — do not try (no lock-task, no overlays). Instead
+  **the app always reopens into the session**: persist `attempt_id`; on launch and on every resume,
+  if one is stored (or `GET /quiz/attempts?limit=1` shows `status: "started"`), open
+  `GET /quiz/continue/{id}` before anything else. `continue` answering `403 time_expired` → Finish
+  screen; `attempt_submitted` → clear it and go on.
+- If the server answers `session_in_progress` anywhere, open that `attempt_id` — never show it as
+  an error.
+### Runtime
+
 This is the part that must survive the app being backgrounded, killed, or losing signal.
 
 ```
@@ -204,10 +257,13 @@ app that was asleep for ten minutes, will otherwise disagree with the scoreboard
 Two rules that are deliberate and not symmetrical:
 
 - `save-answer` **refuses** after the time limit — `403 error: time_expired`. Stop writing.
-- `submit` **always** accepts. Refusing it would strand an attempt whose clock ran out mid-request
-  and lose the team's work. So on `time_expired`, go straight to `submit`.
+- `submit` is **refused** while questions are unfinished and the clock still runs
+  (`409 questions_incomplete`), and **always accepted** once the clock has run out. So on
+  `time_expired`, go straight to the Finish screen.
 
-`answer` may be `null` (the player cleared a field). That is accepted.
+Clearing an answer is **refused**, not accepted: `save-answer` with `answer: null` or `""` on a
+`multiple_choice` question returns `422 "Invalid option selected"` and the previous answer stays saved
+(verified 14 Sep). Do not offer "deselect" as a way to undo; let the player pick a different option.
 
 ### `submit` requires a verification photo
 
@@ -266,7 +322,7 @@ takes the team's phone and enters the score. So the flow for a `fun_game` questi
    `POST /quiz/assessments/{id}` with `facilitator_pin`, `facilitator_photo`, `additional_points`,
    `penalty`, `notes`.
 8. Show `team_gain` and `team_points`, then follow `next`: `continue` → back to the quiz at the
-   next question; `submit` → hand in with `POST /quiz/submit`.
+   next question; `submit` → the Finish screen (team photo → `POST /quiz/submit`).
 
 #### Silent facilitator photo
 
@@ -898,6 +954,8 @@ human-facing prose and is translated.
 | `attempt_submitted` | 409 | Already handed in |
 | `game_already_assessed` | 409 | A facilitator already scored it |
 | `not_a_game_question` | 422 | `complete-game` on a normal question |
+| `questions_incomplete` | 409 | Submit before every question is done; body has `pending` — stay in the session |
+| `session_in_progress` | 409 | Another session is live; body has `attempt_id` — open it |
 | `assessment_not_found` | 404 | No such assessment, or another team's |
 | `additional_out_of_range` | 422 | Additional points above the game's points — clamp the input |
 | `penalty_out_of_range` | 422 | Penalty above `max_penalty` — clamp the input |
@@ -924,6 +982,7 @@ A `500` is a real fault: report it, do not retry in a loop.
 - [ ] `time_expired` on `save-answer` goes straight to `submit`
 - [ ] `submit` always carries `verification_photo`, downscaled before encoding
 - [ ] A scan of any active station code lands on its questions screen, every question type rendered, images from `image_urls`
+- [ ] Inside a session: no Submit, no back, no dashboard until `can_submit`; killing the app reopens the session; time-out goes to Finish
 - [ ] `fun_game` uses `complete-game`, then the native Facilitator scoring screen; no client-side point totals anywhere
 - [ ] Facilitator scoring: PIN gate with lockout countdown; silent front-camera photo on Confirm; PIN and photo never written to disk
 - [ ] App name, logo and theme come from `/branding`, with nothing hardcoded

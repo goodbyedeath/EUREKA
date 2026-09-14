@@ -192,6 +192,35 @@ class QuizAttempt extends Model
     /**
      * Check if answers can be edited (only allowed if quiz is not completed)
      */
+    /** True once a timed attempt's clock has run out. Untimed attempts never expire. */
+    public function isTimeExpired(): bool
+    {
+        $limit = $this->questionnaire?->time_limit;
+        if (! $limit) {
+            return false;
+        }
+        $start = $this->timer_started_at ?? $this->started_at;
+
+        return $start !== null && $start->diffInSeconds(now(), false) >= $limit * 60;
+    }
+
+    /**
+     * The user's live question session — started, unfinished, clock still running — at a station
+     * other than $exceptQuestionnaireId. Operator rule: a session is left only by finishing it or
+     * by running out of time, so while one is live no other station may be opened.
+     */
+    public static function liveSessionFor(int $userId, ?int $exceptQuestionnaireId = null): ?self
+    {
+        return static::with('questionnaire:id,title,time_limit')
+            ->where('user_id', $userId)
+            ->when($exceptQuestionnaireId, fn ($q) => $q->where('questionnaire_id', '!=', $exceptQuestionnaireId))
+            ->where('status', self::STATUS_STARTED)
+            ->whereNull('completed_at')
+            ->orderByDesc('started_at')
+            ->get()
+            ->first(fn (self $a) => $a->questionnaire !== null && ! $a->isTimeExpired());
+    }
+
     public function canEditAnswers(): bool
     {
         return $this->status === self::STATUS_STARTED;

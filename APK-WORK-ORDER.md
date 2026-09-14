@@ -20,6 +20,8 @@ differ; the names here are suggestions, not requirements.
 
 0. **Scan does not open the questions — BLOCKER, reported by the operator 14 Sep.** See §7. Every
    station depends on it, so it goes before everything below.
+00. **Lock the question session** — operator rule 14 Sep, server-enforced. See §8. Build it together
+   with §7: it is the same screen.
 1. **The 3D Camera** — `ar/ArActivity.kt`. §9 rewritten into a full spec; one earlier answer reversed.
 2. **Results screen**
 3. **QR scanner** — was blocked on a server test. It is not any more; see §3.
@@ -62,9 +64,9 @@ with it white does nothing at all; and each of the three sheet shapes renders fr
 Shown after `POST /quiz/submit`. Display what the server returned — score, earned points — and
 then refresh `GET /team` so the running total agrees. Do not compute anything locally.
 
-Remember the asymmetry: `save-answer` refuses after the time limit (403 `time_expired`) but
-`submit` **always** succeeds. On `time_expired`, stop saving and submit immediately; never show an
-error and never block the submit, or the team loses the whole attempt.
+Results is reached only through the Finish screen (§8): after every question is done, or after the
+clock runs out. `submit` is refused with `409 questions_incomplete` before that, and always
+accepted after time-out — so on `time_expired`, stop saving and go to Finish; never block it.
 
 `verification_photo` is **required** on submit, base64. There is no server-side size cap, so the
 client decides — downscale before encoding, because this upload happens with a team waiting.
@@ -235,6 +237,29 @@ refusals that had no `error` key now carry one: `questionnaire_not_found`, `max_
 - scanning a switched-off station shows "ask the crew", not a blank screen or "no signal".
 
 If it still fails, send `kind: "bug"` with the lookup status + body and the start status + body.
+
+---
+
+## 8 — Lock the question session  ·  server-enforced since 14 Sep
+
+Operator: *"Submit quiz must not appear during the questions — the team would go back to the
+dashboard, scan again and the timer resets. The only way out of a question session is finishing
+every question. If it is a game, they cannot leave it until the facilitator has scored it."*
+And: when the time runs out, the session ends and whatever is unfinished scores 0. `brief` is
+optional.
+
+Spec: `APK-BUILD-GUIDE.md` §4 → *The question session is a locked room*. The server already
+refuses every way around it (`questions_incomplete`, `session_in_progress`, `time_expired` on
+scoring after time-out), and `completion` on start / continue / scoring tells you where you are.
+
+**Done when:**
+- on the Pos Merah game there is no Submit button, Android back does nothing but show the hint,
+  and the dashboard and scanner cannot be reached;
+- after Complete, the screen stays on waiting-for-facilitator until the score is saved, then goes
+  straight to Finish (photo → submit → Results);
+- swiping the app away mid-session and reopening it lands back inside the same attempt with the
+  timer where the server says, not restarted;
+- letting the timer reach 0 closes the inputs and goes to Finish, and submit succeeds.
 
 ---
 

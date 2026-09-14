@@ -6,6 +6,13 @@ Generated from the live router on questerra-series.com. Base URL `https://queste
 
 Act on these — several change responses your app already handles.
 
+**Latest (14 Sep, fourth change): the question session is locked.** `POST /quiz/submit` →
+`409 questions_incomplete` (+ `pending`) until every question is done or time runs out;
+`qr/lookup` and `quiz/start` for another station → `409 session_in_progress` (+ `attempt_id`);
+`complete-game`, `verify-pin` and scoring → `403 time_expired` after time-out. `completion`
+is added to start, continue and the scoring response. `continue` refusals now carry `error` keys.
+Build guide §4 → *The question session is a locked room*.
+
 **Latest (14 Sep, third change): questions carry `image_urls`, and `/quiz/start` refusals all have
 an `error` key.** `image_urls` is `images` made absolute — show it; `images` stays as it was.
 New keys: `questionnaire_not_found` 404, `max_attempts_reached` 403, `too_many_starts` 429
@@ -31,7 +38,8 @@ app cannot use. See *Facilitator assessment* below.
 4. **`tracking/position` accepts and stores `accuracy` and `device_info`.** Both optional, both
    worth sending: the columns existed and nothing filled them, so on the admin map a 5-metre fix
    and a 500-metre fix drew the same dot.
-5. **`save-answer` enforces the time limit; `submit` deliberately does not.** Nothing new can be
+5. **`save-answer` enforces the time limit; `submit` deliberately does not** (but see *Latest*: submit
+   now requires every question done while time remains). Nothing new can be
    written after the clock runs out, but the submission itself always lands — refusing it would
    strand an attempt whose clock expired mid-request and lose the team's work.
 6. **`save-answer` accepts a null `answer`.** Clearing a field used to raise a `TypeError` and
@@ -115,6 +123,9 @@ the photo as optional cannot submit at all.
 | `game_already_assessed` | 409 | A facilitator already scored this game | Move on |
 | `not_a_game_question` | 422 | `complete-game` called on a normal question | Fix the call |
 | `unknown_code` | 404 | `qr/lookup`: code is not in this event | Show it; let them rescan |
+| `questions_incomplete` | 409 | `quiz/submit` while questions are unfinished and time remains; `pending` | Stay in the session |
+| `session_in_progress` | 409 | `qr/lookup` / `quiz/start` for another station while a session is live; `attempt_id` | Open that attempt |
+| `attempt_not_active` | 403 | `quiz/continue` on an attempt that is not started | Clear it locally |
 | `not_available` | 403 | `qr/lookup` or `quiz/start`: `reason` = inactive \| not_open_yet \| window_closed | Show the reason; inactive = ask the crew |
 | `max_attempts_reached` | 403 | `qr/lookup` or `quiz/start`: no attempts left | Show it; stop |
 | `scan_required` | 403 | `quiz/start` without a recorded lookup | Back to the scanner |

@@ -82,6 +82,18 @@ class QuizController extends Controller
                 ], 404);
             }
 
+            // One live session at a time; it is left only by finishing it or running out of time. Checked before
+            // the scan gate, so the answer names the live session rather than "scan required".
+            if ($live = QuizAttempt::liveSessionFor(Auth::id(), $questionnaire->id)) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'session_in_progress',
+                    'attempt_id' => $live->id,
+                    'questionnaire' => ['id' => $live->questionnaire->id, 'title' => $live->questionnaire->title],
+                    'message' => 'Finish every question at "'.$live->questionnaire->title.'" first.',
+                ], 409);
+            }
+
             // Check availability. Say which of the three reasons it is: every active
             // questionnaire on this install once sat behind a date window that had quietly
             // expired, and the old one-size message named none of them — on event day that
@@ -217,6 +229,7 @@ class QuizController extends Controller
                     'description' => $questionnaire->description,
                     'time_limit' => $questionnaire->time_limit,
                 ],
+                'completion' => $this->completion($attempt),
                 'questions' => $questions,
                 // Always an object. An empty PHP array encodes as [] and a filled one keyed by
                 // question_id as {}, so a fresh attempt and a resumed one disagreed on the type of
@@ -264,7 +277,8 @@ class QuizController extends Controller
             if (!$attempt) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Quiz attempt not found'
+                    'message' => 'Quiz attempt not found',
+                    'error' => 'attempt_not_found',
                 ], 404);
             }
 
@@ -273,6 +287,7 @@ class QuizController extends Controller
                 return response()->json([
                     'success' => false,
                     'message' => 'Quiz already completed',
+                    'error' => 'attempt_submitted',
                     'redirect' => route('quiz.results', ['attemptId' => $attempt->id])
                 ], 403);
             }
@@ -281,7 +296,8 @@ class QuizController extends Controller
             if (!$attempt->isStarted()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'This quiz attempt cannot be continued'
+                    'message' => 'This quiz attempt cannot be continued',
+                    'error' => 'attempt_not_active',
                 ], 403);
             }
 
@@ -299,6 +315,8 @@ class QuizController extends Controller
                     return response()->json([
                         'success' => false,
                         'message' => 'Quiz time has expired',
+                        'error' => 'time_expired',
+                        'attempt_id' => $attempt->id,
                         'expired' => true
                     ], 403);
                 }
@@ -342,6 +360,7 @@ class QuizController extends Controller
                     'description' => $attempt->questionnaire->description,
                     'time_limit' => $attempt->questionnaire->time_limit,
                 ],
+                'completion' => $this->completion($attempt),
                 'questions' => $questions,
                 // Always an object. An empty PHP array encodes as [] and a filled one keyed by
                 // question_id as {}, so a fresh attempt and a resumed one disagreed on the type of
@@ -472,11 +491,7 @@ class QuizController extends Controller
             ]);
 
         } catch (QuizRuleException $e) {
-            return response()->json([
-                'success' => false,
-                'message' => $e->getMessage(),
-                'error' => $e->errorKey,
-            ], $e->status);
+            return $this->ruleRefusal($e);
         } catch (ValidationException $e) {
             return response()->json([
                 'success' => false,
@@ -590,6 +605,13 @@ class QuizController extends Controller
                     throw QuizRuleException::submitted();
                 }
 
+                // The only way out of a session is finishing it, or the clock running out. An early
+                // submit let a team walk out, rescan and get a fresh timer.
+                $completion = $this->completion($attempt);
+                if (! $completion['can_submit']) {
+                    throw new QuizRuleException('questions_incomplete', 'Finish every question before handing in.', 409, ['pending' => $completion['pending']]);
+                }
+
                 // Cancel workflow timer
                 if ($this->isWorkflowTimersEnabled() && $this->workflowTimerService) {
                     try {
@@ -670,11 +692,7 @@ class QuizController extends Controller
             ]);
 
         } catch (QuizRuleException $e) {
-            return response()->json([
-                'success' => false,
-                'message' => $e->getMessage(),
-                'error' => $e->errorKey,
-            ], $e->status);
+            return $this->ruleRefusal($e);
         } catch (\Exception $e) {
             Log::error('Quiz submit error', [
                 'user_id' => Auth::id(),
@@ -712,7 +730,8 @@ class QuizController extends Controller
             if (!$attempt) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Quiz attempt not found'
+                    'message' => 'Quiz attempt not found',
+                    'error' => 'attempt_not_found',
                 ], 404);
             }
 
@@ -768,6 +787,8 @@ class QuizController extends Controller
             if ($assessment->is_assessed) {
                 throw QuizRuleException::gameAlreadyAssessed();
             }
+            // Time over = session over: a game not scored by then stays at 0.
+            $this->assertSessionOpen($assessment->quizAttempt);
             $pin->verify($data['facilitator_pin'], Auth::id());
         } catch (QuizRuleException $e) {
             return $this->ruleRefusal($e);
@@ -801,6 +822,8 @@ class QuizController extends Controller
             if ($assessment->is_assessed) {
                 throw QuizRuleException::gameAlreadyAssessed();
             }
+            // Time over = session over: a game not scored by then stays at 0.
+            $this->assertSessionOpen($assessment->quizAttempt);
             // PIN first: a wrong guess must not leave a stored photo behind.
             $pin->verify($data['facilitator_pin'], Auth::id());
             $path = $this->storeFacilitatorPhoto($data['facilitator_photo'], $assessment->id);
@@ -826,6 +849,7 @@ class QuizController extends Controller
             'team_gain' => $result['team_gain'],
             'team_points' => $result['team_points'],
             'next' => $this->nextAfterGame($result['assessment']),
+            'completion' => $this->completion($result['assessment']->quizAttempt()->first()),
         ]);
     }
 
@@ -885,6 +909,50 @@ class QuizController extends Controller
             ->all();
 
         return $row;
+    }
+
+    /**
+     * What still stands between the team and leaving this questionnaire. The operator's rule: the
+     * only way out of a question session is finishing every question — a fun_game counts only once
+     * a facilitator has scored it — or the clock running out. `brief` never blocks.
+     */
+    private function completion(QuizAttempt $attempt): array
+    {
+        $answers = $attempt->userAnswers()->get()->keyBy('question_id');
+        $games = GameAssessment::where('quiz_attempt_id', $attempt->id)->get()->keyBy('question_id');
+
+        $pending = [];
+        foreach ($attempt->questionnaire->questions()->orderBy('order')->get(['questions.id', 'questions.type']) as $q) {
+            $reason = match ($q->type) {
+                'brief' => null,
+                'fun_game' => ! isset($games[$q->id])
+                    ? 'game_not_completed'
+                    : ($games[$q->id]->is_assessed ? null : 'awaiting_assessment'),
+                default => (isset($answers[$q->id]) && trim((string) $answers[$q->id]->answer) !== '')
+                    ? null
+                    : 'unanswered',
+            };
+            if ($reason !== null) {
+                $pending[] = ['question_id' => $q->id, 'type' => $q->type, 'reason' => $reason];
+            }
+        }
+
+        $expired = $attempt->isTimeExpired();
+
+        return [
+            'can_submit' => $pending === [] || $expired,
+            'time_expired' => $expired,
+            'pending' => $pending,
+        ];
+    }
+
+    /** Game completion and facilitator scoring happen only inside a running session. */
+    private function assertSessionOpen(?QuizAttempt $attempt): void
+    {
+        if (! $attempt || ! $attempt->canEditAnswers()) {
+            throw QuizRuleException::submitted();
+        }
+        $this->assertWithinTimeLimit($attempt);
     }
 
     private function ownAssessment(int $id): ?GameAssessment
@@ -1030,11 +1098,7 @@ class QuizController extends Controller
             });
 
         } catch (QuizRuleException $e) {
-            return response()->json([
-                'success' => false,
-                'message' => $e->getMessage(),
-                'error' => $e->errorKey,
-            ], $e->status);
+            return $this->ruleRefusal($e);
         } catch (\Exception $e) {
             Log::error('Complete game error', [
                 'user_id' => Auth::id(),

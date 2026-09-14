@@ -77,6 +77,18 @@ class QRScannerController extends Controller
                 ], 403);
             }
 
+            // A live session elsewhere is left only by finishing it. Refuse before recordScan, so a
+            // scan at another station neither opens it nor burns one of its attempts.
+            if ($live = \App\Models\QuizAttempt::liveSessionFor(Auth::id(), $questionnaire->id)) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'session_in_progress',
+                    'attempt_id' => $live->id,
+                    'questionnaire' => ['id' => $live->questionnaire->id, 'title' => $live->questionnaire->title],
+                    'message' => 'Finish every question at "'.$live->questionnaire->title.'" first.',
+                ], 409);
+            }
+
             // Check if questionnaire is available (date range, etc.)
             if (!$questionnaire->isAvailable()) {
                 return response()->json([
