@@ -6,7 +6,8 @@ use Livewire\Component;
 use App\Models\GameAssessment;
 use App\Models\QuizAttempt;
 use App\Models\Question;
-use App\Models\Team;
+use App\Exceptions\QuizRuleException;
+use App\Services\GameAssessmentService;
 
 class GameAssessmentForm extends Component
 {
@@ -70,9 +71,8 @@ class GameAssessmentForm extends Component
             $this->additionalPoints = (int)($this->assessment->additional_points ?? 0);
             $this->notes = $this->assessment->notes ?? '';
         } else {
-            // Set additional points to questionnaire total points for new assessments
-            $questionnaireTotalPoints = (int)($this->attempt->questionnaire->questions()->sum('points') ?? 0);
-            $this->additionalPoints = $questionnaireTotalPoints;
+            // Default to this game's own points — the most a facilitator may award for it.
+            $this->additionalPoints = (int) ($this->question->points ?? 0);
         }
         
         $this->calculateTotalDeposit();
@@ -100,64 +100,33 @@ class GameAssessmentForm extends Component
     {
         $this->validate();
 
-        // Update the assessment
-        $updateData = [
-            'deposit' => $this->deposit,
-            'penalty' => $this->penalty,
-            'additional_points' => $this->additionalPoints,
-            'notes' => $this->notes,
-            'total_deposit' => $this->totalDeposit,
-            'is_assessed' => true,
-            'assessed_by' => auth()->id(),
-            'assessed_at' => now()
-        ];
-
-        // Add facilitator photo if provided
-        if ($this->facilitatorPhoto) {
-            $updateData['facilitator_photo'] = $this->facilitatorPhoto;
-            $updateData['facilitator_photo_captured_at'] = now();
-        }
-
-        $this->assessment->update($updateData);
-
-        // Update team points based on assessment
-        $user = auth()->user();
-        if ($user->team_id && $this->totalDeposit != 0) {
-            $team = Team::find($user->team_id);
-            if ($team) {
-                if ($this->totalDeposit > 0) {
-                    $team->addPoints($this->totalDeposit, "Game assessment: {$this->question->game_name}");
-                } else {
-                    $team->deductPoints(abs($this->totalDeposit), "Game assessment penalty: {$this->question->game_name}");
-                }
-            }
-        }
-
-        session()->flash('success', 'Assessment saved successfully! Team points updated.');
-
-        // Check if there are more questions in the quiz
-        return $this->handlePostAssessmentNavigation();
+        return $this->persist((int) $this->additionalPoints, (int) $this->penalty, $this->notes, 'Assessment saved successfully! Team points updated.');
     }
 
     public function skipAssessment()
     {
-        // Mark as assessed with zero values
-        $this->assessment->update([
-            'deposit' => $this->deposit, // Keep team's initial points
-            'penalty' => 0,
-            'additional_points' => 0,
-            'notes' => 'Assessment skipped by user',
-            'total_deposit' => $this->deposit, // Only team's initial points
-            'is_assessed' => true,
-            'assessed_by' => auth()->id(),
-            'assessed_at' => now()
-        ]);
+        return $this->persist(0, 0, 'Assessment skipped by user', 'Assessment skipped. No points awarded.');
+    }
 
-        // No team points change when skipped
+    /** Scoring and Team.points live in GameAssessmentService; this form only collects input. */
+    protected function persist(int $additional, int $penalty, ?string $notes, string $flash)
+    {
+        try {
+            app(GameAssessmentService::class)->record($this->assessment, $additional, $penalty, $notes, auth()->id());
+        } catch (QuizRuleException $e) {
+            $this->addError($e->errorKey === 'penalty_out_of_range' ? 'penalty' : 'additionalPoints', $e->getMessage());
+            return null;
+        }
 
-        session()->flash('info', 'Assessment skipped. No points awarded.');
-        
-        // Check if there are more questions in the quiz
+        if ($this->facilitatorPhoto) {
+            $this->assessment->update([
+                'facilitator_photo' => $this->facilitatorPhoto,
+                'facilitator_photo_captured_at' => now(),
+            ]);
+        }
+
+        session()->flash('success', $flash);
+
         return $this->handlePostAssessmentNavigation();
     }
 

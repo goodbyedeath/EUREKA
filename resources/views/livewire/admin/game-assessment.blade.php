@@ -257,13 +257,15 @@
                             
                             <form wire:submit="saveAssessment" class="mt-4 space-y-4">
                                 <div>
-                                    <label for="deposit" class="block text-sm font-medium text-gray-700">Deposit</label>
+                                    <p class="text-xs text-gray-500 mb-2">Base (team starting points, not paid): {{ number_format((float) $deposit) }}</p>
+                                    <label for="additionalPoints" class="block text-sm font-medium text-gray-700">Additional Points (max {{ (int) ($editingAssessment->question->points ?? 0) }})</label>
                                     <input type="number" 
-                                           wire:model.live.debounce.500ms="deposit" 
+                                           wire:model.live.debounce.500ms="additionalPoints" 
                                            step="1" 
                                            min="0"
+                                           max="{{ (int) ($editingAssessment->question->points ?? 0) }}"
                                            class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
-                                    @error('deposit') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                                    @error('additionalPoints') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
                                 </div>
 
                                 <div>

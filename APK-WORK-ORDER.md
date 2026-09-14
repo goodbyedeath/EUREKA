@@ -23,6 +23,8 @@ differ; the names here are suggestions, not requirements.
 3. **QR scanner** — was blocked on a server test. It is not any more; see §3.
 4. **Offline write queue** — from your report; added as §4.
 5. **Version header** — one header, and the patching system finally has its safety net. See §5.
+6. **Facilitator scoring screen** — new server endpoints, 14 Sep. Without it a `fun_game` station
+   never pays the team. See §6.
 
 Already closed per your report and not repeated here: team setup, team score, outdoor map,
 indoor map, the keystore `.gitignore`, and removing Capacitor.
@@ -175,6 +177,26 @@ the operator reaches it. You report what exists, the operator decides what is re
 Your builds 14–17 are already recorded from your report. `/app/release` now answers
 `latest_version: 17`.
 
+## 6 — Facilitator scoring screen  ·  new endpoints
+
+The operator decided the facilitator scores on the **team's phone**. Until now that form existed
+only as a web page, so from the app a `fun_game` was completed but never scored, and the team
+earned nothing for it. The server side also paid wrongly (it re-credited the team's starting
+balance on every game); that is fixed, so build against the new numbers.
+
+Spec: `APK-BUILD-GUIDE.md` §4 → *The facilitator scores on the team's phone* (flow, inputs,
+resume, errors). Shapes: `API-V1-CONTRACT.md` → *Facilitator assessment*.
+
+In short: `complete-game` → `assessment_id` → `GET /quiz/assessments/{id}` → hand-over step →
+inputs clamped to `max_additional_points` / `max_penalty` → confirm → `POST` → show `team_gain`
+→ follow `next` (`continue` | `submit`). Ignore `redirect`.
+
+**Done when:** at a `fun_game` station, scoring 90 with penalty 15 shows "Team gains 75", `GET
+/team` is exactly 75 higher than before, and killing the app on the scoring screen then
+reopening it lands back on the same screen instead of an error.
+
+---
+
 ## Talking back — the channel runs both ways now
 
 Until today this was one-way: the server published, you consumed, and anything you had to say
@@ -215,7 +237,8 @@ Reports are read before the next contract change. You will see the result as a m
 ## Order
 
 Reticle first: a reported defect in a screen that already exists, small change, visible
-result. Then the offline queue — it protects work already being done in the field. Results
+result. Then the offline queue — it protects work already being done in the field. The facilitator scoring screen (§6) next to Results — both close out an
+outpost, and without §6 a game station pays nothing. Results
 last; nothing depends on it. §3 needs no work from you unless your frame counter says the
 decode is failing.
 

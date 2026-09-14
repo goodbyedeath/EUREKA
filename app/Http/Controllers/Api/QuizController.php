@@ -725,6 +725,108 @@ class QuizController extends Controller
     /**
      * Complete a fun game
      */
+    /**
+     * The facilitator scoring screen, shown on the team's own phone after complete-game.
+     */
+    public function assessment(int $assessmentId)
+    {
+        $assessment = $this->ownAssessment($assessmentId);
+        if (! $assessment) {
+            return $this->assessmentNotFound();
+        }
+
+        return response()->json(['success' => true, 'assessment' => $this->assessmentPayload($assessment)]);
+    }
+
+    /**
+     * Record the facilitator's score. One shot: a second POST is 409 game_already_assessed;
+     * corrections are made by an admin on the website.
+     */
+    public function assess(Request $request, int $assessmentId, \App\Services\GameAssessmentService $service)
+    {
+        $data = $request->validate([
+            'additional_points' => 'required|integer|min:0',
+            'penalty' => 'required|integer|min:0|max:'.\App\Services\GameAssessmentService::MAX_PENALTY,
+            'notes' => 'nullable|string|max:1000',
+        ]);
+
+        $assessment = $this->ownAssessment($assessmentId);
+        if (! $assessment) {
+            return $this->assessmentNotFound();
+        }
+
+        try {
+            $result = $service->record(
+                $assessment,
+                (int) $data['additional_points'],
+                (int) $data['penalty'],
+                $data['notes'] ?? null,
+                Auth::id(),
+            );
+        } catch (QuizRuleException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+                'error' => $e->errorKey,
+            ], $e->status);
+        }
+
+        return response()->json([
+            'success' => true,
+            'assessment' => $this->assessmentPayload($result['assessment']),
+            'team_gain' => $result['team_gain'],
+            'team_points' => $result['team_points'],
+            'next' => $this->nextAfterGame($result['assessment']),
+        ]);
+    }
+
+    private function ownAssessment(int $id): ?GameAssessment
+    {
+        return GameAssessment::with(['question', 'quizAttempt'])
+            ->where('id', $id)
+            ->where('user_id', Auth::id())
+            ->first();
+    }
+
+    private function assessmentNotFound()
+    {
+        return response()->json([
+            'success' => false,
+            'message' => 'That assessment does not exist, or belongs to someone else.',
+            'error' => 'assessment_not_found',
+        ], 404);
+    }
+
+    private function assessmentPayload(GameAssessment $a): array
+    {
+        return [
+            'id' => $a->id,
+            'attempt_id' => $a->quiz_attempt_id,
+            'question' => [
+                'id' => $a->question?->id,
+                'game_name' => $a->question?->game_name,
+                'question' => $a->question?->question,
+                'points' => (int) ($a->question?->points ?? 0),
+            ],
+            'max_additional_points' => app(\App\Services\GameAssessmentService::class)->maxAdditional($a),
+            'max_penalty' => \App\Services\GameAssessmentService::MAX_PENALTY,
+            'is_assessed' => (bool) $a->is_assessed,
+            'additional_points' => $a->is_assessed ? (int) $a->additional_points : null,
+            'penalty' => $a->is_assessed ? (int) $a->penalty : null,
+            'notes' => $a->notes,
+            'assessed_at' => $a->assessed_at?->toIso8601String(),
+        ];
+    }
+
+    /** "continue" while the questionnaire has questions after this game, otherwise "submit". */
+    private function nextAfterGame(GameAssessment $a): string
+    {
+        $ids = $a->quizAttempt?->questionnaire?->questions()->orderBy('order')->pluck('id') ?? collect();
+        $pos = $ids->search($a->question_id);
+
+        return ($pos !== false && $pos < $ids->count() - 1) ? 'continue' : 'submit';
+    }
+
     public function completeGame(Request $request)
     {
         // Check authentication first

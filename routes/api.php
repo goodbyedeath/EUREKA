@@ -91,6 +91,9 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         // but cannot finish a `fun_game` question, which leaves the attempt unfinishable —
         // the web side has had it since the beginning and v1 simply never got the twin.
         Route::post('/quiz/complete-game', [\App\Http\Controllers\Api\QuizController::class, 'completeGame'])->name('quiz.complete-game');
+        // The facilitator scores a fun_game on the team's phone, right after complete-game.
+        Route::get('/quiz/assessments/{assessmentId}', [\App\Http\Controllers\Api\QuizController::class, 'assessment'])->whereNumber('assessmentId')->name('quiz.assessment');
+        Route::post('/quiz/assessments/{assessmentId}', [\App\Http\Controllers\Api\QuizController::class, 'assess'])->whereNumber('assessmentId')->name('quiz.assess');
 
         // Which menus the app should show. A flag decides visibility only; every route
         // stays guarded by middleware, so ignoring one gains a client nothing.

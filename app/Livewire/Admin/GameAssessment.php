@@ -7,7 +7,8 @@ use App\Models\GameAssessment as GameAssessmentModel;
 use App\Models\QuizAttempt;
 use App\Models\Question;
 use App\Models\User;
-use Illuminate\Support\Facades\DB;
+use App\Exceptions\QuizRuleException;
+use App\Services\GameAssessmentService;
 
 class GameAssessment extends Component
 {
@@ -19,7 +20,8 @@ class GameAssessment extends Component
     
     // Assessment form data
     public $editingAssessment = null;
-    public $deposit = 0;
+    public $deposit = 0; // team.initial_points, shown for reference only
+    public $additionalPoints = 0;
     public $penalty = 0;
     public $notes = '';
 
@@ -61,6 +63,7 @@ class GameAssessment extends Component
     {
         $this->editingAssessment = GameAssessmentModel::findOrFail($assessmentId);
         $this->deposit = $this->editingAssessment->deposit;
+        $this->additionalPoints = (int) $this->editingAssessment->additional_points;
         $this->penalty = $this->editingAssessment->penalty;
         $this->notes = $this->editingAssessment->notes ?? '';
     }
@@ -68,25 +71,25 @@ class GameAssessment extends Component
     public function saveAssessment()
     {
         $this->validate([
-            'deposit' => 'required|integer|min:0',
+            'additionalPoints' => 'required|integer|min:0',
             'penalty' => 'required|integer|min:0',
             'notes' => 'nullable|string|max:1000'
         ]);
 
-        DB::transaction(function() {
-            $this->editingAssessment->update([
-                'deposit' => $this->deposit,
-                'penalty' => $this->penalty,
-                'notes' => $this->notes,
-                'total_deposit' => $this->deposit - $this->penalty,
-                'is_assessed' => true,
-                'assessed_by' => auth()->id(),
-                'assessed_at' => now()
-            ]);
-        });
+        // Corrections go through the same service as the team phone, so Team.points moves by
+        // the difference from what this assessment already paid.
+        try {
+            app(GameAssessmentService::class)->record(
+                $this->editingAssessment, (int) $this->additionalPoints, (int) $this->penalty,
+                $this->notes, auth()->id(), allowReassess: true,
+            );
+        } catch (QuizRuleException $e) {
+            $this->addError($e->errorKey === 'penalty_out_of_range' ? 'penalty' : 'additionalPoints', $e->getMessage());
+            return;
+        }
 
         $this->editingAssessment = null;
-        $this->reset(['deposit', 'penalty', 'notes']);
+        $this->reset(['deposit', 'additionalPoints', 'penalty', 'notes']);
         $this->selectAttempt($this->selectedAttempt->id); // Refresh data
         
         session()->flash('success', 'Assessment saved successfully!');
@@ -95,7 +98,7 @@ class GameAssessment extends Component
     public function cancelEdit()
     {
         $this->editingAssessment = null;
-        $this->reset(['deposit', 'penalty', 'notes']);
+        $this->reset(['deposit', 'additionalPoints', 'penalty', 'notes']);
     }
 
     public function updatedSearchTerm()
@@ -110,7 +113,7 @@ class GameAssessment extends Component
 
     public function getTotalDeposit()
     {
-        return $this->deposit - $this->penalty;
+        return (int) $this->deposit + (int) $this->additionalPoints - (int) $this->penalty;
     }
 
     public function render()

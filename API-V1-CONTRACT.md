@@ -6,6 +6,11 @@ Generated from the live router on questerra-series.com. Base URL `https://queste
 
 Act on these — several change responses your app already handles.
 
+**Latest (14 Sep): the facilitator scores a `fun_game` on the team's phone, through two new
+endpoints.** `GET` / `POST /api/v1/quiz/assessments/{assessment_id}` — the id comes from
+`complete-game`. Ignore the `redirect` field `complete-game` still returns; it is a web page the
+app cannot use. See *Facilitator assessment* below.
+
 1. **`POST /api/v1/quiz/complete-game` now exists.** It was missing, so the app could start and
    submit a quiz but never finish a `fun_game` question, leaving the attempt unfinishable.
 2. **Quiz refusals now carry a stable `error` key and a 4xx.** They used to be plain HTTP 500
@@ -59,6 +64,8 @@ are kept so existing builds keep working.
 | `POST` | `/api/v1/quest-locations/checkin` | token | yes | `api` |
 | `POST` | `/api/v1/quest-locations/get-route` | token | yes | `api` |
 | `POST` | `/api/v1/quiz/complete-game` | token | yes | `api` |
+| `GET` | `/api/v1/quiz/assessments/{assessmentId}` | token | yes | `api` |
+| `POST` | `/api/v1/quiz/assessments/{assessmentId}` | token | yes | `api` |
 | `POST` | `/api/v1/quiz/save-answer` | token | yes | `api` |
 | `POST` | `/api/v1/quiz/submit` | token | yes | `api` |
 | `POST` | `/api/v1/race/clue/{map}` | token | yes | `api` |
@@ -78,6 +85,7 @@ separate budgets. A 429 from us carries `Retry-After`; honour it.
 | `POST /api/v1/quiz/submit` | `attempt_id`, **`verification_photo`** (base64 string) |
 | `POST /api/v1/quiz/save-answer` | `attempt_id`, `question_id`; `answer` optional and may be null |
 | `POST /api/v1/quiz/complete-game` | `attempt_id`, `question_id` |
+| `POST /api/v1/quiz/assessments/{id}` | `additional_points` (0–`max_additional_points`), `penalty` (0–`max_penalty`); `notes` optional |
 | `POST /api/v1/quest-locations/checkin` | `location_id`, `user_latitude`, `user_longitude` (note the `user_` prefix) |
 | `POST /api/v1/tracking/position` | `latitude`, `longitude`; `accuracy`, `device_info` optional |
 | `POST /api/v1/qr/lookup` | `qr_code` |
@@ -95,6 +103,9 @@ the photo as optional cannot submit at all.
 | `time_expired` | 403 | The clock ran out | Stop saving; call `submit` |
 | `game_already_assessed` | 409 | A facilitator already scored this game | Move on |
 | `not_a_game_question` | 422 | `complete-game` called on a normal question | Fix the call |
+| `assessment_not_found` | 404 | No such assessment, or another team's | Stop; go back to the quiz |
+| `additional_out_of_range` | 422 | `additional_points` above the game's own points | Clamp the input to `max_additional_points` |
+| `penalty_out_of_range` | 422 | `penalty` above `max_penalty` | Clamp the input |
 
 Every one is a JSON body of the shape:
 
@@ -115,6 +126,30 @@ POST /api/v1/tracking/position
 `latitude` and `longitude` are required and range-checked; `accuracy` (metres) and `device_info`
 are optional. This is the same row the admin GPS tracking screen reads — there is no second
 endpoint to call.
+
+## Facilitator assessment
+
+```
+GET  /api/v1/quiz/assessments/{assessment_id}
+200 { "success": true, "assessment": {
+        "id": 12, "attempt_id": 499,
+        "question": { "id": 15, "game_name": "Tug of war", "question": "…", "points": 100 },
+        "max_additional_points": 100, "max_penalty": 100000,
+        "is_assessed": false, "additional_points": null, "penalty": null,
+        "notes": null, "assessed_at": null } }
+
+POST /api/v1/quiz/assessments/{assessment_id}
+     { "additional_points": 90, "penalty": 15, "notes": "optional, ≤1000 chars" }
+200 { "success": true, "assessment": { …as above, is_assessed: true… },
+      "team_gain": 75, "team_points": 1075, "next": "continue" }
+```
+
+- **One shot.** A second `POST` is `409 game_already_assessed`. Corrections are made by an admin on
+  the website, which moves the team's points by the difference.
+- **`team_gain` = `additional_points − penalty`** is exactly what `Team.points` moved by; it can be
+  negative. The team's starting balance is never paid again.
+- **`next`**: `continue` → more questions follow, go back to the quiz; `submit` → this was the last
+  question, call `POST /quiz/submit`.
 
 ## Points, if you display a score
 

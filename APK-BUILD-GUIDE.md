@@ -98,7 +98,9 @@ login, but only **after** the password is correct. Do not treat that message as 
          GET  /ar/locations/{id}          3D/AR scene, if it has one
          GET  /quiz/start/{id}            begin the questionnaire
          POST /quiz/save-answer           one call per answer
-         POST /quiz/complete-game         finish a fun_game question
+         POST /quiz/complete-game         finish a fun_game question → assessment_id
+         GET  /quiz/assessments/{id}      facilitator scoring screen (team's phone)
+         POST /quiz/assessments/{id}      record the score; next = continue | submit
          POST /quiz/submit                hand it in
 ```
 
@@ -114,6 +116,8 @@ GET  /quiz/continue/{attemptId}      → resume after a restart; refuses an expi
 GET  /quiz/timer/{attemptId}         → authoritative seconds remaining
 POST /quiz/save-answer               → { attempt_id, question_id, answer }
 POST /quiz/complete-game             → { attempt_id, question_id }   fun_game only
+GET  /quiz/assessments/{id}          → the facilitator screen's data
+POST /quiz/assessments/{id}          → { additional_points, penalty, notes }
 POST /quiz/submit                    → { attempt_id, verification_photo }
 ```
 
@@ -160,6 +164,29 @@ The server also records `photo_captured_at` when the field is present.
 because a facilitator awards the score afterwards. Call `complete-game` for it, not `save-answer`
 alone. And never sum question points locally to show a score — you will double-count every game.
 Display what the server returns.
+
+### The facilitator scores on the team's phone
+
+Operator decision: there is no separate facilitator device. After the team plays, the facilitator
+takes the team's phone and enters the score. So the flow for a `fun_game` question is:
+
+1. Show the game (`game_name`, `description`, images). The team plays it off-screen.
+2. **Complete** → `POST /quiz/complete-game` → keep `assessment_id`. Ignore `redirect`.
+3. Open a **Facilitator scoring** screen: `GET /quiz/assessments/{id}`. Make the hand-over
+   obvious — a full-screen "Hand this phone to the facilitator" step before the inputs.
+4. Inputs: **Additional points** (number, 0…`max_additional_points`, default
+   `max_additional_points`), **Penalty** (number, default 0, max `max_penalty`), **Notes**
+   (optional). Show the live result `additional − penalty` as "Team gains N" (may be negative).
+   Never show or add the team's starting balance — it is not part of the gain.
+5. Confirm dialog (it is one shot) → `POST /quiz/assessments/{id}`.
+6. Show `team_gain` and `team_points`, then follow `next`: `continue` → back to the quiz at the
+   next question; `submit` → hand in with `POST /quiz/submit`.
+
+Resuming: if the app died between steps 2 and 5, `complete-game` again returns the **same**
+`assessment_id` while it is unscored, so repeat step 3. `409 game_already_assessed` on either
+call means it was already scored — move on, do not show an error.
+
+The full request/response shapes are in `API-V1-CONTRACT.md` → *Facilitator assessment*.
 
 ---
 
@@ -624,7 +651,8 @@ rejected answer will be rejected again.
 | `spots` nesting | Top level in `/indoor-map`, not under `map`. |
 | `distance` is null | Unless you pass `user_latitude` + `user_longitude` as query params (§5). |
 | `race: null` | `/race/status` returns `race: null` before the START code is scanned — not an error. |
-| `fun_game` scores 0 | At answer time. Never total points client-side. |
+| `fun_game` scores 0 | At answer time; the facilitator's `POST /quiz/assessments/{id}` pays it. Never total points client-side. |
+| `complete-game` returns `redirect` | A web URL. Ignore it — open the native Facilitator scoring screen with `assessment_id`. |
 | `awaiting_unlock` | A normal waiting state on AR outposts, not a failure. |
 | Nulls are normal | `team_id`, `access_window_ends_at`, `image_path`, `google_map_embed_url` are all legitimately `null`. |
 | CameraX binds to the **Activity** lifecycle, not the composable | Reported by the client team, 11 Sep. Navigating away from the QR scanner does not release the camera, so ARCore then opens to a black frame. "Two cameras, never both alive" is easy to satisfy by accident and hard to satisfy on purpose: unbind on dispose **and** release any live provider immediately before starting the AR Activity, with one launcher as the only route in. This was the real cause of an earlier "no 3D camera" report; a missing CAMERA permission was a second, separate cause. |
@@ -685,8 +713,8 @@ the two apart with `status` (or `completed_at` being null), never with the numbe
 `total_attempts` counts everything, not the page: a team that has done thirty outposts sees thirty
 even when listing twenty. `limit` is 1–100; above that is a 422.
 
-Still not built, and still not blocking by your own reckoning: score breakdown, dashboard stats, the
-game assessment form, the player's own GPS map. Ask again if any becomes blocking.
+Still not built, and still not blocking by your own reckoning: score breakdown, dashboard stats,
+the player's own GPS map. (The game assessment form now has endpoints — §4.) Ask again if any becomes blocking.
 
 ### Edge cases, and what to do about each
 
@@ -765,6 +793,9 @@ human-facing prose and is translated.
 | `attempt_submitted` | 409 | Already handed in |
 | `game_already_assessed` | 409 | A facilitator already scored it |
 | `not_a_game_question` | 422 | `complete-game` on a normal question |
+| `assessment_not_found` | 404 | No such assessment, or another team's |
+| `additional_out_of_range` | 422 | Additional points above the game's points — clamp the input |
+| `penalty_out_of_range` | 422 | Penalty above `max_penalty` — clamp the input |
 
 A `422` with a Laravel `errors` object is ordinary validation — show it against the field.
 A `500` is a real fault: report it, do not retry in a loop.
@@ -783,7 +814,7 @@ A `500` is a real fault: report it, do not retry in a loop.
 - [ ] Quiz resumes correctly after the app is killed mid-attempt (`/quiz/continue`)
 - [ ] `time_expired` on `save-answer` goes straight to `submit`
 - [ ] `submit` always carries `verification_photo`, downscaled before encoding
-- [ ] `fun_game` uses `complete-game`; no client-side point totals anywhere
+- [ ] `fun_game` uses `complete-game`, then the native Facilitator scoring screen; no client-side point totals anywhere
 - [ ] App name, logo and theme come from `/branding`, with nothing hardcoded
 - [ ] Hidden menus follow `/features`, and you never rely on that for security
 - [ ] Indoor spots positioned from `x`/`y` as percentages

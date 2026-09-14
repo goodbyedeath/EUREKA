@@ -61,7 +61,8 @@ class GameAssessment extends Model
      */
     public function calculateTotalDeposit(): void
     {
-        $this->total_deposit = $this->deposit - $this->penalty;
+        // Same formula as GameAssessmentService: deposit is the reference base, never paid.
+        $this->total_deposit = $this->deposit + (int) $this->additional_points - $this->penalty;
         $this->save();
     }
 
