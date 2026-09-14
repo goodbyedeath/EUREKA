@@ -132,7 +132,9 @@
                                 <td class="px-4 py-2 text-gray-600 whitespace-nowrap">{{ $a->archived_at?->timezone(config('app.timezone'))->format('d M Y H:i') }}</td>
                                 <td class="px-4 py-2 text-right tabular-nums">{{ $a->team_count }}</td>
                                 <td class="px-4 py-2 text-gray-700">{{ $a->winner_name ?? '—' }}@if (! is_null($a->winner_score)) <span class="text-gray-500 tabular-nums">({{ number_format($a->winner_score) }})</span>@endif</td>
-                                <td class="px-4 py-2 text-right"><a href="{{ route('admin.game-archives.show', $a->id) }}" class="text-blue-600 hover:underline">Lihat</a></td>
+                                <td class="px-4 py-2 text-right"><a href="{{ route('admin.game-archives.show', $a->id) }}" class="text-blue-600 hover:underline">Lihat</a>
+                                    <span class="text-gray-300 mx-1">|</span>
+                                    <a href="{{ route('admin.game-archives.pdf', $a->id) }}" class="text-blue-600 hover:underline">PDF</a></td>
                             </tr>
                         @endforeach
                     </tbody>

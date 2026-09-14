@@ -12,7 +12,19 @@
     $signed = fn ($n) => is_null($n) ? '—' : (($n > 0 ? '+' : '') . number_format($n));
 @endphp
 <div class="p-4 sm:p-6 space-y-6">
-    <a href="{{ route('admin.game-archives') }}" class="text-sm text-blue-600 hover:underline">&larr; Semua arsip</a>
+    <div class="flex flex-wrap items-center justify-between gap-3">
+        <a href="{{ route('admin.game-archives') }}" class="text-sm text-blue-600 hover:underline">&larr; Semua arsip</a>
+        <div class="flex flex-wrap gap-2">
+            <a href="{{ route('admin.game-archives.pdf', $archive->id) }}"
+               class="inline-flex items-center gap-2 px-3 py-2 rounded-md text-sm text-white bg-blue-600 hover:bg-blue-700">
+                <i class="fas fa-file-pdf"></i> Unduh PDF
+            </a>
+            <a href="{{ route('admin.game-archives.pdf', [$archive->id, 'photos' => 1]) }}"
+               class="inline-flex items-center gap-2 px-3 py-2 rounded-md text-sm text-blue-700 bg-blue-50 border border-blue-200 hover:bg-blue-100">
+                <i class="fas fa-images"></i> Unduh PDF + foto
+            </a>
+        </div>
+    </div>
 
     @if (session('success'))
         <div class="rounded-md bg-green-50 border border-green-200 p-3 text-sm text-green-800">{{ session('success') }}</div>

@@ -165,6 +165,9 @@ Route::middleware(['auth', 'preventbackhistory'])->group(function () {
             abort_unless($path && str_starts_with($path, $archive->storage_dir.'/') && \Illuminate\Support\Facades\Storage::disk('local')->exists($path), 404);
             return \Illuminate\Support\Facades\Storage::disk('local')->response($path, null, ['Cache-Control' => 'private, no-store']);
         })->whereNumber('archive')->where('key', '[vf]-[0-9]+')->name('game-archives.photo');
+        // The archive as a PDF report; ?photos=1 embeds thumbnails of the archived photos.
+        Route::get('/game-archives/{archive}/pdf', App\Http\Controllers\Admin\GameArchivePdfController::class)
+            ->whereNumber('archive')->name('game-archives.pdf');
         // Panduan setup, ditulis untuk operator acara dan bukan untuk programmer.
         Route::get('/panduan', fn () => view('admin.guide'))->name('guide');
     });
