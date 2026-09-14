@@ -12,6 +12,59 @@ use Illuminate\Support\Collection;
 class PointsCalculationService
 {
     /**
+     * A team's score, as /admin/user-progress, the kiosk and the app all show it — one formula, so
+     * the three can never disagree again:
+     *
+     *   total = initial_points (once)
+     *         + Σ points_earned of correct answers  in COMPLETED attempts by the team's accounts
+     *         + Σ (total_deposit − initial_points)  of assessed games on those attempts
+     *
+     * The game term = additional − penalty and may be negative: a penalty larger than the award
+     * lowers the score (operator, 14 Sep; user-progress used to clamp it to 0 while the kiosk did
+     * not). Every completed attempt counts, as it always has on user-progress. $since narrows to
+     * attempts created from then on — the admin page's timeframe filter.
+     *
+     * @return array{total:int, base_points:int, earned_points:int, assessment_points:int, attempts_completed:int}
+     */
+    public function teamScore(Team $team, ?\DateTimeInterface $since = null): array
+    {
+        $accounts = User::where('team_id', $team->id)->pluck('id')->all();
+
+        return $this->scoreFor($accounts, (int) ($team->initial_points ?? 1000), $since);
+    }
+
+    /** One account's share of that score, on the same formula and its team's base. */
+    public function userScore(User $user, ?\DateTimeInterface $since = null): array
+    {
+        return $this->scoreFor([$user->id], (int) ($user->team?->initial_points ?? 1000), $since);
+    }
+
+    private function scoreFor(array $userIds, int $base, ?\DateTimeInterface $since): array
+    {
+        $attemptIds = QuizAttempt::whereIn('user_id', $userIds ?: [0])
+            ->where('status', QuizAttempt::STATUS_COMPLETED)
+            ->when($since, fn ($q) => $q->where('created_at', '>=', $since))
+            ->pluck('id');
+
+        $earned = (int) UserAnswer::whereIn('quiz_attempt_id', $attemptIds)
+            ->where('is_correct', true)
+            ->sum('points_earned');
+
+        $assessment = (int) GameAssessment::whereIn('quiz_attempt_id', $attemptIds)
+            ->where('is_assessed', true)
+            ->get(['total_deposit'])
+            ->sum(fn ($a) => (int) $a->total_deposit - $base);
+
+        return [
+            'total' => $base + $earned + $assessment,
+            'base_points' => $base,
+            'earned_points' => $earned,
+            'assessment_points' => $assessment,
+            'attempts_completed' => $attemptIds->count(),
+        ];
+    }
+
+    /**
      * Calculate earned points from a single quiz attempt (correct answers only)
      * IMPORTANT: Uses points_earned from user_answers table, NOT question->points
      * This ensures fun_game questions (which have points_earned = 0) are handled correctly

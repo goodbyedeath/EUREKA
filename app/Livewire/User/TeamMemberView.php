@@ -83,6 +83,12 @@ class TeamMemberView extends Component
 
     public function saveMember()
     {
+        // Members are fixed at registration (operator, 14 Sep); only an admin changes them.
+        if (auth()->user()?->role !== 'admin') {
+            session()->flash('error', 'Anggota tim sudah dikunci sejak registrasi. Hubungi admin untuk perubahan.');
+            return;
+        }
+
         $this->validate();
 
         $user = auth()->user();
@@ -159,6 +165,12 @@ class TeamMemberView extends Component
 
     public function deleteMember()
     {
+        // Members are fixed (delete) at registration (operator, 14 Sep); only an admin changes them.
+        if (auth()->user()?->role !== 'admin') {
+            session()->flash('error', 'Anggota tim sudah dikunci sejak registrasi. Hubungi admin untuk perubahan.');
+            return;
+        }
+
         if ($this->deletingMember) {
             // Prevent deleting the last leader if they're the only one
             if ($this->deletingMember->is_leader) {

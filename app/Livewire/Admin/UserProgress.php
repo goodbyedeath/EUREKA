@@ -9,6 +9,7 @@ use App\Models\Questionnaire;
 use App\Models\Team;
 use App\Models\UserAnswer;
 use App\Models\GameAssessment;
+use App\Services\PointsCalculationService;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use Livewire\WithPagination;
@@ -614,123 +615,29 @@ class UserProgress extends Component
             
         foreach ($assessments as $assessment) {
             $assessmentBonus = ($assessment->total_deposit ?? 0) - $basePoints;
-            $bonusPoints += max(0, $assessmentBonus);
+            // Penalties count (operator, 14 Sep) — same as PointsCalculationService::teamScore().
+            $bonusPoints += $assessmentBonus;
         }
         
         return $basePoints + $bonusPoints;
     }
     
-    /**
-     * Calculate user's total team points using same logic as DashboardStats
-     */
+    /** An account's total on the shared formula — PointsCalculationService::userScore(). */
     private function calculateUserTeamPoints($user, $attempts)
     {
-        $basePoints = $user->team ? ($user->team->initial_points ?? 1000) : 1000;
-        $totalGainedPoints = 0;
-
-        // Get all gained points from correct answers in completed attempts
-        $userAnswers = UserAnswer::whereHas('quizAttempt', function($query) use ($user) {
-            $query->where('user_id', $user->id)
-                  ->where('status', 'completed')
-                  ->where('created_at', '>=', now()->subDays($this->selectedTimeframe));
-        })->with(['question'])->where('is_correct', true)->get();
-
-        foreach ($userAnswers as $answer) {
-            // Use points_earned from user_answers table, not question->points
-            $totalGainedPoints += $answer->points_earned ?? 0;
-        }
-        
-        // Add assessment gains (bonus from fun games)
-        $assessmentGains = GameAssessment::whereHas('quizAttempt', function($query) use ($user) {
-            $query->where('user_id', $user->id)
-                  ->where('status', 'completed')
-                  ->where('created_at', '>=', now()->subDays($this->selectedTimeframe));
-        })->where('is_assessed', true)->get();
-        
-        foreach ($assessmentGains as $assessment) {
-            // Assessment gain = total_deposit - base_points_used
-            $assessmentGain = ($assessment->total_deposit ?? 0) - $basePoints;
-            $totalGainedPoints += max(0, $assessmentGain);
-        }
-        
-        return $basePoints + $totalGainedPoints;
+        return app(PointsCalculationService::class)->userScore($user, now()->subDays($this->selectedTimeframe))['total'];
     }
     
-    /**
-     * Calculate user's team points from user model (for top performers)
-     */
+    /** Same as calculateUserTeamPoints(), for the top-performers list. */
     private function calculateUserTeamPointsFromUser($user)
     {
-        $basePoints = $user->team ? ($user->team->initial_points ?? 1000) : 1000;
-        $totalGainedPoints = 0;
-        
-        // Get all gained points from correct answers in completed attempts within timeframe
-        $userAnswers = UserAnswer::whereHas('quizAttempt', function($query) use ($user) {
-            $query->where('user_id', $user->id)
-                  ->where('status', 'completed')
-                  ->where('created_at', '>=', now()->subDays($this->selectedTimeframe));
-        })->with(['question'])->where('is_correct', true)->get();
-
-        foreach ($userAnswers as $answer) {
-            // Use points_earned from user_answers table, not question->points
-            $totalGainedPoints += $answer->points_earned ?? 0;
-        }
-
-        // Add assessment gains (bonus from fun games)
-        $assessmentGains = GameAssessment::whereHas('quizAttempt', function($query) use ($user) {
-            $query->where('user_id', $user->id)
-                  ->where('status', 'completed')
-                  ->where('created_at', '>=', now()->subDays($this->selectedTimeframe));
-        })->where('is_assessed', true)->get();
-
-        foreach ($assessmentGains as $assessment) {
-            // Assessment gain = total_deposit - base_points_used
-            $assessmentGain = ($assessment->total_deposit ?? 0) - $basePoints;
-            $totalGainedPoints += max(0, $assessmentGain);
-        }
-        
-        return $basePoints + $totalGainedPoints;
+        return app(PointsCalculationService::class)->userScore($user, now()->subDays($this->selectedTimeframe))['total'];
     }
     
-    /**
-     * Calculate team's total points using same logic as DashboardStats and KioskController
-     */
+    /** The team score the kiosk and the app show too — PointsCalculationService::teamScore(). */
     private function calculateTeamTotalPoints($team, $completedAttempts)
     {
-        $basePoints = $team->initial_points ?? 1000;
-        $totalGainedPoints = 0;
-
-        // Get all team members
-        $teamMembers = $team->users;
-        
-        foreach ($teamMembers as $user) {
-            // Get all gained points from correct answers for this user
-            $userAnswers = UserAnswer::whereHas('quizAttempt', function($query) use ($user) {
-                $query->where('user_id', $user->id)
-                      ->where('status', 'completed')
-                      ->where('created_at', '>=', now()->subDays($this->selectedTimeframe));
-            })->with(['question'])->where('is_correct', true)->get();
-            
-            foreach ($userAnswers as $answer) {
-                // Use points_earned from user_answers table, not question->points
-                $totalGainedPoints += $answer->points_earned ?? 0;
-            }
-
-            // Add assessment gains (bonus from fun games) for this user
-            $assessmentGains = GameAssessment::whereHas('quizAttempt', function($query) use ($user) {
-                $query->where('user_id', $user->id)
-                      ->where('status', 'completed')
-                      ->where('created_at', '>=', now()->subDays($this->selectedTimeframe));
-            })->where('is_assessed', true)->get();
-            
-            foreach ($assessmentGains as $assessment) {
-                // Assessment gain = total_deposit - base_points_used
-                $assessmentGain = ($assessment->total_deposit ?? 0) - $basePoints;
-                $totalGainedPoints += max(0, $assessmentGain);
-            }
-        }
-        
-        return $basePoints + $totalGainedPoints;
+        return app(PointsCalculationService::class)->teamScore($team, now()->subDays($this->selectedTimeframe))['total'];
     }
     
     /**
@@ -781,58 +688,25 @@ class UserProgress extends Component
         })->values();
     }
     
-    /**
-     * Calculate detailed team points breakdown for a user using same logic as DashboardStats
-     */
+    /** The shared score, shaped for this page's breakdown column. Game points may be negative. */
     private function calculateUserTeamPointsBreakdown($user, $attempts)
     {
-        $basePoints = $user->team ? ($user->team->initial_points ?? 1000) : 1000;
-        
-        // Get all gained points from correct answers in completed attempts within timeframe
-        $userAnswers = UserAnswer::whereHas('quizAttempt', function($query) use ($user) {
-            $query->where('user_id', $user->id)
-                  ->where('status', 'completed')
-                  ->where('created_at', '>=', now()->subDays($this->selectedTimeframe));
-        })->with(['question'])->where('is_correct', true)->get();
-        
-        $earnedPoints = 0;
-        foreach ($userAnswers as $answer) {
-            // Use points_earned from user_answers table, not question->points
-            // This ensures fun_game questions (which have points_earned = 0) are handled correctly
-            $earnedPoints += $answer->points_earned ?? 0;
+        $s = app(PointsCalculationService::class)->userScore($user, now()->subDays($this->selectedTimeframe));
+
+        $parts = [$s['base_points'] . ' (base)'];
+        if ($s['earned_points'] !== 0) {
+            $parts[] = $s['earned_points'] . ' (earned)';
         }
-        
-        // Add assessment gains (bonus from fun games)
-        $assessmentGains = GameAssessment::whereHas('quizAttempt', function($query) use ($user) {
-            $query->where('user_id', $user->id)
-                  ->where('status', 'completed')
-                  ->where('created_at', '>=', now()->subDays($this->selectedTimeframe));
-        })->where('is_assessed', true)->get();
-        
-        $assessmentBonus = 0;
-        foreach ($assessmentGains as $assessment) {
-            // Assessment gain = total_deposit - base_points_used
-            $assessmentGain = ($assessment->total_deposit ?? 0) - $basePoints;
-            $assessmentBonus += max(0, $assessmentGain);
+        if ($s['assessment_points'] !== 0) {
+            $parts[] = $s['assessment_points'] . ' (assessment)';
         }
-        
-        // Create breakdown text
-        $breakdownParts = [$basePoints . ' (base)'];
-        if ($earnedPoints > 0) {
-            $breakdownParts[] = $earnedPoints . ' (earned)';
-        }
-        if ($assessmentBonus > 0) {
-            $breakdownParts[] = $assessmentBonus . ' (assessment)';
-        }
-        
-        $breakdownText = implode(' + ', $breakdownParts) . ' = ' . ($basePoints + $earnedPoints + $assessmentBonus);
-        
+
         return [
-            'total' => $basePoints + $earnedPoints + $assessmentBonus,
-            'base_points' => $basePoints,
-            'earned_points' => $earnedPoints,
-            'assessment_bonus' => $assessmentBonus,
-            'breakdown_text' => $breakdownText,
+            'total' => $s['total'],
+            'base_points' => $s['base_points'],
+            'earned_points' => $s['earned_points'],
+            'assessment_bonus' => $s['assessment_points'],
+            'breakdown_text' => implode(' + ', $parts) . ' = ' . $s['total'],
         ];
     }
     

@@ -244,12 +244,20 @@ class UserProgressExportController extends Controller
 
         $pointsService = app(PointsCalculationService::class);
 
-        return $query->get()->map(function ($user) use ($pointsService) {
+        return $query->get()->map(function ($user) use ($pointsService, $filters) {
             $attempts = $user->quizAttempts;
             $completed = $attempts->where('status', QuizAttempt::STATUS_COMPLETED);
             
-            // Get team points breakdown using service
-            $teamPointsBreakdown = $pointsService->getUserPointsBreakdown($user, $attempts);
+            // Same number as the page, the kiosk and the app: PointsCalculationService::userScore(),
+            // over the same timeframe the page is filtered to.
+            $score = $pointsService->userScore($user, now()->subDays((int) $filters['selectedTimeframe']));
+            $teamPointsBreakdown = [
+                'total' => $score['total'],
+                'base_points' => $score['base_points'],
+                'earned_points' => $score['earned_points'],
+                'assessment_bonus' => $score['assessment_points'],
+                'questionnaires_completed' => $score['attempts_completed'],
+            ];
             
             return [
                 'name' => $user->name,

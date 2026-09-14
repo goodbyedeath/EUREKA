@@ -22,6 +22,7 @@ differ; the names here are suggestions, not requirements.
    station depends on it, so it goes before everything below.
 00. **Lock the question session** — operator rule 14 Sep, server-enforced. See §8. Build it together
    with §7: it is the same screen.
+000. **Team setup once + score card** — operator 14 Sep. See §9.
 1. **The 3D Camera** — `ar/ArActivity.kt`. §9 rewritten into a full spec; one earlier answer reversed.
 2. **Results screen**
 3. **QR scanner** — was blocked on a server test. It is not any more; see §3.
@@ -202,7 +203,8 @@ wrong PINs lock the account for 15 minutes (429). The admin sets the PIN on the 
 do, every score is 409 `facilitator_pin_not_set` — show that message, it is not an app bug.
 
 **Done when:**
-- scoring 90 with penalty 15 shows "Team gains 75" and `GET /team` is exactly 75 higher;
+- scoring 90 with penalty 15 shows "Team gains 75", and after hand-in `GET /team` → `score.total` is
+  exactly 75 higher;
 - a wrong PIN shows the tries left, and the sixth attempt shows a countdown instead of the keypad;
 - the admin page shows the facilitator's photo next to that score, and nothing on the phone showed
   a preview or played a sound when it was taken;
@@ -260,6 +262,37 @@ scoring after time-out), and `completion` on start / continue / scoring tells yo
 - swiping the app away mid-session and reopening it lands back inside the same attempt with the
   timer where the server says, not restarted;
 - letting the timer reach 0 closes the inputs and goes to Finish, and submit succeeds.
+
+---
+
+## 9 — Team setup once, and the team score card  ·  operator 14 Sep
+
+Two operator requests:
+
+1. *"Team member setup in the APK happens only once, at the first login. After that it cannot be
+   done again."* Server: `POST /team/members` and `DELETE /team/members/{id}` are now always
+   `403 team_locked`.
+2. *"Show the team's current score on the dashboard — the team has a right to know what it has
+   achieved."* Same logic as `/admin/user-progress`. Server: `GET /team` → `team.score`; the
+   operator chose **total + breakdown, no rank**, so `rank` and `total_teams` were removed.
+
+Spec: `APK-BUILD-GUIDE.md` §2a.
+
+**Done when:**
+- a fresh account sees Team setup straight after login and cannot leave it; after saving, no screen
+  offers add / edit / remove member, and relaunching never shows setup again;
+- the dashboard shows the total and the three lines exactly as `team.score` returns them, a negative
+  game line keeps its minus sign, and no rank appears;
+- after a game scored 90 − 15 and hand-in, the card total is 75 higher than before.
+
+### Answers to your report #11
+
+1. **Do not auto-submit from the scoring screen — you are right.** The facilitator holds the phone,
+   so the verification photo would show them. After scoring with `next = submit`: "Serahkan HP
+   kembali ke tim" → the Finish screen (§8) → team photo → submit. But the Finish screen is the only
+   exit: your v28 "submit on the last page" must appear only when `completion.can_submit` is true.
+2. **Show `team_gain`, not `team_points` — confirmed.** The dashboard card reads `team.score` from
+   `GET /team` (§2a). Note it moves after hand-in, not at scoring.
 
 ---
 

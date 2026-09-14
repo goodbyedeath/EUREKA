@@ -6,6 +6,12 @@ Generated from the live router on questerra-series.com. Base URL `https://queste
 
 Act on these — several change responses your app already handles.
 
+**Latest (14 Sep, fifth change): team members are fixed after setup, and `GET /team` carries the
+team score.** `POST /team/members` and `DELETE /team/members/{id}` → always `403 team_locked`.
+`GET /team` → `team.score {total, base_points, earned_points, assessment_points, attempts_completed}`,
+the same number as `/admin/user-progress` and the kiosk; `points` = `score.total`, `earned` =
+total − base. `rank` and `total_teams` removed (operator: no ranking). Build guide §2a.
+
 **Latest (14 Sep, fourth change): the question session is locked.** `POST /quiz/submit` →
 `409 questions_incomplete` (+ `pending`) until every question is done or time runs out;
 `qr/lookup` and `quiz/start` for another station → `409 session_in_progress` (+ `attempt_id`);
@@ -123,6 +129,7 @@ the photo as optional cannot submit at all.
 | `game_already_assessed` | 409 | A facilitator already scored this game | Move on |
 | `not_a_game_question` | 422 | `complete-game` called on a normal question | Fix the call |
 | `unknown_code` | 404 | `qr/lookup`: code is not in this event | Show it; let them rescan |
+| `team_locked` | 403 | `team/members` add or remove after setup | Remove the call; members are fixed |
 | `questions_incomplete` | 409 | `quiz/submit` while questions are unfinished and time remains; `pending` | Stay in the session |
 | `session_in_progress` | 409 | `qr/lookup` / `quiz/start` for another station while a session is live; `attempt_id` | Open that attempt |
 | `attempt_not_active` | 403 | `quiz/continue` on an attempt that is not started | Clear it locally |
@@ -196,6 +203,10 @@ POST /api/v1/quiz/assessments/{assessment_id}
   question, call `POST /quiz/submit`.
 
 ## Points, if you display a score
+
+Show the team score from `GET /team` → `team.score` (build guide §2a). It counts submitted
+questionnaires only: base + correct-answer points + (additional − penalty) of scored games, and the
+game part can be negative.
 
 Read earned points from what the server returns. Never sum question points client-side:
 `fun_game` answers are stored correct with **zero** points and are scored later by a facilitator,

@@ -73,6 +73,69 @@ login, but only **after** the password is correct. Do not treat that message as 
 
 ---
 
+## 2a. The team — set up once, then show its score
+
+### Team setup happens exactly once — operator rule, 14 Sep
+
+*"Team member setup in the APK happens only once, at the first login. After that it cannot be done
+again."* The server enforces it:
+
+- After login, `GET /team`. **`404 no_team`** → the **Team setup** screen, before anything else. It
+  cannot be skipped or dismissed: no back, no dashboard, no scanner.
+- One call does everything: `POST /team` with `name` (3–100) and `members` (1–20, each `name` +
+  `email`, emails unique; `phone`, `position` optional). The logged-in account's email, or the first
+  member, becomes leader.
+- Before sending, a confirm dialog: *"Nama tim dan anggota tidak bisa diubah lagi setelah ini."*
+- `201` → dashboard. **Never show add, edit or remove controls again.** The member list is
+  read-only everywhere in the app.
+- `POST /team/members` and `DELETE /team/members/{id}` now **always** return `403 team_locked`.
+  Remove every call to them.
+- `409 team_exists` on `POST /team` means setup already happened (another device, a retry after a
+  lost response) — go to the dashboard, not an error.
+- A mistake in the names is fixed by the event admin on the website, not in the app.
+
+### The team score card on the dashboard
+
+The team has a right to see what it has achieved. `GET /team` → `team.score`:
+
+```json
+"score": { "total": 1080, "base_points": 1000, "earned_points": 100,
+           "assessment_points": -20, "attempts_completed": 1 }
+```
+
+Show **`total`** large, and under it the breakdown:
+
+| Line | Field | Note |
+|---|---|---|
+| Poin awal | `base_points` | the starting balance every team gets |
+| Poin kuis | `earned_points` | correct answers |
+| Poin game | `assessment_points` | facilitator scores minus penalties — **can be negative**, show the sign |
+
+**No rank, no other teams** — operator decision. `rank` and `total_teams` are gone from the response.
+
+The formula, so the labels are right — **never compute it in the app**, always show what the server
+returns:
+
+```
+total = base_points
+      + Σ points_earned of correct answers   in SUBMITTED questionnaires of this team
+      + Σ (additional − penalty) of scored games in SUBMITTED questionnaires of this team
+```
+
+It is the same function (`PointsCalculationService::teamScore`) behind `/admin/user-progress` and the
+kiosk leaderboard, so the team sees exactly the number the crew and the big screen see.
+
+Two consequences worth designing for:
+
+- A game counts **after the questionnaire is handed in** (the Finish screen), not at the moment the
+  facilitator saves the score. On the scoring screen show `team_gain` as immediate feedback; the
+  card moves after submit.
+- `points` (= `score.total`) and `earned` (= total − base) are still in the response for older builds.
+  Prefer `score`. Ignore `team_points` on the scoring response — it is a raw ledger value.
+
+Refresh the card when the dashboard opens or resumes, and after Results. **Do not poll it** (§6).
+
+---
 ## 3. The player journey
 
 ```
@@ -321,8 +384,10 @@ takes the team's phone and enters the score. So the flow for a `fun_game` questi
 7. Confirm dialog (it is one shot). On **Confirm**, capture the photo, then
    `POST /quiz/assessments/{id}` with `facilitator_pin`, `facilitator_photo`, `additional_points`,
    `penalty`, `notes`.
-8. Show `team_gain` and `team_points`, then follow `next`: `continue` → back to the quiz at the
-   next question; `submit` → the Finish screen (team photo → `POST /quiz/submit`).
+8. Show `team_gain` (not `team_points`), then follow `next`: `continue` → back to the quiz at the
+   next question; `submit` → "Serahkan HP kembali ke tim" → the Finish screen (team photo →
+   `POST /quiz/submit`). Never submit from the scoring screen: the facilitator is holding the phone,
+   and the verification photo must show the team.
 
 #### Silent facilitator photo
 
@@ -954,6 +1019,7 @@ human-facing prose and is translated.
 | `attempt_submitted` | 409 | Already handed in |
 | `game_already_assessed` | 409 | A facilitator already scored it |
 | `not_a_game_question` | 422 | `complete-game` on a normal question |
+| `team_locked` | 403 | Member add/remove after setup — remove the call; members are fixed |
 | `questions_incomplete` | 409 | Submit before every question is done; body has `pending` — stay in the session |
 | `session_in_progress` | 409 | Another session is live; body has `attempt_id` — open it |
 | `assessment_not_found` | 404 | No such assessment, or another team's |
@@ -981,6 +1047,8 @@ A `500` is a real fault: report it, do not retry in a loop.
 - [ ] Quiz resumes correctly after the app is killed mid-attempt (`/quiz/continue`)
 - [ ] `time_expired` on `save-answer` goes straight to `submit`
 - [ ] `submit` always carries `verification_photo`, downscaled before encoding
+- [ ] Team setup shown once when `GET /team` is `no_team`; no member editing anywhere afterwards
+- [ ] Dashboard score card from `team.score` (total + three lines, negative game points signed), no rank
 - [ ] A scan of any active station code lands on its questions screen, every question type rendered, images from `image_urls`
 - [ ] Inside a session: no Submit, no back, no dashboard until `can_submit`; killing the app reopens the session; time-out goes to Finish
 - [ ] `fun_game` uses `complete-game`, then the native Facilitator scoring screen; no client-side point totals anywhere

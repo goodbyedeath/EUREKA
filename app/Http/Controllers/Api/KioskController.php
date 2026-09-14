@@ -54,8 +54,8 @@ class KioskController extends Controller
             ->with(['members:id,team_id,name,is_leader', 'users:id,team_id,name'])
             ->get()
             ->map(function ($team) use ($races, $unlocks) {
-                // Use the actual points column from database (updated in real-time when quizzes are submitted)
-                $totalScore = $team->points;
+                // The same number /admin/user-progress and the team's own app show.
+                $totalScore = app(\App\Services\PointsCalculationService::class)->teamScore($team)['total'];
 
                 return [
                     'id' => $team->id,
@@ -178,8 +178,8 @@ class KioskController extends Controller
                     }
                 }
 
-                // Use the actual points column from database (updated in real-time when quizzes are submitted)
-                $totalScore = $team->points;
+                // The same number /admin/user-progress and the team's own app show.
+                $totalScore = app(\App\Services\PointsCalculationService::class)->teamScore($team)['total'];
 
                 return [
                     'id' => $team->id,
@@ -260,60 +260,5 @@ class KioskController extends Controller
         }
     }
 
-    /**
-     * Calculate team total score: Base Points + Bonus Points from ALL team members
-     * Logic: Single base points + accumulated bonus points from all team member completions
-     */
-    private function calculateTeamTotalScore($team)
-    {
-        // Single base points for the team (not multiplied by member count)
-        $basePoints = $team->initial_points ?? 1000;
-        $totalBonusPoints = 0;
-
-        // Get ALL team members directly from database to ensure we don't miss any
-        $teamMembers = User::where('team_id', $team->id)->get();
-        
-        foreach ($teamMembers as $user) {
-            // Get bonus points from this user's completed questionnaires
-            $userBonusPoints = $this->calculateUserBonusPoints($user, $basePoints);
-            $totalBonusPoints += $userBonusPoints;
-        }
-        
-        // Team Total = Base Points + All Bonus Points from team members
-        return $basePoints + $totalBonusPoints;
-    }
     
-    /**
-     * Calculate bonus points for individual user from completed questionnaires
-     */
-    private function calculateUserBonusPoints($user, $basePoints)
-    {
-        $bonusPoints = 0;
-        
-        // Get all gained points from correct answers
-        $userAnswers = UserAnswer::whereHas('quizAttempt', function($query) use ($user) {
-            $query->where('user_id', $user->id)
-                  ->where('status', 'completed');
-        })->with(['question'])->where('is_correct', true)->get();
-        
-        foreach ($userAnswers as $answer) {
-            if ($answer->question) {
-                $bonusPoints += $answer->question->points ?? 0;
-            }
-        }
-        
-        // Add assessment gains (bonus from fun games)
-        $assessmentGains = GameAssessment::whereHas('quizAttempt', function($query) use ($user) {
-            $query->where('user_id', $user->id)
-                  ->where('status', 'completed');
-        })->where('is_assessed', true)->get();
-        
-        foreach ($assessmentGains as $assessment) {
-            // Assessment gain = total_deposit - base_points_used
-            $assessmentGain = ($assessment->total_deposit ?? 0) - $basePoints;
-            $bonusPoints += $assessmentGain; // Penalties count too, so this can be negative
-        }
-        
-        return $bonusPoints;
-    }
 }
