@@ -48,8 +48,9 @@ class GameAssessmentService
         ?string $notes,
         int $assessorId,
         bool $allowReassess = false,
+        ?string $photoPath = null,
     ): array {
-        return DB::transaction(function () use ($assessment, $additional, $penalty, $notes, $assessorId, $allowReassess) {
+        return DB::transaction(function () use ($assessment, $additional, $penalty, $notes, $assessorId, $allowReassess, $photoPath) {
             $locked = GameAssessment::with(['question', 'user'])->lockForUpdate()->findOrFail($assessment->id);
 
             if ($locked->is_assessed && ! $allowReassess) {
@@ -83,7 +84,10 @@ class GameAssessmentService
                 'is_assessed' => true,
                 'assessed_by' => $assessorId,
                 'assessed_at' => now(),
-            ]);
+            ] + ($photoPath ? [
+                'facilitator_photo' => $photoPath,
+                'facilitator_photo_captured_at' => now(),
+            ] : []));
 
             $delta = $gain - $previousGain;
             if ($team && $delta !== 0) {

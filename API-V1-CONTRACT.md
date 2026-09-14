@@ -6,7 +6,11 @@ Generated from the live router on questerra-series.com. Base URL `https://queste
 
 Act on these — several change responses your app already handles.
 
-**Latest (14 Sep): the facilitator scores a `fun_game` on the team's phone, through two new
+**Latest (14 Sep, second change): scoring needs the facilitator PIN and a silent front-camera
+photo.** `POST /quiz/assessments/{id}` now requires `facilitator_pin` and `facilitator_photo`;
+`POST /quiz/assessments/{id}/verify-pin` checks the PIN first. See *Facilitator assessment*.
+
+**Earlier (14 Sep): the facilitator scores a `fun_game` on the team's phone, through two new
 endpoints.** `GET` / `POST /api/v1/quiz/assessments/{assessment_id}` — the id comes from
 `complete-game`. Ignore the `redirect` field `complete-game` still returns; it is a web page the
 app cannot use. See *Facilitator assessment* below.
@@ -66,6 +70,7 @@ are kept so existing builds keep working.
 | `POST` | `/api/v1/quiz/complete-game` | token | yes | `api` |
 | `GET` | `/api/v1/quiz/assessments/{assessmentId}` | token | yes | `api` |
 | `POST` | `/api/v1/quiz/assessments/{assessmentId}` | token | yes | `api` |
+| `POST` | `/api/v1/quiz/assessments/{assessmentId}/verify-pin` | token | yes | `api` |
 | `POST` | `/api/v1/quiz/save-answer` | token | yes | `api` |
 | `POST` | `/api/v1/quiz/submit` | token | yes | `api` |
 | `POST` | `/api/v1/race/clue/{map}` | token | yes | `api` |
@@ -85,7 +90,8 @@ separate budgets. A 429 from us carries `Retry-After`; honour it.
 | `POST /api/v1/quiz/submit` | `attempt_id`, **`verification_photo`** (base64 string) |
 | `POST /api/v1/quiz/save-answer` | `attempt_id`, `question_id`; `answer` optional and may be null |
 | `POST /api/v1/quiz/complete-game` | `attempt_id`, `question_id` |
-| `POST /api/v1/quiz/assessments/{id}` | `additional_points` (0–`max_additional_points`), `penalty` (0–`max_penalty`); `notes` optional |
+| `POST /api/v1/quiz/assessments/{id}` | **`facilitator_pin`**, **`facilitator_photo`** (base64 JPEG/PNG ≤ 3 MB), `additional_points` (0–`max_additional_points`), `penalty` (0–`max_penalty`); `notes` optional |
+| `POST /api/v1/quiz/assessments/{id}/verify-pin` | `facilitator_pin` |
 | `POST /api/v1/quest-locations/checkin` | `location_id`, `user_latitude`, `user_longitude` (note the `user_` prefix) |
 | `POST /api/v1/tracking/position` | `latitude`, `longitude`; `accuracy`, `device_info` optional |
 | `POST /api/v1/qr/lookup` | `qr_code` |
@@ -106,6 +112,10 @@ the photo as optional cannot submit at all.
 | `assessment_not_found` | 404 | No such assessment, or another team's | Stop; go back to the quiz |
 | `additional_out_of_range` | 422 | `additional_points` above the game's own points | Clamp the input to `max_additional_points` |
 | `penalty_out_of_range` | 422 | `penalty` above `max_penalty` | Clamp the input |
+| `facilitator_pin_not_set` | 409 | The admin has not set a PIN for this event | Tell the facilitator to ask the admin; nothing the team can do |
+| `invalid_facilitator_pin` | 403 | Wrong PIN; body has `attempts_left` | Show "Wrong PIN — N tries left" |
+| `facilitator_pin_locked` | 429 | 5 wrong PINs; body has `retry_after` (s), plus `Retry-After` header | Disable the keypad, count down |
+| `invalid_facilitator_photo` | 422 | Photo missing its image bytes, not JPEG/PNG, or > 3 MB | Re-capture, downscale |
 
 Every one is a JSON body of the shape:
 
@@ -135,15 +145,27 @@ GET  /api/v1/quiz/assessments/{assessment_id}
         "id": 12, "attempt_id": 499,
         "question": { "id": 15, "game_name": "Tug of war", "question": "…", "points": 100 },
         "max_additional_points": 100, "max_penalty": 100000,
+        "facilitator_pin_required": true, "facilitator_pin_set": true, "photo_required": true,
         "is_assessed": false, "additional_points": null, "penalty": null,
         "notes": null, "assessed_at": null } }
 
+POST /api/v1/quiz/assessments/{assessment_id}/verify-pin
+     { "facilitator_pin": "4821" }
+200 { "success": true, "verified": true }
+403 { "success": false, "error": "invalid_facilitator_pin", "attempts_left": 4, "message": "…" }
+429 { "success": false, "error": "facilitator_pin_locked", "retry_after": 873, "message": "…" }
+
 POST /api/v1/quiz/assessments/{assessment_id}
-     { "additional_points": 90, "penalty": 15, "notes": "optional, ≤1000 chars" }
+     { "facilitator_pin": "4821", "facilitator_photo": "<base64 JPEG>",
+       "additional_points": 90, "penalty": 15, "notes": "optional, ≤1000 chars" }
 200 { "success": true, "assessment": { …as above, is_assessed: true… },
       "team_gain": 75, "team_points": 1075, "next": "continue" }
 ```
 
+- **PIN.** One PIN per event, set by the admin. 5 wrong tries (verify-pin and POST count together)
+  lock this account for 15 minutes — the right PIN is refused too while locked. `verify-pin` is
+  only a pre-check; the POST verifies the PIN again, so send it with the score.
+- **Photo.** Required; stored privately for the admin's audit view, never returned to the app.
 - **One shot.** A second `POST` is `409 game_already_assessed`. Corrections are made by an admin on
   the website, which moves the team's points by the difference.
 - **`team_gain` = `additional_points − penalty`** is exactly what `Team.points` moved by; it can be

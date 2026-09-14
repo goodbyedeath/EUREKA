@@ -6,8 +6,6 @@ use Livewire\Component;
 use App\Models\GameAssessment;
 use App\Models\QuizAttempt;
 use App\Models\Question;
-use App\Exceptions\QuizRuleException;
-use App\Services\GameAssessmentService;
 
 class GameAssessmentForm extends Component
 {
@@ -108,26 +106,15 @@ class GameAssessmentForm extends Component
         return $this->persist(0, 0, 'Assessment skipped by user', 'Assessment skipped. No points awarded.');
     }
 
-    /** Scoring and Team.points live in GameAssessmentService; this form only collects input. */
+    /**
+     * Retired. Scoring now happens in the app, behind the facilitator PIN and a photo. This form
+     * has neither, so letting it save would be the way around both.
+     */
     protected function persist(int $additional, int $penalty, ?string $notes, string $flash)
     {
-        try {
-            app(GameAssessmentService::class)->record($this->assessment, $additional, $penalty, $notes, auth()->id());
-        } catch (QuizRuleException $e) {
-            $this->addError($e->errorKey === 'penalty_out_of_range' ? 'penalty' : 'additionalPoints', $e->getMessage());
-            return null;
-        }
+        $this->addError('additionalPoints', 'Penilaian game dilakukan di aplikasi, dengan PIN fasilitator.');
 
-        if ($this->facilitatorPhoto) {
-            $this->assessment->update([
-                'facilitator_photo' => $this->facilitatorPhoto,
-                'facilitator_photo_captured_at' => now(),
-            ]);
-        }
-
-        session()->flash('success', $flash);
-
-        return $this->handlePostAssessmentNavigation();
+        return null;
     }
 
     protected function handlePostAssessmentNavigation()

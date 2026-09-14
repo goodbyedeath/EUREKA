@@ -12,6 +12,10 @@ use App\Services\AnswerValidationService;
 use App\Services\WorkflowTimerService;
 use App\Models\FeatureSetting;
 use App\Exceptions\QuizRuleException;
+use App\Services\FacilitatorPin;
+use App\Services\GameAssessmentService;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -738,16 +742,15 @@ class QuizController extends Controller
         return response()->json(['success' => true, 'assessment' => $this->assessmentPayload($assessment)]);
     }
 
+    private const MAX_PHOTO_BYTES = 3 * 1024 * 1024;
+
     /**
-     * Record the facilitator's score. One shot: a second POST is 409 game_already_assessed;
-     * corrections are made by an admin on the website.
+     * Check the facilitator PIN before the scoring inputs are shown. Counts toward the lockout.
      */
-    public function assess(Request $request, int $assessmentId, \App\Services\GameAssessmentService $service)
+    public function verifyFacilitatorPin(Request $request, int $assessmentId, FacilitatorPin $pin)
     {
         $data = $request->validate([
-            'additional_points' => 'required|integer|min:0',
-            'penalty' => 'required|integer|min:0|max:'.\App\Services\GameAssessmentService::MAX_PENALTY,
-            'notes' => 'nullable|string|max:1000',
+            'facilitator_pin' => 'required|string|max:8',
         ]);
 
         $assessment = $this->ownAssessment($assessmentId);
@@ -756,19 +759,59 @@ class QuizController extends Controller
         }
 
         try {
+            if ($assessment->is_assessed) {
+                throw QuizRuleException::gameAlreadyAssessed();
+            }
+            $pin->verify($data['facilitator_pin'], Auth::id());
+        } catch (QuizRuleException $e) {
+            return $this->ruleRefusal($e);
+        }
+
+        return response()->json(['success' => true, 'verified' => true]);
+    }
+
+    /**
+     * Record the facilitator's score. The team holds the phone, so this needs the event's
+     * facilitator PIN and a photo the app took from the front camera while the facilitator
+     * scored. One shot: a second POST is 409 game_already_assessed; an admin corrects on the web.
+     */
+    public function assess(Request $request, int $assessmentId, GameAssessmentService $service, FacilitatorPin $pin)
+    {
+        $data = $request->validate([
+            'facilitator_pin' => 'required|string|max:8',
+            'facilitator_photo' => 'required|string',
+            'additional_points' => 'required|integer|min:0',
+            'penalty' => 'required|integer|min:0|max:'.GameAssessmentService::MAX_PENALTY,
+            'notes' => 'nullable|string|max:1000',
+        ]);
+
+        $assessment = $this->ownAssessment($assessmentId);
+        if (! $assessment) {
+            return $this->assessmentNotFound();
+        }
+
+        $path = null;
+        try {
+            if ($assessment->is_assessed) {
+                throw QuizRuleException::gameAlreadyAssessed();
+            }
+            // PIN first: a wrong guess must not leave a stored photo behind.
+            $pin->verify($data['facilitator_pin'], Auth::id());
+            $path = $this->storeFacilitatorPhoto($data['facilitator_photo'], $assessment->id);
+
             $result = $service->record(
                 $assessment,
                 (int) $data['additional_points'],
                 (int) $data['penalty'],
                 $data['notes'] ?? null,
                 Auth::id(),
+                photoPath: $path,
             );
         } catch (QuizRuleException $e) {
-            return response()->json([
-                'success' => false,
-                'message' => $e->getMessage(),
-                'error' => $e->errorKey,
-            ], $e->status);
+            if ($path) {
+                Storage::disk('local')->delete($path);
+            }
+            return $this->ruleRefusal($e);
         }
 
         return response()->json([
@@ -778,6 +821,46 @@ class QuizController extends Controller
             'team_points' => $result['team_points'],
             'next' => $this->nextAfterGame($result['assessment']),
         ]);
+    }
+
+    /** Private disk: only the admin route serves it. Returns the stored path. */
+    private function storeFacilitatorPhoto(string $base64, int $assessmentId): string
+    {
+        if (preg_match('#^data:image/[a-z]+;base64,#i', $base64, $m)) {
+            $base64 = substr($base64, strlen($m[0]));
+        }
+        $bytes = base64_decode($base64, true);
+        $info = ($bytes !== false && $bytes !== '' && strlen($bytes) <= self::MAX_PHOTO_BYTES)
+            ? @getimagesizefromstring($bytes)
+            : false;
+        $ext = match ($info[2] ?? null) {
+            IMAGETYPE_JPEG => 'jpg',
+            IMAGETYPE_PNG => 'png',
+            default => null,
+        };
+        if (! $ext) {
+            throw new QuizRuleException('invalid_facilitator_photo', 'facilitator_photo must be a base64 JPEG or PNG of at most 3 MB.', 422);
+        }
+
+        $path = "facilitator-photos/{$assessmentId}-".Str::random(16).".{$ext}";
+        Storage::disk('local')->put($path, $bytes);
+
+        return $path;
+    }
+
+    private function ruleRefusal(QuizRuleException $e)
+    {
+        $response = response()->json([
+            'success' => false,
+            'message' => $e->getMessage(),
+            'error' => $e->errorKey,
+        ] + $e->context, $e->status);
+
+        if (isset($e->context['retry_after'])) {
+            $response->header('Retry-After', (string) $e->context['retry_after']);
+        }
+
+        return $response;
     }
 
     private function ownAssessment(int $id): ?GameAssessment
@@ -810,6 +893,9 @@ class QuizController extends Controller
             ],
             'max_additional_points' => app(\App\Services\GameAssessmentService::class)->maxAdditional($a),
             'max_penalty' => \App\Services\GameAssessmentService::MAX_PENALTY,
+            'facilitator_pin_required' => true,
+            'facilitator_pin_set' => app(FacilitatorPin::class)->isSet(),
+            'photo_required' => true,
             'is_assessed' => (bool) $a->is_assessed,
             'additional_points' => $a->is_assessed ? (int) $a->additional_points : null,
             'penalty' => $a->is_assessed ? (int) $a->penalty : null,

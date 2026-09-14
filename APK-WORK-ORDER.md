@@ -23,8 +23,9 @@ differ; the names here are suggestions, not requirements.
 3. **QR scanner** — was blocked on a server test. It is not any more; see §3.
 4. **Offline write queue** — from your report; added as §4.
 5. **Version header** — one header, and the patching system finally has its safety net. See §5.
-6. **Facilitator scoring screen** — new server endpoints, 14 Sep. Without it a `fun_game` station
-   never pays the team. See §6.
+6. **Facilitator scoring screen** — new server endpoints, 14 Sep; now with a facilitator PIN and a
+   silent front-camera photo, both required by the server. Without it a `fun_game` station never
+   pays the team. See §6.
 
 Already closed per your report and not repeated here: team setup, team score, outdoor map,
 indoor map, the keystore `.gitignore`, and removing Capacitor.
@@ -188,13 +189,21 @@ Spec: `APK-BUILD-GUIDE.md` §4 → *The facilitator scores on the team's phone* 
 resume, errors). Shapes: `API-V1-CONTRACT.md` → *Facilitator assessment*.
 
 In short: `complete-game` → `assessment_id` → `GET /quiz/assessments/{id}` → hand-over step →
-inputs clamped to `max_additional_points` / `max_penalty` → confirm → `POST` → show `team_gain`
-→ follow `next` (`continue` | `submit`). Ignore `redirect`.
+**PIN gate** (`verify-pin`, lockout countdown) → arm the front camera silently → inputs clamped to
+`max_additional_points` / `max_penalty` → Confirm = **silent capture** → `POST` with PIN + photo +
+score → show `team_gain` → follow `next` (`continue` | `submit`). Ignore `redirect`.
 
-**Done when:** at a `fun_game` station, scoring 90 with penalty 15 shows "Team gains 75", `GET
-/team` is exactly 75 higher than before, and killing the app on the scoring screen then
-reopening it lands back on the same screen instead of an error.
+The PIN and the photo are server-enforced: a POST without either is 422, a wrong PIN is 403, five
+wrong PINs lock the account for 15 minutes (429). The admin sets the PIN on the website; until they
+do, every score is 409 `facilitator_pin_not_set` — show that message, it is not an app bug.
 
+**Done when:**
+- scoring 90 with penalty 15 shows "Team gains 75" and `GET /team` is exactly 75 higher;
+- a wrong PIN shows the tries left, and the sixth attempt shows a countdown instead of the keypad;
+- the admin page shows the facilitator's photo next to that score, and nothing on the phone showed
+  a preview or played a sound when it was taken;
+- after scoring, the AR camera and the QR scanner still open normally (the front camera was released);
+- killing the app on the scoring screen then reopening it lands back on the same screen.
 ---
 
 ## Talking back — the channel runs both ways now

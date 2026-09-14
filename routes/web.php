@@ -148,6 +148,12 @@ Route::middleware(['auth', 'preventbackhistory'])->group(function () {
         // Facilitator scoring for fun_game answers. Used to be a tab inside the page above,
         // which left it with no menu entry of its own.
         Route::get('/game-assessments', fn () => view('admin.game-assessments'))->name('game-assessments');
+        // The photo the app took while a facilitator scored on the team's phone. Private disk, admins only.
+        Route::get('/game-assessments/{assessment}/facilitator-photo', function (\App\Models\GameAssessment $assessment) {
+            $path = (string) $assessment->facilitator_photo;
+            abort_unless(str_starts_with($path, 'facilitator-photos/') && \Illuminate\Support\Facades\Storage::disk('local')->exists($path), 404);
+            return \Illuminate\Support\Facades\Storage::disk('local')->response($path, null, ['Cache-Control' => 'private, no-store']);
+        })->whereNumber('assessment')->name('game-assessments.facilitator-photo');
         // Panduan setup, ditulis untuk operator acara dan bukan untuk programmer.
         Route::get('/panduan', fn () => view('admin.guide'))->name('guide');
     });

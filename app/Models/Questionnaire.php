@@ -40,7 +40,6 @@ class Questionnaire extends Model
         'start_date',
         'end_date',
         'max_attempts',
-        'pass_percentage',
         'total_points',
     ];
 
@@ -53,7 +52,6 @@ class Questionnaire extends Model
             'time_limit' => 'integer',
             'max_attempts' => 'integer',
             'counts_toward_finish' => 'boolean',
-            'pass_percentage' => 'decimal:2',
             'total_points' => 'integer',
         ];
     }

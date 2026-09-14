@@ -25,7 +25,6 @@ class QuestionnaireManager extends Component
     public string $editDescription = '';
     public ?int $editTimeLimit = null;
     public ?int $editMaxAttempts = null;
-    public ?int $editPassPercentage = null;
     public string $editQrCode = '';
     public bool $editIsActive = true;
     /** False marks a bonus post: it scores, but does not hold the race clock open. */
@@ -63,7 +62,6 @@ class QuestionnaireManager extends Component
             $this->editDescription = $this->editQuestionnaire->description ?? '';
             $this->editTimeLimit = $this->editQuestionnaire->time_limit;
             $this->editMaxAttempts = $this->editQuestionnaire->max_attempts;
-            $this->editPassPercentage = $this->editQuestionnaire->pass_percentage;
             $this->editQrCode = $this->editQuestionnaire->qr_code ?? '';
             $this->editIsActive = $this->editQuestionnaire->is_active;
             $this->editCountsTowardFinish = (bool) $this->editQuestionnaire->counts_toward_finish;
@@ -88,7 +86,6 @@ class QuestionnaireManager extends Component
         $this->editDescription = '';
         $this->editTimeLimit = null;
         $this->editMaxAttempts = null;
-        $this->editPassPercentage = null;
         $this->editQrCode = '';
         $this->editIsActive = true;
         $this->editCountsTowardFinish = true;
@@ -106,7 +103,6 @@ class QuestionnaireManager extends Component
             'editDescription' => 'nullable|string|max:1000',
             'editTimeLimit' => 'nullable|integer|min:1|max:1440', // Max 24 hours
             'editMaxAttempts' => 'nullable|integer|min:1|max:10',
-            'editPassPercentage' => 'nullable|integer|min:1|max:100',
             'editQrCode' => 'nullable|string|max:255',
         ], [
             'editTitle.required' => 'Title is required.',
@@ -116,8 +112,6 @@ class QuestionnaireManager extends Component
             'editTimeLimit.max' => 'Time limit cannot exceed 1440 minutes (24 hours).',
             'editMaxAttempts.min' => 'Maximum attempts must be at least 1.',
             'editMaxAttempts.max' => 'Maximum attempts cannot exceed 10.',
-            'editPassPercentage.min' => 'Pass percentage must be at least 1%.',
-            'editPassPercentage.max' => 'Pass percentage cannot exceed 100%.',
         ]);
 
         try {
@@ -127,7 +121,6 @@ class QuestionnaireManager extends Component
                     'description' => $this->editDescription ?: null,
                     'time_limit' => $this->editTimeLimit,
                     'max_attempts' => $this->editMaxAttempts,
-                    'pass_percentage' => $this->editPassPercentage,
                     'qr_code' => $this->editQrCode ?: null,
                     'is_active' => $this->editIsActive,
                     'counts_toward_finish' => $this->editCountsTowardFinish,

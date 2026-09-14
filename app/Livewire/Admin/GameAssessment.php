@@ -9,6 +9,7 @@ use App\Models\Question;
 use App\Models\User;
 use App\Exceptions\QuizRuleException;
 use App\Services\GameAssessmentService;
+use App\Services\FacilitatorPin;
 
 class GameAssessment extends Component
 {
@@ -24,6 +25,8 @@ class GameAssessment extends Component
     public $additionalPoints = 0;
     public $penalty = 0;
     public $notes = '';
+
+    public $newFacilitatorPin = '';
 
     public function mount()
     {
@@ -95,6 +98,20 @@ class GameAssessment extends Component
         session()->flash('success', 'Assessment saved successfully!');
     }
 
+    /** Event-wide PIN a facilitator types on the team's phone before scoring. Stored hashed. */
+    public function saveFacilitatorPin()
+    {
+        $this->validate(
+            ['newFacilitatorPin' => 'required|digits_between:4,8'],
+            ['newFacilitatorPin.digits_between' => 'PIN must be 4–8 digits.'],
+        );
+
+        app(FacilitatorPin::class)->set((string) $this->newFacilitatorPin, auth()->id());
+        $this->reset('newFacilitatorPin');
+
+        session()->flash('success', 'Facilitator PIN updated. Tell your facilitators the new PIN.');
+    }
+
     public function cancelEdit()
     {
         $this->editingAssessment = null;
@@ -119,7 +136,9 @@ class GameAssessment extends Component
     public function render()
     {
         return view('livewire.admin.game-assessment', [
-            'totalDeposit' => $this->getTotalDeposit()
+            'totalDeposit' => $this->getTotalDeposit(),
+            'pinSet' => app(FacilitatorPin::class)->isSet(),
+            'pinUpdatedAt' => app(FacilitatorPin::class)->updatedAt(),
         ])->layout(null);
     }
 }

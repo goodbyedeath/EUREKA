@@ -100,7 +100,8 @@ login, but only **after** the password is correct. Do not treat that message as 
          POST /quiz/save-answer           one call per answer
          POST /quiz/complete-game         finish a fun_game question → assessment_id
          GET  /quiz/assessments/{id}      facilitator scoring screen (team's phone)
-         POST /quiz/assessments/{id}      record the score; next = continue | submit
+         POST /quiz/assessments/{id}/verify-pin   facilitator PIN pre-check
+         POST /quiz/assessments/{id}      PIN + silent photo + score; next = continue | submit
          POST /quiz/submit                hand it in
 ```
 
@@ -117,7 +118,8 @@ GET  /quiz/timer/{attemptId}         → authoritative seconds remaining
 POST /quiz/save-answer               → { attempt_id, question_id, answer }
 POST /quiz/complete-game             → { attempt_id, question_id }   fun_game only
 GET  /quiz/assessments/{id}          → the facilitator screen's data
-POST /quiz/assessments/{id}          → { additional_points, penalty, notes }
+POST /quiz/assessments/{id}/verify-pin → { facilitator_pin }
+POST /quiz/assessments/{id}          → { facilitator_pin, facilitator_photo, additional_points, penalty, notes }
 POST /quiz/submit                    → { attempt_id, verification_photo }
 ```
 
@@ -173,16 +175,45 @@ takes the team's phone and enters the score. So the flow for a `fun_game` questi
 1. Show the game (`game_name`, `description`, images). The team plays it off-screen.
 2. **Complete** → `POST /quiz/complete-game` → keep `assessment_id`. Ignore `redirect`.
 3. Open a **Facilitator scoring** screen: `GET /quiz/assessments/{id}`. Make the hand-over
-   obvious — a full-screen "Hand this phone to the facilitator" step before the inputs.
-4. Inputs: **Additional points** (number, 0…`max_additional_points`, default
+   obvious — a full-screen "Hand this phone to the facilitator" step before anything else.
+4. **PIN gate.** Numeric keypad, masked, 4–8 digits → `POST /quiz/assessments/{id}/verify-pin`.
+   - `invalid_facilitator_pin` (403) → "Wrong PIN — `attempts_left` tries left".
+   - `facilitator_pin_locked` (429) → disable the keypad and count down `retry_after` seconds.
+   - `facilitator_pin_not_set` (409) → "The admin has not set a facilitator PIN". Nothing to retry.
+   - If `GET` already says `facilitator_pin_set: false`, show that instead of the keypad.
+   Keep the accepted PIN **in memory only** — never on disk, in logs, or in the offline queue —
+   because the score POST sends it again. Drop it when the screen closes.
+5. When the PIN is accepted, **arm the silent camera** (below).
+6. Inputs: **Additional points** (number, 0…`max_additional_points`, default
    `max_additional_points`), **Penalty** (number, default 0, max `max_penalty`), **Notes**
    (optional). Show the live result `additional − penalty` as "Team gains N" (may be negative).
    Never show or add the team's starting balance — it is not part of the gain.
-5. Confirm dialog (it is one shot) → `POST /quiz/assessments/{id}`.
-6. Show `team_gain` and `team_points`, then follow `next`: `continue` → back to the quiz at the
+7. Confirm dialog (it is one shot). On **Confirm**, capture the photo, then
+   `POST /quiz/assessments/{id}` with `facilitator_pin`, `facilitator_photo`, `additional_points`,
+   `penalty`, `notes`.
+8. Show `team_gain` and `team_points`, then follow `next`: `continue` → back to the quiz at the
    next question; `submit` → hand in with `POST /quiz/submit`.
 
-Resuming: if the app died between steps 2 and 5, `complete-game` again returns the **same**
+#### Silent facilitator photo
+
+An audit record of who scored each game: the admin sees it next to the score. It is **required** —
+a POST without it is 422, so there is no score without a photo.
+
+- **Front camera**, CameraX `ImageCapture` bound **without a `Preview`** use case. Bind it when the
+  PIN is accepted so it is warm by the time the facilitator confirms.
+- **Capture on the Confirm tap** — the facilitator is looking at the screen. `takePicture` into
+  memory; no preview, no thumbnail, no flash, no shutter sound, no toast.
+- Apply EXIF rotation, downscale the longest side to ≤ 1024 px, JPEG quality ~80, base64 without
+  line breaks (`data:image/jpeg;base64,` prefix accepted). Server limit: JPEG or PNG, ≤ 3 MB decoded.
+- **Unbind right after capture and whenever the screen closes.** The one-camera-at-a-time rule and
+  the CameraX Activity-lifecycle trap from §9 apply here exactly as for AR and the QR scanner.
+- Do not try to hide Android's camera-in-use privacy indicator. It cannot be hidden and must not be.
+- CAMERA permission is already needed for AR and QR. If it is missing, request it at the PIN step.
+- If capture fails (no front camera, error, permission denied): retry once, then fall back to a
+  **visible** front-camera shot the facilitator takes. Never send the score without a photo.
+- Keep photo and PIN in memory until the POST succeeds. On a network error retry from memory;
+  scoring needs a connection and does not go into the offline write queue.
+Resuming: if the app died between steps 2 and 7, `complete-game` again returns the **same**
 `assessment_id` while it is unscored, so repeat step 3. `409 game_already_assessed` on either
 call means it was already scored — move on, do not show an error.
 
@@ -796,6 +827,10 @@ human-facing prose and is translated.
 | `assessment_not_found` | 404 | No such assessment, or another team's |
 | `additional_out_of_range` | 422 | Additional points above the game's points — clamp the input |
 | `penalty_out_of_range` | 422 | Penalty above `max_penalty` — clamp the input |
+| `facilitator_pin_not_set` | 409 | Admin has not set a PIN; show that, nothing to retry |
+| `invalid_facilitator_pin` | 403 | Wrong PIN; show `attempts_left` |
+| `facilitator_pin_locked` | 429 | Locked; count down `retry_after`, keypad disabled |
+| `invalid_facilitator_photo` | 422 | Re-capture and downscale |
 
 A `422` with a Laravel `errors` object is ordinary validation — show it against the field.
 A `500` is a real fault: report it, do not retry in a loop.
@@ -815,6 +850,7 @@ A `500` is a real fault: report it, do not retry in a loop.
 - [ ] `time_expired` on `save-answer` goes straight to `submit`
 - [ ] `submit` always carries `verification_photo`, downscaled before encoding
 - [ ] `fun_game` uses `complete-game`, then the native Facilitator scoring screen; no client-side point totals anywhere
+- [ ] Facilitator scoring: PIN gate with lockout countdown; silent front-camera photo on Confirm; PIN and photo never written to disk
 - [ ] App name, logo and theme come from `/branding`, with nothing hardcoded
 - [ ] Hidden menus follow `/features`, and you never rely on that for security
 - [ ] Indoor spots positioned from `x`/`y` as percentages

@@ -86,23 +86,6 @@
                                 @enderror
                             </div>
 
-                            <!-- Pass Percentage -->
-                            <div>
-                                <label for="editPassPercentage" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                    Pass Percentage (%)
-                                </label>
-                                <input type="number" 
-                                       id="editPassPercentage"
-                                       wire:model.defer="editPassPercentage" 
-                                       min="1" 
-                                       max="100"
-                                       class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-100"
-                                       placeholder="No requirement">
-                                @error('editPassPercentage') 
-                                    <span class="text-red-500 text-sm mt-1">{{ $message }}</span> 
-                                @enderror
-                            </div>
-
                             <!-- QR Code -->
                             <div>
                                 <label for="editQrCode" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">

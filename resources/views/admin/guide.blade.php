@@ -145,7 +145,7 @@
                     'body' => '<p><strong>Satu pos = satu kuesioner.</strong> Ini bagian paling banyak
                         kerjanya, jadi sediakan waktu.</p>
                         <p>Untuk tiap kuesioner Anda mengisi: judul, batas waktu pengerjaan (menit),
-                        berapa kali boleh dicoba, dan nilai minimal lulus.</p>
+                        dan berapa kali boleh dicoba.</p>
                         <p>Ada satu centang yang sering terlewat: <strong>&ldquo;Counts toward finishing&rdquo;</strong>.
                         Biarkan menyala untuk pos biasa. Matikan kalau itu <strong>pos bonus</strong> —
                         posnya tetap memberi poin, tapi jam lomba tidak menunggu tim mengerjakannya.</p>

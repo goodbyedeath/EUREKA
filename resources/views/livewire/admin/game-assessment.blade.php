@@ -4,6 +4,33 @@
         <p class="text-gray-600">Assess fun game performances and assign deposit scores</p>
     </div>
 
+    {{-- Facilitator PIN: required on the team's phone before a game can be scored --}}
+    <div class="mb-6 bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+        <div class="flex flex-wrap items-end gap-4">
+            <div class="flex-1 min-w-[12rem]">
+                <h2 class="text-lg font-semibold text-gray-900">Facilitator PIN</h2>
+                <p class="text-sm text-gray-600">
+                    @if($pinSet)
+                        <span class="text-green-700 font-medium">Set</span>@if($pinUpdatedAt) · last changed {{ $pinUpdatedAt->format('d M Y H:i') }}@endif.
+                    @else
+                        <span class="text-red-700 font-medium">Not set</span> — the app refuses every game score until you set one.
+                    @endif
+                    Facilitators type it on the team's phone; 5 wrong tries lock that team for 15 minutes.
+                </p>
+            </div>
+            <form wire:submit="saveFacilitatorPin" class="flex items-end gap-2">
+                <div>
+                    <label for="newFacilitatorPin" class="block text-sm font-medium text-gray-700">New PIN (4–8 digits)</label>
+                    <input id="newFacilitatorPin" type="password" inputmode="numeric" autocomplete="new-password" maxlength="8"
+                           wire:model="newFacilitatorPin"
+                           class="mt-1 block w-40 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                    @error('newFacilitatorPin') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                </div>
+                <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">{{ $pinSet ? 'Change PIN' : 'Set PIN' }}</button>
+            </form>
+        </div>
+    </div>
+
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {{-- Left Panel: Quiz Attempts List --}}
         <div class="lg:col-span-1">
@@ -147,6 +174,14 @@
                                                     <span class="ml-1 text-gray-900">{{ $assessment->assessedBy->name ?? 'N/A' }}</span>
                                                 </div>
                                             </div>
+                                            @if(str_starts_with((string) $assessment->facilitator_photo, 'facilitator-photos/'))
+                                                <a href="{{ route('admin.game-assessments.facilitator-photo', $assessment->id) }}" target="_blank" rel="noopener"
+                                                   class="mt-2 inline-flex items-center gap-2 text-xs text-blue-600 hover:underline">
+                                                    <img src="{{ route('admin.game-assessments.facilitator-photo', $assessment->id) }}" alt="Facilitator photo" loading="lazy"
+                                                         class="h-12 w-12 rounded object-cover border border-gray-200">
+                                                    Facilitator photo{{ $assessment->facilitator_photo_captured_at ? ' · '.$assessment->facilitator_photo_captured_at->format('d M H:i') : '' }}
+                                                </a>
+                                            @endif
                                             @if($assessment->notes)
                                                 <div class="mt-3 p-3 bg-gray-100 rounded-md">
                                                     <span class="text-sm text-gray-600">Notes:</span>

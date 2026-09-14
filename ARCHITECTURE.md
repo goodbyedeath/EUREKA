@@ -263,7 +263,7 @@ Guidance       (instructions targeted at all users or one user)
   `session_timeout`, `session_workflow_id`, `last_activity_at`.
 - **teams** — `points` and `initial_points`; `initial_points` is the team's starting balance and
   feeds every user's "base points".
-- **questionnaires** — `qr_code` (unique), `time_limit`, `max_attempts`, `pass_percentage`,
+- **questionnaires** — `qr_code` (unique), `time_limit`, `max_attempts`,
   `total_points`, active window via `start_date`/`end_date`.
 - **questions** — `type` enum(`multiple_choice`,`text`,`true_false`,`fun_game`,`brief`),
   `options` and `images` as JSON, `points`, `order`.

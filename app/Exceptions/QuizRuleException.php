@@ -19,6 +19,8 @@ class QuizRuleException extends Exception
         public readonly string $errorKey,
         string $message,
         public readonly int $status = 409,
+        /** Extra fields merged into the JSON body, e.g. attempts_left, retry_after. */
+        public readonly array $context = [],
     ) {
         parent::__construct($message);
     }

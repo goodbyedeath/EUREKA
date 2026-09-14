@@ -94,6 +94,7 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         // The facilitator scores a fun_game on the team's phone, right after complete-game.
         Route::get('/quiz/assessments/{assessmentId}', [\App\Http\Controllers\Api\QuizController::class, 'assessment'])->whereNumber('assessmentId')->name('quiz.assessment');
         Route::post('/quiz/assessments/{assessmentId}', [\App\Http\Controllers\Api\QuizController::class, 'assess'])->whereNumber('assessmentId')->name('quiz.assess');
+        Route::post('/quiz/assessments/{assessmentId}/verify-pin', [\App\Http\Controllers\Api\QuizController::class, 'verifyFacilitatorPin'])->whereNumber('assessmentId')->name('quiz.assessment.verify-pin');
 
         // Which menus the app should show. A flag decides visibility only; every route
         // stays guarded by middleware, so ignoring one gains a client nothing.
