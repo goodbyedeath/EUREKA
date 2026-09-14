@@ -154,6 +154,17 @@ Route::middleware(['auth', 'preventbackhistory'])->group(function () {
             abort_unless(str_starts_with($path, 'facilitator-photos/') && \Illuminate\Support\Facades\Storage::disk('local')->exists($path), 404);
             return \Illuminate\Support\Facades\Storage::disk('local')->response($path, null, ['Cache-Control' => 'private, no-store']);
         })->whereNumber('assessment')->name('game-assessments.facilitator-photo');
+        // Finished game sessions: archive the live one, then read past ones.
+        Route::get('/game-archives', fn () => view('admin.game-archives'))->name('game-archives');
+        Route::get('/game-archives/{archive}', fn (\App\Models\GameArchive $archive) => view('admin.game-archive-detail', ['archive' => $archive]))
+            ->whereNumber('archive')->name('game-archives.show');
+        // Archived photos, private disk. No file extension in the URL: the host's image CDN rewrites
+        // image-extension URLs, and these must never be cached publicly.
+        Route::get('/game-archives/{archive}/photos/{key}', function (\App\Models\GameArchive $archive, string $key) {
+            $path = $archive->snapshot['photos'][$key] ?? null;
+            abort_unless($path && str_starts_with($path, $archive->storage_dir.'/') && \Illuminate\Support\Facades\Storage::disk('local')->exists($path), 404);
+            return \Illuminate\Support\Facades\Storage::disk('local')->response($path, null, ['Cache-Control' => 'private, no-store']);
+        })->whereNumber('archive')->where('key', '[vf]-[0-9]+')->name('game-archives.photo');
         // Panduan setup, ditulis untuk operator acara dan bukan untuk programmer.
         Route::get('/panduan', fn () => view('admin.guide'))->name('guide');
     });

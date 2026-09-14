@@ -136,6 +136,44 @@ Two consequences worth designing for:
 Refresh the card when the dashboard opens or resumes, and after Results. **Do not poll it** (§6).
 
 ---
+## 2b. The game has ended — operator 14 Sep
+
+When an event is over the admin **archives** it: the final leaderboard, teams, per-post results and
+photos are saved on the server, and every account that played is removed from the live system. From
+that moment the server answers that APK — on **any** endpoint, **login included** — with:
+
+```json
+403 { "success": false, "error": "game_ended", "game_ended": true,
+      "message": "Game sudah berakhir. Terima kasih telah bermain — silakan uninstall aplikasi ini.",
+      "archive": { "name": "Questerra Batch 3", "ended_at": "2026-09-20T17:04:11+07:00" } }
+```
+
+The operator's reason is security: an APK left installed after an event must not keep talking to
+the running system or the venue network. So the app's job is to go **silent**.
+
+On the **first** `game_ended` from anywhere — a screen, login, the tracking worker, the offline-queue
+replay:
+
+1. Show the **Game ended** screen, full-screen over everything: the server's `message`,
+   `archive.name`, and one button, **Uninstall**. No back, no retry, no login form, no dashboard.
+2. **Wipe** local state: token, stored attempt and assessment ids, the offline write queue (discard —
+   never replay it), cached offline manifest, map tiles, AR models, guidance, branding, and any photo
+   still on disk.
+3. **Stop** everything that makes requests: location tracking and its foreground service, WorkManager
+   jobs, alarms, polling timers.
+4. Persist one flag, `game_ended` (with the message and name). On every later launch check it
+   **before any network call** and show the Game ended screen directly — from then on the app makes
+   **zero** requests.
+5. **Uninstall** →
+   `startActivity(Intent(Intent.ACTION_DELETE, Uri.parse("package:$packageName")))`. Android shows its
+   own confirmation; no app can uninstall itself silently. Declare
+   `<uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES"/>` (API 28+).
+
+- The flag is cleared only by reinstalling. There is no way to dismiss the screen.
+- A plain `401` still just means "log in again". Only `error: "game_ended"` ends the app.
+- The next event uses new accounts; a fresh install logging in with a live account works normally.
+
+---
 ## 3. The player journey
 
 ```
@@ -1019,6 +1057,7 @@ human-facing prose and is translated.
 | `attempt_submitted` | 409 | Already handed in |
 | `game_already_assessed` | 409 | A facilitator already scored it |
 | `not_a_game_question` | 422 | `complete-game` on a normal question |
+| `game_ended` | 403 | Session archived — Game ended screen, wipe, stop every request for good (§2b) |
 | `team_locked` | 403 | Member add/remove after setup — remove the call; members are fixed |
 | `questions_incomplete` | 409 | Submit before every question is done; body has `pending` — stay in the session |
 | `session_in_progress` | 409 | Another session is live; body has `attempt_id` — open it |
@@ -1047,6 +1086,7 @@ A `500` is a real fault: report it, do not retry in a loop.
 - [ ] Quiz resumes correctly after the app is killed mid-attempt (`/quiz/continue`)
 - [ ] `time_expired` on `save-answer` goes straight to `submit`
 - [ ] `submit` always carries `verification_photo`, downscaled before encoding
+- [ ] `game_ended` from any call (login too) → Game ended screen, local data wiped, workers stopped, flag checked before any request on relaunch, Uninstall button
 - [ ] Team setup shown once when `GET /team` is `no_team`; no member editing anywhere afterwards
 - [ ] Dashboard score card from `team.score` (total + three lines, negative game points signed), no rank
 - [ ] A scan of any active station code lands on its questions screen, every question type rendered, images from `image_urls`

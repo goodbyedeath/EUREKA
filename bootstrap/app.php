@@ -71,6 +71,18 @@ return Application::configure(basePath: dirname(__DIR__))
         // calls prepareException() BEFORE renderViaCallbacks(), and that converts a
         // TokenMismatchException into HttpException(419, ..., previous: $original) — so a
         // callback type-hinted on TokenMismatchException is never reached.
+        // A token that belonged to an account removed by a game archive no longer authenticates.
+        // Answer the app with game_ended instead of a bare 401, so it shows the end screen and stops
+        // making requests (operator, 14 Sep: protect the running system and the venue network).
+        $exceptions->render(function (\Illuminate\Auth\AuthenticationException $e, \Illuminate\Http\Request $request) {
+            if (! $request->is('api/*') || ! $request->bearerToken()) {
+                return null;
+            }
+            $archive = \App\Services\GameArchiveService::archiveForToken($request->bearerToken());
+
+            return $archive ? \App\Services\GameArchiveService::gameEndedResponse($archive) : null;
+        });
+
         $exceptions->render(function (\Symfony\Component\HttpKernel\Exception\HttpException $e, \Illuminate\Http\Request $request) {
             if ($e->getStatusCode() !== 419 || ! $e->getPrevious() instanceof \Illuminate\Session\TokenMismatchException) {
                 return null; // not a CSRF failure — let Laravel handle it normally

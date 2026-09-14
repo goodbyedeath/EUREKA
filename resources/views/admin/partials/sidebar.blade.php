@@ -52,6 +52,7 @@
             'items' => [
                 ['admin.user-progress',        'fa-chart-line',     'Team Progress',      'text-cyan-500'],
                 ['admin.game-assessments',     'fa-clipboard-check','Game Assessments',   'text-violet-500'],
+                ['admin.game-archives',        'fa-archive',        'Game Archives',      'text-slate-500'],
             ],
         ],
         [

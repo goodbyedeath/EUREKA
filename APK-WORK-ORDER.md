@@ -23,6 +23,7 @@ differ; the names here are suggestions, not requirements.
 00. **Lock the question session** — operator rule 14 Sep, server-enforced. See §8. Build it together
    with §7: it is the same screen.
 000. **Team setup once + score card** — operator 14 Sep. See §9.
+0000. **Game ended screen** — the admin can now archive a finished session; its APKs must go silent. See §10.
 1. **The 3D Camera** — `ar/ArActivity.kt`. §9 rewritten into a full spec; one earlier answer reversed.
 2. **Results screen**
 3. **QR scanner** — was blocked on a server test. It is not any more; see §3.
@@ -293,6 +294,27 @@ Spec: `APK-BUILD-GUIDE.md` §2a.
    exit: your v28 "submit on the last page" must appear only when `completion.can_submit` is true.
 2. **Show `team_gain`, not `team_points` — confirmed.** The dashboard card reads `team.score` from
    `GET /team` (§2a). Note it moves after hand-in, not at scoring.
+
+---
+
+## 10 — Game ended: go silent  ·  operator 14 Sep
+
+Operator: *"After a session is archived the APK can no longer be used, with a notice that the game
+is over and to uninstall the app — for the security of the running system and our network."*
+
+Server: archiving removes every account of that session. Their tokens and logins now get
+`403 game_ended` with the message to show.
+
+Spec: `APK-BUILD-GUIDE.md` §2b.
+
+**Done when:**
+- after the admin archives, the next action in the app — or a relaunch — shows Game ended with the
+  server's message and the session name;
+- relaunching in airplane mode still shows it (the flag is read before any network call);
+- after that screen the device makes no request at all: no tracking, no queue replay, no polling
+  (the server side will check its logs);
+- Uninstall opens the system uninstall dialog;
+- a login attempt with an archived account also lands on Game ended, not "wrong password".
 
 ---
 

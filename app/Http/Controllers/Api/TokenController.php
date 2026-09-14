@@ -39,6 +39,13 @@ class TokenController extends Controller
 
         $user = User::where('email', $credentials['email'])->first();
 
+        // An account removed by a game archive: say the game is over rather than "wrong password",
+        // so the app shows its end screen and stops calling us. A live account with the same e-mail
+        // (a later event) logs in normally.
+        if (! $user && ($archive = \App\Services\GameArchiveService::archiveForEmail($credentials['email']))) {
+            return \App\Services\GameArchiveService::gameEndedResponse($archive);
+        }
+
         if (! $user || ! Hash::check($credentials['password'], $user->password)) {
             RateLimiter::hit($key, 300);
 
