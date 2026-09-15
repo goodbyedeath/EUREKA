@@ -101,6 +101,7 @@ class FekdiIntegrationManager extends Component
             'enabled' => $fekdi->enabled(),
             'configured' => $fekdi->configured(),
             'host' => parse_url((string) config('services.fekdi.base_url'), PHP_URL_HOST),
+            'heartbeat' => \App\Models\AppSetting::row('scheduler_heartbeat')?->value,
             'stats' => [
                 'participants' => FekdiParticipant::count(),
                 'linked' => FekdiParticipant::whereNotNull('team_id')->count(),
