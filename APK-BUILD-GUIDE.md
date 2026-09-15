@@ -174,6 +174,42 @@ replay:
 - The next event uses new accounts; a fresh install logging in with a live account works normally.
 
 ---
+## 2c. Emergency race stop — operator 14 Sep
+
+The admin can stop the race for **every team at once**. It puts the session back to before the race:
+race clocks, points, visited posts (scans, check-ins, opened indoor posts), and every answered
+question and game score are wiped. **Teams, members, accounts and tokens stay** — the player is still
+logged in, and the team starts again by scanning **START**.
+
+Any call that names an attempt or assessment wiped by the stop answers:
+
+```json
+409 { "success": false, "error": "race_reset", "race_reset": true,
+      "message": "Race dihentikan oleh panitia. Semua poin dan progres direset — scan QR START untuk memulai lagi.",
+      "reset_at": "2026-09-20T10:14:03+07:00" }
+```
+
+It comes from `quiz/continue`, `quiz/timer`, `quiz/save-answer`, `quiz/complete-game`, `quiz/submit`,
+`quiz/assessments/{id}` and `…/verify-pin` — exactly the calls an app mid-session is making, or makes
+when it reopens into a stored session (§4, locked room).
+
+On `race_reset`:
+
+1. Show the server's `message` once, as a dialog the player dismisses. It is not an error.
+2. **Drop local session state:** the stored attempt id, the pending assessment, PIN and photo held in
+   memory, cached answers, the running race clock, and any offline-queue entries for the old attempt
+   (discard — replaying them would only earn more `race_reset`).
+3. **Leave the locked room.** This is the one case where the app exits a question session without
+   finishing it — the server ended it.
+4. Go to the dashboard and refresh `GET /team` (score back to base) and `GET /race/status`
+   (`race: null` → show "Scan START").
+5. **Do not log out.** The token is still valid.
+
+A team sitting on the dashboard will not get `race_reset` (it names no attempt). `GET /race/status`
+returning `race: null` where the app had a running clock means the same thing — clear the clock and
+show "Scan START".
+
+---
 ## 3. The player journey
 
 ```
@@ -1058,6 +1094,7 @@ human-facing prose and is translated.
 | `game_already_assessed` | 409 | A facilitator already scored it |
 | `not_a_game_question` | 422 | `complete-game` on a normal question |
 | `game_ended` | 403 | Session archived — Game ended screen, wipe, stop every request for good (§2b) |
+| `race_reset` | 409 | The admin stopped the race — show the message, drop session state, dashboard, stay logged in (§2c) |
 | `team_locked` | 403 | Member add/remove after setup — remove the call; members are fixed |
 | `questions_incomplete` | 409 | Submit before every question is done; body has `pending` — stay in the session |
 | `session_in_progress` | 409 | Another session is live; body has `attempt_id` — open it |
@@ -1087,6 +1124,7 @@ A `500` is a real fault: report it, do not retry in a loop.
 - [ ] `time_expired` on `save-answer` goes straight to `submit`
 - [ ] `submit` always carries `verification_photo`, downscaled before encoding
 - [ ] `game_ended` from any call (login too) → Game ended screen, local data wiped, workers stopped, flag checked before any request on relaunch, Uninstall button
+- [ ] `race_reset` from any quiz call → message, local session state dropped, out of the locked session, dashboard, still logged in; `race: null` clears a cached clock
 - [ ] Team setup shown once when `GET /team` is `no_team`; no member editing anywhere afterwards
 - [ ] Dashboard score card from `team.score` (total + three lines, negative game points signed), no rank
 - [ ] A scan of any active station code lands on its questions screen, every question type rendered, images from `image_urls`

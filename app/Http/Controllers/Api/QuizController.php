@@ -12,6 +12,7 @@ use App\Services\AnswerValidationService;
 use App\Services\WorkflowTimerService;
 use App\Models\FeatureSetting;
 use App\Exceptions\QuizRuleException;
+use App\Models\RaceReset;
 use App\Services\FacilitatorPin;
 use App\Services\GameAssessmentService;
 use Illuminate\Support\Facades\Storage;
@@ -275,6 +276,9 @@ class QuizController extends Controller
                 ->first();
 
             if (!$attempt) {
+                if ($reset = $this->raceResetFor()) {
+                    return $reset;
+                }
                 return response()->json([
                     'success' => false,
                     'message' => 'Quiz attempt not found',
@@ -728,6 +732,9 @@ class QuizController extends Controller
                 ->first();
 
             if (!$attempt) {
+                if ($reset = $this->raceResetFor()) {
+                    return $reset;
+                }
                 return response()->json([
                     'success' => false,
                     'message' => 'Quiz attempt not found',
@@ -878,8 +885,33 @@ class QuizController extends Controller
         return $path;
     }
 
+    /**
+     * If this request names an attempt or assessment that an emergency race stop wiped, the answer is
+     * race_reset — not "not found" — so the app knows the organisers ended it and goes to the dashboard.
+     */
+    private function raceResetFor(): ?\Illuminate\Http\JsonResponse
+    {
+        $request = request();
+        $reset = null;
+
+        if (is_numeric($assessmentId = $request->route('assessmentId'))) {
+            $reset = RaceReset::forRef('assessment', (int) $assessmentId);
+        }
+        $attemptId = $request->route('attemptId') ?? $request->input('attempt_id');
+        if (! $reset && is_numeric($attemptId)) {
+            $reset = RaceReset::forRef('attempt', (int) $attemptId);
+        }
+
+        return $reset ? RaceReset::response($reset) : null;
+    }
+
     private function ruleRefusal(QuizRuleException $e)
     {
+        // A wiped attempt looks "not found" to every lookup, and "submitted" to submit().
+        if (in_array($e->errorKey, ['attempt_not_found', 'attempt_submitted'], true) && ($reset = $this->raceResetFor())) {
+            return $reset;
+        }
+
         $response = response()->json([
             'success' => false,
             'message' => $e->getMessage(),
@@ -965,6 +997,10 @@ class QuizController extends Controller
 
     private function assessmentNotFound()
     {
+        if ($reset = $this->raceResetFor()) {
+            return $reset;
+        }
+
         return response()->json([
             'success' => false,
             'message' => 'That assessment does not exist, or belongs to someone else.',

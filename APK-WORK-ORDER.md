@@ -24,6 +24,7 @@ differ; the names here are suggestions, not requirements.
    with §7: it is the same screen.
 000. **Team setup once + score card** — operator 14 Sep. See §9.
 0000. **Game ended screen** — the admin can now archive a finished session; its APKs must go silent. See §10.
+00000. **Race reset handling** — the admin can emergency-stop the race for all teams. See §11.
 1. **The 3D Camera** — `ar/ArActivity.kt`. §9 rewritten into a full spec; one earlier answer reversed.
 2. **Results screen**
 3. **QR scanner** — was blocked on a server test. It is not any more; see §3.
@@ -315,6 +316,27 @@ Spec: `APK-BUILD-GUIDE.md` §2b.
   (the server side will check its logs);
 - Uninstall opens the system uninstall dialog;
 - a login attempt with an archived account also lands on Game ended, not "wrong password".
+
+---
+
+## 11 — Emergency race stop: `race_reset`  ·  operator 14 Sep
+
+Operator: an **emergency stop** button that halts the race time and resets points, visited posts and
+answered questions for every team in the session. Teams, accounts and tokens remain; teams start
+again by scanning START.
+
+Server: quiz calls naming a wiped attempt or assessment return `409 race_reset` with the message to
+show; `GET /team` returns base points; `GET /race/status` returns `race: null`.
+
+Spec: `APK-BUILD-GUIDE.md` §2c.
+
+**Done when:**
+- a team in the middle of a question session (or on the facilitator scoring screen) sees the
+  message right after the admin presses stop — on their next action — and lands on the dashboard,
+  still logged in, score back to base;
+- killing and reopening the app after a stop does not reopen the old session;
+- the dashboard shows "Scan START", and scanning it starts a fresh clock from zero;
+- nothing from the old attempt is replayed from the offline queue.
 
 ---
 

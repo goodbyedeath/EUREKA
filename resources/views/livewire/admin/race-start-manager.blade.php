@@ -151,6 +151,51 @@
         </div>
     </div>
 
+    {{-- Emergency stop: every team back to before the race. Two steps and a typed word, on purpose. --}}
+    <div class="mb-6 rounded-lg border-2 border-red-300 dark:border-red-800 bg-red-50 dark:bg-red-950/40 p-4" x-data="{ open: false, typed: '' }">
+        <div class="flex flex-wrap items-start justify-between gap-3">
+            <div class="flex-1 min-w-[14rem]">
+                <h2 class="text-lg font-semibold text-red-800 dark:text-red-200">
+                    <i class="fas fa-exclamation-triangle mr-1"></i> Emergency Stop Race
+                </h2>
+                <p class="text-sm text-red-900 dark:text-red-200 mt-1">
+                    Menghentikan race untuk <strong>semua tim</strong> dan mengembalikan sesi ke kondisi sebelum race:
+                    jam race, poin, pos yang dikunjungi, serta semua jawaban dan nilai game dihapus.
+                    Tim, anggota, dan akun tetap ada; tim mulai lagi dengan scan START.
+                    <strong>Tanpa cadangan, tidak bisa dibatalkan.</strong>
+                </p>
+                <p class="text-xs text-red-800 dark:text-red-300 mt-2">
+                    Saat ini: {{ $stopPreview['running_clocks'] }} jam race berjalan ·
+                    {{ $stopPreview['attempts'] }} attempt kuis ·
+                    {{ $stopPreview['scans'] }} scan pos ·
+                    {{ $stopPreview['checkins'] }} check-in ·
+                    poin berubah di {{ $stopPreview['teams_with_points'] }} dari {{ $stopPreview['teams'] }} tim
+                </p>
+            </div>
+            <button type="button" x-show="!open" x-on:click="open = true"
+                    class="px-4 py-2 rounded-md bg-red-600 hover:bg-red-700 text-white text-sm font-medium">
+                Emergency stop…
+            </button>
+        </div>
+
+        <form x-show="open" x-cloak wire:submit="emergencyStop" class="mt-4 flex flex-wrap items-end gap-3">
+            <div>
+                <label for="stopConfirm" class="block text-sm font-medium text-red-900 dark:text-red-200">
+                    Ketik <span class="font-mono font-semibold">{{ $stopWord }}</span> untuk mengonfirmasi
+                </label>
+                <input id="stopConfirm" type="text" autocomplete="off" x-model="typed" wire:model="stopConfirm"
+                       class="mt-1 block w-44 px-3 py-2 border border-red-300 dark:border-red-700 rounded-md font-mono bg-white dark:bg-gray-900 dark:text-gray-100">
+                @error('stopConfirm') <span class="text-red-700 dark:text-red-300 text-xs block">{{ $message }}</span> @enderror
+            </div>
+            <button type="submit" x-bind:disabled="typed !== '{{ $stopWord }}'" wire:loading.attr="disabled"
+                    class="px-4 py-2 rounded-md bg-red-700 hover:bg-red-800 text-white text-sm font-semibold disabled:opacity-40 disabled:cursor-not-allowed">
+                <span wire:loading.remove wire:target="emergencyStop">Hentikan &amp; reset semua tim</span>
+                <span wire:loading wire:target="emergencyStop">Mereset…</span>
+            </button>
+            <button type="button" x-on:click="open = false; typed = ''" class="px-3 py-2 text-sm text-gray-700 dark:text-gray-300">Batal</button>
+        </form>
+    </div>
+
     @if ($starts->isEmpty())
         <div class="rounded-lg border border-dashed border-gray-300 dark:border-gray-700 p-10 text-center text-gray-500 dark:text-gray-400">
             No start code yet. Without one no race clock runs — teams can still play, they just

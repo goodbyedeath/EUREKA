@@ -5,6 +5,7 @@ namespace App\Livewire\Admin;
 use App\Models\IndoorMap;
 use App\Models\RaceSession;
 use App\Models\RaceStart;
+use App\Services\RaceEmergencyStop;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use Livewire\Component;
@@ -27,6 +28,9 @@ class RaceStartManager extends Component
     public string $code = '';
     public ?int $indoorMapId = null;
     public bool $isActive = true;
+
+    /** Typed confirmation for the emergency stop. */
+    public string $stopConfirm = '';
 
     /** The printable page for one code. Its own state, so it never sits over the list. */
     public bool $showQr = false;
@@ -166,10 +170,28 @@ class RaceStartManager extends Component
         session()->flash('race_msg', __('Start code removed.'));
     }
 
+    /** Every team back to before the race. Irreversible and unbacked — see RaceEmergencyStop. */
+    public function emergencyStop(): void
+    {
+        $word = RaceEmergencyStop::CONFIRM_WORD;
+        $this->validate(
+            ['stopConfirm' => 'required|in:'.$word],
+            ['stopConfirm.required' => "Ketik {$word} untuk mengonfirmasi.", 'stopConfirm.in' => "Ketik {$word} untuk mengonfirmasi."],
+        );
+
+        $s = app(RaceEmergencyStop::class)->stop(Auth::user())->summary ?? [];
+        $this->reset('stopConfirm');
+
+        session()->flash('race_msg', 'Race dihentikan. Direset: '.($s['running_clocks'] ?? 0).' jam race berjalan, '
+            .($s['attempts'] ?? 0).' attempt kuis, '.($s['scans'] ?? 0).' scan pos, '.($s['checkins'] ?? 0).' check-in. Poin semua tim kembali ke awal.');
+    }
+
     public function render()
     {
         return view('livewire.admin.race-start-manager', [
             'qrStart' => $this->qrStart(),
+            'stopPreview' => app(RaceEmergencyStop::class)->preview(),
+            'stopWord' => RaceEmergencyStop::CONFIRM_WORD,
             'starts' => RaceStart::with('indoorMap:id,name')->orderBy('name')->get(),
             'maps' => IndoorMap::where('is_active', true)->orderBy('name')->get(['id', 'name']),
             // How many teams are running or have finished on each code — the only way to

@@ -6,6 +6,12 @@ Generated from the live router on questerra-series.com. Base URL `https://queste
 
 Act on these — several change responses your app already handles.
 
+**Latest (14 Sep, seventh change): `race_reset`.** An admin emergency stop wipes race clocks, points,
+scans, check-ins, attempts and assessments for every team, keeping teams and accounts. Quiz calls that
+name a wiped attempt or assessment return `409 {error: "race_reset", race_reset: true, message,
+reset_at}`. The app shows the message, drops session state and returns to the dashboard, still logged
+in. Build guide §2c.
+
 **Latest (14 Sep, sixth change): `game_ended`.** When the admin archives a finished session, every
 account in it is removed. Login and any token-authenticated call from those accounts return
 `403 {error: "game_ended", game_ended: true, message, archive {name, ended_at}}`. The app shows the
@@ -135,6 +141,7 @@ the photo as optional cannot submit at all.
 | `not_a_game_question` | 422 | `complete-game` called on a normal question | Fix the call |
 | `unknown_code` | 404 | `qr/lookup`: code is not in this event | Show it; let them rescan |
 | `game_ended` | 403 | Any call, login included: the session was archived | Game ended screen, wipe, never call again |
+| `race_reset` | 409 | Quiz call naming an attempt/assessment wiped by an emergency race stop | Message, drop session state, dashboard |
 | `team_locked` | 403 | `team/members` add or remove after setup | Remove the call; members are fixed |
 | `questions_incomplete` | 409 | `quiz/submit` while questions are unfinished and time remains; `pending` | Stay in the session |
 | `session_in_progress` | 409 | `qr/lookup` / `quiz/start` for another station while a session is live; `attempt_id` | Open that attempt |
