@@ -170,6 +170,9 @@ Route::middleware(['auth', 'preventbackhistory'])->group(function () {
             ->whereNumber('archive')->name('game-archives.pdf');
         // FEKDI x IFSE integration, 24–27 Sep 2026.
         Route::get('/fekdi', fn () => view('admin.fekdi'))->name('fekdi');
+        // Generated team accounts and their printed QR login cards.
+        Route::get('/login-cards', fn () => view('admin.login-cards'))->name('login-cards');
+        Route::get('/login-cards/pdf', App\Http\Controllers\Admin\LoginCardPdfController::class)->name('login-cards.pdf');
         // Panduan setup, ditulis untuk operator acara dan bukan untuk programmer.
         Route::get('/panduan', fn () => view('admin.guide'))->name('guide');
     });

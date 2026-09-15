@@ -230,6 +230,31 @@ returning `race: null` where the app had a running clock means the same thing �
 show "Scan START".
 
 ---
+## 2d. Login cards — scan instead of typing (your #16, operator-approved 15 Sep)
+
+The admin generates team accounts in bulk and prints one card each. The card's QR carries
+`EUREKA-LOGIN:<code>`; e-mail and password are printed underneath as a fallback.
+
+```
+POST /api/v1/auth/login-code        (public, throttle: 60/min per address)
+{ "code": "EUREKA-LOGIN:Qm9…", "device_name": "pixel-8-a1b2" }
+```
+
+- Send the scanned string as-is; the bare code is accepted too.
+- The 200 body is **exactly** `POST /auth/login`'s: `{success, token, expires_at, user}`. The access window
+  starts on first use, one token per `device_name`.
+- `401 invalid_login_code` — unknown, replaced ("Ganti kartu") or revoked card. The server does not say
+  which. Show the message; offer e-mail + password.
+- `403 access_window_expired`, `403 account_inactive`, `403 game_ended` — as for login.
+- Reusable: a team whose phone is replaced logs in again with the same card.
+
+Login screen: a **Scan kartu login** button using the scanner you already ship. Accept only strings starting
+with `EUREKA-LOGIN:`; anything else → "Ini bukan kartu login". After a 200, go straight to team setup
+(§2a). `qr/lookup` never accepts a login card (`404 unknown_code`), so never send one there.
+
+`POST /auth/login` refusals gained `error` keys too: `account_inactive`, `access_window_expired`.
+
+---
 ## 3. The player journey
 
 ```
@@ -1186,6 +1211,8 @@ human-facing prose and is translated.
 | `attempt_submitted` | 409 | Already handed in |
 | `game_already_assessed` | 409 | A facilitator already scored it |
 | `not_a_game_question` | 422 | `complete-game` on a normal question |
+| `invalid_login_code` | 401 | Login card unknown, replaced or revoked — offer e-mail + password (§2d) |
+| `account_inactive` | 403 | Login: the account is switched off |
 | `game_ended` | 403 | Session archived — Game ended screen, wipe, stop every request for good (§2b) |
 | `race_reset` | 409 | The admin stopped the race — show the message, drop session state, dashboard, stay logged in (§2c) |
 | `team_locked` | 403 | Member add/remove after setup — remove the call; members are fixed |
@@ -1221,6 +1248,7 @@ A `500` is a real fault: report it, do not retry in a loop.
 - [ ] `submit` always carries `verification_photo`, downscaled before encoding
 - [ ] `game_ended` from any call (login too) → Game ended screen, local data wiped, workers stopped, flag checked before any request on relaunch, Uninstall button
 - [ ] `race_reset` from any quiz call → message, local session state dropped, out of the locked session, dashboard, still logged in; `race: null` clears a cached clock
+- [ ] Login screen: Scan kartu login (only `EUREKA-LOGIN:` strings) → `auth/login-code` → team setup; e-mail + password still there
 - [ ] Team setup shown once when `GET /team` is `no_team`; no member editing anywhere afterwards
 - [ ] Team setup offers "Sudah terdaftar" (search) only when `participant_directory` is true, and Manual always; one Ketua toggle
 - [ ] Dashboard score card from `team.score` (total + three lines, negative game points signed), no rank

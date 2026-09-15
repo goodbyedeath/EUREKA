@@ -43,6 +43,9 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
 
     Route::post('/auth/login', [TokenController::class, 'login'])
         ->middleware('throttle:auth')->name('auth.login');
+    // Scan a printed login card instead of typing e-mail and password.
+    Route::post('/auth/login-code', [TokenController::class, 'loginCode'])
+        ->middleware('throttle:login-code')->name('auth.login-code');
 
     // Public, because the app paints its splash and login screen before anyone has a
     // token — and the web landing page already serves both to anonymous visitors.

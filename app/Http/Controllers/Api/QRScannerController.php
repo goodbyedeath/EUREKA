@@ -51,6 +51,15 @@ class QRScannerController extends Controller
                 ]);
             }
 
+            // A login card is never a station: answer as for any code outside this event.
+            if (str_starts_with($qrCode, \App\Services\LoginCardService::QR_PREFIX)) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'unknown_code',
+                    'message' => 'This code does not belong to this event.'
+                ], 404);
+            }
+
             // Looked up by code alone. Filtering is_active inside the query made a
             // switched-off questionnaire fall through to unknown_code, so a scanner could
             // not tell a misread QR from a facilitator who forgot to activate the station —

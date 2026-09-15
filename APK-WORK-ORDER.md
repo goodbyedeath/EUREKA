@@ -27,7 +27,8 @@ differ; the names here are suggestions, not requirements.
 00000. **Race reset handling** — the admin can emergency-stop the race for all teams. See §11.
 000000. **Team setup: registered participants** — search the FEKDI x IFSE list or type manually. See §12.
 0000000. **Answers to #13 and #14, outposts and flags** — see §13.
-00000000. **Station gate: START and check-in before a questionnaire** — see §14. #16 (login cards) is next on the server.
+00000000. **Station gate: START and check-in before a questionnaire** — see §14.
+000000000. **Login cards (#16)** — the server side exists. See §15.
 1. **The 3D Camera** — `ar/ArActivity.kt`. §9 rewritten into a full spec; one earlier answer reversed.
 2. **Results screen**
 3. **QR scanner** — was blocked on a server test. It is not any more; see §3.
@@ -424,6 +425,24 @@ New `403` refusals on `qr/lookup` and on `quiz/start` for a new attempt: `race_n
 
 Your #16 (team accounts + QR login cards) is approved by the operator and is being built next; its
 contract entry will follow.
+
+---
+
+## 15 — Login cards: your #16 is built  ·  15 Sep
+
+As proposed, with these specifics: `POST /api/v1/auth/login-code {code, device_name}` returns exactly the
+login body; the QR payload is `EUREKA-LOGIN:<code>` (32 url-safe chars, 192 bits, stored hashed); a wrong,
+replaced or revoked card is `401 invalid_login_code`; reusable per card; `qr/lookup` answers
+`404 unknown_code` for a login payload; archiving tombstones the codes, so an old card gets `403
+game_ended`. Rate limit: 60/min per address (a room of teams on one WiFi). Admin: "Kartu Login Tim" —
+generate N accounts (name prefix, access hours), print PDF cards, "Ganti kartu" (new code + password,
+all tokens revoked), "Cabut" (account off, logged out).
+
+Spec: build guide §2d.
+
+**Done when:** scanning a printed card on the login screen lands on team setup; a card the admin
+replaced shows the invalid-card message and the e-mail/password form; any non-card QR on that scanner
+is rejected locally.
 
 ---
 

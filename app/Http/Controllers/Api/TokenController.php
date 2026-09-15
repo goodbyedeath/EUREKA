@@ -54,13 +54,53 @@ class TokenController extends Controller
             ]);
         }
 
-        if (property_exists($user, 'is_active') || isset($user->is_active)) {
-            if (! $user->is_active) {
-                return response()->json([
-                    'success' => false,
-                    'message' => __('This account is not active.'),
-                ], 403);
+        return $this->issueToken($user, $credentials['device_name'] ?? 'android-client', fn () => RateLimiter::clear($key));
+    }
+
+    /**
+     * A team logs in by scanning its printed login card (APK report #16, operator-approved 15 Sep).
+     * Accepts the QR payload ("EUREKA-LOGIN:<code>") or the bare code; answers exactly like login.
+     */
+    public function loginCode(Request $request, \App\Services\LoginCardService $cards)
+    {
+        $data = $request->validate([
+            'code' => 'required|string|max:200',
+            'device_name' => 'nullable|string|max:120',
+        ]);
+
+        $hash = $cards->hashFor($data['code']);
+        $card = \App\Models\LoginCard::with('user')->where('code_hash', $hash)->first();
+
+        if (! $card || ! $card->user || $card->revoked_at) {
+            if (! $card && ($archive = \App\Services\GameArchiveService::archiveForLoginCode($hash))) {
+                return \App\Services\GameArchiveService::gameEndedResponse($archive);
             }
+
+            // One answer for unknown, rotated and revoked: no hint whether the account exists.
+            return response()->json([
+                'success' => false,
+                'error' => 'invalid_login_code',
+                'message' => 'Kartu login tidak dikenali atau sudah tidak berlaku. Minta kartu baru ke panitia.',
+            ], 401);
+        }
+
+        $response = $this->issueToken($card->user, $data['device_name'] ?? 'android-client');
+        if ($response->getStatusCode() === 200) {
+            $card->forceFill(['last_used_at' => now()])->save();
+        }
+
+        return $response;
+    }
+
+    /** The one place a login becomes a token: account state, access window, one token per device. */
+    private function issueToken(User $user, string $device, ?\Closure $onSuccess = null)
+    {
+        if (! $user->is_active) {
+            return response()->json([
+                'success' => false,
+                'error' => 'account_inactive',
+                'message' => __('This account is not active.'),
+            ], 403);
         }
 
         // An expired access window must not yield a token at all — otherwise the
@@ -68,12 +108,15 @@ class TokenController extends Controller
         if ($user->accessWindowExpired()) {
             return response()->json([
                 'success' => false,
+                'error' => 'access_window_expired',
                 'message' => __('Your access period has ended. Please contact an administrator to be granted access again.'),
                 'access_window_expired' => true,
             ], 403);
         }
 
-        RateLimiter::clear($key);
+        if ($onSuccess) {
+            $onSuccess();
+        }
 
         // Starts the clock on first login, exactly as the web flow does.
         $user->startAccessWindow();
@@ -81,7 +124,6 @@ class TokenController extends Controller
 
         // One token per named device; re-authenticating replaces it rather than
         // accumulating tokens that nobody can revoke.
-        $device = $credentials['device_name'] ?? 'android-client';
         $user->tokens()->where('name', $device)->delete();
 
         $token = $user->createToken($device, ['*'], $user->accessWindowEndsAt());

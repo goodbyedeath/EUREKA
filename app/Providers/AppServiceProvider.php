@@ -97,6 +97,10 @@ class AppServiceProvider extends ServiceProvider
         // is still capped at five tries a minute however many addresses are used, and one
         // address still cannot grind through accounts; what it no longer does is make
         // twenty different teams queue behind each other.
+        // Login cards: the code carries 192 bits, so guessing is not the risk — a room of teams on one
+        // venue WiFi scanning at the briefing is. Per address only, and generous.
+        RateLimiter::for('login-code', fn (Request $request) => Limit::perMinute(60)->by('ip:' . $request->ip()));
+
         RateLimiter::for('auth', function (Request $request) {
             $account = strtolower((string) $request->input('email'));
 

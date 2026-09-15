@@ -250,6 +250,8 @@ class GameArchiveService
                     ->where('tokenable_type', $morph)->whereIn('tokenable_id', $accountIds)->pluck('token');
                 $rows = $accounts->map(fn (User $u) => ['kind' => 'email', 'value' => strtolower(trim($u->email))])
                     ->merge($tokens->map(fn ($hash) => ['kind' => 'token', 'value' => $hash]))
+                    ->merge(\App\Models\LoginCard::whereIn('user_id', $accountIds)->pluck('code_hash')
+                        ->map(fn ($hash) => ['kind' => 'login_code', 'value' => $hash]))
                     ->map(fn ($r) => $r + ['game_archive_id' => $archive->id, 'created_at' => now(), 'updated_at' => now()])
                     ->all();
                 foreach (array_chunk($rows, 500) as $chunk) {
@@ -294,6 +296,12 @@ class GameArchiveService
         $secret = str_contains($bearer, '|') ? substr($bearer, strpos($bearer, '|') + 1) : $bearer;
 
         return self::archiveFor('token', hash('sha256', $secret));
+    }
+
+    /** $hash is LoginCardService::hashFor() of a scanned card. */
+    public static function archiveForLoginCode(string $hash): ?GameArchive
+    {
+        return self::archiveFor('login_code', $hash);
     }
 
     public static function gameEndedResponse(GameArchive $archive)

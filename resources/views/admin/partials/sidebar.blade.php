@@ -21,6 +21,7 @@
             'icon' => 'fa-box-open',
             'items' => [
                 ['admin.users',                'fa-users',          'Account Management', 'text-blue-500'],
+                ['admin.login-cards',          'fa-id-card',        'Kartu Login Tim',    'text-indigo-500'],
                 ['admin.team-management',      'fa-users-cog',      'Team Management',    'text-indigo-500'],
                 ['admin.dashboard-management', 'fa-cogs',           'Questionnaires',     'text-emerald-500'],
                 ['admin.games',                'fa-gamepad',        'AR Outposts',        'text-purple-500'],
