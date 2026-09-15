@@ -4,8 +4,7 @@ use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
 
-// Run by the hPanel cron every 5 minutes: php artisan schedule:run. everyMinute tasks therefore run every
-// 5 minutes; hourly ones on the run that lands on minute 0.
+// Run by the hPanel cron every minute: php artisan schedule:run.
 
 // Heartbeat: proves the cron is alive. Shown on /admin/fekdi.
 Schedule::call(fn () => \App\Models\AppSetting::put('scheduler_heartbeat', now()->toIso8601String()))

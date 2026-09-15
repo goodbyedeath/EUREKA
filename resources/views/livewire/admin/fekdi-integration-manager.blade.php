@@ -68,12 +68,12 @@
             </button>
         </div>
         <p class="mt-2 text-xs text-gray-500">
-            Otomatis: poin dikirim setiap 5 menit dan data peserta ditarik setiap jam, selama integrasi aktif dan cron berjalan.
+            Otomatis: poin dikirim setiap menit dan data peserta ditarik setiap jam, selama integrasi aktif dan cron berjalan.
             Cron terakhir berjalan:
             @if ($heartbeat)
                 @php($beat = \Illuminate\Support\Carbon::parse($heartbeat))
-                <span class="{{ $beat->lt(now()->subMinutes(12)) ? 'text-red-700 font-medium' : 'text-green-700' }}">{{ $when($heartbeat) }}</span>
-                @if ($beat->lt(now()->subMinutes(12))) — cron tampaknya berhenti, cek hPanel.@endif
+                <span class="{{ $beat->lt(now()->subMinutes(5)) ? 'text-red-700 font-medium' : 'text-green-700' }}">{{ $when($heartbeat) }}</span>
+                @if ($beat->lt(now()->subMinutes(5))) — cron tampaknya berhenti, cek hPanel.@endif
             @else
                 <span class="text-amber-700">belum pernah tercatat</span>
             @endif
