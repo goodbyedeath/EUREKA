@@ -102,6 +102,52 @@
                             </div>
                         </div>
 
+                        <!-- Post: the team scans START and checks in here before this questionnaire opens -->
+                        <div class="rounded-md border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/30 p-3 space-y-3"
+                             x-data="{ mode: @entangle('editVenueMode') }">
+                            <div>
+                                <p class="text-sm font-medium text-gray-900 dark:text-gray-100">Pos</p>
+                                <p class="text-xs text-gray-600 dark:text-gray-400">
+                                    Tim hanya bisa scan kuesioner ini setelah scan QR START dan check-in di pos yang dipilih
+                                    (outdoor: check-in GPS; indoor: pos dibuka kru di Outpost Access). Tanpa pos, kuesioner tidak bisa discan.
+                                </p>
+                            </div>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div>
+                                    <label for="editVenueMode" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Venue</label>
+                                    <select id="editVenueMode" x-model="mode"
+                                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-gray-100">
+                                        <option value="">— Belum ditentukan —</option>
+                                        <option value="outdoor">Outdoor (check-in GPS)</option>
+                                        <option value="indoor">Indoor (dibuka kru)</option>
+                                    </select>
+                                    @error('editVenueMode') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
+                                </div>
+                                <div x-show="mode === 'outdoor'" x-cloak>
+                                    <label for="editQuestLocationId" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Pos outdoor (Quest Location)</label>
+                                    <select id="editQuestLocationId" wire:model.defer="editQuestLocationId"
+                                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-gray-100">
+                                        <option value="">— Pilih pos —</option>
+                                        @foreach($questLocations as $location)
+                                            <option value="{{ $location->id }}">{{ $location->name }}</option>
+                                        @endforeach
+                                    </select>
+                                    @error('editQuestLocationId') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
+                                </div>
+                                <div x-show="mode === 'indoor'" x-cloak>
+                                    <label for="editGameLocationId" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Pos indoor (Game Location)</label>
+                                    <select id="editGameLocationId" wire:model.defer="editGameLocationId"
+                                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-gray-100">
+                                        <option value="">— Pilih pos —</option>
+                                        @foreach($gameLocations as $location)
+                                            <option value="{{ $location->id }}">{{ $location->name }}</option>
+                                        @endforeach
+                                    </select>
+                                    @error('editGameLocationId') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- Active Status -->
                         <div class="flex items-center">
                             <input type="checkbox" 
@@ -283,6 +329,13 @@
                                     <span class="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $questionnaire->is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800' }}">
                                         {{ $questionnaire->is_active ? __('common.active') : __('common.inactive') }}
                                     </span>
+                                    @if($questionnaire->venue_mode === 'outdoor' && $questionnaire->questLocation)
+                                        <span class="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">Outdoor · {{ $questionnaire->questLocation->name }}</span>
+                                    @elseif($questionnaire->venue_mode === 'indoor' && $questionnaire->gameLocation)
+                                        <span class="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">Indoor · {{ $questionnaire->gameLocation->name }}</span>
+                                    @else
+                                        <span class="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800" title="Tim tidak bisa scan kuesioner ini sampai posnya dipilih">Belum ada pos — tidak bisa discan</span>
+                                    @endif
                                 </div>
                             </div>
                             

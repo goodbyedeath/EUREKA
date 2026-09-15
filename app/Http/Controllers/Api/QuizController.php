@@ -132,6 +132,14 @@ class QuizController extends Controller
                 ], 403);
             }
 
+            // Same gate as qr/lookup, for a NEW attempt: it closes scans recorded before the rule existed.
+            // Resuming an attempt already open at this station is never blocked.
+            $resuming = QuizAttempt::where('user_id', Auth::id())->where('questionnaire_id', $questionnaire->id)
+                ->where('status', QuizAttempt::STATUS_STARTED)->whereNull('completed_at')->exists();
+            if (! $resuming && ($refusal = app(\App\Services\StationGate::class)->refusal(Auth::id(), $questionnaire->id))) {
+                return $refusal;
+            }
+
             // Require the QR scan. The code is the only proof a team actually reached the
             // outpost, so without this the sequential questionnaire ids let them clear
             // every quiz from the start line without moving.

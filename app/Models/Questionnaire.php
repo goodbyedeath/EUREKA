@@ -35,6 +35,10 @@ class Questionnaire extends Model
         'is_active',
         // False for a bonus post: it still scores, but does not hold the clock open.
         'counts_toward_finish',
+        // The post a team must check in at before this questionnaire opens (App\Services\StationGate).
+        'venue_mode',
+        'quest_location_id',
+        'game_location_id',
         'time_limit',
         'created_by',
         'start_date',
@@ -178,5 +182,17 @@ class Questionnaire extends Model
             ->where('user_id', $userId)
             ->completed()
             ->avg('total_score');
+    }
+
+    /** Outdoor post: the team checks in here by GPS. */
+    public function questLocation(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(QuestLocation::class);
+    }
+
+    /** Indoor post: the crew opens it for the team on Outpost Access. */
+    public function gameLocation(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(GameLocation::class);
     }
 }

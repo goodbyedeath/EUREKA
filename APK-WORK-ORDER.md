@@ -27,6 +27,7 @@ differ; the names here are suggestions, not requirements.
 00000. **Race reset handling** — the admin can emergency-stop the race for all teams. See §11.
 000000. **Team setup: registered participants** — search the FEKDI x IFSE list or type manually. See §12.
 0000000. **Answers to #13 and #14, outposts and flags** — see §13.
+00000000. **Station gate: START and check-in before a questionnaire** — see §14. #16 (login cards) is next on the server.
 1. **The 3D Camera** — `ar/ArActivity.kt`. §9 rewritten into a full spec; one earlier answer reversed.
 2. **Results screen**
 3. **QR scanner** — was blocked on a server test. It is not any more; see §3.
@@ -400,6 +401,29 @@ Note `gps_tracking` is currently **off**, so background position sending must no
 one delivered 20 minutes after is dropped with the time-out message; a stored session wiped by a race
 stop does not reopen; the outpost sheet shows `what_to_do` and its picture; a second check-in shows
 "already checked in"; with `gps_tracking` off no position is sent.
+
+---
+
+## 14 — Station gate: START, then check-in, then the questionnaire  ·  operator 15 Sep
+
+Operator's field test: after an emergency reset, teams scanned a questionnaire QR without scanning
+START or reaching the post, and answered it. Fixed on the server: a questionnaire is linked to one post,
+and opens only after START plus a check-in there (outdoor: GPS check-in; indoor: the crew opens the
+post on Outpost Access). Unlinked questionnaires cannot be scanned.
+
+New `403` refusals on `qr/lookup` and on `quiz/start` for a new attempt: `race_not_started`,
+`checkin_required` (with `post {type, id, name}`), `station_not_linked`. Spec: build guide §4 →
+*From scan to the questions screen*.
+
+**Done when:**
+- scanning a questionnaire before START shows "Scan QR START dulu" and offers the scanner;
+- after START, scanning an outdoor questionnaire before checking in shows the post name and opens the
+  map at that post; after the check-in the same scan opens the questions;
+- an indoor questionnaire shows "wait for the crew" until the crew opens the post;
+- none of these refusals is shown as "no signal" or queued for retry.
+
+Your #16 (team accounts + QR login cards) is approved by the operator and is being built next; its
+contract entry will follow.
 
 ---
 

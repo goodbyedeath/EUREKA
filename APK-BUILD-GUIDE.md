@@ -281,6 +281,11 @@ the flow, exactly:
    ├─ 200 type = "race_start"     → race flow (§8), not a quiz
    ├─ 200 type = "questionnaire"  → take questionnaire.id  ─────────────┐
    ├─ 404 unknown_code            → "This code is not part of the event" │
+   ├─ 403 station_not_linked      → "Pos belum disiapkan — hubungi panitia"│
+   ├─ 403 race_not_started        → "Scan QR START dulu" → open the scanner│
+   ├─ 403 checkin_required        → post {type, id, name}: outdoor → open  │
+   │                                 the map at that post; indoor → "wait  │
+   │                                 for the crew"                          │
    ├─ 403 not_available           → reason "inactive": "Station is off — │
    │                                 ask the crew"                       │
    ├─ 409 session_in_progress     → another session is live: open its     │
@@ -301,6 +306,22 @@ the flow, exactly:
 `/quiz/start` is **idempotent**: calling it again returns the same live attempt with its saved
 answers, so it is safe on screen re-entry. The lookup is what records the scan, and `/quiz/start`
 refuses (`scan_required`) without it — never call start from a local decode alone.
+
+**The station gate — operator, 15 Sep.** A questionnaire opens only after (1) the team scanned **START**
+and (2) checked in at the **post** the admin linked it to: outdoor = GPS check-in at that Quest
+Location; indoor = the crew opened that Game Location for the team. An unlinked questionnaire cannot
+be scanned. `qr/lookup` refuses before recording the scan (no attempt burned), and `quiz/start`
+refuses a **new** attempt the same way; resuming an attempt already open is never blocked.
+All three refusals are `403` with the `message` to show:
+
+```json
+{ "success": false, "error": "checkin_required",
+  "message": "Check-in di pos Pos Demo terlebih dahulu.",
+  "post": { "type": "outdoor", "id": 30, "name": "Pos Demo" } }
+```
+
+`race_not_started` and `station_not_linked` carry no `post`. After an emergency race stop every team is
+back at `race_not_started`.
 
 **The 200 body, verified live (Pos Merah):**
 
@@ -1168,6 +1189,9 @@ human-facing prose and is translated.
 | `game_ended` | 403 | Session archived — Game ended screen, wipe, stop every request for good (§2b) |
 | `race_reset` | 409 | The admin stopped the race — show the message, drop session state, dashboard, stay logged in (§2c) |
 | `team_locked` | 403 | Member add/remove after setup — remove the call; members are fixed |
+| `race_not_started` | 403 | Questionnaire scan before START — send the team to scan START |
+| `checkin_required` | 403 | Not checked in at this questionnaire's `post` (outdoor: GPS check-in; indoor: crew opens it) |
+| `station_not_linked` | 403 | The admin has not linked a post — nothing the team can do |
 | `questions_incomplete` | 409 | Submit before every question is done; body has `pending` — stay in the session |
 | `session_in_progress` | 409 | Another session is live; body has `attempt_id` — open it |
 | `assessment_not_found` | 404 | No such assessment, or another team's |

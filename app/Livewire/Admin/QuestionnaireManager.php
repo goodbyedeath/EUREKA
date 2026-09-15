@@ -29,6 +29,10 @@ class QuestionnaireManager extends Component
     public bool $editIsActive = true;
     /** False marks a bonus post: it scores, but does not hold the race clock open. */
     public bool $editCountsTowardFinish = true;
+    /** outdoor | indoor | '' — and the post for that mode. Untyped: a select sends '' for "none". */
+    public $editVenueMode = '';
+    public $editQuestLocationId = null;
+    public $editGameLocationId = null;
 
     protected $listeners = [
         'questionnaire-created' => '$refresh',
@@ -65,6 +69,9 @@ class QuestionnaireManager extends Component
             $this->editQrCode = $this->editQuestionnaire->qr_code ?? '';
             $this->editIsActive = $this->editQuestionnaire->is_active;
             $this->editCountsTowardFinish = (bool) $this->editQuestionnaire->counts_toward_finish;
+            $this->editVenueMode = $this->editQuestionnaire->venue_mode ?? '';
+            $this->editQuestLocationId = $this->editQuestionnaire->quest_location_id;
+            $this->editGameLocationId = $this->editQuestionnaire->game_location_id;
             
             $this->showEditModal = true;
         } catch (\Exception $e) {
@@ -89,6 +96,9 @@ class QuestionnaireManager extends Component
         $this->editQrCode = '';
         $this->editIsActive = true;
         $this->editCountsTowardFinish = true;
+        $this->editVenueMode = '';
+        $this->editQuestLocationId = null;
+        $this->editGameLocationId = null;
     }
 
     public function updateQuestionnaire()
@@ -104,7 +114,12 @@ class QuestionnaireManager extends Component
             'editTimeLimit' => 'nullable|integer|min:1|max:1440', // Max 24 hours
             'editMaxAttempts' => 'nullable|integer|min:1|max:10',
             'editQrCode' => 'nullable|string|max:255',
+            'editVenueMode' => 'nullable|in:outdoor,indoor',
+            'editQuestLocationId' => 'nullable|required_if:editVenueMode,outdoor|exists:quest_locations,id',
+            'editGameLocationId' => 'nullable|required_if:editVenueMode,indoor|exists:game_locations,id',
         ], [
+            'editQuestLocationId.required_if' => 'Pilih pos outdoor untuk kuesioner ini.',
+            'editGameLocationId.required_if' => 'Pilih pos indoor untuk kuesioner ini.',
             'editTitle.required' => 'Title is required.',
             'editTitle.max' => 'Title cannot exceed 255 characters.',
             'editDescription.max' => 'Description cannot exceed 1000 characters.',
@@ -124,6 +139,9 @@ class QuestionnaireManager extends Component
                     'qr_code' => $this->editQrCode ?: null,
                     'is_active' => $this->editIsActive,
                     'counts_toward_finish' => $this->editCountsTowardFinish,
+                    'venue_mode' => $this->editVenueMode ?: null,
+                    'quest_location_id' => $this->editVenueMode === 'outdoor' ? (int) $this->editQuestLocationId : null,
+                    'game_location_id' => $this->editVenueMode === 'indoor' ? (int) $this->editGameLocationId : null,
                     'updated_at' => now()
                 ]);
                 
@@ -235,7 +253,7 @@ class QuestionnaireManager extends Component
     public function render()
     {
         $questionnaires = Questionnaire::withCount('questions')
-            ->with('creator')
+            ->with(['creator', 'questLocation:id,name', 'gameLocation:id,name'])
             ->orderBy('created_at', 'desc')
             ->get()
             ->map(function ($questionnaire) {
@@ -255,7 +273,9 @@ class QuestionnaireManager extends Component
             });
 
         return view('livewire.admin.questionnaire-manager', [
-            'questionnaires' => $questionnaires
+            'questionnaires' => $questionnaires,
+            'questLocations' => \App\Models\QuestLocation::where('is_active', true)->orderBy('name')->get(['id', 'name']),
+            'gameLocations' => \App\Models\GameLocation::where('is_active', true)->orderBy('name')->get(['id', 'name']),
         ])->layout(null);
     }
 }

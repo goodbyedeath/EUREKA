@@ -6,6 +6,11 @@ Generated from the live router on questerra-series.com. Base URL `https://queste
 
 Act on these — several change responses your app already handles.
 
+**Latest (15 Sep, third change): the station gate.** `qr/lookup` and `quiz/start` (new attempt) refuse a
+questionnaire until the team scanned START and checked in at its linked post: `403 race_not_started`,
+`403 checkin_required` (+ `post {type: outdoor|indoor, id, name}`), `403 station_not_linked`. Build
+guide §4; work order §14.
+
 **Latest (15 Sep, second change): late facilitator scores, outposts, flags.** A score whose PIN passed
 `verify-pin` before time-out is accepted up to 15 minutes after it (`accepted_late: true`); judged on the
 server's `pin_verified_at`. `GET /quest-locations` items add `image_url`, `map_image_url`. Check-in:
@@ -152,6 +157,9 @@ the photo as optional cannot submit at all.
 | `game_already_assessed` | 409 | A facilitator already scored this game | Move on |
 | `not_a_game_question` | 422 | `complete-game` called on a normal question | Fix the call |
 | `unknown_code` | 404 | `qr/lookup`: code is not in this event | Show it; let them rescan |
+| `race_not_started` | 403 | `qr/lookup` / `quiz/start`: START not scanned | Send the team to scan START |
+| `checkin_required` | 403 | Not checked in at the questionnaire's post; `post {type,id,name}` | Outdoor: map at that post; indoor: wait for crew |
+| `station_not_linked` | 403 | The admin linked no post to this questionnaire | Tell the crew |
 | `game_ended` | 403 | Any call, login included: the session was archived | Game ended screen, wipe, never call again |
 | `race_reset` | 409 | Quiz call naming an attempt/assessment wiped by an emergency race stop | Message, drop session state, dashboard |
 | `team_locked` | 403 | `team/members` add or remove after setup | Remove the call; members are fixed |

@@ -89,6 +89,12 @@ class QRScannerController extends Controller
                 ], 409);
             }
 
+            // START first, then a check-in at this questionnaire's post (operator, 15 Sep). Before
+            // recordScan, so a refusal burns no attempt.
+            if ($refusal = app(\App\Services\StationGate::class)->refusal(Auth::id(), $questionnaire->id)) {
+                return $refusal;
+            }
+
             // Check if questionnaire is available (date range, etc.)
             if (!$questionnaire->isAvailable()) {
                 return response()->json([
