@@ -306,10 +306,19 @@
     <!-- Header with Create Button -->
     <div class="flex justify-between items-center mb-6">
         <h2 class="text-xl font-semibold">{{ __('quiz.questionnaire_management') }}</h2>
+        <div class="flex flex-wrap items-center gap-2">
+            {{-- Bulk print for the stations. Plain links: the PDF downloads, the page stays. --}}
+            <a href="{{ route('admin.questionnaires.qr-pdf') }}" class="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700">
+                <i class="fas fa-print"></i> Cetak semua QR
+            </a>
+            <a href="{{ route('admin.questionnaires.qr-pdf', ['layout' => 'large']) }}" class="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700">
+                QR besar (1 per halaman)
+            </a>
         <button wire:click="openCreateModal" 
                 class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors duration-200">
             {{ __('quiz.create_new_questionnaire') }}
         </button>
+        </div>
     </div>
 
     <!-- Questionnaires Table -->

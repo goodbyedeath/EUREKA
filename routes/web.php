@@ -173,6 +173,8 @@ Route::middleware(['auth', 'preventbackhistory'])->group(function () {
         // Generated team accounts and their printed QR login cards.
         Route::get('/login-cards', fn () => view('admin.login-cards'))->name('login-cards');
         Route::get('/login-cards/pdf', App\Http\Controllers\Admin\LoginCardPdfController::class)->name('login-cards.pdf');
+        // Every questionnaire QR in one PDF: ?layout=grid|large, ?all=1 to include inactive ones.
+        Route::get('/questionnaires/qr-pdf', App\Http\Controllers\Admin\QuestionnaireQrPdfController::class)->name('questionnaires.qr-pdf');
         // Panduan setup, ditulis untuk operator acara dan bukan untuk programmer.
         Route::get('/panduan', fn () => view('admin.guide'))->name('guide');
     });
