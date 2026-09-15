@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <link rel="icon" type="image/png" href="{{ \App\Models\BrandSetting::iconUrl() }}">
     <title>Editor 3D — {{ $gameLocation->name }}</title>
     <style>
         * { box-sizing: border-box; }
@@ -86,7 +87,7 @@
         <button type="button" class="btn primary" id="new-obj" style="width:100%;margin-bottom:10px">+ Objek baru</button>
         <div id="objects"></div>
         <p class="muted" style="margin-top:12px">
-            Pemain berdiri di tengah (hijau) menghadap QR (panah kuning). Seret objek di layar untuk
+            Pemain berdiri di tengah (hijau) menghadap arah kamera (panah kuning). Seret objek di layar untuk
             memindahkannya. Seret area kosong untuk memutar kamera, klik kanan/Shift untuk menggeser,
             scroll untuk zoom.
         </p>
@@ -136,7 +137,7 @@
         </div>
 
         <div class="panel" data-panel="2" hidden>
-            <p class="muted">Posisi dihitung dari tempat pemain berdiri saat memindai QR. Arah 0° = lurus ke QR, positif = ke kanan.</p>
+            <p class="muted">Posisi dihitung dari tempat pemain berdiri saat memindai QR. Arah 0° = lurus ke arah kamera (arah HP saat kalibrasi di QR), positif = ke kanan.</p>
             <label class="f">Arah dari pemain</label>
             <div class="row">
                 <input type="range" data-field="bearing" data-mirror="f-bearing" min="-180" max="180" step="1">
@@ -622,7 +623,7 @@
         try {
             const res = await fetch(CFG.urls.media, { method: 'POST', body: fd, headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': CSRF } });
             const d = await res.json().catch(() => null);
-            if (!res.ok || !d || !d.success) throw new Error(reason(d));
+            if (!res.ok || !d || !d.success) throw new Error(reason(d, res));
             item.form.media_path = d.path;
             item.form.image = d.url;
             if (item === current) {
@@ -646,7 +647,7 @@
     }
     function showSummary() {
         const f = current.form;
-        const side = Math.abs(f.bearing) < 3 ? 'lurus ke arah QR' : (f.bearing > 0 ? Math.round(f.bearing) + '° ke kanan' : Math.round(-f.bearing) + '° ke kiri');
+        const side = Math.abs(f.bearing) < 3 ? 'lurus ke arah kamera' : (f.bearing > 0 ? Math.round(f.bearing) + '° ke kanan' : Math.round(-f.bearing) + '° ke kiri');
         const pay = M.toPayload(f);
         $('pos-summary').textContent = r2(f.horizontal) + ' m ' + side + ', ' + (f.height >= 0 ? r2(f.height) + ' m di atas' : r2(-f.height) + ' m di bawah') + ' HP · jarak langsung ' + pay.distance + ' m';
     }
@@ -659,9 +660,16 @@
     }
 
     function msg(t) { $('msg').textContent = t || ''; }
-    function reason(d) {
+    // Say what actually failed. A bare "Gagal menyimpan" left a 404 in the console as the
+    // only clue; the status and the likely cause are what the operator needs to act on.
+    function reason(d, res) {
+        const status = res ? res.status : 0;
+        if (status === 404) return 'Objek ini tidak ditemukan di server (mungkin sudah dihapus di perangkat lain). Muat ulang halaman. (HTTP 404)';
+        if (status === 419) return 'Sesi login habis. Muat ulang halaman lalu simpan lagi. (HTTP 419)';
+        if (status === 413) return 'File terlalu besar untuk server. (HTTP 413)';
         if (d && d.errors) return Object.values(d.errors).flat()[0];
-        return (d && d.message) || 'Gagal menyimpan.';
+        if (d && d.message) return d.message + (status >= 400 ? ' (HTTP ' + status + ')' : '');
+        return 'Gagal menyimpan' + (status >= 400 ? ' (HTTP ' + status + ')' : '') + '.';
     }
 
     function goStep(n) {
@@ -733,7 +741,7 @@
                 body: JSON.stringify(body),
             });
             const d = await res.json().catch(() => null);
-            if (!res.ok || !d || !d.success) throw new Error(reason(d));
+            if (!res.ok || !d || !d.success) throw new Error(reason(d, res));
             // Re-read the server's numbers: it re-derives the position, and the phone uses those.
             item.saved = d.hotspot;
             item.form = formFrom(d.hotspot);
@@ -758,7 +766,7 @@
                     method: 'DELETE', headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': CSRF },
                 });
                 const d = await res.json().catch(() => null);
-                if (!res.ok || !d || !d.success) throw new Error(reason(d));
+                if (!res.ok || !d || !d.success) throw new Error(reason(d, res));
             } catch (err) { msg(err.message || 'Gagal menghapus.'); return; }
         }
         scene.remove(item.holder);
@@ -850,7 +858,7 @@
     const tags = $('tags');
     const qrTag = document.createElement('div');
     qrTag.className = 'tag';
-    qrTag.textContent = 'Arah QR';
+    qrTag.textContent = 'Arah Kamera';
     tags.appendChild(qrTag);
     const selTag = document.createElement('div');
     selTag.className = 'tag sel';

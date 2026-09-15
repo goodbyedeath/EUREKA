@@ -4,6 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <link rel="icon" type="image/png" href="{{ \App\Models\BrandSetting::iconUrl() }}">
     <title>{{ $gameLocation->name }} — AR</title>
     <style>
         *{box-sizing:border-box}
@@ -869,10 +870,13 @@
         // Pull the real reason out of a rejected response. Laravel answers a failed
         // validation with {message, errors:{field:[…]}}; reporting that beats blaming
         // the network for a field the server refused.
-        function reasonFrom(d) {
+        function reasonFrom(d, res) {
+            const status = res ? res.status : 0;
+            if (status === 404) return 'This object no longer exists on the server (deleted elsewhere?). Reload the page. (HTTP 404)';
+            if (status === 419) return 'Your session expired. Reload the page and save again. (HTTP 419)';
             if (d && d.errors) { const f = Object.values(d.errors)[0]; return Array.isArray(f) ? f[0] : String(f); }
-            if (d && d.message) return d.message;
-            return '';
+            if (d && d.message) return d.message + (status >= 400 ? ' (HTTP ' + status + ')' : '');
+            return status >= 400 ? 'The server refused it (HTTP ' + status + ').' : '';
         }
 
         let ghost = null, placing = false;
@@ -1120,7 +1124,7 @@
                         headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content }
                     });
                     const d = await res.json().catch(() => null);
-                    if (!res.ok || !d || !d.success) throw new Error(reasonFrom(d));
+                    if (!res.ok || !d || !d.success) throw new Error(reasonFrom(d, res));
                     uploadedImagePath = d.path;
                     imgMsg.textContent = 'Image ready.';
                 } catch (e) {
@@ -1149,6 +1153,9 @@
             // null = placing something new; a holder = editing that object.
 
             function loadIntoPanel(h) {
+                document.getElementById('p-title').value = h.title || '';
+                document.getElementById('p-desc').value = h.description || '';
+                document.getElementById('p-points').value = h.points ?? 0;
                 dist.value = h.distance ?? 3;
                 document.getElementById('p-dist-v').textContent = parseFloat(dist.value).toFixed(1) + ' m';
                 showScale(h.scale || 1);
@@ -1229,7 +1236,7 @@
                         method: 'DELETE', credentials: 'same-origin',
                         headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content }
                     });
-                    if (!res.ok) throw new Error(reasonFrom(await res.json().catch(() => null)));
+                    if (!res.ok) throw new Error(reasonFrom(await res.json().catch(() => null), res));
                     scene.remove(editing);
                     targets.splice(targets.indexOf(editing), 1);
                     countEl.textContent = found + '/' + targets.length;
@@ -1316,7 +1323,7 @@
             });
 
             document.getElementById('p-save').addEventListener('click', async () => {
-                // Editing an existing object only changes where/how big/what shape.
+                // Editing an existing object: pose, model, motions, interaction, name, clue, points.
                 if (editing) {
                     const h = editing.userData.hotspot;
                     msg.textContent = 'Saving…';
@@ -1330,11 +1337,15 @@
                                 pitch: pitchFromHeight(),
                                 rotation_x: parseFloat(rx.value), rotation_y: parseFloat(ry.value), rotation_z: parseFloat(rz.value),
                                 ar_model_id: modelSel.value ? parseInt(modelSel.value, 10) : null,
-                                ...interactionPayload(), ...animationPayload()
+                                ...interactionPayload(), ...animationPayload(),
+                                // Empty title is ignored server-side (keeps the old one); an empty clue clears it.
+                                title: document.getElementById('p-title').value.trim(),
+                                description: document.getElementById('p-desc').value,
+                                points_value: parseInt(document.getElementById('p-points').value || '0', 10)
                             })
                         });
                         const d = await res.json().catch(() => null);
-                        if (!res.ok || !d || !d.success) throw new Error(reasonFrom(d));
+                        if (!res.ok || !d || !d.success) throw new Error(reasonFrom(d, res));
                         editing.userData.hotspot = d.hotspot;
                         // Re-seat from the server's numbers. It recomputes position from
                         // pitch and distance, so this is the one place both clients agree —
@@ -1384,7 +1395,7 @@
                         })
                     });
                     const data = await res.json().catch(() => null);
-                    if (!res.ok || !data || !data.success) throw new Error(reasonFrom(data));
+                    if (!res.ok || !data || !data.success) throw new Error(reasonFrom(data, res));
 
                     spawnObject(data.hotspot);
                     HOTSPOTS.push(data.hotspot);
