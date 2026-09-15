@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Storage;
 
 class HeroSlideManagement extends Component
 {
-    use WithFileUploads;
+    use \App\Livewire\Concerns\GuardsFileUploads;
     
     public $slides = [];
     public $editingSlide = null;

@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\Storage;
 
 class QuestionForm extends Component
 {
-    use WithFileUploads;
+    use \App\Livewire\Concerns\GuardsFileUploads;
     public Questionnaire $questionnaire;
     public ?int $editingQuestionId = null;
     public bool $isEditing = false;

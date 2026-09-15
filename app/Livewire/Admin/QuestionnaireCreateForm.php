@@ -12,7 +12,7 @@ use Carbon\Carbon;
 
 class QuestionnaireCreateForm extends Component
 {
-    use WithFileUploads;
+    use \App\Livewire\Concerns\GuardsFileUploads;
     #[Validate('required|string|max:255')]
     public string $title = '';
 

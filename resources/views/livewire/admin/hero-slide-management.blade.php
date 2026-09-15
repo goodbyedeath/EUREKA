@@ -318,10 +318,11 @@
                             <!-- Background Image Upload -->
                             <div class="md:col-span-2">
                                 <label for="background_image" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Background Image (Optional)</label>
-                                <div class="mt-1">
-                                    <input type="file" wire:model="background_image" id="background_image" 
+                                <div class="mt-1" x-data="{ error: '' }">
+                                    <input type="file" id="background_image" x-on:change="error = ''; const f = $event.target.files[0]; if (f) { window.eurekaShrinkImage(f, 2048 * 1024, 2560).then(out => $wire.upload('background_image', out, () => {}, () => { error = 'Upload gagal. Pilih file lagi.' })).catch(err => { error = err.message; $event.target.value = '' }) }"
                                            accept="image/*"
                                            class="block w-full text-sm text-gray-500 dark:text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 dark:file:bg-blue-900 file:text-blue-700 dark:file:text-blue-300 hover:file:bg-blue-100 dark:hover:file:bg-blue-800 transition-colors duration-200">
+                                    <p x-show="error" x-text="error" class="text-red-500 dark:text-red-400 text-sm mt-1"></p>
                                 </div>
                                 @error('background_image') <span class="text-red-500 dark:text-red-400 text-sm">{{ $message }}</span> @enderror
                                 

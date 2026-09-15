@@ -17,7 +17,7 @@ use Livewire\WithFileUploads;
  */
 class BrandLogoManager extends Component
 {
-    use WithFileUploads;
+    use \App\Livewire\Concerns\GuardsFileUploads;
 
     public $horizontalUpload;
     public $iconUpload;

@@ -93,8 +93,13 @@
                 </div>
             </div>
 
-            <input type="file" wire:model="horizontalUpload" accept="image/png,image/jpeg,image/webp"
-                   class="w-full text-sm text-gray-600 dark:text-gray-300">
+            {{-- Shrunk in the browser first (window.eurekaShrinkImage): the limit below is 2 MB. --}}
+            <div x-data="{ error: '' }">
+                <input type="file" accept="image/png,image/jpeg,image/webp"
+                       x-on:change="error = ''; const f = $event.target.files[0]; if (f) { window.eurekaShrinkImage(f, 2048 * 1024, 2400).then(out => $wire.upload('horizontalUpload', out, () => {}, () => { error = 'Upload gagal. Pilih file lagi.' })).catch(err => { error = err.message; $event.target.value = '' }) }"
+                       class="w-full text-sm text-gray-600 dark:text-gray-300">
+                <p x-show="error" x-text="error" class="text-red-500 text-xs mt-1"></p>
+            </div>
             <div wire:loading wire:target="horizontalUpload" class="text-xs text-blue-600 mt-1">Uploading&hellip;</div>
             @error('horizontalUpload') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
 
@@ -171,8 +176,12 @@
                 </div>
             </div>
 
-            <input type="file" wire:model="iconUpload" accept="image/png,image/jpeg,image/webp"
-                   class="w-full text-sm text-gray-600 dark:text-gray-300">
+            <div x-data="{ error: '' }">
+                <input type="file" accept="image/png,image/jpeg,image/webp"
+                       x-on:change="error = ''; const f = $event.target.files[0]; if (f) { window.eurekaShrinkImage(f, 1024 * 1024, 1024).then(out => $wire.upload('iconUpload', out, () => {}, () => { error = 'Upload gagal. Pilih file lagi.' })).catch(err => { error = err.message; $event.target.value = '' }) }"
+                       class="w-full text-sm text-gray-600 dark:text-gray-300">
+                <p x-show="error" x-text="error" class="text-red-500 text-xs mt-1"></p>
+            </div>
             <div wire:loading wire:target="iconUpload" class="text-xs text-blue-600 mt-1">Uploading&hellip;</div>
             @error('iconUpload') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
 

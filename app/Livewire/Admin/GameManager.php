@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Storage;
 
 class GameManager extends Component
 {
-    use WithFileUploads, WithPagination;
+    use \App\Livewire\Concerns\GuardsFileUploads, WithPagination;
 
     public $name = '';
     public $description = '';

@@ -19,7 +19,7 @@ use Livewire\WithFileUploads;
  */
 class IndoorMapManager extends Component
 {
-    use WithFileUploads;
+    use \App\Livewire\Concerns\GuardsFileUploads;
 
     public ?int $mapId = null;
 

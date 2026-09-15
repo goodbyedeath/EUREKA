@@ -16,7 +16,7 @@ use Livewire\WithPagination;
  */
 class ArModelLibrary extends Component
 {
-    use WithFileUploads, WithPagination;
+    use \App\Livewire\Concerns\GuardsFileUploads, WithPagination;
 
     public $upload;
     public $uploadName = '';

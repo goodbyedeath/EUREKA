@@ -445,6 +445,59 @@
     </script>
 
     <!-- Add this stack for any additional scripts that might be pushed from other components -->
+    <script>
+        /**
+         * Shrink an image in the browser before a Livewire upload. 15 Sep: a 4 MB key visual picked as
+         * the wide logo broke mid-upload — and the server would have refused anything over 2 MB anyway.
+         * PNG stays PNG (transparency); JPEG and WebP are re-encoded as JPEG, lowering quality until the
+         * file fits. Anything else is passed through for the server to judge. Rejects with a message
+         * the admin can act on when an image still does not fit.
+         */
+        window.eurekaShrinkImage = async function (file, maxBytes, maxSide) {
+            const mb = (n) => (n / 1048576).toFixed(1).replace('.', ',') + ' MB';
+            if (! /^image\/(png|jpeg|webp)$/.test(file.type)) return file;
+
+            let bitmap;
+            try {
+                bitmap = await createImageBitmap(file);
+            } catch (e) {
+                if (file.size <= maxBytes) return file;
+                throw new Error('File tidak bisa dibaca sebagai gambar.');
+            }
+
+            const scale = Math.min(1, maxSide / Math.max(bitmap.width, bitmap.height));
+            if (scale === 1 && file.size <= maxBytes) {
+                if (bitmap.close) bitmap.close();
+                return file;
+            }
+
+            const canvas = document.createElement('canvas');
+            canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+            canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+            canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+            if (bitmap.close) bitmap.close();
+
+            const toBlob = (type, quality) => new Promise((resolve) => canvas.toBlob(resolve, type, quality));
+            const png = file.type === 'image/png';
+            let blob = null;
+
+            if (png) {
+                blob = await toBlob('image/png');
+            } else {
+                for (const quality of [0.9, 0.8, 0.7, 0.6]) {
+                    blob = await toBlob('image/jpeg', quality);
+                    if (blob && blob.size <= maxBytes) break;
+                }
+            }
+
+            if (! blob || blob.size > maxBytes) {
+                throw new Error('Gambar terlalu besar (' + mb(file.size) + '). Maksimal ' + mb(maxBytes) + ' — kecilkan dulu lalu coba lagi.');
+            }
+
+            return new File([blob], png ? file.name : file.name.replace(/\.[^.]+$/, '') + '.jpg', { type: blob.type });
+        };
+    </script>
+
     @stack('scripts')
     
     <!-- Marzipano is now loaded via Vite as npm package -->
