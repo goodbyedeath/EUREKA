@@ -745,8 +745,20 @@ Two things to get right:
 - **`x` and `y` are percentages, not pixels** (0–100). Multiply by your rendered image size, so the
   plan can be displayed at any width.
 
-`is_open` says whether the crew has opened that spot for this team. `game_location_id` links a
-spot to an AR outpost when it has one.
+`is_open` says whether that spot's post is open for this team. `game_location_id` links a spot to an
+AR outpost when it has one.
+
+**A correct START clue opens every post on the plan** (operator, 15 Sep — your #21). When
+`POST /race/clue/{map}` returns `correct: true, already_solved: false`, the server has written an
+open unlock for this team on every active spot of that plan that has a `game_location_id`. It is the
+same row the crew's Outpost Access panel writes, so `is_open`, the station gate (`checkin_required`,
+indoor) and the AR gate (`awaiting_unlock`) all agree at once. **The crew can still close a post** for
+a team afterwards, and answering the clue again (`already_solved: true`) does not reopen it.
+`is_open` stays the only field to read — there is no `unlocked_by`. Re-read the plan after a correct
+answer. A plan with no clue opens nothing by itself: the crew opens its posts.
+
+The clue gates nothing else on the server: `/indoor-map` and `qr/lookup` do not check
+`clue_solved`. Until it is solved no post is open, so the station gate already refuses indoor scans.
 
 ---
 
@@ -1029,7 +1041,23 @@ outpost. Place it as given. Never recompute anchors from lat/long and never re-d
 from the compass — the server's maths is the authority and the two will not agree.
 
 `scale` multiplies the model uniformly, `rotation` is in degrees, and `animations` are looped idle
-motions applied locally rather than synced. `model` is a `.glb` URL: pre-download every one from
+motions applied locally rather than synced.
+
+**Rotation order is Y, then X, then Z — yaw outermost** (three.js Euler order `'YXZ'`; as a matrix
+`R = Ry(y) · Rx(x) · Rz(z)`, applied to the model's own points). So `y` is the heading the object faces
+(a glTF model's front is its +Z), `x` tilts it and `z` rolls it. **Spin adds its angle to `y`**:
+`Ry(y + spin) · Rx(x) · Rz(z)`, which turns the object about the vertical through its own position
+after any tilt — a flat coin authored with `x: 90` stands up and turns like a top. Changed 15 Sep
+from XYZ, where spin turned a tilted object inside its own plane; every object placed before then
+has `x = z = 0`, where the two orders are identical. If your engine composes Euler angles in
+another order, build the quaternion from the three axis rotations in this order yourself.
+
+The motion formulas in `ArExperienceController` (copied by `animateObjects()` in
+`resources/views/ar/view.blade.php`) are the whole spec: spin `t·speed·30°`, bob
+`sin(2π·t·speed/4)·range` m, orbit `t·speed·12°` (orbit ignores `range`), sway
+`sin(2π·t·speed/6)·range`°; orbit and sway add into one angle that rotates the authored `x`/`z`
+about the player. Also check your renderer's far plane: `distance` goes up to 50 m, and some
+defaults stop drawing at 30 m (your #18). `model` is a `.glb` URL: pre-download every one from
 `/offline/manifest` before the event, or AR stalls in the field.
 
 A 200 with an empty `objects` array means the outpost has a model but nothing placed on it yet.
@@ -1041,6 +1069,7 @@ A 200 with an empty `objects` array means the outpost has a model but nothing pl
 ```
 GET /api/v1/offline/manifest
 { "bounds": { "north", "south", "east", "west" },
+  "map":    { "tiles": ["https://…/{z}/{x}/{y}.png"], "attribution": "…", "max_zoom": 19 },
   "quest_locations": [ { id, name, latitude, longitude, radius, marker_color } ],
   "game_locations":  [ { id, name, experience_type, model, uses_ar,
                          latitude, longitude, radius, coordinate_source, quest_location_id } ],
@@ -1051,6 +1080,13 @@ GET /api/v1/offline/manifest
 Fetch this once the team is registered and **pre-download everything on it while you still have
 signal** — venue WiFi and mobile data are both unreliable mid-game. `bounds` is the area worth
 pre-caching map tiles for. `models` are the 3D assets; AR will stall without them.
+
+**`map` is the basemap for the outdoor map** (your #20). Raster XYZ tile templates from the server's
+`config/maps.php` — the same source every web map uses, so the operator switches provider in one
+place and the app follows. Never hardcode a tile host. Show `attribution` on the map. Pre-download
+`bounds` at zoom 14–18 during Sync (cap the count; the web caps at 1500 tiles) and use the cache
+first, so the map works without signal. The default template is OpenStreetMap's public server, which
+is for light use only: download the venue once, never tile-by-tile for every team during play.
 
 Queue player actions taken offline (`save-answer`, `checkin`) and replay them when signal returns,
 **with backoff** — and drop a queued item on a `4xx` rather than retrying it forever, because a

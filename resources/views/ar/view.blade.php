@@ -204,17 +204,18 @@
             <span id="p-scale-v" style="font-size:12px;width:44px;text-align:right">1.0×</span>
         </div>
         <div style="display:flex;gap:10px;align-items:center;margin-bottom:6px">
-            <label style="font-size:12px;color:#94a3b8;width:64px">Rotate X</label>
+            <label style="font-size:12px;color:#94a3b8;width:64px" title="Tilt forward/back. 90 stands a flat model (a coin) upright.">Tilt X</label>
             <input type="range" id="p-rx" min="-180" max="180" step="5" value="0" style="flex:1">
             <span id="p-rx-v" style="font-size:12px;width:44px;text-align:right">0°</span>
         </div>
         <div style="display:flex;gap:10px;align-items:center;margin-bottom:6px">
-            <label style="font-size:12px;color:#94a3b8;width:64px">Rotate Y</label>
+            <label style="font-size:12px;color:#94a3b8;width:64px" title="Which way the object faces.">Facing Y</label>
             <input type="range" id="p-ry" min="-180" max="180" step="5" value="0" style="flex:1">
             <span id="p-ry-v" style="font-size:12px;width:44px;text-align:right">0°</span>
+            <button type="button" id="p-face" title="Turn the front of the model towards where the player stands" style="padding:4px 8px;border:0;border-radius:6px;background:#334155;color:#cbd5e1;font-size:11px">face me</button>
         </div>
         <div style="display:flex;gap:10px;align-items:center;margin-bottom:10px">
-            <label style="font-size:12px;color:#94a3b8;width:64px">Rotate Z</label>
+            <label style="font-size:12px;color:#94a3b8;width:64px" title="Roll sideways.">Roll Z</label>
             <input type="range" id="p-rz" min="-180" max="180" step="5" value="0" style="flex:1">
             <span id="p-rz-v" style="font-size:12px;width:44px;text-align:right">0°</span>
             <button type="button" id="p-rreset" style="padding:4px 8px;border:0;border-radius:6px;background:#334155;color:#cbd5e1;font-size:11px">reset</button>
@@ -491,10 +492,11 @@
         function spawnAll(list) {
           list.forEach(h => {
             const holder = new THREE.Group();
+            holder.rotation.order = 'YXZ';
             holder.position.set(h.position.x, h.position.y, h.position.z);
             if (h.rotation) {
                 const d2r = Math.PI / 180;
-                holder.rotation.set(h.rotation.x * d2r, h.rotation.y * d2r, h.rotation.z * d2r);
+                holder.rotation.set(h.rotation.x * d2r, h.rotation.y * d2r, h.rotation.z * d2r, 'YXZ');
             }
             holder.userData.hotspot = h;
             // The pose the admin authored. Every motion is expressed relative to this, so
@@ -877,10 +879,11 @@
 
         function spawnObject(h) {
             const holder = new THREE.Group();
+            holder.rotation.order = 'YXZ';
             holder.position.set(h.position.x, h.position.y, h.position.z);
             if (h.rotation) {
                 const d2r = Math.PI / 180;
-                holder.rotation.set(h.rotation.x * d2r, h.rotation.y * d2r, h.rotation.z * d2r);
+                holder.rotation.set(h.rotation.x * d2r, h.rotation.y * d2r, h.rotation.z * d2r, 'YXZ');
             }
             holder.userData.hotspot = h;
             // The pose the admin authored. Every motion is expressed relative to this, so
@@ -961,7 +964,7 @@
             const D2R = Math.PI / 180;
 
             function applyGhostRotation() {
-                ghost.rotation.set(rx.value * D2R, ry.value * D2R, rz.value * D2R);
+                ghost.rotation.set(rx.value * D2R, ry.value * D2R, rz.value * D2R, 'YXZ');
             }
             [['p-rx', rx], ['p-ry', ry], ['p-rz', rz]].forEach(([id, el]) => {
                 el.addEventListener('input', () => {
@@ -971,6 +974,17 @@
             });
             document.getElementById('p-rreset').addEventListener('click', () => {
                 [rx, ry, rz].forEach(el => { el.value = 0; el.dispatchEvent(new Event('input')); });
+            });
+            // A glTF model's front is +Z; Ry(θ) points +Z at (sin θ, 0, cos θ). The player is at the
+            // origin, so facing them from (x, z) is θ = atan2(-x, -z). Snapped to the slider's 5°.
+            document.getElementById('p-face').addEventListener('click', () => {
+                const p = editing ? editing.userData.hotspot.position : ghost.position;
+                if (!p || Math.hypot(p.x, p.z) < 0.01) return;
+                let deg = Math.round(Math.atan2(-p.x, -p.z) / D2R / 5) * 5;
+                if (deg > 180) deg -= 360;
+                if (deg < -180) deg += 360;
+                ry.value = deg;
+                ry.dispatchEvent(new Event('input'));
             });
 
             dist.addEventListener('input', () => {
@@ -1193,7 +1207,7 @@
                 const horiz = Math.sqrt(Math.max(0, d * d - y * y));
                 editing.position.set(flat.x * horiz, y, flat.z * horiz);
                 editing.scale.setScalar(currentScale());
-                editing.rotation.set(rx.value * D2R, ry.value * D2R, rz.value * D2R);
+                editing.rotation.set(rx.value * D2R, ry.value * D2R, rz.value * D2R, 'YXZ');
             }
             // hgt belongs here too: without it the height label moved but the object did
             // not, so an edited height looked like it had been ignored.
@@ -1424,6 +1438,10 @@
                     }
                 }
 
+                // Rotation order is YXZ (yaw outermost), so adding to y spins the object about
+                // the vertical through its own position after any tilt: a coin stood up with
+                // x = 90 turns like a top. In XYZ order the same line spun it inside its tilt,
+                // i.e. in its own plane, which a round coin makes invisible.
                 holder.rotation.y = base.rotY + spinAng;
                 holder.position.y = base.y + bobY;
 

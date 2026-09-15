@@ -63,6 +63,13 @@ class OfflineController extends Controller
         return response()->json([
             'success' => true,
             'bounds' => $this->boundsFor($questLocations),
+            // Basemap for a native map (APK #20): the same config/maps.php every web map reads, so
+            // switching provider is one .env change for both. Raster XYZ; show the attribution.
+            'map' => [
+                'tiles' => array_values((array) config('maps.tiles', [])),
+                'attribution' => html_entity_decode(strip_tags((string) config('maps.attribution', '')), ENT_QUOTES | ENT_HTML5),
+                'max_zoom' => (int) config('maps.maxZoom', 19),
+            ],
             'images' => $images,
             'models' => $models,
             'pages' => $pages,

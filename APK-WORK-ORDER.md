@@ -446,6 +446,37 @@ is rejected locally.
 
 ---
 
+## 16 — Clue opens the floor plan, outdoor map basemap, AR facing  ·  15 Sep
+
+Answers to your #19, #20 and #21, and one AR change. Spec: build guide §8, §9 and §10.
+
+**#21 — a correct clue opens the posts.** Server-side, nothing to fake. A first correct
+`POST /race/clue/{map}` opens every post on that plan for the team, and `is_open` turns true. The crew
+can still close one, and the clue does not reopen it. No new field. **#19** — no further server gate
+on the clue.
+
+**#20 — outdoor map.**
+1. Tiles: the new `map` block on `/offline/manifest` (`tiles`, `attribution`, `max_zoom`). Pre-download
+   `bounds` on Sync and read the cache first.
+2. Points: `GET /quest-locations` only: marker colour, radius circle, `checked_in`, the station-gate
+   post focused, and the team's own position from the device.
+3. Placement: on the dashboard during an outdoor race, as the operator asked — a compact map above
+   the score card that opens full-screen on tap, with the list still reachable.
+4. Never show other teams' positions or routes; the admin tracking map is crew-only.
+
+**AR rotation order is now Y·X·Z** (yaw outermost) and spin adds to `y`, so a coin stood up with
+`x: 90` spins like a top. Every object placed so far has `x = z = 0`, where nothing moves. Your #18
+notes (formulas are the spec, far plane) are in §9.
+
+**Done when:**
+- answering the indoor clue correctly shows every post on the plan as open within one re-read;
+- a post the crew then closes shows closed;
+- the outdoor dashboard map draws its tiles from `map.tiles`, shows the attribution and still shows
+  the venue with signal off after a Sync;
+- an object with `rotation {x: 90, y: 0, z: 0}` and a spin motion turns about the vertical.
+
+---
+
 ## Talking back — the channel runs both ways now
 
 Until today this was one-way: the server published, you consumed, and anything you had to say

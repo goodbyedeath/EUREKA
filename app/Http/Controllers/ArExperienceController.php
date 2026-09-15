@@ -12,7 +12,7 @@ class ArExperienceController extends Controller
      * Idle motions an object may have, and the exact rates every client must use.
      * t is seconds since the scene opened; speed and range come from the hotspot.
      *
-     *   spin   rotate on own Y axis     deg/s  = speed * 30
+     *   spin   turn about the vertical  deg/s  = speed * 30   (added to rotation y; order YXZ)
      *   orbit  circle the player        deg/s  = speed * 12   (a lap is ~30 s at 1.0)
      *   bob    rise and fall            y      = base.y + sin(2*PI*t*speed/4) * range   (metres)
      *   sway   arc left and right       bearing = sin(2*PI*t*speed/6) * range           (degrees)
