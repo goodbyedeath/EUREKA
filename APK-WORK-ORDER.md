@@ -25,6 +25,7 @@ differ; the names here are suggestions, not requirements.
 000. **Team setup once + score card** — operator 14 Sep. See §9.
 0000. **Game ended screen** — the admin can now archive a finished session; its APKs must go silent. See §10.
 00000. **Race reset handling** — the admin can emergency-stop the race for all teams. See §11.
+000000. **Team setup: registered participants** — search the FEKDI x IFSE list or type manually. See §12.
 1. **The 3D Camera** — `ar/ArActivity.kt`. §9 rewritten into a full spec; one earlier answer reversed.
 2. **Results screen**
 3. **QR scanner** — was blocked on a server test. It is not any more; see §3.
@@ -337,6 +338,29 @@ Spec: `APK-BUILD-GUIDE.md` §2c.
 - killing and reopening the app after a stop does not reopen the old session;
 - the dashboard shows "Scan START", and scanning it starts a fresh clock from zero;
 - nothing from the old attempt is replayed from the offline queue.
+
+---
+
+## 12 — Team setup: pick registered participants, or type them  ·  operator 15 Sep
+
+For the FEKDI x IFSE event (24–27 Sep) the server holds the client's participant list. On the Team
+setup screen each member is added either from that list (search by name or e-mail) or manually, as
+now. Each member can be made Ketua. The list can be switched off by the admin at any time; manual
+entry always works.
+
+Server: `GET /team` 404 carries `participant_directory`; `GET /participants?q=`; `POST /team` members
+accept `participant_id` and `is_leader`. The points each registered participant earns are sent to the
+client's leaderboard by the server — nothing for the app to do there.
+
+Spec: `APK-BUILD-GUIDE.md` §2a → *Team setup happens exactly once*.
+
+**Done when:**
+- with the list on, typing two letters of a participant's name shows them with a masked e-mail, and
+  picking them adds a member whose name you did not type;
+- someone already in another team shows greyed with that team's name and cannot be picked;
+- a team of two picked + one typed member, with the second as Ketua, saves in one call, and GET /team
+  shows exactly that leader;
+- with the list off, the "Sudah terdaftar" option is not shown and manual setup works unchanged.
 
 ---
 

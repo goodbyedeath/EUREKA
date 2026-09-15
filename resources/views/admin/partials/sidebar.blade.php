@@ -62,6 +62,7 @@
             'items' => [
                 ['admin.hero-slides',          'fa-images',         'Hero Slides',        'text-pink-500'],
                 ['admin.feature-management',   'fa-toggle-on',      'Feature Control',    'text-orange-500'],
+                ['admin.fekdi',                'fa-plug',           'Integrasi FEKDI',    'text-emerald-500'],
             ],
         ],
     ];

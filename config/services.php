@@ -37,6 +37,13 @@ return [
         'key' => env('OPENROUTE_API_KEY'),
     ],
 
+    // FEKDI x IFSE participant list and point pool (App\Services\FekdiIntegration).
+    'fekdi' => [
+        'base_url' => env('FEKDI_BASE_URL'),
+        'api_key' => env('FEKDI_API_KEY'),
+        'admin_name' => env('FEKDI_ADMIN_NAME', 'Questerra'),
+    ],
+
     'slack' => [
         'notifications' => [
             'bot_user_oauth_token' => env('SLACK_BOT_USER_OAUTH_TOKEN'),

@@ -118,6 +118,8 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         // reach — so the app could log a player in and then strand them with no way to form
         // a team. Rules mirror App\Livewire\Forms\TeamForm exactly.
         Route::get('/team', [\App\Http\Controllers\Api\TeamController::class, 'show'])->name('team.show');
+        // Team setup's "already registered" option: FEKDI x IFSE participants by name or e-mail.
+        Route::get('/participants', [\App\Http\Controllers\Api\ParticipantController::class, 'search'])->name('participants.search');
         Route::post('/team', [\App\Http\Controllers\Api\TeamController::class, 'store'])->name('team.store');
         Route::post('/team/members', [\App\Http\Controllers\Api\TeamController::class, 'addMember'])->name('team.members.add');
         Route::delete('/team/members/{member}', [\App\Http\Controllers\Api\TeamController::class, 'removeMember'])->name('team.members.remove');

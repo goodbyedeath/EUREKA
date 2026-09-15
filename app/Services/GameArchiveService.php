@@ -241,6 +241,9 @@ class GameArchiveService
                     'archived_at' => now(),
                 ]);
 
+                // Participants keep their team's final total; the sender delivers it after the teams are gone.
+                app(FekdiIntegration::class)->refreshPoints();
+
                 // Tombstones, taken before the rows they describe are deleted.
                 $morph = (new User)->getMorphClass();
                 $tokens = DB::table('personal_access_tokens')

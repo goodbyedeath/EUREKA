@@ -6,6 +6,12 @@ Generated from the live router on questerra-series.com. Base URL `https://queste
 
 Act on these — several change responses your app already handles.
 
+**Latest (15 Sep): team setup can pick registered participants.** `GET /api/v1/participants?q=` searches
+the FEKDI x IFSE list (name or e-mail, ≥ 2 chars; e-mails masked). `POST /team` members accept
+`participant_id` (instead of name/email) and `is_leader`. `GET /team` 404 carries
+`participant_directory`. New errors: `participant_taken` 409, `directory_disabled` 409,
+`participant_not_found` 404, `duplicate_participants` 422, `one_leader_only` 422. Build guide §2a.
+
 **Latest (14 Sep, seventh change): `race_reset`.** An admin emergency stop wipes race clocks, points,
 scans, check-ins, attempts and assessments for every team, keeping teams and accounts. Quiz calls that
 name a wiped attempt or assessment return `409 {error: "race_reset", race_reset: true, message,
@@ -143,6 +149,11 @@ the photo as optional cannot submit at all.
 | `game_ended` | 403 | Any call, login included: the session was archived | Game ended screen, wipe, never call again |
 | `race_reset` | 409 | Quiz call naming an attempt/assessment wiped by an emergency race stop | Message, drop session state, dashboard |
 | `team_locked` | 403 | `team/members` add or remove after setup | Remove the call; members are fixed |
+| `participant_taken` | 409 | `POST /team`: a picked participant is already in another team | Remove them; `team_name` in body |
+| `directory_disabled` | 409 | `participants` search or a `participant_id` while the admin switched the list off | Use manual entry |
+| `participant_not_found` | 404 | `POST /team`: unknown `participant_id` | Remove and search again |
+| `duplicate_participants` | 422 | Same participant twice | Remove the duplicate |
+| `one_leader_only` | 422 | More than one `is_leader: true` | Keep one Ketua |
 | `questions_incomplete` | 409 | `quiz/submit` while questions are unfinished and time remains; `pending` | Stay in the session |
 | `session_in_progress` | 409 | `qr/lookup` / `quiz/start` for another station while a session is live; `attempt_id` | Open that attempt |
 | `attempt_not_active` | 403 | `quiz/continue` on an attempt that is not started | Clear it locally |

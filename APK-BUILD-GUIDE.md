@@ -81,10 +81,19 @@ login, but only **after** the password is correct. Do not treat that message as 
 again."* The server enforces it:
 
 - After login, `GET /team`. **`404 no_team`** → the **Team setup** screen, before anything else. It
-  cannot be skipped or dismissed: no back, no dashboard, no scanner.
-- One call does everything: `POST /team` with `name` (3–100) and `members` (1–20, each `name` +
-  `email`, emails unique; `phone`, `position` optional). The logged-in account's email, or the first
-  member, becomes leader.
+  cannot be skipped or dismissed: no back, no dashboard, no scanner. The same 404 carries
+  `participant_directory: true|false` — whether the "already registered" option is available.
+- **Two ways to add each member** (operator, 15 Sep — both stay):
+  - **Sudah terdaftar** (only when `participant_directory` is true): a search box →
+    `GET /participants?q=<name or e-mail, ≥ 2 chars>` →
+    `{results: [{id, name, email (masked), avatar, available, team_name}]}`. Show up to 20; a row with
+    `available: false` is already in `team_name` — show it greyed with that name, not selectable.
+    Picking one adds `{ "participant_id": <id> }`; the server fills in the name and e-mail.
+  - **Manual**: type `name` + `email` (`phone`, `position` optional), exactly as before.
+  Mix both freely in one team. Each member has a **Ketua** toggle; at most one leader. If none is
+  chosen, the server makes the logged-in account's e-mail, or the first member, the leader.
+- One call does everything: `POST /team` with `name` (3–100) and `members` (1–20). Each member is
+  either `{participant_id, is_leader?}` or `{name, email, phone?, position?, is_leader?}`; e-mails unique.
 - Before sending, a confirm dialog: *"Nama tim dan anggota tidak bisa diubah lagi setelah ini."*
 - `201` → dashboard. **Never show add, edit or remove controls again.** The member list is
   read-only everywhere in the app.
@@ -93,6 +102,17 @@ again."* The server enforces it:
 - `409 team_exists` on `POST /team` means setup already happened (another device, a retry after a
   lost response) — go to the dashboard, not an error.
 - A mistake in the names is fixed by the event admin on the website, not in the app.
+
+Setup refusals:
+
+| `error` | HTTP | Show |
+|---|---|---|
+| `participant_taken` | 409 | "{name} sudah terdaftar di tim {team_name}" (both in the body); remove that member |
+| `directory_disabled` | 409 | The list was switched off meanwhile — switch those members to Manual |
+| `participant_not_found` | 404 | Remove that member (`participant_id` in the body) and search again |
+| `duplicate_participants` | 422 | The same person was added twice |
+| `one_leader_only` | 422 | More than one Ketua |
+| `duplicate_emails` | 422 | Two members share an e-mail |
 
 ### The team score card on the dashboard
 
@@ -1126,6 +1146,7 @@ A `500` is a real fault: report it, do not retry in a loop.
 - [ ] `game_ended` from any call (login too) → Game ended screen, local data wiped, workers stopped, flag checked before any request on relaunch, Uninstall button
 - [ ] `race_reset` from any quiz call → message, local session state dropped, out of the locked session, dashboard, still logged in; `race: null` clears a cached clock
 - [ ] Team setup shown once when `GET /team` is `no_team`; no member editing anywhere afterwards
+- [ ] Team setup offers "Sudah terdaftar" (search) only when `participant_directory` is true, and Manual always; one Ketua toggle
 - [ ] Dashboard score card from `team.score` (total + three lines, negative game points signed), no rank
 - [ ] A scan of any active station code lands on its questions screen, every question type rendered, images from `image_urls`
 - [ ] Inside a session: no Submit, no back, no dashboard until `can_submit`; killing the app reopens the session; time-out goes to Finish

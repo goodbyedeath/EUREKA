@@ -168,6 +168,8 @@ Route::middleware(['auth', 'preventbackhistory'])->group(function () {
         // The archive as a PDF report; ?photos=1 embeds thumbnails of the archived photos.
         Route::get('/game-archives/{archive}/pdf', App\Http\Controllers\Admin\GameArchivePdfController::class)
             ->whereNumber('archive')->name('game-archives.pdf');
+        // FEKDI x IFSE integration, 24–27 Sep 2026.
+        Route::get('/fekdi', fn () => view('admin.fekdi'))->name('fekdi');
         // Panduan setup, ditulis untuk operator acara dan bukan untuk programmer.
         Route::get('/panduan', fn () => view('admin.guide'))->name('guide');
     });
