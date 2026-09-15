@@ -22,9 +22,14 @@
         @if($game->usesAr())
             <a href="{{ route('ar.view', $game->id) }}"
                class="inline-block bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded text-xs whitespace-nowrap">
-                <i class="fas fa-cube mr-1"></i>Open 3D
+                <i class="fas fa-mobile-alt mr-1"></i>AR di HP
             </a>
         @endif
+        <a href="{{ route('ar.editor', $game->id) }}"
+           title="Atur objek di laptop: denah, pratinjau 3D, arah dan gerak. Cek akhirnya di HP di lokasi."
+           class="inline-block bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1 rounded text-xs whitespace-nowrap">
+            <i class="fas fa-laptop mr-1"></i>Editor 3D
+        </a>
     </div>
 
     {{-- Names the one store both controls below feed from, so the pair stops reading as

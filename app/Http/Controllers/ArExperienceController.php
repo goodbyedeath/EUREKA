@@ -84,6 +84,38 @@ class ArExperienceController extends Controller
     }
 
     /**
+     * The laptop editor (operator, 15 Sep): the phone panel was the only way to author, and too
+     * crowded for a first layout. Objects are dragged on a plan around the player and previewed
+     * in 3D with their motions; the phone view stays for checking them on site.
+     *
+     * It reads the same placeHotspot() records and writes through storeHotspot/updateHotspot,
+     * so there is still one set of fields and one set of maths for every client.
+     */
+    public function editor($id)
+    {
+        $gameLocation = GameLocation::with(['arModel', 'hotspots.arModel', 'hotspots' => function ($query) {
+            $query->where('is_active', true)->orderBy('tour_order');
+        }])->findOrFail($id);
+
+        return view('ar.editor', [
+            'gameLocation' => $gameLocation,
+            'config' => [
+                'library' => \App\Models\ArModel::orderBy('name')->get()->map(fn ($m) => [
+                    'id' => $m->id, 'name' => $m->name, 'url' => $m->url(), 'size' => $m->size_for_humans,
+                ])->values(),
+                'hotspots' => $gameLocation->hotspots->map(fn ($h) => $this->placeHotspot($h))->values(),
+                'fallbackModel' => $gameLocation->ar_model_path ? Storage::url($gameLocation->ar_model_path) : null,
+                'urls' => [
+                    'store' => route('ar.hotspot.store', $gameLocation->id),
+                    'update' => route('ar.hotspot.update', [$gameLocation->id, '__ID__']),
+                    'destroy' => route('ar.hotspot.destroy', [$gameLocation->id, '__ID__']),
+                    'media' => route('ar.media.store', $gameLocation->id),
+                ],
+            ],
+        ]);
+    }
+
+    /**
      * Save an object placed by standing at the outpost and pointing the phone.
      *
      * The browser sends the direction it is facing, measured from the calibration
@@ -312,8 +344,8 @@ class ArExperienceController extends Controller
     /**
      * Reposition, resize, re-rotate or re-model an object that is already placed.
      *
-     * Only the spatial fields and the model choice — the text and points are edited
-     * elsewhere. Every field is optional so the phone can send just what changed.
+     * Spatial fields, model, motions and interaction; the laptop editor also sends title,
+     * description and points. Every field is optional so a client sends just what changed.
      */
     public function updateHotspot(Request $request, $id, $hotspotId)
     {
@@ -333,6 +365,9 @@ class ArExperienceController extends Controller
             'ar_motions.*.range' => 'nullable|numeric|min:0|max:90',
             'content' => 'nullable|string|max:2048',
             'media_path' => 'nullable|string|max:2048',
+            'title' => 'nullable|string|max:255',
+            'description' => 'nullable|string|max:2000',
+            'points_value' => 'nullable|integer|min:0|max:10000',
         ]);
 
         $hotspot = GameLocation::findOrFail($id)->hotspots()->findOrFail($hotspotId);
@@ -343,6 +378,7 @@ class ArExperienceController extends Controller
             'rotation_x' => 'ar_rotation_x', 'rotation_y' => 'ar_rotation_y',
             'rotation_z' => 'ar_rotation_z', 'ar_model_id' => 'ar_model_id',
             'content' => 'content', 'media_path' => 'media_path',
+            'title' => 'title', 'points_value' => 'points_value',
         ];
 
         $changes = [];
@@ -364,6 +400,11 @@ class ArExperienceController extends Controller
         // skips nulls and would quietly keep the old list.
         if (array_key_exists('ar_motions', $data)) {
             $changes['ar_motions'] = $data['ar_motions'] ?: null;
+        }
+
+        // Sent only by the laptop editor; present-but-empty clears the clue text.
+        if (array_key_exists('description', $data)) {
+            $changes['description'] = $data['description'];
         }
 
         if (array_key_exists('media_type', $data)) {

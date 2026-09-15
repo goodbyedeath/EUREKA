@@ -183,6 +183,8 @@ Route::middleware(['auth', 'preventbackhistory'])->group(function () {
     // team view share one controller; a location without a model falls back to the
     Route::middleware(['admin'])->prefix('admin/ar')->name('ar.')->group(function () {
         Route::get('/{id}', [\App\Http\Controllers\ArExperienceController::class, 'show'])->name('view');
+        // Desk authoring on a laptop: plan + 3D preview, same store/update endpoints as the phone.
+        Route::get('/{id}/editor', [\App\Http\Controllers\ArExperienceController::class, 'editor'])->name('editor');
         // On-site authoring: stand at the outpost, point the phone, tap to place.
         Route::post('/{id}/hotspot', [\App\Http\Controllers\ArExperienceController::class, 'storeHotspot'])->name('hotspot.store');
         Route::post('/{id}/media', [\App\Http\Controllers\ArExperienceController::class, 'storeMedia'])->name('media.store');
