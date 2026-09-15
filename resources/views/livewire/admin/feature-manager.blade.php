@@ -62,6 +62,16 @@
                                     <span class="text-xs text-gray-500 dark:text-gray-400">
                                         Order: {{ $feature->sort_order }}
                                     </span>
+                                    @php($apkEffect = [
+                                        'quiz_system' => 'APK: menu Scan & kuis',
+                                        'quest_locations' => 'APK: peta outdoor & check-in',
+                                        'gps_tracking' => 'APK: kirim posisi live',
+                                    ][$feature->feature_key] ?? null)
+                                    @if ($apkEffect)
+                                        <span class="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">{{ $apkEffect }}</span>
+                                    @else
+                                        <span class="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300">Tidak memengaruhi APK</span>
+                                    @endif
                                 </div>
                             </div>
                         </div>

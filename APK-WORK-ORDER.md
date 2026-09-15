@@ -26,6 +26,7 @@ differ; the names here are suggestions, not requirements.
 0000. **Game ended screen** — the admin can now archive a finished session; its APKs must go silent. See §10.
 00000. **Race reset handling** — the admin can emergency-stop the race for all teams. See §11.
 000000. **Team setup: registered participants** — search the FEKDI x IFSE list or type manually. See §12.
+0000000. **Answers to #13 and #14, outposts and flags** — see §13.
 1. **The 3D Camera** — `ar/ArActivity.kt`. §9 rewritten into a full spec; one earlier answer reversed.
 2. **Results screen**
 3. **QR scanner** — was blocked on a server test. It is not any more; see §3.
@@ -361,6 +362,44 @@ Spec: `APK-BUILD-GUIDE.md` §2a → *Team setup happens exactly once*.
 - a team of two picked + one typed member, with the second as Ketua, saves in one call, and GET /team
   shows exactly that leader;
 - with the list off, the "Sudah terdaftar" option is not shown and manual setup works unchanged.
+
+---
+
+## 13 — Answers to your reports #13 and #14, and two alignments  ·  15 Sep
+
+### #14 — offline facilitator scores: approved, with a server rule
+
+The operator confirmed the request. Keep v30's design (PIN verified online first, only the scoring POST
+queued after a transport failure, Keystore-sealed, deleted on delivery / 4xx / game_ended). Add
+`race_reset` to the delete list.
+
+Your server question: **no `scored_at`** — a device clock is not evidence. Instead the server now records
+`pin_verified_at` when `verify-pin` succeeds, and accepts a score that arrives after time-out when that
+moment was before the deadline and the POST lands within **15 minutes** of it (`accepted_late: true`).
+Later than that: `403 time_expired`, game 0. Build guide §4 → *Silent facilitator photo*.
+
+### #13 — resuming via `/quiz/start` instead of `/quiz/continue`
+
+Fine for a normal resume. **One case breaks:** after an emergency race stop (§11) the wiped attempt no
+longer exists and its scan is gone, so `/quiz/start` answers `403 scan_required` — not `race_reset`. Either
+resume with `GET /quiz/continue/{attempt_id}` (you have the id from start), or treat `scan_required` on a
+**stored** session as "that session is over": drop it and go to the dashboard.
+
+### Outposts (Quest Locations)
+
+Locations now carry absolute `image_url` / `map_image_url`; a repeat check-in answers `409
+already_checked_in` instead of a bare 200 failure; `checkin_failed` is a 500. `what_to_do` is the team's
+instruction at the spot — show it. `quest_points` is not awarded — do not show it as points. Build guide §5.
+
+### Feature flags
+
+Only `quiz_system`, `quest_locations` and `gps_tracking` affect the app; the rest are web/kiosk/server.
+Note `gps_tracking` is currently **off**, so background position sending must not run. Build guide §7.
+
+**Done when:** a score queued with no signal and delivered 5 minutes after time-out shows as accepted;
+one delivered 20 minutes after is dropped with the time-out message; a stored session wiped by a race
+stop does not reopen; the outpost sheet shows `what_to_do` and its picture; a second check-in shows
+"already checked in"; with `gps_tracking` off no position is sent.
 
 ---
 

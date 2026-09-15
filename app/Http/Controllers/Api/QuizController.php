@@ -801,6 +801,9 @@ class QuizController extends Controller
             return $this->ruleRefusal($e);
         }
 
+        // The server's own record that the PIN was right while the session was still open.
+        $assessment->forceFill(['pin_verified_at' => now()])->save();
+
         return response()->json(['success' => true, 'verified' => true]);
     }
 
@@ -829,8 +832,9 @@ class QuizController extends Controller
             if ($assessment->is_assessed) {
                 throw QuizRuleException::gameAlreadyAssessed();
             }
-            // Time over = session over: a game not scored by then stays at 0.
-            $this->assertSessionOpen($assessment->quizAttempt);
+            // Time over = session over — unless the PIN was accepted before time-out and the score the
+            // app queued on a weak signal arrives within the grace window (operator, 15 Sep).
+            $acceptedLate = $this->assertCanDeliverScore($assessment);
             // PIN first: a wrong guess must not leave a stored photo behind.
             $pin->verify($data['facilitator_pin'], Auth::id());
             $path = $this->storeFacilitatorPhoto($data['facilitator_photo'], $assessment->id);
@@ -856,6 +860,7 @@ class QuizController extends Controller
             'team_gain' => $result['team_gain'],
             'team_points' => $result['team_points'],
             'next' => $this->nextAfterGame($result['assessment']),
+            'accepted_late' => $acceptedLate,
             'completion' => $this->completion($result['assessment']->quizAttempt()->first()),
         ]);
     }
@@ -976,6 +981,40 @@ class QuizController extends Controller
             'time_expired' => $expired,
             'pending' => $pending,
         ];
+    }
+
+    /** Minutes after time-out a queued score may still arrive, if its PIN was accepted in time. */
+    private const SCORE_GRACE_MINUTES = 15;
+
+    /**
+     * Whether a facilitator score may be delivered now. Inside the session: yes. After time-out: only
+     * when verify-pin succeeded before the deadline and we are within SCORE_GRACE_MINUTES of it —
+     * judged on the server's pin_verified_at, never a device-supplied time.
+     *
+     * @return bool true when accepted inside the grace window
+     */
+    private function assertCanDeliverScore(GameAssessment $assessment): bool
+    {
+        $attempt = $assessment->quizAttempt;
+        if (! $attempt || $attempt->status === QuizAttempt::STATUS_ABANDONED) {
+            throw QuizRuleException::submitted();
+        }
+
+        if (! $attempt->isTimeExpired()) {
+            $this->assertSessionOpen($attempt);
+
+            return false;
+        }
+
+        $deadline = ($attempt->timer_started_at ?? $attempt->started_at)->copy()
+            ->addMinutes((int) $attempt->questionnaire->time_limit);
+        $verifiedAt = $assessment->pin_verified_at;
+
+        if ($verifiedAt && $verifiedAt->lte($deadline) && now()->lte($deadline->copy()->addMinutes(self::SCORE_GRACE_MINUTES))) {
+            return true;
+        }
+
+        throw QuizRuleException::timeExpired();
     }
 
     /** Game completion and facilitator scoring happen only inside a running session. */

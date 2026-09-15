@@ -32,7 +32,8 @@ class GameAssessment extends Model
             'total_deposit' => 'integer',
             'is_assessed' => 'boolean',
             'assessed_at' => 'datetime',
-            'facilitator_photo_captured_at' => 'datetime'
+            'facilitator_photo_captured_at' => 'datetime',
+            'pin_verified_at' => 'datetime'
         ];
     }
 

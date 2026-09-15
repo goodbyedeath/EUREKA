@@ -139,6 +139,21 @@ class QuestLocationController extends Controller
                 }
             }
 
+            // The table allows one check-in per account per location (unique key), whatever
+            // max_check_ins_per_user says. A second one used to hit that key and come back as a bare
+            // "Check-in failed" with HTTP 200. Say what happened instead.
+            $previous = UserQuestCheckpoint::where('user_id', Auth::id())
+                ->where('quest_location_id', $request->location_id)
+                ->first();
+            if ($previous) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'already_checked_in',
+                    'last_checked_at' => $previous->checked_at?->toIso8601String(),
+                    'message' => 'You have already checked in at this location.',
+                ], 409);
+            }
+
             // Create checkpoint
             UserQuestCheckpoint::create([
                 'user_id' => Auth::id(),
@@ -174,8 +189,9 @@ class QuestLocationController extends Controller
 
             return response()->json([
                 'success' => false,
+                'error' => 'checkin_failed',
                 'message' => 'Check-in failed. Please try again.'
-            ]);
+            ], 500);
         }
     }
 
@@ -299,6 +315,9 @@ class QuestLocationController extends Controller
             $locationData['checked_in'] = isset($userProgress[$location->id]);
             $locationData['check_ins_count'] = $userProgress[$location->id]['check_ins_count'] ?? 0;
             $locationData['last_checked_at'] = $userProgress[$location->id]['last_checked_at'] ?? null;
+            // Disk-relative paths are useless to a native client; these load directly.
+            $locationData['image_url'] = $location->image_path ? \Illuminate\Support\Facades\Storage::disk('public')->url($location->image_path) : null;
+            $locationData['map_image_url'] = $location->map_image_path ? \Illuminate\Support\Facades\Storage::disk('public')->url($location->map_image_path) : null;
 
             $locationsData[] = $locationData;
         }

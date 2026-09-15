@@ -468,8 +468,8 @@ takes the team's phone and enters the score. So the flow for a `fun_game` questi
    - `facilitator_pin_locked` (429) → disable the keypad and count down `retry_after` seconds.
    - `facilitator_pin_not_set` (409) → "The admin has not set a facilitator PIN". Nothing to retry.
    - If `GET` already says `facilitator_pin_set: false`, show that instead of the keypad.
-   Keep the accepted PIN **in memory only** — never on disk, in logs, or in the offline queue —
-   because the score POST sends it again. Drop it when the screen closes.
+   The score POST sends the PIN again. Keep it in memory while online; if the POST has to be queued
+   (below), it may be stored only inside the sealed queue row — never in plain storage or logs.
 5. When the PIN is accepted, **arm the silent camera** (below).
 6. Inputs: **Additional points** (number, 0…`max_additional_points`, default
    `max_additional_points`), **Penalty** (number, default 0, max `max_penalty`), **Notes**
@@ -500,8 +500,19 @@ a POST without it is 422, so there is no score without a photo.
 - CAMERA permission is already needed for AR and QR. If it is missing, request it at the PIN step.
 - If capture fails (no front camera, error, permission denied): retry once, then fall back to a
   **visible** front-camera shot the facilitator takes. Never send the score without a photo.
-- Keep photo and PIN in memory until the POST succeeds. On a network error retry from memory;
-  scoring needs a connection and does not go into the offline write queue.
+- **Weak signal — the score may be queued** (operator, 15 Sep). Rules, all server-enforced where they
+  can be:
+  - `verify-pin` must succeed **online** first. That is when the server records `pin_verified_at`.
+  - Only the scoring POST is queued, only after a transport failure. Seal the whole body (PIN, photo,
+    score) with a non-exportable Android Keystore key before writing it; delete it on delivery, on
+    any 4xx, and on `game_ended` / `race_reset`.
+  - **Late delivery:** if the POST arrives after the clock ran out, the server accepts it when the PIN
+    was verified **before** the deadline and the POST lands within **15 minutes** after it; the reply
+    carries `accepted_late: true`. Otherwise `403 time_expired` and the game stays 0. There is no
+    device-time field: the server judges on its own clock.
+  - A copy that had already landed answers `409 game_already_assessed` — drop it.
+  - Tell facilitators: the PIN must pass while there is signal; the score may follow within 15 minutes
+    of time-out.
 Resuming: if the app died between steps 2 and 7, `complete-game` again returns the **same**
 `assessment_id` while it is unscored, so repeat step 3. `409 game_already_assessed` on either
 call means it was already scored — move on, do not show an error.
@@ -531,12 +542,40 @@ Without those two query parameters, every location comes back with `distance: nu
 Also accepts `search=` and `filter_status=visited|not_visited`, and paginates
 (`pagination: { current_page, last_page, per_page, total }`).
 
+What each location carries, as the admin fills it in on Quest Locations:
+
+| Field | Use |
+|---|---|
+| `name`, `description` | card title and text |
+| `what_to_do` | the instruction for the team at that spot — show it on the location sheet |
+| `latitude`, `longitude`, `radius` (m) | map pin and the check-in circle; lat/long arrive as **strings** |
+| `marker_color` | pin colour, `#RRGGBB` |
+| `image_url`, `map_image_url` | absolute URLs, or null. Ignore `image_path` / `map_image_path` (disk-relative) |
+| `google_map_embed_url` | optional; open externally if present |
+| `max_check_ins_per_user` | informational only — see below |
+| `quest_points` | **not awarded** in this event: do not show it as points the team earns |
+| `checked_in`, `check_ins_count`, `last_checked_at` | this account's progress |
+
+Response top level also has `total_points` — ignore it; the team score is `GET /team` → `team.score`.
+
 ### Check-in
 
 ```
 POST /api/v1/quest-locations/checkin
 { "location_id": 30, "user_latitude": -6.41697, "user_longitude": 106.82418 }
 ```
+
+**One check-in per account per location**, whatever `max_check_ins_per_user` says. Replies:
+
+| HTTP | `error` | Show |
+|---|---|---|
+| 200 | — | checked in |
+| 403 | `out_of_range` (+ `distance`, `radius`) | "{distance} m away — get within {radius} m" |
+| 409 | `already_checked_in` (+ `last_checked_at`) | already done; mark the location visited |
+| 409 | `max_attempts_reached` (+ `limit`) | limit reached |
+| 500 | `checkin_failed` | a real fault: report it, do not loop |
+
+A repeat check-in used to return HTTP 200 with `success: false` and no key. It is 409 now.
 
 ### The unlock gate
 
@@ -613,6 +652,19 @@ GET /api/v1/features
   "flags": { "quiz_system": true, "quest_locations": true, "leaderboard": false, … },
   "features": [ { "key", "name", "description", "enabled", "sort_order" } ] }
 ```
+
+**Which flags the app reads** — everything else in the list is for the retired web dashboard, the kiosk
+or the server; ignore it:
+
+| Flag | App behaviour when **off** |
+|---|---|
+| `quiz_system` | hide the Scan / quiz entry |
+| `quest_locations` | hide the outdoor map and check-in |
+| `gps_tracking` | do not run background position sending (`POST /tracking/position`) |
+
+Not flag-gated, ever: team setup, the dashboard score card, the facilitator scoring screen, Game ended
+and race reset handling. `leaderboard`, `team_management`, `notifications`, `game_dashboard`,
+`workflow_timers` and every `dashboard_*` / `user_dashboard_*` flag have no effect in the app.
 
 `flags` is the quick map; `features` carries labels and ordering if you want to render a menu from
 it. **Flags control visibility only, never permission** — the server enforces access with
@@ -1151,7 +1203,7 @@ A `500` is a real fault: report it, do not retry in a loop.
 - [ ] A scan of any active station code lands on its questions screen, every question type rendered, images from `image_urls`
 - [ ] Inside a session: no Submit, no back, no dashboard until `can_submit`; killing the app reopens the session; time-out goes to Finish
 - [ ] `fun_game` uses `complete-game`, then the native Facilitator scoring screen; no client-side point totals anywhere
-- [ ] Facilitator scoring: PIN gate with lockout countdown; silent front-camera photo on Confirm; PIN and photo never written to disk
+- [ ] Facilitator scoring: PIN gate with lockout countdown; silent front-camera photo on Confirm; a queued score is Keystore-sealed and dropped on 4xx / game_ended / race_reset
 - [ ] App name, logo and theme come from `/branding`, with nothing hardcoded
 - [ ] Hidden menus follow `/features`, and you never rely on that for security
 - [ ] Indoor spots positioned from `x`/`y` as percentages

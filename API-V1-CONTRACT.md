@@ -6,6 +6,12 @@ Generated from the live router on questerra-series.com. Base URL `https://queste
 
 Act on these — several change responses your app already handles.
 
+**Latest (15 Sep, second change): late facilitator scores, outposts, flags.** A score whose PIN passed
+`verify-pin` before time-out is accepted up to 15 minutes after it (`accepted_late: true`); judged on the
+server's `pin_verified_at`. `GET /quest-locations` items add `image_url`, `map_image_url`. Check-in:
+repeat → `409 already_checked_in` (+ `last_checked_at`), fault → `500 checkin_failed`. Only `quiz_system`,
+`quest_locations`, `gps_tracking` flags affect the app. Build guide §4, §5, §7; work order §13.
+
 **Latest (15 Sep): team setup can pick registered participants.** `GET /api/v1/participants?q=` searches
 the FEKDI x IFSE list (name or e-mail, ≥ 2 chars; e-mails masked). `POST /team` members accept
 `participant_id` (instead of name/email) and `is_leader`. `GET /team` 404 carries
@@ -149,6 +155,8 @@ the photo as optional cannot submit at all.
 | `game_ended` | 403 | Any call, login included: the session was archived | Game ended screen, wipe, never call again |
 | `race_reset` | 409 | Quiz call naming an attempt/assessment wiped by an emergency race stop | Message, drop session state, dashboard |
 | `team_locked` | 403 | `team/members` add or remove after setup | Remove the call; members are fixed |
+| `already_checked_in` | 409 | `quest-locations/checkin` again at the same location; `last_checked_at` | Mark visited |
+| `checkin_failed` | 500 | Check-in hit a server fault | Report it; no loop |
 | `participant_taken` | 409 | `POST /team`: a picked participant is already in another team | Remove them; `team_name` in body |
 | `directory_disabled` | 409 | `participants` search or a `participant_id` while the admin switched the list off | Use manual entry |
 | `participant_not_found` | 404 | `POST /team`: unknown `participant_id` | Remove and search again |
