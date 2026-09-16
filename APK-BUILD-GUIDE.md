@@ -709,8 +709,10 @@ or the server; ignore it:
 | `gps_tracking` | do not run background position sending (`POST /tracking/position`) |
 
 Not flag-gated, ever: team setup, the dashboard score card, the facilitator scoring screen, Game ended
-and race reset handling. `leaderboard`, `team_management`, `notifications`, `game_dashboard`,
-`workflow_timers` and every `dashboard_*` / `user_dashboard_*` flag have no effect in the app.
+and race reset handling. The list also carries `leaderboard` and `kiosk_map` (the venue screens) and
+`workflow_timers` (server timers); none of the three has any effect in the app. Sixteen switches left
+over from the retired web dashboard were deleted on 16 Sep, so a flag you once saw may simply be gone:
+read the list, never a hardcoded set of keys, and treat a missing key as "not applicable".
 
 `flags` is the quick map; `features` carries labels and ordering if you want to render a menu from
 it. **Flags control visibility only, never permission** — the server enforces access with

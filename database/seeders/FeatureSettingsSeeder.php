@@ -38,30 +38,6 @@ class FeatureSettingsSeeder extends Seeder
                 ])
             ],
             [
-                'feature_key' => 'game_dashboard',
-                'feature_name' => 'Game Dashboard',
-                'description' => 'Access to outdoor game locations and interactive maps',
-                'is_enabled' => true,
-                'sort_order' => 3,
-                'metadata' => json_encode([
-                    'icon' => 'fas fa-gamepad',
-                    'color' => 'purple',
-                    'route' => 'user.game-dashboard'
-                ])
-            ],
-            [
-                'feature_key' => 'team_management',
-                'feature_name' => 'Team Management',
-                'description' => 'Team registration and member management features',
-                'is_enabled' => true,
-                'sort_order' => 4,
-                'metadata' => json_encode([
-                    'icon' => 'fas fa-users',
-                    'color' => 'indigo',
-                    'route' => 'team.*'
-                ])
-            ],
-            [
                 'feature_key' => 'leaderboard',
                 'feature_name' => 'Leaderboard',
                 'description' => 'Team rankings and scoring system',
@@ -71,30 +47,6 @@ class FeatureSettingsSeeder extends Seeder
                     'icon' => 'fas fa-trophy',
                     'color' => 'yellow',
                     'route' => null // Future feature
-                ])
-            ],
-            [
-                'feature_key' => 'notifications',
-                'feature_name' => 'Notifications',
-                'description' => 'Real-time notifications and alerts',
-                'is_enabled' => true,
-                'sort_order' => 6,
-                'metadata' => json_encode([
-                    'icon' => 'fas fa-bell',
-                    'color' => 'red',
-                    'route' => null // Future feature
-                ])
-            ],
-            [
-                'feature_key' => 'user_dashboard_session_timer',
-                'feature_name' => 'Session Timer',
-                'description' => 'Display session timeout timer on user dashboard',
-                'is_enabled' => true,
-                'sort_order' => 7,
-                'metadata' => json_encode([
-                    'icon' => 'fas fa-clock',
-                    'color' => 'blue',
-                    'route' => null
                 ])
             ],
             [

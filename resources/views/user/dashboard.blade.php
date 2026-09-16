@@ -65,7 +65,7 @@
                     
                     @auth
                         <!-- Session Timer Display -->
-                        @if(auth()->user()->role === 'user' && class_exists('\App\Models\FeatureSetting') && \App\Models\FeatureSetting::isEnabled('user_dashboard_session_timer'))
+                        @if(auth()->user()->role === 'user' && class_exists('\App\Models\FeatureSetting') && \App\Models\FeatureSetting::isEnabled('workflow_timers'))
                             @php
                                 $workflowTimersEnabled = class_exists('\App\Models\FeatureSetting') && \App\Models\FeatureSetting::isEnabled('workflow_timers');
                                 $dashboardContent = app()->make('App\Livewire\User\DashboardContent');
@@ -150,7 +150,7 @@
                     
                     @auth
                         <!-- Mobile Session Timer -->
-                        @if(auth()->user()->role === 'user' && class_exists('\App\Models\FeatureSetting') && \App\Models\FeatureSetting::isEnabled('user_dashboard_session_timer'))
+                        @if(auth()->user()->role === 'user' && class_exists('\App\Models\FeatureSetting') && \App\Models\FeatureSetting::isEnabled('workflow_timers'))
                             <div class="mobile-item mobile-session-timer {{ $timerStatus ?? 'normal' }}" id="mobile-session-timer" style="display: {{ $workflowTimersEnabled ?? false ? 'block' : 'none' }};">
                                 <div class="mobile-item-header">
                                     <span>Session Time Remaining:</span>
@@ -223,11 +223,6 @@
                 </div>
             </div>
 
-
-            <!-- Dashboard Stats -->
-            <div class="stats-section">
-                @livewire('user.dashboard-stats')
-            </div>
 
             <!-- Tab Navigation -->
             <div class="tab-navigation">

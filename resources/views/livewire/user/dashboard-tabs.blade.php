@@ -30,19 +30,6 @@
             </button>
             @endif
 
-            @if($this->featureEnabled('team_management'))
-            <button 
-                wire:click="switchTab('members')" 
-                role="tab"
-                aria-selected="{{ $activeTab === 'members' ? 'true' : 'false' }}"
-                class="flex-1 min-w-max px-6 py-4 rounded-lg font-semibold text-sm transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
-                       {{ $activeTab === 'members' ? 'bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-lg transform scale-105' : 'text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700' }}">
-                <div class="flex flex-col items-center space-y-1">
-                    <i class="fas fa-users text-lg"></i>
-                    <span class="text-xs font-medium">Team Members</span>
-                </div>
-            </button>
-            @endif
 
             @if($this->featureEnabled('quest_locations'))
             <button 
@@ -58,19 +45,6 @@
             </button>
             @endif
 
-            @if($this->featureEnabled('game_dashboard'))
-            <button 
-                wire:click="switchTab('games')" 
-                role="tab"
-                aria-selected="{{ $activeTab === 'games' ? 'true' : 'false' }}"
-                class="flex-1 min-w-max px-6 py-4 rounded-lg font-semibold text-sm transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
-                       {{ $activeTab === 'games' ? 'bg-gradient-to-r from-indigo-500 to-indigo-600 text-white shadow-lg transform scale-105' : 'text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700' }}">
-                <div class="flex flex-col items-center space-y-1">
-                    <i class="fas fa-gamepad text-lg"></i>
-                    <span class="text-xs font-medium">Outdoor Games</span>
-                </div>
-            </button>
-            @endif
         </nav>
     </div>
 </div>

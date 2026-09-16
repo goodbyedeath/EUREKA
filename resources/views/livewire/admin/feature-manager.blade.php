@@ -37,8 +37,7 @@
         </button>
     </div>
 
-    <!-- Grouped by who reads the flag. The retired web dashboard's switches are collapsed:
-         they change nothing any player sees, and a long list of them hid the three that matter. -->
+    <!-- Grouped by who reads the flag: the Android app, the kiosk screens, the server. -->
     @forelse($groups as $group)
     <section class="mb-8">
         <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
@@ -46,14 +45,7 @@
                 <h2 class="text-lg font-semibold text-gray-800 dark:text-gray-100">{{ $group['title'] }}</h2>
                 <p class="text-sm text-gray-500 dark:text-gray-400">{{ $group['note'] }}</p>
             </div>
-            @if ($group['key'] === 'legacy')
-                <button wire:click="$toggle('showLegacy')"
-                        class="px-3 py-1.5 text-sm rounded-lg bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-100">
-                    {{ $showLegacy ? 'Sembunyikan' : 'Tampilkan' }} ({{ $group['features']->count() }})
-                </button>
-            @endif
         </div>
-        @if ($group['key'] !== 'legacy' || $showLegacy)
         <div class="grid gap-6">
         @foreach($group['features'] as $feature)
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 overflow-hidden">
@@ -152,7 +144,6 @@
         </div>
         @endforeach
         </div>
-        @endif
     </section>
     @empty
         <div class="text-center py-12 bg-white dark:bg-gray-800 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600">

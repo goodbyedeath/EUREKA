@@ -12,10 +12,10 @@ class FeatureManager extends Component
     /**
      * Who actually reads each flag.
      *
-     * Players are on the Android app, and it reads exactly three of these (build guide §7).
-     * The rest drive the kiosk screens or server behaviour — or nothing at all, because the web
-     * participant dashboard they were written for is retired. Grouping beats deleting: a missing
-     * row reads as "off", which would quietly change server behaviour like workflow timers.
+     * Players are on the Android app, and it reads exactly three of these (build guide §7); the
+     * rest drive the kiosk screens or server behaviour. The sixteen switches left over from the
+     * retired web dashboard were deleted with their code on 16 Sep, so every row here does
+     * something. A key with no entry below shows under 'Lainnya' rather than disappearing.
      */
     public const AUDIENCE = [
         'quiz_system' => 'apk',
@@ -30,10 +30,8 @@ class FeatureManager extends Component
         'apk' => ['Dibaca aplikasi Android', 'Hanya saklar di bagian ini yang mengubah apa yang dilihat peserta di HP.'],
         'kiosk' => ['Layar kiosk', 'Mengatur papan LED dan layar publik di lokasi acara.'],
         'server' => ['Perilaku server', 'Bukan sekadar tampilan: proses dan timer di server ikut berubah.'],
-        'legacy' => ['Dashboard web lama', 'Peserta memakai aplikasi Android, dan halaman web peserta sudah pensiun. Saklar di sini tidak memengaruhi siapa pun.'],
+        'legacy' => ['Lainnya', 'Belum dikelompokkan. Kalau ini terisi, ada flag baru yang perlu dicatat di FeatureManager::AUDIENCE.'],
     ];
-
-    public bool $showLegacy = false;
 
     public $features;
     public $showEditModal = false;

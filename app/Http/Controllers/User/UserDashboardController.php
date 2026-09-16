@@ -38,9 +38,6 @@ class UserDashboardController extends Controller
                 $features = []; // Default empty array if features fail
             }
 
-            // Ensure required features exist
-            $this->ensureRequiredFeatures();
-
             return view('user.dashboard', compact('team', 'features'));
             
         } catch (\Exception $e) {
@@ -51,38 +48,6 @@ class UserDashboardController extends Controller
             
             return redirect()->route('team.registration')
                 ->with('error', 'There was an error loading the dashboard. Please try again.');
-        }
-    }
-
-    /**
-     * Ensure required features exist in the database
-     */
-    private function ensureRequiredFeatures()
-    {
-        try {
-            $requiredFeatures = [
-                'user_dashboard_session_timer' => [
-                    'feature_name' => 'Session Timer',
-                    'description' => 'Display session timeout timer on user dashboard',
-                    'is_enabled' => true,
-                    'sort_order' => 7,
-                    'metadata' => json_encode([
-                        'icon' => 'fas fa-clock',
-                        'color' => 'blue',
-                        'route' => null
-                    ])
-                ]
-            ];
-
-            foreach ($requiredFeatures as $featureKey => $featureData) {
-                $exists = \App\Models\FeatureSetting::where('feature_key', $featureKey)->exists();
-                if (!$exists) {
-                    \App\Models\FeatureSetting::create(array_merge(['feature_key' => $featureKey], $featureData));
-                    Log::info("Created missing feature: {$featureKey}");
-                }
-            }
-        } catch (\Exception $e) {
-            Log::warning('Error ensuring required features: ' . $e->getMessage());
         }
     }
 }

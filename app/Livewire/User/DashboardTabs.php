@@ -56,16 +56,8 @@ class DashboardTabs extends Component
             $tabs[] = 'quizzes';
         }
         
-        if ($this->featureEnabled('team_management')) {
-            $tabs[] = 'members';
-        }
-        
         if ($this->featureEnabled('quest_locations')) {
             $tabs[] = 'quests';
-        }
-        
-        if ($this->featureEnabled('game_dashboard')) {
-            $tabs[] = 'games';
         }
         
         return $tabs;

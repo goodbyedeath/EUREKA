@@ -225,18 +225,6 @@ class DashboardContent extends Component
         $this->activeTab = 'quizzes';
         $this->dispatch('tab-switched', tab: 'quizzes');
     }
-
-    public function switchToMembers()
-    {
-        $this->activeTab = 'members';
-        $this->dispatch('tab-switched', tab: 'members');
-    }
-
-    public function switchToGames()
-    {
-        $this->activeTab = 'games';
-        $this->dispatch('tab-switched', tab: 'games');
-    }
     
     public function switchTab($tab)
     {

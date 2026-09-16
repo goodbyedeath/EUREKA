@@ -113,51 +113,7 @@
                         </div>
                         @endif
                         
-                        @if($this->featureEnabled('game_dashboard'))
-                        <div class="feature-card group">
-                            <button 
-                                wire:click="switchToGames"
-                                class="w-full p-6 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl hover:border-indigo-300 dark:hover:border-indigo-600 hover:shadow-lg transition-all duration-300 text-left group-hover:transform group-hover:scale-105">
-                                <div class="flex items-center justify-between mb-4">
-                                    <div class="w-12 h-12 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg flex items-center justify-center group-hover:bg-indigo-200 dark:group-hover:bg-indigo-900/50 transition-colors">
-                                        <i class="fas fa-gamepad text-indigo-600 dark:text-indigo-400 text-xl"></i>
-                                    </div>
-                                    <div class="text-xs bg-indigo-100 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 px-2 py-1 rounded-full">
-                                        Interactive
-                                    </div>
-                                </div>
-                                <h3 class="font-bold text-gray-900 dark:text-gray-100 text-lg mb-2">{{ __('games.outdoor_games') }}</h3>
-                                <p class="text-sm text-gray-600 dark:text-gray-400 mb-3">{{ __('games.interactive_game_maps') }}</p>
-                                <div class="flex items-center text-indigo-600 dark:text-indigo-400 text-sm font-medium">
-                                    <span>Play Now</span>
-                                    <i class="fas fa-play ml-2 group-hover:translate-x-1 transition-transform"></i>
-                                </div>
-                            </button>
-                        </div>
-                        @endif
                         
-                        @if($this->featureEnabled('team_management'))
-                        <div class="feature-card group">
-                            <button
-                                wire:click="switchToMembers"
-                                class="w-full p-6 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl hover:border-purple-300 dark:hover:border-purple-600 hover:shadow-lg transition-all duration-300 text-left group-hover:transform group-hover:scale-105">
-                                <div class="flex items-center justify-between mb-4">
-                                    <div class="w-12 h-12 bg-purple-100 dark:bg-purple-900/30 rounded-lg flex items-center justify-center group-hover:bg-purple-200 dark:group-hover:bg-purple-900/50 transition-colors">
-                                        <i class="fas fa-users text-purple-600 dark:text-purple-400 text-xl"></i>
-                                    </div>
-                                    <div class="text-xs bg-purple-100 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 px-2 py-1 rounded-full">
-                                        Team
-                                    </div>
-                                </div>
-                                <h3 class="font-bold text-gray-900 dark:text-gray-100 text-lg mb-2">{{ __('teams.team_members') }}</h3>
-                                <p class="text-sm text-gray-600 dark:text-gray-400 mb-3">{{ __('teams.manage_your_team') }}</p>
-                                <div class="flex items-center text-purple-600 dark:text-purple-400 text-sm font-medium">
-                                    <span>View Team</span>
-                                    <i class="fas fa-users-cog ml-2 group-hover:rotate-12 transition-transform"></i>
-                                </div>
-                            </button>
-                        </div>
-                        @endif
 
                         {{-- GPS Tracking Card --}}
                         @if($this->featureEnabled('gps_tracking'))
@@ -188,69 +144,6 @@
                     @if($this->featureEnabled('quiz_system'))
                         <div class="space-y-6">
                             {{-- Quick Stats Cards --}}
-                            @if($this->featureEnabled('dashboard_quick_stats'))
-                            <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                                {{-- Completed Quizzes Stat --}}
-                                @if($this->featureEnabled('dashboard_quick_stat_completed'))
-                                <div class="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-900/40 rounded-xl p-4 border border-blue-200 dark:border-blue-700">
-                                    <div class="flex items-center">
-                                        <div class="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center mr-3">
-                                            <i class="fas fa-clipboard-check text-white text-sm"></i>
-                                        </div>
-                                        <div>
-                                            <div class="text-2xl font-bold text-blue-700 dark:text-blue-300">{{ $completedQuizzes }}</div>
-                                            <div class="text-xs text-blue-600 dark:text-blue-400">Completed</div>
-                                        </div>
-                                    </div>
-                                </div>
-                                @endif
-
-                                {{-- Average Score Stat --}}
-                                @if($this->featureEnabled('dashboard_quick_stat_average_score'))
-                                <div class="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-900/40 rounded-xl p-4 border border-green-200 dark:border-green-700">
-                                    <div class="flex items-center">
-                                        <div class="w-10 h-10 bg-green-500 rounded-lg flex items-center justify-center mr-3">
-                                            <i class="fas fa-star text-white text-sm"></i>
-                                        </div>
-                                        <div>
-                                            <div class="text-2xl font-bold text-green-700 dark:text-green-300">{{ number_format($averageScore, 1) }}</div>
-                                            <div class="text-xs text-green-600 dark:text-green-400">Avg Score</div>
-                                        </div>
-                                    </div>
-                                </div>
-                                @endif
-
-                                {{-- Total Time Stat --}}
-                                @if($this->featureEnabled('dashboard_quick_stat_total_time'))
-                                <div class="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-900/40 rounded-xl p-4 border border-purple-200 dark:border-purple-700">
-                                    <div class="flex items-center">
-                                        <div class="w-10 h-10 bg-purple-500 rounded-lg flex items-center justify-center mr-3">
-                                            <i class="fas fa-clock text-white text-sm"></i>
-                                        </div>
-                                        <div>
-                                            <div class="text-2xl font-bold text-purple-700 dark:text-purple-300">{{ $this->getFormattedTotalTime() }}</div>
-                                            <div class="text-xs text-purple-600 dark:text-purple-400">Total Time</div>
-                                        </div>
-                                    </div>
-                                </div>
-                                @endif
-
-                                {{-- Daily Streak Stat --}}
-                                @if($this->featureEnabled('dashboard_quick_stat_streak'))
-                                <div class="bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-900/20 dark:to-orange-900/40 rounded-xl p-4 border border-orange-200 dark:border-orange-700">
-                                    <div class="flex items-center">
-                                        <div class="w-10 h-10 bg-orange-500 rounded-lg flex items-center justify-center mr-3">
-                                            <i class="fas fa-fire text-white text-sm"></i>
-                                        </div>
-                                        <div>
-                                            <div class="text-2xl font-bold text-orange-700 dark:text-orange-300">{{ $currentStreak }} <span class="text-sm">{{ $currentStreak === 1 ? 'day' : 'days' }}</span></div>
-                                            <div class="text-xs text-orange-600 dark:text-orange-400">Streak</div>
-                                        </div>
-                                    </div>
-                                </div>
-                                @endif
-                            </div>
-                            @endif
                             
                             {{-- Recent Attempts with Enhanced Design --}}
                             <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
@@ -288,9 +181,7 @@
                     @php
                         $allFeatures = [
                             'quiz_system' => 'Quiz System',
-                            'quest_locations' => 'Quest Locations', 
-                            'game_dashboard' => 'Game Dashboard',
-                            'team_management' => 'Team Management'
+                            'quest_locations' => 'Quest Locations'
                         ];
                         $disabledFeatures = [];
                         foreach($allFeatures as $key => $name) {
@@ -357,41 +248,6 @@
     @endif
 
     {{-- Members Tab --}}
-    @if($activeTab === 'members' && $this->featureEnabled('team_management'))
-        <div class="fade-in" role="tabpanel">
-            @if($team)
-                {{-- Include the team member view component --}}
-                @livewire('user.team-member-view', ['team' => $team])
-            @else
-                {{-- No team found --}}
-                <div class="text-center py-8 sm:py-12 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
-                    <div class="mx-auto w-20 h-20 sm:w-24 sm:h-24 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mb-4">
-                        <i class="fas fa-users text-gray-400 dark:text-gray-500 text-2xl sm:text-3xl"></i>
-                    </div>
-                    <h3 class="text-base sm:text-lg font-medium text-gray-900 dark:text-gray-100 mb-2 px-4">
-                        {{ __('common.not_joined_team') }}
-                    </h3>
-                    <p class="text-gray-500 dark:text-gray-400 mb-6 max-w-md mx-auto text-sm sm:text-base px-4">
-                        {{ __('common.not_joined_team_desc') }}
-                    </p>
-                    <div class="flex flex-col sm:flex-row justify-center space-y-3 sm:space-y-0 sm:space-x-4 px-4">
-                        <button 
-                            class="bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg transition-colors inline-flex items-center justify-center text-sm sm:text-base"
-                            onclick="alert('{{ __('common.not_joined_team_desc') }}')">
-                            <i class="fas fa-envelope mr-2"></i>
-                            {{ __('common.contact_admin') }}
-                        </button>
-                        <button 
-                            onclick="Livewire.dispatch('refresh-dashboard')"
-                            class="bg-gray-600 hover:bg-gray-700 dark:bg-gray-500 dark:hover:bg-gray-600 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg transition-colors inline-flex items-center justify-center text-sm sm:text-base">
-                            <i class="fas fa-sync mr-2"></i>
-                            {{ __('common.refresh') }}
-                        </button>
-                    </div>
-                </div>
-            @endif
-        </div>
-    @endif
 
     {{-- Quest Locations Tab --}}
     @if($activeTab === 'quests' && $this->featureEnabled('quest_locations'))
@@ -407,11 +263,6 @@
     @endif
 
     {{-- Games Tab --}}
-    @if($activeTab === 'games' && $this->featureEnabled('game_dashboard'))
-        <div class="fade-in" role="tabpanel">
-            @livewire('user.game-dashboard')
-        </div>
-    @endif
 </div>
 
 @push('styles')
