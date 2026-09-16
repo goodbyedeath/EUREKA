@@ -248,14 +248,25 @@
                             </div>
 
                             <!-- Primary Button -->
-                            <div>
+                            <div class="md:col-span-2">
+                                <label class="inline-flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+                                    <input type="checkbox" wire:model.live="show_primary_button"
+                                           class="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500">
+                                    Tampilkan tombol primary
+                                </label>
+                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                    Matikan untuk slide yang hanya berisi pesan. Teks dan URL-nya disimpan, jadi bisa dinyalakan lagi kapan saja.
+                                </p>
+                            </div>
+
+                            <div class="{{ $show_primary_button ? '' : 'opacity-50' }}">
                                 <label for="primary_button_text" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Primary Button Text</label>
                                 <input type="text" wire:model="primary_button_text" id="primary_button_text" 
                                        class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition-colors duration-200">
                                 @error('primary_button_text') <span class="text-red-500 dark:text-red-400 text-sm">{{ $message }}</span> @enderror
                             </div>
 
-                            <div>
+                            <div class="{{ $show_primary_button ? '' : 'opacity-50' }}">
                                 <label for="primary_button_url" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Primary Button URL</label>
                                 <input type="text" wire:model="primary_button_url" id="primary_button_url" 
                                        class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition-colors duration-200">

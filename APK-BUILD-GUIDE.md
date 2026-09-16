@@ -719,7 +719,9 @@ it. **Flags control visibility only, never permission** — the server enforces 
 middleware regardless, so hiding a menu is a UX decision, not a security one. Most flags are off
 in a fresh event; an empty dashboard is expected, not a bug.
 
-`GET /api/v1/hero-slides` (public) returns the launch carousel: `title`, `subtitle`,
+`GET /api/v1/hero-slides` (public) returns the launch carousel. `primary_button` and `secondary_button`
+are each `{ text, url }` or **null** — null when the slide has none or the admin switched the primary
+button off (17 Sep); draw no button then, not an empty one. Fields: `title`, `subtitle`,
 `background_image`, `background_gradient`, `text_color`, `button_color`, `button_style`,
 `primary_button`, `secondary_button`, `icon_svg`, ordered by `order`.
 

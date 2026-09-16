@@ -15,6 +15,7 @@ class HeroSlide extends Model
         'subtitle',
         'primary_button_text',
         'primary_button_url',
+        'show_primary_button',
         'secondary_button_text',
         'secondary_button_url',
         'background_gradient',
@@ -30,6 +31,7 @@ class HeroSlide extends Model
 
     protected $casts = [
         'is_active' => 'boolean',
+        'show_primary_button' => 'boolean',
         'order' => 'integer',
         'element_order' => 'array',
     ];
@@ -242,7 +244,9 @@ class HeroSlide extends Model
             case 'subtitle':
                 return !empty($this->subtitle);
             case 'primary_button':
-                return !empty($this->primary_button_text) && !empty($this->primary_button_url);
+                // Switched off in the slide form: the text and URL are kept, just not shown.
+                return $this->show_primary_button !== false
+                    && !empty($this->primary_button_text) && !empty($this->primary_button_url);
             case 'secondary_button':
                 return !empty($this->secondary_button_text) && !empty($this->secondary_button_url);
             default:

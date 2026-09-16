@@ -19,6 +19,7 @@ class HeroSlideManagement extends Component
     // Form fields
     public $title = '';
     public $subtitle = '';
+    public $show_primary_button = true;
     public $primary_button_text = 'Get Started';
     public $primary_button_url = '/register';
     public $secondary_button_text = '';
@@ -43,8 +44,10 @@ class HeroSlideManagement extends Component
         return [
             'title' => 'nullable|string|max:255',
             'subtitle' => 'nullable|string|max:1000',
-            'primary_button_text' => 'required|string|max:50',
-            'primary_button_url' => 'required|string|max:255',
+            // Required only while the button is shown; a switched-off button may be left blank.
+            'show_primary_button' => 'boolean',
+            'primary_button_text' => ($this->show_primary_button ? 'required' : 'nullable').'|string|max:50',
+            'primary_button_url' => ($this->show_primary_button ? 'required' : 'nullable').'|string|max:255',
             'secondary_button_text' => 'nullable|string|max:50',
             'secondary_button_url' => 'nullable|string|max:255',
             'background_gradient' => 'required|string|max:255',
@@ -87,6 +90,7 @@ class HeroSlideManagement extends Component
         
         $this->title = $slide->title;
         $this->subtitle = $slide->subtitle;
+        $this->show_primary_button = $slide->show_primary_button ?? true;
         $this->primary_button_text = $slide->primary_button_text;
         $this->primary_button_url = $slide->primary_button_url;
         $this->secondary_button_text = $slide->secondary_button_text ?? '';
@@ -119,8 +123,11 @@ class HeroSlideManagement extends Component
         $data = [
             'title' => $this->title ?: null,
             'subtitle' => $this->subtitle ?: null,
-            'primary_button_text' => $this->primary_button_text,
-            'primary_button_url' => $this->primary_button_url,
+            'show_primary_button' => (bool) $this->show_primary_button,
+            // Kept when switched off, so turning the button back on restores what it said.
+            // The columns are NOT NULL; an empty string is what "no text" means here.
+            'primary_button_text' => (string) $this->primary_button_text,
+            'primary_button_url' => (string) $this->primary_button_url,
             'secondary_button_text' => $this->secondary_button_text ?: null,
             'secondary_button_url' => $this->secondary_button_url ?: null,
             'background_gradient' => $this->background_gradient,
@@ -244,6 +251,7 @@ class HeroSlideManagement extends Component
     {
         $this->title = '';
         $this->subtitle = '';
+        $this->show_primary_button = true;
         $this->primary_button_text = 'Get Started';
         $this->primary_button_url = '/register';
         $this->secondary_button_text = '';

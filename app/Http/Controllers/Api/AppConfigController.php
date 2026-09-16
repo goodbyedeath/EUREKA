@@ -68,7 +68,8 @@ class AppConfigController extends Controller
             'text_color' => $s->text_color,
             'button_color' => $s->button_color,
             'button_style' => $s->button_style,
-            'primary_button' => $s->primary_button_text ? [
+            // Null when the slide has no button or the admin switched it off.
+            'primary_button' => $s->show_primary_button !== false && $s->primary_button_text ? [
                 'text' => $s->primary_button_text,
                 'url' => $s->primary_button_url,
             ] : null,
