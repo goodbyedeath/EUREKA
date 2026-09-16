@@ -8,7 +8,7 @@
      x-transition:leave="transition ease-in duration-200"
      x-transition:leave-start="opacity-100 transform translate-y-0"
      x-transition:leave-end="opacity-0 transform translate-y-2"
-     class="fixed bottom-4 left-4 right-4 md:left-auto md:right-4 md:max-w-sm bg-white rounded-lg shadow-lg border border-gray-200 p-4 z-50">
+     class="fixed bottom-4 left-4 right-4 md:left-auto md:right-4 md:max-w-sm bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 p-4 z-50">
     
     <div class="flex items-start space-x-3">
         <div class="flex-shrink-0">
@@ -18,10 +18,10 @@
         </div>
         
         <div class="flex-1 min-w-0">
-            <p class="text-sm font-medium text-gray-900">
+            <p class="text-sm font-medium text-gray-900 dark:text-gray-100">
                 Install {{ \App\Models\BrandSetting::appName() }}
             </p>
-            <p class="text-sm text-gray-500">
+            <p class="text-sm text-gray-500 dark:text-gray-400">
                 Add to your home screen for quick access
             </p>
         </div>
@@ -32,7 +32,7 @@
                 Install
             </button>
             <button wire:click="hidePrompt" @click="dismissPrompt()"
-                    class="inline-flex items-center px-3 py-1.5 border border-gray-300 text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    class="inline-flex items-center px-3 py-1.5 border border-gray-300 dark:border-gray-600 text-xs font-medium rounded text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
                 Later
             </button>
         </div>

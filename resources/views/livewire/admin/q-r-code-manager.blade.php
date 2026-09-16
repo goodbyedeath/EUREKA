@@ -1,10 +1,10 @@
 <div class="text-center space-y-6">
     <!-- QR Code Display with Enhanced Styling -->
-    <div class="bg-white p-6 rounded-xl shadow-sm border-2 border-gray-100 inline-block">
+    <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border-2 border-gray-100 dark:border-gray-700 inline-block">
         <div id="qr-code-display" class="mb-2">
             {!! $this->generateQrCode(250) !!}
         </div>
-        <div class="flex items-center justify-center space-x-2 text-xs text-gray-500">
+        <div class="flex items-center justify-center space-x-2 text-xs text-gray-500 dark:text-gray-400">
             <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                 <path fill-rule="evenodd" d="M12.316 3.051a1 1 0 01.633 1.265l-4 12a1 1 0 11-1.898-.632l4-12a1 1 0 011.265-.633zM5.707 6.293a1 1 0 010 1.414L3.414 10l2.293 2.293a1 1 0 11-1.414 1.414l-3-3a1 1 0 010-1.414l3-3a1 1 0 011.414 0zm8.586 0a1 1 0 011.414 0l3 3a1 1 0 010 1.414l-3 3a1 1 0 11-1.414-1.414L16.586 10l-2.293-2.293a1 1 0 010-1.414z" clip-rule="evenodd"></path>
             </svg>
@@ -13,12 +13,12 @@
     </div>
     
     <!-- Questionnaire Info -->
-    <div class="bg-gray-50 rounded-lg p-4">
-        <h4 class="font-medium text-gray-900 mb-1">{{ $questionnaire->title }}</h4>
+    <div class="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
+        <h4 class="font-medium text-gray-900 dark:text-gray-100 mb-1">{{ $questionnaire->title }}</h4>
         @if($questionnaire->description)
-            <p class="text-sm text-gray-600 mb-3">{{ Str::limit($questionnaire->description, 100) }}</p>
+            <p class="text-sm text-gray-600 dark:text-gray-400 mb-3">{{ Str::limit($questionnaire->description, 100) }}</p>
         @endif
-        <div class="flex items-center justify-center space-x-4 text-xs text-gray-500">
+        <div class="flex items-center justify-center space-x-4 text-xs text-gray-500 dark:text-gray-400">
             <div class="flex items-center">
                 <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
@@ -35,19 +35,19 @@
     </div>
     
     <!-- QR Code Instructions -->
-    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+    <div class="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
         <div class="text-center">
             <div class="flex items-center justify-center mb-2">
-                <svg class="w-5 h-5 text-blue-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-5 h-5 text-blue-600 dark:text-blue-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                 </svg>
-                <p class="text-sm text-blue-700 font-medium">{{ __('quiz.how_to_use_qr_code') }}</p>
+                <p class="text-sm text-blue-700 dark:text-blue-300 font-medium">{{ __('quiz.how_to_use_qr_code') }}</p>
             </div>
-            <p class="text-xs text-blue-600 leading-relaxed">
+            <p class="text-xs text-blue-600 dark:text-blue-400 leading-relaxed">
                 {{ __('quiz.qr_code_instructions', ['code' => $questionnaire->qr_code]) }}
             </p>
             <button onclick="copyToClipboard('{{ $questionnaire->qr_code }}')" 
-                    class="mt-2 inline-flex items-center px-3 py-1 text-xs font-medium text-blue-600 bg-blue-100 border border-blue-200 rounded-md hover:bg-blue-200 transition-colors duration-200">
+                    class="mt-2 inline-flex items-center px-3 py-1 text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/40 border border-blue-200 dark:border-blue-800 rounded-md hover:bg-blue-200 transition-colors duration-200">
                 <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
                 </svg>
@@ -58,7 +58,7 @@
     
     <!-- Flash Messages -->
     @if(session()->has('error'))
-        <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+        <div class="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 px-4 py-3 rounded-lg text-sm">
             <div class="flex items-center">
                 <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
                     <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path>
@@ -69,7 +69,7 @@
     @endif
     
     @if(session()->has('message'))
-        <div class="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg text-sm">
+        <div class="bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-300 px-4 py-3 rounded-lg text-sm">
             <div class="flex items-center">
                 <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
                     <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
@@ -91,7 +91,7 @@
                 {{ __('quiz.download_png') }}
             </button>
             <button wire:click="downloadQrCode('svg', 512)" 
-                    class="inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-indigo-600 bg-indigo-50 border border-indigo-200 rounded-lg hover:bg-indigo-100 w-full transition-colors duration-200">
+                    class="inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-200 dark:border-indigo-800 rounded-lg hover:bg-indigo-100 w-full transition-colors duration-200">
                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                 </svg>
@@ -102,14 +102,14 @@
         <!-- Utility Actions -->
         <div class="space-y-2">
             <button onclick="printQrCode()" 
-                    class="inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-lg hover:bg-gray-200 w-full transition-colors duration-200">
+                    class="inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 w-full transition-colors duration-200">
                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path>
                 </svg>
                 {{ __('quiz.print') }}
             </button>
             <button onclick="shareQrCode('{{ $questionnaire->title }}', '{{ $questionnaire->qr_code }}')" 
-                    class="inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-lg hover:bg-gray-200 w-full transition-colors duration-200">
+                    class="inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 w-full transition-colors duration-200">
                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z"></path>
                 </svg>
@@ -119,10 +119,10 @@
     </div>
     
     <!-- Regenerate Button (Commented out as in original) -->
-    {{-- <div class="pt-4 border-t border-gray-200">
+    {{-- <div class="pt-4 border-t border-gray-200 dark:border-gray-700">
         <button wire:click="regenerateQrCode" 
                 wire:confirm="Are you sure you want to regenerate the QR code? The old code will no longer work."
-                class="inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-red-600 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 w-full transition-colors duration-200">
+                class="inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg hover:bg-red-100 w-full transition-colors duration-200">
             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
             </svg>

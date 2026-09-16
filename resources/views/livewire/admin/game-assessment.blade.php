@@ -1,29 +1,29 @@
 <div class="p-6">
     <div class="mb-6">
-        <h1 class="text-2xl font-bold text-gray-900 mb-2">Game Assessment</h1>
-        <p class="text-gray-600">Assess fun game performances and assign deposit scores</p>
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">Game Assessment</h1>
+        <p class="text-gray-600 dark:text-gray-400">Assess fun game performances and assign deposit scores</p>
     </div>
 
     {{-- Facilitator PIN: required on the team's phone before a game can be scored --}}
-    <div class="mb-6 bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+    <div class="mb-6 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4">
         <div class="flex flex-wrap items-end gap-4">
             <div class="flex-1 min-w-[12rem]">
-                <h2 class="text-lg font-semibold text-gray-900">Facilitator PIN</h2>
-                <p class="text-sm text-gray-600">
+                <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Facilitator PIN</h2>
+                <p class="text-sm text-gray-600 dark:text-gray-400">
                     @if($pinSet)
-                        <span class="text-green-700 font-medium">Set</span>@if($pinUpdatedAt) · last changed {{ $pinUpdatedAt->format('d M Y H:i') }}@endif.
+                        <span class="text-green-700 dark:text-green-300 font-medium">Set</span>@if($pinUpdatedAt) · last changed {{ $pinUpdatedAt->format('d M Y H:i') }}@endif.
                     @else
-                        <span class="text-red-700 font-medium">Not set</span> — the app refuses every game score until you set one.
+                        <span class="text-red-700 dark:text-red-300 font-medium">Not set</span> — the app refuses every game score until you set one.
                     @endif
                     Facilitators type it on the team's phone; 5 wrong tries lock that team for 15 minutes.
                 </p>
             </div>
             <form wire:submit="saveFacilitatorPin" class="flex items-end gap-2">
                 <div>
-                    <label for="newFacilitatorPin" class="block text-sm font-medium text-gray-700">New PIN (4–8 digits)</label>
+                    <label for="newFacilitatorPin" class="block text-sm font-medium text-gray-700 dark:text-gray-300">New PIN (4–8 digits)</label>
                     <input id="newFacilitatorPin" type="password" inputmode="numeric" autocomplete="new-password" maxlength="8"
                            wire:model="newFacilitatorPin"
-                           class="mt-1 block w-40 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                           class="mt-1 block w-40 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
                     @error('newFacilitatorPin') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
                 </div>
                 <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">{{ $pinSet ? 'Change PIN' : 'Set PIN' }}</button>
@@ -34,43 +34,43 @@
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {{-- Left Panel: Quiz Attempts List --}}
         <div class="lg:col-span-1">
-            <div class="bg-white rounded-lg shadow-sm border border-gray-200">
-                <div class="p-4 border-b border-gray-200">
-                    <h2 class="text-lg font-semibold text-gray-900 mb-4">Quiz Attempts with Games</h2>
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+                <div class="p-4 border-b border-gray-200 dark:border-gray-700">
+                    <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Quiz Attempts with Games</h2>
                     
                     {{-- Search --}}
                     <div class="mb-4">
                         <input type="text" 
                                wire:model.live.debounce.300ms="searchTerm"
                                placeholder="Search by team name or email..."
-                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                               class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
                     </div>
                 </div>
 
                 <div class="max-h-96 overflow-y-auto">
                     @forelse($attempts as $attempt)
-                        <div class="p-4 border-b border-gray-100 hover:bg-gray-50 cursor-pointer {{ $selectedAttempt && $selectedAttempt->id === $attempt->id ? 'bg-blue-50 border-blue-200' : '' }}"
+                        <div class="p-4 border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer {{ $selectedAttempt && $selectedAttempt->id === $attempt->id ? 'bg-blue-50 dark:bg-blue-900/30 border-blue-200 dark:border-blue-800' : '' }}"
                              wire:click="selectAttempt({{ $attempt->id }})">
                             <div class="flex items-center justify-between mb-2">
-                                <span class="font-medium text-gray-900">{{ $attempt->user->name }}</span>
-                                <span class="text-xs text-gray-500">
+                                <span class="font-medium text-gray-900 dark:text-gray-100">{{ $attempt->user->name }}</span>
+                                <span class="text-xs text-gray-500 dark:text-gray-400">
                                     {{ $attempt->completed_at ? $attempt->completed_at->format('M d, Y') : 'In Progress' }}
                                 </span>
                             </div>
-                            <div class="text-sm text-gray-600 mb-1">{{ $attempt->questionnaire->title }}</div>
+                            <div class="text-sm text-gray-600 dark:text-gray-400 mb-1">{{ $attempt->questionnaire->title }}</div>
                             <div class="flex items-center justify-between">
-                                <span class="text-xs text-gray-500">{{ $attempt->user->email }}</span>
+                                <span class="text-xs text-gray-500 dark:text-gray-400">{{ $attempt->user->email }}</span>
                                 <div class="flex items-center space-x-2">
                                     @php
                                         $pendingCount = $attempt->gameAssessments->where('is_assessed', false)->count();
                                         $totalCount = $attempt->gameAssessments->count();
                                     @endphp
                                     @if($pendingCount > 0)
-                                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 dark:bg-orange-900/40 text-orange-800 dark:text-orange-200">
                                             {{ $pendingCount }} pending
                                         </span>
                                     @else
-                                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-200">
                                             Complete
                                         </span>
                                     @endif
@@ -78,7 +78,7 @@
                             </div>
                         </div>
                     @empty
-                        <div class="p-8 text-center text-gray-500">
+                        <div class="p-8 text-center text-gray-500 dark:text-gray-400">
                             <i class="fas fa-gamepad text-3xl mb-2"></i>
                             <p>No game attempts found</p>
                         </div>
@@ -90,16 +90,16 @@
         {{-- Right Panel: Assessment Details --}}
         <div class="lg:col-span-2">
             @if($selectedAttempt)
-                <div class="bg-white rounded-lg shadow-sm border border-gray-200">
-                    <div class="p-6 border-b border-gray-200">
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+                    <div class="p-6 border-b border-gray-200 dark:border-gray-700">
                         <div class="flex items-center justify-between mb-4">
                             <div>
-                                <h2 class="text-xl font-semibold text-gray-900">{{ $selectedAttempt->user->name }}</h2>
-                                <p class="text-gray-600">{{ $selectedAttempt->questionnaire->title }}</p>
+                                <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100">{{ $selectedAttempt->user->name }}</h2>
+                                <p class="text-gray-600 dark:text-gray-400">{{ $selectedAttempt->questionnaire->title }}</p>
                             </div>
                             <div class="text-right">
-                                <div class="text-sm text-gray-500">{{ $selectedAttempt->completed_at ? 'Completed' : 'In Progress' }}</div>
-                                <div class="text-lg font-semibold text-gray-900">
+                                <div class="text-sm text-gray-500 dark:text-gray-400">{{ $selectedAttempt->completed_at ? 'Completed' : 'In Progress' }}</div>
+                                <div class="text-lg font-semibold text-gray-900 dark:text-gray-100">
                                     {{ $selectedAttempt->completed_at ? $selectedAttempt->completed_at->format('M d, Y H:i') : 'Ongoing' }}
                                 </div>
                             </div>
@@ -108,39 +108,39 @@
                         {{-- User Info --}}
                         <div class="grid grid-cols-2 gap-4 text-sm">
                             <div>
-                                <span class="text-gray-500">Email:</span>
-                                <span class="ml-2 text-gray-900">{{ $selectedAttempt->user->email }}</span>
+                                <span class="text-gray-500 dark:text-gray-400">Email:</span>
+                                <span class="ml-2 text-gray-900 dark:text-gray-100">{{ $selectedAttempt->user->email }}</span>
                             </div>
                             <div>
-                                <span class="text-gray-500">Total Score:</span>
-                                <span class="ml-2 text-gray-900">{{ number_format($selectedAttempt->total_score, 1) }}%</span>
+                                <span class="text-gray-500 dark:text-gray-400">Total Score:</span>
+                                <span class="ml-2 text-gray-900 dark:text-gray-100">{{ number_format($selectedAttempt->total_score, 1) }}%</span>
                             </div>
                         </div>
                     </div>
 
                     {{-- Game Assessments --}}
                     <div class="p-6">
-                        <h3 class="text-lg font-semibold text-gray-900 mb-4">Fun Game Assessments</h3>
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Fun Game Assessments</h3>
                         
                         @if($assessments->count() > 0)
                             <div class="space-y-4">
                                 @foreach($assessments as $assessment)
-                                    <div class="border border-gray-200 rounded-lg p-4 {{ $assessment->is_assessed ? 'bg-green-50' : 'bg-orange-50' }}">
+                                    <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4 {{ $assessment->is_assessed ? 'bg-green-50 dark:bg-green-900/30' : 'bg-orange-50 dark:bg-orange-900/30' }}">
                                         <div class="flex items-center justify-between mb-3">
                                             <div>
-                                                <h4 class="font-medium text-gray-900">
+                                                <h4 class="font-medium text-gray-900 dark:text-gray-100">
                                                     {{ $assessment->question->game_name ?? 'Fun Game' }}
                                                 </h4>
-                                                <p class="text-sm text-gray-600">{{ $assessment->question->question }}</p>
+                                                <p class="text-sm text-gray-600 dark:text-gray-400">{{ $assessment->question->question }}</p>
                                             </div>
                                             <div class="flex items-center space-x-2">
                                                 @if($assessment->is_assessed)
-                                                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-200">
                                                         <i class="fas fa-check mr-1"></i>
                                                         Assessed
                                                     </span>
                                                 @else
-                                                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                                                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 dark:bg-orange-900/40 text-orange-800 dark:text-orange-200">
                                                         <i class="fas fa-clock mr-1"></i>
                                                         Pending
                                                     </span>
@@ -156,36 +156,36 @@
                                         @if($assessment->is_assessed)
                                             <div class="grid grid-cols-4 gap-4 text-sm">
                                                 <div>
-                                                    <span class="text-gray-500">Deposit:</span>
-                                                    <span class="ml-1 font-medium text-green-600">{{ number_format($assessment->deposit, 2) }}</span>
+                                                    <span class="text-gray-500 dark:text-gray-400">Deposit:</span>
+                                                    <span class="ml-1 font-medium text-green-600 dark:text-green-400">{{ number_format($assessment->deposit, 2) }}</span>
                                                 </div>
                                                 <div>
-                                                    <span class="text-gray-500">Penalty:</span>
-                                                    <span class="ml-1 font-medium text-red-600">{{ number_format($assessment->penalty, 2) }}</span>
+                                                    <span class="text-gray-500 dark:text-gray-400">Penalty:</span>
+                                                    <span class="ml-1 font-medium text-red-600 dark:text-red-400">{{ number_format($assessment->penalty, 2) }}</span>
                                                 </div>
                                                 <div>
-                                                    <span class="text-gray-500">Total:</span>
-                                                    <span class="ml-1 font-bold {{ $assessment->total_deposit >= 0 ? 'text-green-600' : 'text-red-600' }}">
+                                                    <span class="text-gray-500 dark:text-gray-400">Total:</span>
+                                                    <span class="ml-1 font-bold {{ $assessment->total_deposit >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400' }}">
                                                         {{ number_format($assessment->total_deposit, 2) }}
                                                     </span>
                                                 </div>
                                                 <div>
-                                                    <span class="text-gray-500">By:</span>
-                                                    <span class="ml-1 text-gray-900">{{ $assessment->assessedBy->name ?? 'N/A' }}</span>
+                                                    <span class="text-gray-500 dark:text-gray-400">By:</span>
+                                                    <span class="ml-1 text-gray-900 dark:text-gray-100">{{ $assessment->assessedBy->name ?? 'N/A' }}</span>
                                                 </div>
                                             </div>
                                             @if(str_starts_with((string) $assessment->facilitator_photo, 'facilitator-photos/'))
                                                 <a href="{{ route('admin.game-assessments.facilitator-photo', $assessment->id) }}" target="_blank" rel="noopener"
-                                                   class="mt-2 inline-flex items-center gap-2 text-xs text-blue-600 hover:underline">
+                                                   class="mt-2 inline-flex items-center gap-2 text-xs text-blue-600 dark:text-blue-400 hover:underline">
                                                     <img src="{{ route('admin.game-assessments.facilitator-photo', $assessment->id) }}" alt="Facilitator photo" loading="lazy"
-                                                         class="h-12 w-12 rounded object-cover border border-gray-200">
+                                                         class="h-12 w-12 rounded object-cover border border-gray-200 dark:border-gray-700">
                                                     Facilitator photo{{ $assessment->facilitator_photo_captured_at ? ' · '.$assessment->facilitator_photo_captured_at->format('d M H:i') : '' }}
                                                 </a>
                                             @endif
                                             @if($assessment->notes)
-                                                <div class="mt-3 p-3 bg-gray-100 rounded-md">
-                                                    <span class="text-sm text-gray-600">Notes:</span>
-                                                    <p class="text-sm text-gray-800 mt-1">{{ $assessment->notes }}</p>
+                                                <div class="mt-3 p-3 bg-gray-100 dark:bg-gray-700 rounded-md">
+                                                    <span class="text-sm text-gray-600 dark:text-gray-400">Notes:</span>
+                                                    <p class="text-sm text-gray-800 dark:text-gray-100 mt-1">{{ $assessment->notes }}</p>
                                                 </div>
                                             @endif
                                         @endif
@@ -193,10 +193,10 @@
                                         {{-- Show game description and images if available --}}
                                         @if($assessment->question->description || $assessment->question->images)
                                             <details class="mt-3">
-                                                <summary class="text-sm text-blue-600 cursor-pointer hover:text-blue-800">View Game Details</summary>
-                                                <div class="mt-2 p-3 bg-blue-50 rounded-md">
+                                                <summary class="text-sm text-blue-600 dark:text-blue-400 cursor-pointer hover:text-blue-800">View Game Details</summary>
+                                                <div class="mt-2 p-3 bg-blue-50 dark:bg-blue-900/30 rounded-md">
                                                     @if($assessment->question->description)
-                                                        <p class="text-sm text-blue-800 mb-2">{{ $assessment->question->description }}</p>
+                                                        <p class="text-sm text-blue-800 dark:text-blue-200 mb-2">{{ $assessment->question->description }}</p>
                                                     @endif
                                                     @if($assessment->question->images)
                                                         <div class="grid grid-cols-3 gap-2">
@@ -209,7 +209,7 @@
                                                                      class="w-full h-20 object-cover rounded cursor-pointer hover:opacity-75 transition-opacity"
                                                                      onclick="openImageModal('{{ $imageUrl }}')"
                                                                      onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
-                                                                <div style="display:none;" class="w-full h-20 bg-gray-200 flex items-center justify-center text-gray-500 rounded">
+                                                                <div style="display:none;" class="w-full h-20 bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-gray-500 dark:text-gray-400 rounded">
                                                                     <i class="fas fa-image"></i>
                                                                 </div>
                                                             @endforeach
@@ -223,8 +223,8 @@
                             </div>
 
                             {{-- Summary --}}
-                            <div class="mt-6 p-4 bg-gray-50 rounded-lg">
-                                <h4 class="font-medium text-gray-900 mb-2">Assessment Summary</h4>
+                            <div class="mt-6 p-4 bg-gray-50 dark:bg-gray-900 rounded-lg">
+                                <h4 class="font-medium text-gray-900 dark:text-gray-100 mb-2">Assessment Summary</h4>
                                 @php
                                     $totalDeposit = $assessments->sum('total_deposit');
                                     $assessedCount = $assessments->where('is_assessed', true)->count();
@@ -232,27 +232,27 @@
                                 @endphp
                                 <div class="grid grid-cols-3 gap-4 text-sm">
                                     <div>
-                                        <span class="text-gray-500">Progress:</span>
+                                        <span class="text-gray-500 dark:text-gray-400">Progress:</span>
                                         <span class="ml-1 font-medium">{{ $assessedCount }}/{{ $totalCount }} games</span>
                                     </div>
                                     <div>
-                                        <span class="text-gray-500">Total Deposit:</span>
-                                        <span class="ml-1 font-bold {{ $totalDeposit >= 0 ? 'text-green-600' : 'text-red-600' }}">
+                                        <span class="text-gray-500 dark:text-gray-400">Total Deposit:</span>
+                                        <span class="ml-1 font-bold {{ $totalDeposit >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400' }}">
                                             {{ number_format($totalDeposit, 2) }}
                                         </span>
                                     </div>
                                     <div>
-                                        <span class="text-gray-500">Status:</span>
+                                        <span class="text-gray-500 dark:text-gray-400">Status:</span>
                                         @if($assessedCount === $totalCount)
-                                            <span class="ml-1 text-green-600 font-medium">Complete</span>
+                                            <span class="ml-1 text-green-600 dark:text-green-400 font-medium">Complete</span>
                                         @else
-                                            <span class="ml-1 text-orange-600 font-medium">{{ $totalCount - $assessedCount }} pending</span>
+                                            <span class="ml-1 text-orange-600 dark:text-orange-400 font-medium">{{ $totalCount - $assessedCount }} pending</span>
                                         @endif
                                     </div>
                                 </div>
                             </div>
                         @else
-                            <div class="text-center py-8 text-gray-500">
+                            <div class="text-center py-8 text-gray-500 dark:text-gray-400">
                                 <i class="fas fa-gamepad text-3xl mb-2"></i>
                                 <p>No fun games found in this quiz attempt</p>
                             </div>
@@ -260,10 +260,10 @@
                     </div>
                 </div>
             @else
-                <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
-                    <i class="fas fa-clipboard-list text-gray-400 text-4xl mb-4"></i>
-                    <h3 class="text-lg font-medium text-gray-900 mb-2">Select a Quiz Attempt</h3>
-                    <p class="text-gray-600">Choose a quiz attempt from the left panel to view and assess fun games</p>
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-12 text-center">
+                    <i class="fas fa-clipboard-list text-gray-400 dark:text-gray-500 text-4xl mb-4"></i>
+                    <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">Select a Quiz Attempt</h3>
+                    <p class="text-gray-600 dark:text-gray-400">Choose a quiz attempt from the left panel to view and assess fun games</p>
                 </div>
             @endif
         </div>
@@ -275,57 +275,57 @@
             <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
                 <div class="fixed inset-0 bg-gray-900 bg-opacity-75 transition-opacity"></div>
 
-                <div class="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6">
+                <div class="inline-block align-bottom bg-white dark:bg-gray-800 rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6">
                     <div class="sm:flex sm:items-start">
-                        <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 sm:mx-0 sm:h-10 sm:w-10">
-                            <i class="fas fa-edit text-blue-600"></i>
+                        <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 dark:bg-blue-900/40 sm:mx-0 sm:h-10 sm:w-10">
+                            <i class="fas fa-edit text-blue-600 dark:text-blue-400"></i>
                         </div>
                         <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left flex-1">
-                            <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-title">
+                            <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-gray-100" id="modal-title">
                                 Assess Game Performance
                             </h3>
                             <div class="mt-2">
-                                <p class="text-sm text-gray-500">
+                                <p class="text-sm text-gray-500 dark:text-gray-400">
                                     {{ $editingAssessment->question->game_name ?? 'Fun Game' }} - {{ $editingAssessment->user->name }}
                                 </p>
                             </div>
                             
                             <form wire:submit="saveAssessment" class="mt-4 space-y-4">
                                 <div>
-                                    <p class="text-xs text-gray-500 mb-2">Base (team starting points, not paid): {{ number_format((float) $deposit) }}</p>
-                                    <label for="additionalPoints" class="block text-sm font-medium text-gray-700">Additional Points (max {{ (int) ($editingAssessment->question->points ?? 0) }})</label>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">Base (team starting points, not paid): {{ number_format((float) $deposit) }}</p>
+                                    <label for="additionalPoints" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Additional Points (max {{ (int) ($editingAssessment->question->points ?? 0) }})</label>
                                     <input type="number" 
                                            wire:model.live.debounce.500ms="additionalPoints" 
                                            step="1" 
                                            min="0"
                                            max="{{ (int) ($editingAssessment->question->points ?? 0) }}"
-                                           class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                           class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
                                     @error('additionalPoints') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
                                 </div>
 
                                 <div>
-                                    <label for="penalty" class="block text-sm font-medium text-gray-700">Penalty</label>
+                                    <label for="penalty" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Penalty</label>
                                     <input type="number" 
                                            wire:model.live.debounce.500ms="penalty" 
                                            step="1" 
                                            min="0"
-                                           class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                           class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
                                     @error('penalty') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
                                 </div>
 
                                 <div>
-                                    <label for="notes" class="block text-sm font-medium text-gray-700">Notes</label>
+                                    <label for="notes" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Notes</label>
                                     <textarea wire:model="notes" 
                                               rows="3"
-                                              class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                                              class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                                               placeholder="Additional notes about the assessment..."></textarea>
                                     @error('notes') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
                                 </div>
 
-                                <div class="bg-gray-50 p-3 rounded-md">
+                                <div class="bg-gray-50 dark:bg-gray-900 p-3 rounded-md">
                                     <div class="flex items-center justify-between text-sm">
-                                        <span class="text-gray-600">Total Deposit:</span>
-                                        <span class="font-bold {{ $totalDeposit >= 0 ? 'text-green-600' : 'text-red-600' }}">
+                                        <span class="text-gray-600 dark:text-gray-400">Total Deposit:</span>
+                                        <span class="font-bold {{ $totalDeposit >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400' }}">
                                             {{ number_format($totalDeposit, 2) }}
                                         </span>
                                     </div>
@@ -341,7 +341,7 @@
                         </button>
                         <button type="button" 
                                 wire:click="cancelEdit"
-                                class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:w-auto sm:text-sm">
+                                class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 dark:border-gray-600 shadow-sm px-4 py-2 bg-white dark:bg-gray-800 text-base font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:w-auto sm:text-sm">
                             Cancel
                         </button>
                     </div>
@@ -352,7 +352,7 @@
 
     {{-- Success/Error Messages --}}
     @if(session()->has('success'))
-        <div class="fixed top-4 right-4 bg-green-50 border border-green-200 rounded-md p-4 z-50" 
+        <div class="fixed top-4 right-4 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 rounded-md p-4 z-50" 
              x-data="{ show: true }" 
              x-show="show" 
              x-init="setTimeout(() => show = false, 5000)"
@@ -362,7 +362,7 @@
                     <i class="fas fa-check-circle text-green-400"></i>
                 </div>
                 <div class="ml-3">
-                    <p class="text-sm text-green-800">{{ session('success') }}</p>
+                    <p class="text-sm text-green-800 dark:text-green-200">{{ session('success') }}</p>
                 </div>
                 <div class="ml-auto pl-3">
                     <button @click="show = false" class="text-green-400 hover:text-green-600">

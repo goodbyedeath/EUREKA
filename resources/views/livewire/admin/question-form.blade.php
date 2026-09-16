@@ -1,12 +1,12 @@
-<div class="bg-white border rounded-lg p-4 sm:p-6 shadow-sm transition-all duration-300" id="question-form" x-data="{ editing: @entangle('isEditing') }">
-    <h3 class="text-lg font-medium mb-4 text-gray-900">
+<div class="bg-white dark:bg-gray-800 border rounded-lg p-4 sm:p-6 shadow-sm transition-all duration-300" id="question-form" x-data="{ editing: @entangle('isEditing') }">
+    <h3 class="text-lg font-medium mb-4 text-gray-900 dark:text-gray-100">
         @if($isEditing)
             <div class="flex items-center">
-                <svg class="w-5 h-5 mr-2 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-5 h-5 mr-2 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
                 </svg>
                 <span>Edit Question</span>
-                <span class="ml-2 px-2 py-1 text-xs font-medium bg-indigo-100 text-indigo-800 rounded-full">Editing Mode</span>
+                <span class="ml-2 px-2 py-1 text-xs font-medium bg-indigo-100 dark:bg-indigo-900/40 text-indigo-800 dark:text-indigo-200 rounded-full">Editing Mode</span>
             </div>
         @else
             Add New Question
@@ -15,24 +15,24 @@
     
     <!-- Success/Error Messages -->
     @if (session()->has('questions_message'))
-        <div class="mb-4 p-4 bg-green-50 border border-green-200 rounded-md">
-            <p class="text-sm text-green-800">{{ session('questions_message') }}</p>
+        <div class="mb-4 p-4 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 rounded-md">
+            <p class="text-sm text-green-800 dark:text-green-200">{{ session('questions_message') }}</p>
         </div>
     @endif
 
     @if (session()->has('questions_error'))
-        <div class="mb-4 p-4 bg-red-50 border border-red-200 rounded-md">
-            <p class="text-sm text-red-800">{{ session('questions_error') }}</p>
+        <div class="mb-4 p-4 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-md">
+            <p class="text-sm text-red-800 dark:text-red-200">{{ session('questions_error') }}</p>
         </div>
     @endif
 
     @if (session()->has('questions_warning'))
-        <div class="mb-4 p-4 bg-amber-50 border border-amber-400 rounded-md animate-pulse">
+        <div class="mb-4 p-4 bg-amber-50 dark:bg-amber-900/30 border border-amber-400 rounded-md animate-pulse">
             <div class="flex items-start">
-                <svg class="w-5 h-5 text-amber-600 mr-2 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                <svg class="w-5 h-5 text-amber-600 dark:text-amber-400 mr-2 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
                     <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
                 </svg>
-                <p class="text-sm text-amber-800 font-medium">{{ session('questions_warning') }}</p>
+                <p class="text-sm text-amber-800 dark:text-amber-200 font-medium">{{ session('questions_warning') }}</p>
             </div>
         </div>
     @endif
@@ -40,7 +40,7 @@
     <form wire:submit="addQuestion" class="space-y-6">
         <!-- Question Text -->
         <div>
-            <label for="question-text" class="block text-sm font-medium text-gray-700 mb-1">
+            <label for="question-text" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Question <span class="text-red-500">*</span>
             </label>
             <textarea 
@@ -48,7 +48,7 @@
                 wire:model="newQuestion.question" 
                 rows="3"
                 placeholder="Enter your question here..."
-                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 transition-colors duration-200"
+                class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 transition-colors duration-200"
             ></textarea>
             @error('newQuestion.question') 
                 <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> 
@@ -58,13 +58,13 @@
         <!-- Question Type and Points -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-                <label for="question-type" class="block text-sm font-medium text-gray-700 mb-1">
+                <label for="question-type" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Question Type <span class="text-red-500">*</span>
                 </label>
                 <select 
                     id="question-type"
                     wire:model.live="newQuestion.type" 
-                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 transition-colors duration-200"
+                    class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 transition-colors duration-200"
                 >
                     <option value="text">Text Answer</option>
                     <option value="multiple_choice">Multiple Choice</option>
@@ -78,12 +78,12 @@
             </div>
 
             <div>
-                <label for="question-points" class="block text-sm font-medium text-gray-700 mb-1">
+                <label for="question-points" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Points 
                     @if($newQuestion['type'] !== 'brief')
                         <span class="text-red-500">*</span>
                     @else
-                        <span class="text-gray-400 text-xs">(Not applicable for feedback)</span>
+                        <span class="text-gray-400 dark:text-gray-500 text-xs">(Not applicable for feedback)</span>
                     @endif
                 </label>
                 <input 
@@ -95,13 +95,13 @@
                     step="1"
                     @if($newQuestion['type'] === 'brief') 
                         readonly value="0" 
-                        class="mt-1 block w-full rounded-md border-gray-300 bg-gray-100 text-gray-500 cursor-not-allowed"
+                        class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed"
                     @else
-                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 transition-colors duration-200"
+                        class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 transition-colors duration-200"
                     @endif
                 >
                 @if($newQuestion['type'] === 'brief')
-                    <p class="text-xs text-gray-500 mt-1">Feedback questions don't award points</p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Feedback questions don't award points</p>
                 @endif
                 @error('newQuestion.points') 
                     <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> 
@@ -111,17 +111,17 @@
 
         <!-- Multiple Choice Options -->
         @if($newQuestion['type'] === 'multiple_choice')
-            <div class="bg-gray-50 p-4 rounded-lg border">
+            <div class="bg-gray-50 dark:bg-gray-900 p-4 rounded-lg border">
                 <div class="flex items-center justify-between mb-3">
-                    <label class="block text-sm font-medium text-gray-700">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
                         Answer Options <span class="text-red-500">*</span>
-                        <span class="text-xs text-gray-500 block mt-1">Minimum 2 options, maximum 8 options</span>
+                        <span class="text-xs text-gray-500 dark:text-gray-400 block mt-1">Minimum 2 options, maximum 8 options</span>
                     </label>
                     @if(count($newQuestion['options']) < 8)
                         <button 
                             type="button" 
                             wire:click="addOption"
-                            class="inline-flex items-center px-3 py-1 text-xs font-medium text-indigo-600 bg-indigo-50 border border-indigo-200 rounded-md hover:bg-indigo-100 transition-colors duration-200"
+                            class="inline-flex items-center px-3 py-1 text-xs font-medium text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-200 dark:border-indigo-800 rounded-md hover:bg-indigo-100 transition-colors duration-200"
                         >
                             <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
@@ -134,7 +134,7 @@
                 <div class="space-y-3">
                     @foreach($newQuestion['options'] as $index => $option)
                         <div class="flex items-center space-x-3">
-                            <div class="flex-shrink-0 w-8 h-8 bg-white border border-gray-300 rounded-full flex items-center justify-center text-sm font-medium text-gray-600">
+                            <div class="flex-shrink-0 w-8 h-8 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-full flex items-center justify-center text-sm font-medium text-gray-600 dark:text-gray-400">
                                 {{ chr(65 + $index) }}
                             </div>
                             <input 
@@ -142,10 +142,10 @@
                                 wire:model.blur="newQuestion.options.{{ $index }}" 
                                 placeholder="Enter option {{ chr(65 + $index) }}"
                                 maxlength="255"
-                                class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 transition-colors duration-200 @if($newQuestion['correct_answer'] === $option && !empty(trim($option))) border-green-300 bg-green-50 @endif"
+                                class="flex-1 rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 transition-colors duration-200 @if($newQuestion['correct_answer'] === $option && !empty(trim($option))) border-green-300 bg-green-50 dark:bg-green-900/30 @endif"
                             >
                             @if($newQuestion['correct_answer'] === $option && !empty(trim($option)))
-                                <div class="flex-shrink-0 text-green-600" title="Correct Answer">
+                                <div class="flex-shrink-0 text-green-600 dark:text-green-400" title="Correct Answer">
                                     <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                                         <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
                                     </svg>
@@ -182,7 +182,7 @@
                 @endphp
                 
                 @if(!empty($duplicates))
-                    <div class="text-orange-600 text-sm mt-2 flex items-center">
+                    <div class="text-orange-600 dark:text-orange-400 text-sm mt-2 flex items-center">
                         <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
                             <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
                         </svg>
@@ -194,7 +194,7 @@
 
         <!-- Fun Game Fields -->
         @if($newQuestion['type'] === 'fun_game')
-            <div class="bg-purple-50 p-4 rounded-lg border border-purple-200">
+            <div class="bg-purple-50 dark:bg-purple-900/30 p-4 rounded-lg border border-purple-200 dark:border-purple-800">
                 <h4 class="text-sm font-medium text-purple-900 mb-4 flex items-center">
                     <i class="fas fa-gamepad mr-2"></i>
                     Fun Game Configuration
@@ -202,7 +202,7 @@
                 
                 <!-- Game Name -->
                 <div class="mb-4">
-                    <label for="game-name" class="block text-sm font-medium text-gray-700 mb-1">
+                    <label for="game-name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                         Game Name <span class="text-red-500">*</span>
                     </label>
                     <input 
@@ -211,7 +211,7 @@
                         wire:model="newQuestion.game_name" 
                         placeholder="Enter the name of the fun game..."
                         maxlength="200"
-                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 transition-colors duration-200"
+                        class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 transition-colors duration-200"
                     >
                     @error('newQuestion.game_name') 
                         <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> 
@@ -220,7 +220,7 @@
 
                 <!-- Game Description -->
                 <div class="mb-4">
-                    <label for="game-description" class="block text-sm font-medium text-gray-700 mb-1">
+                    <label for="game-description" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                         Game Instructions/Description <span class="text-red-500">*</span>
                     </label>
                     <textarea 
@@ -229,7 +229,7 @@
                         rows="4"
                         placeholder="Enter detailed instructions for the game..."
                         maxlength="2000"
-                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 transition-colors duration-200"
+                        class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 transition-colors duration-200"
                     ></textarea>
                     @error('newQuestion.description') 
                         <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> 
@@ -239,12 +239,12 @@
                 <!-- Game Images -->
                 <div>
                     <div class="flex items-center justify-between mb-3">
-                        <label class="block text-sm font-medium text-gray-700">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
                             Game Images
-                            <span class="text-xs text-gray-500 block mt-1">Optional - Upload up to 10 images (JPEG, PNG, WebP, max 2MB each)</span>
+                            <span class="text-xs text-gray-500 dark:text-gray-400 block mt-1">Optional - Upload up to 10 images (JPEG, PNG, WebP, max 2MB each)</span>
                         </label>
                         @if(count($uploadedImages) + count($newQuestion['images'] ?? []) < 10)
-                            <label class="inline-flex items-center px-3 py-1 text-xs font-medium text-purple-600 bg-purple-50 border border-purple-200 rounded-md hover:bg-purple-100 transition-colors duration-200 cursor-pointer">
+                            <label class="inline-flex items-center px-3 py-1 text-xs font-medium text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-800 rounded-md hover:bg-purple-100 transition-colors duration-200 cursor-pointer">
                                 <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
                                 </svg>
@@ -257,11 +257,11 @@
                     <!-- Display existing images (for editing mode) -->
                     @if(!empty($newQuestion['images']))
                         <div class="mb-4">
-                            <h5 class="text-sm font-medium text-gray-700 mb-2">Current Images:</h5>
+                            <h5 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Current Images:</h5>
                             <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                                 @foreach($newQuestion['images'] as $index => $imagePath)
                                     <div class="relative group">
-                                        <div class="aspect-square bg-gray-100 rounded-lg overflow-hidden">
+                                        <div class="aspect-square bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden">
                                             <img src="{{ asset('storage/' . $imagePath) }}" alt="Game image {{ $index + 1 }}" class="w-full h-full object-cover">
                                         </div>
                                         <button 
@@ -283,7 +283,7 @@
                     <!-- Display newly uploaded images -->
                     @if(count($uploadedImages) > 0)
                         <div class="mb-4">
-                            <h5 class="text-sm font-medium text-gray-700 mb-2">{{ !empty($newQuestion['images']) ? 'New Images:' : 'Uploaded Images:' }}</h5>
+                            <h5 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{{ !empty($newQuestion['images']) ? 'New Images:' : 'Uploaded Images:' }}</h5>
                             <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                                 @foreach($uploadedImages as $index => $uploadedImage)
                                     @if($uploadedImage)
@@ -291,9 +291,9 @@
                                             {{-- Filename, not a thumbnail: the signed preview URL is
                                                  stripped of its query string by this host's image
                                                  optimisation and 401s. The upload still works. --}}
-                                            <div class="aspect-square bg-gray-100 rounded-lg flex flex-col items-center justify-center p-2 text-center">
-                                                <i class="fas fa-image text-gray-400 text-2xl"></i>
-                                                <p class="mt-2 text-xs text-gray-600 break-all line-clamp-3">{{ $uploadedImage->getClientOriginalName() }}</p>
+                                            <div class="aspect-square bg-gray-100 dark:bg-gray-700 rounded-lg flex flex-col items-center justify-center p-2 text-center">
+                                                <i class="fas fa-image text-gray-400 dark:text-gray-500 text-2xl"></i>
+                                                <p class="mt-2 text-xs text-gray-600 dark:text-gray-400 break-all line-clamp-3">{{ $uploadedImage->getClientOriginalName() }}</p>
                                             </div>
                                             <button 
                                                 type="button" 
@@ -313,12 +313,12 @@
                     @endif
                     
                     @if(empty($newQuestion['images']) && count($uploadedImages) === 0)
-                        <div class="text-center py-8 border-2 border-dashed border-gray-300 rounded-lg">
-                            <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
+                        <div class="text-center py-8 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg">
+                            <svg class="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" stroke="currentColor" fill="none" viewBox="0 0 48 48">
                                 <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
                             </svg>
-                            <p class="mt-2 text-sm text-gray-500">No images uploaded yet</p>
-                            <p class="text-xs text-gray-400">Click "Upload Image" to add visual content for your game</p>
+                            <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">No images uploaded yet</p>
+                            <p class="text-xs text-gray-400 dark:text-gray-500">Click "Upload Image" to add visual content for your game</p>
                         </div>
                     @endif
                     
@@ -350,12 +350,12 @@
                     @enderror
                 </div>
 
-                <div class="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                <div class="mt-4 p-3 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-md">
                     <div class="flex items-start">
                         <svg class="w-5 h-5 text-blue-400 mt-0.5 mr-2" fill="currentColor" viewBox="0 0 20 20">
                             <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
                         </svg>
-                        <div class="text-sm text-blue-800">
+                        <div class="text-sm text-blue-800 dark:text-blue-200">
                             <strong>Note:</strong> Fun games don't require correct answers. Users complete the activity and are assessed manually by administrators using deposit/penalty scoring.
                         </div>
                     </div>
@@ -365,7 +365,7 @@
 
         <!-- Brief Feedback Configuration -->
         @if($newQuestion['type'] === 'brief')
-            <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
+            <div class="bg-blue-50 dark:bg-blue-900/30 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
                 <h4 class="text-sm font-medium text-blue-900 mb-4 flex items-center">
                     <i class="fas fa-comments mr-2"></i>
                     Feedback Question Configuration
@@ -373,8 +373,8 @@
                 
                 <!-- Description/Guidance -->
                 <div class="mb-4">
-                    <label for="brief-description" class="block text-sm font-medium text-gray-700 mb-1">
-                        Additional Guidance <span class="text-gray-500 text-xs">(Optional)</span>
+                    <label for="brief-description" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Additional Guidance <span class="text-gray-500 dark:text-gray-400 text-xs">(Optional)</span>
                     </label>
                     <textarea 
                         id="brief-description"
@@ -382,20 +382,20 @@
                         rows="3"
                         placeholder="Enter additional guidance or context for teams filling out this feedback..."
                         maxlength="1000"
-                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 transition-colors duration-200"
+                        class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 transition-colors duration-200"
                     ></textarea>
                     @error('newQuestion.description') 
                         <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> 
                     @enderror
-                    <p class="text-xs text-gray-500 mt-1">{{ strlen($newQuestion['description'] ?? '') }}/1000 characters</p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ strlen($newQuestion['description'] ?? '') }}/1000 characters</p>
                 </div>
 
-                <div class="p-3 bg-blue-50 border border-blue-200 rounded-md">
+                <div class="p-3 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-md">
                     <div class="flex items-start">
                         <svg class="w-5 h-5 text-blue-400 mt-0.5 mr-2" fill="currentColor" viewBox="0 0 20 20">
                             <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
                         </svg>
-                        <div class="text-sm text-blue-800">
+                        <div class="text-sm text-blue-800 dark:text-blue-200">
                             <strong>About Feedback Questions:</strong> These questions are designed to collect user experience feedback and aren't scored. Users can provide text responses that help you understand their experience better.
                         </div>
                     </div>
@@ -406,7 +406,7 @@
         <!-- Correct Answer -->
         @if($newQuestion['type'] !== 'fun_game' && $newQuestion['type'] !== 'brief')
             <div>
-                <label for="correct-answer" class="block text-sm font-medium text-gray-700 mb-1">
+                <label for="correct-answer" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Correct Answer <span class="text-red-500">*</span>
                 </label>
             
@@ -414,7 +414,7 @@
                 <select 
                     id="correct-answer"
                     wire:model="newQuestion.correct_answer" 
-                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 transition-colors duration-200"
+                    class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 transition-colors duration-200"
                 >
                     <option value="">Select the correct answer...</option>
                     <option value="true">True</option>
@@ -424,7 +424,7 @@
                 <select 
                     id="correct-answer"
                     wire:model="newQuestion.correct_answer" 
-                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 transition-colors duration-200"
+                    class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 transition-colors duration-200"
                 >
                     <option value="">Select the correct option...</option>
                     @foreach($newQuestion['options'] as $option)
@@ -437,7 +437,7 @@
                     $nonEmptyOptions = array_filter($newQuestion['options'], fn($opt) => !empty(trim($opt)));
                 @endphp
                 @if(count($nonEmptyOptions) < 2)
-                    <p class="text-sm text-gray-500 mt-1">Please add at least two non-empty options first.</p>
+                    <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Please add at least two non-empty options first.</p>
                 @endif
             @else
                 <input 
@@ -445,7 +445,7 @@
                     id="correct-answer"
                     wire:model="newQuestion.correct_answer" 
                     placeholder="Enter the correct answer..."
-                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 transition-colors duration-200"
+                    class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 transition-colors duration-200"
                 >
             @endif
             
@@ -456,13 +456,13 @@
         @endif
 
         <!-- Form Actions -->
-        <div class="flex justify-between items-center pt-4 border-t border-gray-200">
+        <div class="flex justify-between items-center pt-4 border-t border-gray-200 dark:border-gray-700">
             <div class="flex space-x-3">
                 @if($isEditing)
                     <button 
                         type="button" 
                         wire:click="cancelEdit"
-                        class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors duration-200"
+                        class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors duration-200"
                     >
                         Cancel Edit
                     </button>
@@ -470,7 +470,7 @@
                 <button 
                     type="button" 
                     wire:click="resetNewQuestion"
-                    class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors duration-200"
+                    class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors duration-200"
                 >
                     Reset Form
                 </button>
