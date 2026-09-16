@@ -387,6 +387,21 @@
                     </div>
 
                     @if ($map->spots->count())
+                        @php $unlinked = $map->spots->where('is_active', true)->whereNull('game_location_id')->count(); @endphp
+                        @if ($unlinked === $map->spots->where('is_active', true)->count() && $unlinked > 0)
+                            {{-- The whole plan is decoration: a team scanning START here sees every marker locked,
+                                 and opening posts on Outpost Access changes nothing, because no marker points at one. --}}
+                            <div class="mt-4 rounded-lg border border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/30 p-3 text-sm text-amber-800 dark:text-amber-200">
+                                <strong>Tidak ada penanda yang terhubung ke pos.</strong>
+                                Tim yang memindai START untuk denah ini akan melihat semua penanda terkunci, dan membuka akses
+                                di Outpost Access tidak akan berpengaruh. Buka Edit pada tiap penanda lalu pilih posnya.
+                            </div>
+                        @elseif ($unlinked > 0)
+                            <div class="mt-4 rounded-lg border border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/30 p-3 text-sm text-amber-800 dark:text-amber-200">
+                                {{ $unlinked }} penanda belum terhubung ke pos, jadi akan selalu terkunci di aplikasi tim.
+                                Kalau memang hanya penanda informasi, abaikan pesan ini.
+                            </div>
+                        @endif
                         <div class="mt-4 overflow-x-auto border border-gray-200 dark:border-gray-700 rounded-lg">
                             <table class="min-w-full text-sm">
                                 <thead class="bg-gray-50 dark:bg-gray-800">
@@ -412,7 +427,17 @@
                                                     <span class="text-gray-400">marker only</span>
                                                 @endif
                                             </td>
-                                            <td class="px-4 py-2 text-gray-600 dark:text-gray-400">{{ $spot->gameLocation->name ?? '—' }}</td>
+                                            <td class="px-4 py-2 text-gray-600 dark:text-gray-400">
+                                                @if ($spot->gameLocation)
+                                                    {{ $spot->gameLocation->name }}
+                                                @else
+                                                    {{-- Without an outpost the marker can never open: is_open is false for every team. --}}
+                                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-200"
+                                                          title="Tanpa pos, penanda ini selalu terkunci di aplikasi tim. Pilih pos lewat Edit, atau biarkan kalau memang hanya penanda informasi.">
+                                                        belum terhubung
+                                                    </span>
+                                                @endif
+                                            </td>
                                             <td class="px-4 py-2 text-right whitespace-nowrap">
                                                 <button type="button" wire:click="toggleSpot({{ $spot->id }})"
                                                         class="px-2 py-1 text-xs rounded bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200">

@@ -738,7 +738,7 @@ GET /api/v1/indoor-map/{id}       → a specific one
   "spots": [ { "id": 26, "name": "test", "x": 88.54, "y": 12.689,
                "shape": "pin", "color": "#705757", "size": 28,
                "content": "", "image": "https://…",
-               "game_location_id": null, "is_open": false } ] }
+               "game_location_id": null, "is_post": false, "is_open": false } ] }
 ```
 
 Two things to get right:
@@ -747,8 +747,13 @@ Two things to get right:
 - **`x` and `y` are percentages, not pixels** (0–100). Multiply by your rendered image size, so the
   plan can be displayed at any width.
 
-`is_open` says whether that spot's post is open for this team. `game_location_id` links a spot to an
-AR outpost when it has one.
+**`is_post` says whether the marker gates anything at all.** A plan can carry markers that are not
+outposts — a stage, an entrance, a photo with a caption. Those have `game_location_id: null`,
+`is_post: false`, and **must not be drawn with a lock**: show the marker, and its `content` and
+`image` on tap. Only when `is_post` is true does `is_open` mean anything.
+
+`is_open` says whether that spot's post is open for this team; it is always false when `is_post` is
+false. `game_location_id` is the AR outpost the marker stands for.
 
 **A correct START clue opens every post on the plan** (operator, 15 Sep — your #21). When
 `POST /race/clue/{map}` returns `correct: true, already_solved: false`, the server has written an

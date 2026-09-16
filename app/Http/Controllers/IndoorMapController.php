@@ -81,6 +81,11 @@ class IndoorMapController extends Controller
                 'content' => $s->content,
                 'image' => $s->imageUrl(),
                 'game_location_id' => $s->game_location_id,
+                // A marker only gates something when it stands for an outpost. Without this a
+                // decorative or informational marker reported is_open:false and the app drew a
+                // lock on it — which is also how an unlinked plan looks entirely locked no
+                // matter what the crew opens (operator, 16 Sep).
+                'is_post' => $s->game_location_id !== null,
                 // Indoor posts are handed out at random, so a team needs to see which one
                 // the crew has just opened for them — otherwise the map is a wall of
                 // identical markers with no indication of where to go next.
