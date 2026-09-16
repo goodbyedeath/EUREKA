@@ -2,7 +2,7 @@
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>{{ \App\Models\BrandSetting::appName() }}{{ \App\Models\BrandSetting::tagline() ? ' ' . \App\Models\BrandSetting::tagline() : '' }}</title>
     
     <!-- Favicon -->
@@ -37,8 +37,9 @@
     </nav>
 
     <!-- Hero Carousel Section -->
-    <section class="relative pt-16 overflow-hidden">
-        <div class="relative h-screen">
+    <section class="relative overflow-hidden">
+        {{-- One full screen on every device; see .hero-viewport below. --}}
+        <div class="relative hero-viewport">
             <!-- Carousel Container -->
             <div id="hero-carousel" class="relative h-full">
                 @if($heroSlides->count() > 0)
@@ -49,7 +50,7 @@
                             @if($slide->hasBackgroundImage())
                                 <div class="absolute inset-0 bg-black bg-opacity-40"></div>
                             @endif
-                            <div class="relative flex items-center justify-center h-full">
+                            <div class="relative flex items-center justify-center h-full hero-content overflow-y-auto">
                                 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
                                     <div class="max-w-4xl mx-auto">
                                         @php
@@ -144,7 +145,7 @@
                 @else
                     <!-- Default slide if no slides in database -->
                     <div class="carousel-slide active absolute inset-0 bg-gradient-to-br from-blue-600 via-purple-600 to-indigo-800">
-                        <div class="flex items-center justify-center h-full">
+                        <div class="flex items-center justify-center h-full hero-content overflow-y-auto">
                             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
                                 <div class="max-w-4xl mx-auto">
                                     <h1 class="text-4xl md:text-6xl font-bold text-white mb-6 leading-tight">
@@ -185,7 +186,7 @@
                 </button>
 
                 <!-- Carousel Indicators -->
-                <div class="absolute bottom-8 left-1/2 transform -translate-x-1/2 flex space-x-3">
+                <div class="absolute left-1/2 transform -translate-x-1/2 flex space-x-3 hero-indicators">
                     @foreach($heroSlides as $index => $slide)
                         <button class="carousel-indicator w-3 h-3 rounded-full bg-white bg-opacity-50 hover:bg-opacity-100 transition duration-300" data-slide="{{ $index }}"></button>
                     @endforeach
@@ -366,9 +367,37 @@
     </script>
 
     <style>
+        /* Exactly one screen. 100vh first for old browsers; 100dvh where supported, which
+           follows a phone's address bar instead of hiding the bottom of the image behind it. */
+        .hero-viewport {
+            height: 100vh;
+            height: 100dvh;
+            min-height: 480px;
+        }
+
         .carousel-slide {
             transition: opacity 0.5s ease-in-out;
             opacity: 0;
+            /* The image always fills the slide: cropped to fit, never letterboxed. */
+            background-size: cover !important;
+            background-position: center center !important;
+            background-repeat: no-repeat !important;
+        }
+
+        /* Clear the 64px fixed navbar and the indicator dots, plus the notch and home bar. */
+        .hero-content {
+            padding-top: calc(4rem + env(safe-area-inset-top, 0px));
+            padding-bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px));
+        }
+
+        .hero-indicators {
+            bottom: calc(2rem + env(safe-area-inset-bottom, 0px));
+        }
+
+        /* Short landscape phones: smaller type so a slide still fits the screen. */
+        @media (max-height: 520px) {
+            .hero-content h1 { font-size: 1.75rem; line-height: 1.2; margin-bottom: 0.75rem; }
+            .hero-content p { font-size: 1rem; margin-bottom: 1rem; }
         }
 
         .carousel-slide.active {

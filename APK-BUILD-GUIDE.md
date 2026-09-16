@@ -725,6 +725,13 @@ button off (17 Sep); draw no button then, not an empty one. Fields: `title`, `su
 `background_image`, `background_gradient`, `text_color`, `button_color`, `button_style`,
 `primary_button`, `secondary_button`, `icon_svg`, ordered by `order`.
 
+**Each slide is one full screen** (operator, 17 Sep). Draw `background_image` edge to edge under
+the status bar and navigation bar, scaled to **cover** — cropped to fill, centred, never
+letterboxed or stretched — on phones, tablets and in both orientations. Keep the text and buttons
+inside the system insets so a notch or gesture bar never covers them, and put a dark scrim
+(about 40% black) between image and text, as the website does. No image means the gradient fills
+the screen the same way.
+
 ---
 
 ## 8. Indoor mode
