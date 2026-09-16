@@ -301,9 +301,14 @@ export default function (Alpine) {
                     'sources': {
                         'osm': {
                             'type': 'raster',
-                            'tiles': ['https://a.tile.openstreetmap.org/{z}/{x}/{y}.png'],
+                            // One tile source for every map: config/maps.php via map-config.blade.php.
+                            'tiles': (window.EUREKA_MAP && window.EUREKA_MAP.tiles)
+                                || ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
                             'tileSize': 256,
-                            'attribution': '© OpenStreetMap contributors'
+                            // Without this, zooming past 19 asks for tiles OSM does not have.
+                            'maxzoom': (window.EUREKA_MAP && window.EUREKA_MAP.maxZoom) || 19,
+                            'attribution': (window.EUREKA_MAP && window.EUREKA_MAP.attribution)
+                                || '© OpenStreetMap contributors'
                         }
                     },
                     'layers': [{ 'id': 'osm', 'type': 'raster', 'source': 'osm' }]

@@ -641,6 +641,7 @@ async function openMapModal(lat, lng, title, markerColor, event) {
                         'type': 'raster',
                         'tiles': window.EUREKA_MAP.tiles,
                         'tileSize': 256,
+                        'maxzoom': window.EUREKA_MAP.maxZoom || 19,
                         'attribution': window.EUREKA_MAP.attribution
                     }
                 },
@@ -756,6 +757,7 @@ async function showMapPicker() {
                             'type': 'raster',
                             'tiles': window.EUREKA_MAP.tiles,
                             'tileSize': 256,
+                            'maxzoom': window.EUREKA_MAP.maxZoom || 19,
                             'attribution': window.EUREKA_MAP.attribution
                         }
                     },
@@ -892,7 +894,7 @@ function findCoordinateInputs() {
         }
     }
     
-    console.log('Could not find coordinate inputs');
+    console.debug('Coordinate inputs not on screen (form closed) — nothing to bind.');
     return { lat: null, lng: null };
 }
 
@@ -950,6 +952,7 @@ async function updateMapPreview() {
                             'type': 'raster',
                             'tiles': window.EUREKA_MAP.tiles,
                             'tileSize': 256,
+                            'maxzoom': window.EUREKA_MAP.maxZoom || 19,
                             'attribution': window.EUREKA_MAP.attribution
                         }
                     },
@@ -986,7 +989,7 @@ async function updateMapPreview() {
 
 // Setup coordinate listeners
 function setupCoordinateListeners() {
-    console.log('Setting up coordinate listeners...');
+    console.debug('Setting up coordinate listeners...');
     
     const { lat: latInput, lng: lngInput } = findCoordinateInputs();
     
@@ -1010,7 +1013,7 @@ function setupCoordinateListeners() {
         return true;
     }
     
-    console.log('Could not set up coordinate listeners - inputs not found');
+    console.debug('No coordinate listeners: the add/edit form is not open.');
     return false;
 }
 
@@ -1076,6 +1079,7 @@ async function testMap() {
                         'type': 'raster',
                         'tiles': window.EUREKA_MAP.tiles,
                         'tileSize': 256,
+                        'maxzoom': window.EUREKA_MAP.maxZoom || 19,
                         'attribution': window.EUREKA_MAP.attribution
                     }
                 },
@@ -1172,6 +1176,7 @@ function openAdminFullscreenMap() {
                             'type': 'raster',
                             'tiles': window.EUREKA_MAP.tiles,
                             'tileSize': 256,
+                            'maxzoom': window.EUREKA_MAP.maxZoom || 19,
                             'attribution': window.EUREKA_MAP.attribution
                         }
                     },

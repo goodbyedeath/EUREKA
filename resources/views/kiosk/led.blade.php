@@ -714,6 +714,7 @@
                             type: 'raster',
                             tiles: window.EUREKA_MAP.tiles,
                             tileSize: 256,
+                            maxzoom: window.EUREKA_MAP.maxZoom || 19,
                             attribution: window.EUREKA_MAP.attribution
                         }
                     },
