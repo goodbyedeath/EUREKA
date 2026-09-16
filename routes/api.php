@@ -75,6 +75,10 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::get('/offline/manifest', [\App\Http\Controllers\Api\OfflineController::class, 'manifest'])
             ->name('offline.manifest');
 
+        // The route line for the outdoor map, drawn in the tracker app and copied here.
+        Route::get('/map/routes', [\App\Http\Controllers\Api\MapRouteController::class, 'index'])
+            ->name('map.routes');
+
         // Game loop.
         Route::post('/qr/lookup', [\App\Http\Controllers\Api\QRScannerController::class, 'lookup'])->name('qr.lookup');
         Route::get('/quiz/start/{questionnaireId}', [\App\Http\Controllers\Api\QuizController::class, 'start'])->name('quiz.start');

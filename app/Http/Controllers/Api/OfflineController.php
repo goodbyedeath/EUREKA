@@ -60,6 +60,8 @@ class OfflineController extends Controller
             ->merge($gameLocations->filter->usesAr()->map(fn ($g) => route('user.ar.view', $g->id)))
             ->values();
 
+        $routes = \App\Models\MapRoute::active()->with('markers')->orderBy('id')->get();
+
         return response()->json([
             'success' => true,
             'bounds' => $this->boundsFor($questLocations),
@@ -99,12 +101,16 @@ class OfflineController extends Controller
                 'coordinate_source' => $g->coordinateSource(),
                 'quest_location_id' => $g->quest_location_id,
             ])->values(),
+            // The same lines /map/routes serves, so a team that synced can draw the route with
+            // no signal at all. Empty until the crew switches a route on.
+            'routes' => $routes->map(fn (\App\Models\MapRoute $r) => $r->toMapPayload())->values(),
             'counts' => [
                 'quest_locations' => $questLocations->count(),
                 'game_locations' => $gameLocations->count(),
                 'images' => $images->count(),
                 'models' => $models->count(),
                 'pages' => $pages->count(),
+                'routes' => $routes->count(),
             ],
         ]);
     }

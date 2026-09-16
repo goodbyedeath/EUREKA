@@ -1070,6 +1070,9 @@ A 200 with an empty `objects` array means the outpost has a model but nothing pl
 GET /api/v1/offline/manifest
 { "bounds": { "north", "south", "east", "west" },
   "map":    { "tiles": ["https://…/{z}/{x}/{y}.png"], "attribution": "…", "max_zoom": 19 },
+  "routes": [ { id, name, color, distance_m,
+                points: [[lng, lat], …], markers: [ { title, description, icon, color,
+                latitude, longitude } ], quest_location_ids: [ … ] } ],
   "quest_locations": [ { id, name, latitude, longitude, radius, marker_color } ],
   "game_locations":  [ { id, name, experience_type, model, uses_ar,
                          latitude, longitude, radius, coordinate_source, quest_location_id } ],
@@ -1080,6 +1083,21 @@ GET /api/v1/offline/manifest
 Fetch this once the team is registered and **pre-download everything on it while you still have
 signal** — venue WiFi and mobile data are both unreliable mid-game. `bounds` is the area worth
 pre-caching map tiles for. `models` are the 3D assets; AR will stall without them.
+
+**`routes` is the route line** to draw under the outpost pins (operator, 16 Sep). Each entry is
+`{ id, name, color, distance_m, points, markers, quest_location_ids }`. `points` is an ordered list
+of `[longitude, latitude]` pairs — note that order, it is GeoJSON's, not the `latitude/longitude`
+field order everywhere else — already simplified server-side to at most 500 points, so draw it as
+one polyline in `color` without thinning it again. `markers` are plain pins with
+`{ title, description, icon, color, latitude, longitude }` and **no radius and no check-in**: they
+are signposts, not posts. A pin that became a real post is *not* in `markers` (it would double the
+pin); it appears in `quest_location_ids` instead, so you can highlight those `/quest-locations`
+entries as being on this route. An empty list means the crew has not switched a route on yet —
+show the outposts alone, not an error.
+
+`GET /api/v1/map/routes` returns `{ success, routes }` with the same entries, for a refresh without
+re-reading the whole manifest. Routes change when the crew records or switches one, so once on Sync
+and once when the outdoor map opens is enough — never on a timer.
 
 **`map` is the basemap for the outdoor map** (your #20). Raster XYZ tile templates from the server's
 `config/maps.php` — the same source every web map uses, so the operator switches provider in one

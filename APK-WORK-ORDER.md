@@ -477,6 +477,25 @@ notes (formulas are the spec, far plane) are in §9.
 
 ---
 
+## 17 — The route line on the outdoor map  ·  16 Sep
+
+The operator draws routes in a separate tracker app. EUREKA now copies them in and serves them
+itself; nothing on your side talks to that app, and its host is not yours to call. Spec: build
+guide §10.
+
+- `GET /api/v1/map/routes` → `{ success, routes }`, and the same list under `routes` in
+  `/offline/manifest`, so a synced team draws the route with no signal.
+- Draw `points` (`[lng, lat]`, ordered, pre-simplified) as one polyline in `color`, under the
+  outpost pins. `markers` are signposts only — no radius, no check-in, not tappable for points.
+- Posts stay `/quest-locations` exactly as before. `quest_location_ids` says which of them sit on
+  this route; a post is never repeated in `markers`.
+- An empty `routes` list is normal (no route switched on): draw the outposts alone.
+
+**Done when:** the outdoor map shows the line with the posts on it, after a Sync it still draws
+with mobile data off, and no request is made to any host other than questerra-series.com.
+
+---
+
 ## Talking back — the channel runs both ways now
 
 Until today this was one-way: the server published, you consumed, and anything you had to say
