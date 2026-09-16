@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ \App\Models\BrandSetting::title('LED Kiosk') }}</title>
     @include('partials.map-config')
+    @include('partials.map-routes-fetch')
     <script src='/vendor/maplibre/3.6.2/maplibre-gl.js'></script>
     <link href='/vendor/maplibre/3.6.2/maplibre-gl.css' rel='stylesheet' />
     <style>
@@ -695,7 +696,6 @@
     </div>
 
     <script>
-        const TRACKER_API_BASE = 'https://tracker.questerra-series.com/api/export';
 
         let map;
         let markers = [];
@@ -746,24 +746,18 @@
                 routeMarkers.forEach(marker => marker.remove());
                 routeMarkers = [];
 
-                // Load GPS Tracker routes and markers (admin-built maps)
-                const mapDataResponse = await fetch(`${TRACKER_API_BASE}/map-data?include_active=true&include_completed=true&limit=10`);
+                // Routes the crew switched on, from EUREKA's own copy.
+                const routeSessions = await window.eurekaMapRoutes();
 
-                if (!mapDataResponse.ok) {
-                    console.error('Tracker API error:', mapDataResponse.status);
-                } else {
-                    const mapData = await mapDataResponse.json();
-
-                    if (mapData.success && mapData.data && mapData.data.length > 0) {
-                        displayGPSRoutes(mapData.data);
-                    }
+                if (routeSessions.length > 0) {
+                    displayGPSRoutes(routeSessions);
                 }
 
-                // EUREKA live positions no longer fetched here: they arrive with
+                // Live positions are not fetched here: they arrive with
                 // /api/kiosk/data, which updateData() already polls. One screen asking
                 // the same database twice on two timers was four wasted requests a
-                // minute. This function keeps only the tracker call, which is a
-                // different host and does not count against our own limit.
+                // minute. The route call below is EUREKA's own and rate-limited
+                // with the other kiosk endpoints.
             } catch (error) {
                 console.error('Error loading GPS tracking data:', error);
             }

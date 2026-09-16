@@ -280,6 +280,10 @@ Route::prefix('api/kiosk')->name('api.kiosk.')->middleware('throttle:kiosk')->gr
     Route::get('/data', [ApiKioskController::class, 'data'])->name('data');
 });
 
+// The route line for every map page. One source: EUREKA's copy of the tracker's routes.
+Route::get('/api/map/routes', [App\Http\Controllers\Api\MapRouteController::class, 'index'])
+    ->middleware('throttle:kiosk')->name('api.map.routes');
+
 // Live tracking API routes
 Route::prefix('api/tracking')->name('api.tracking.')->middleware(['auth', 'access.window', 'throttle:tracking'])->group(function () {
     Route::post('/position', [App\Http\Controllers\Api\LiveTrackingController::class, 'updatePosition'])->name('update-position');

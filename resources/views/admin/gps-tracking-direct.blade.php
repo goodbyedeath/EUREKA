@@ -7,6 +7,7 @@
     <title>{{ \App\Models\BrandSetting::title('GPS Tracking Map') }}</title>
     <link href="/vendor/maplibre/4.7.1/maplibre-gl.css" rel="stylesheet" />
     @include('partials.map-config')
+    @include('partials.map-routes-fetch')
     <script src="/vendor/maplibre/4.7.1/maplibre-gl.js"></script>
     <style>
         * {
@@ -453,7 +454,6 @@
     <div id="map"></div>
 
     <script>
-        const API_BASE = 'https://tracker.questerra-series.com/api/export';
         let map;
         let markers = {};
         let routeLayers = {};
@@ -495,21 +495,10 @@
         // Load all map data
         async function loadMapData() {
             try {
-                // Load GPS tracker routes and markers (admin-built maps)
-                const mapDataResponse = await fetch(`${API_BASE}/map-data?include_active=false&include_completed=true&limit=10`);
-
-                if (!mapDataResponse.ok) {
-                    throw new Error(`Tracker API error: ${mapDataResponse.status}`);
-                }
-
-                const mapData = await mapDataResponse.json();
-
-                if (mapData.success && mapData.data) {
-                    displayRoutes(mapData.data);
-                    document.getElementById('totalSessions').textContent = mapData.data.length;
-                } else {
-                    document.getElementById('totalSessions').textContent = '0';
-                }
+                // Routes the crew switched on, from EUREKA's own copy of the tracker's recordings.
+                const routeSessions = await window.eurekaMapRoutes();
+                displayRoutes(routeSessions);
+                document.getElementById('totalSessions').textContent = routeSessions.length;
 
                 // Load EUREKA internal live positions (actual users)
                 const eurekaLiveResponse = await fetch('/api/live/positions');

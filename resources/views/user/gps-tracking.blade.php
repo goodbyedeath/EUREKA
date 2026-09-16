@@ -354,8 +354,9 @@
     </button>
 </div>
 
+@include('partials.map-routes-fetch')
+
 <script>
-    const TRACKER_API_BASE = 'https://tracker.questerra-series.com/api/export';
 
     let map;
     let userMarker;
@@ -409,17 +410,11 @@
     // Load GPS data from tracker API
     async function loadUserGpsData() {
         try {
-            // Load map data (routes and markers)
-            const mapDataResponse = await fetch(`${TRACKER_API_BASE}/map-data?include_active=true&include_completed=true&limit=10`);
+            // The route the crew switched on, served by EUREKA.
+            const routeSessions = await window.eurekaMapRoutes();
 
-            if (!mapDataResponse.ok) {
-                throw new Error(`Server error: ${mapDataResponse.status}`);
-            }
-
-            const mapData = await mapDataResponse.json();
-
-            if (mapData.success && mapData.data && mapData.data.length > 0) {
-                displayUserRoutes(mapData.data);
+            if (routeSessions.length > 0) {
+                displayUserRoutes(routeSessions);
             }
         } catch (error) {
             console.error('Error loading GPS data:', error);
