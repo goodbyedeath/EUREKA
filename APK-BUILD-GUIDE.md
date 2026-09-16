@@ -741,6 +741,15 @@ GET /api/v1/indoor-map/{id}       → a specific one
                "game_location_id": null, "is_post": false, "is_open": false } ] }
 ```
 
+**The plan is per team now** (operator, 16 Sep). An indoor event runs several teams on different
+routes at once, so the crew assigns a floor plan to each team in Team Management; a team without
+one falls back to the plan on the START code, as before. Nothing changes in the app as long as it
+does what it already does: **read `race.indoor_map_id` from `/race/status` and ask for that id**.
+`GET /indoor-map` with no id also answers with the team's own plan.
+
+Asking for a plan that is not the team's is a **404** — another team's plan is a map of where they
+are going. So never keep a plan id from an earlier race or a cached list; take it from the race.
+
 Two things to get right:
 
 - **`spots` is top level, not inside `map`.** Easy to mis-nest.

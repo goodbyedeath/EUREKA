@@ -92,6 +92,7 @@
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Team</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Department</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Members</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Denah Indoor</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Points</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Initial Points</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Created</th>
@@ -131,6 +132,16 @@
                                         </button>
                                     @endif
                                 </div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                {{-- Which floor plan this team is sent to. Empty = the plan on the START code. --}}
+                                <select wire:change="setIndoorMap({{ $team->id }}, $event.target.value)"
+                                        class="text-sm rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 py-1">
+                                    <option value="">— dari QR START —</option>
+                                    @foreach ($indoorMaps as $map)
+                                        <option value="{{ $map->id }}" @selected($team->indoor_map_id === $map->id)>{{ $map->name }}</option>
+                                    @endforeach
+                                </select>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <div class="flex items-center justify-between">

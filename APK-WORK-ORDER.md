@@ -522,6 +522,28 @@ score card, and an unfinished row shows no points rather than 0.
 
 ---
 
+## 19 — A floor plan per team  ·  16 Sep
+
+The crew now assigns an indoor plan to each team in Team Management, because an indoor event runs
+several teams on different routes at once. A team with no assignment keeps using the plan on the
+START code.
+
+**Nothing to build if you already do this:** read `race.indoor_map_id` from `/race/status` and
+request that id. The session records the team's plan at START, so the id you get is already the
+right one. `GET /indoor-map` without an id also returns the team's own plan.
+
+**One thing to check:** a plan id that is not the team's now answers **404**, where before every
+active plan was readable. If anything in the app remembers a plan id across races, or picks the
+first plan from a list, drop it and use the race's id.
+
+Spec: build guide §8. Also in §8: `is_post` on a spot — a marker with no outpost is a label, not a
+locked post, and must not be drawn with a lock.
+
+**Done when:** two teams with different plans each see their own after scanning the same START
+code, and a stale plan id shows the 'ask the crew' path rather than someone else's map.
+
+---
+
 ## Talking back — the channel runs both ways now
 
 Until today this was one-way: the server published, you consumed, and anything you had to say

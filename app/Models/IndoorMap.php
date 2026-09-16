@@ -33,6 +33,36 @@ class IndoorMap extends Model
         'is_active' => 'boolean',
     ];
 
+    /**
+     * The floor plan this player should see.
+     *
+     * An indoor event runs several teams through different plans at once, so the plan belongs to
+     * the team (operator, 16 Sep). Without an assignment it is the plan on the START code they
+     * scanned — the behaviour every team had before — and failing that, the first active plan.
+     */
+    public static function forUser(?\App\Models\User $user): ?self
+    {
+        $assigned = $user?->team?->indoor_map_id;
+
+        if ($assigned) {
+            $map = static::where('is_active', true)->find($assigned);
+            if ($map) {
+                return $map;
+            }
+        }
+
+        $fromStart = \App\Models\RaceStart::where('is_active', true)
+            ->whereNotNull('indoor_map_id')
+            ->orderByDesc('id')
+            ->value('indoor_map_id');
+
+        if ($fromStart && $map = static::where('is_active', true)->find($fromStart)) {
+            return $map;
+        }
+
+        return static::where('is_active', true)->orderBy('name')->first();
+    }
+
     public function spots(): HasMany
     {
         return $this->hasMany(IndoorMapSpot::class)->orderBy('sort_order')->orderBy('id');

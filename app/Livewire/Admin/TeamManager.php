@@ -3,6 +3,8 @@
 namespace App\Livewire\Admin;
 
 use Livewire\Component;
+use App\Models\RaceSession;
+use App\Models\IndoorMap;
 use App\Models\Team;
 use App\Models\User;
 use App\Models\TeamMember;
@@ -651,12 +653,45 @@ class TeamManager extends Component
         $this->dispatch('open-assessments-modal', $modalData);
     }
 
+    /**
+     * Send a team to its own floor plan (operator, 16 Sep).
+     *
+     * Indoor events run several teams at once on different routes. Empty means the team falls back
+     * to the plan on the START code, which is what every team did before. Teams that have already
+     * scanned START keep the plan their session recorded until the race is reset — moving them
+     * mid-race would swap the map under their feet.
+     */
+    public function setIndoorMap(int $teamId, $mapId): void
+    {
+        $team = Team::findOrFail($teamId);
+        $map = $mapId ? IndoorMap::where('is_active', true)->find($mapId) : null;
+
+        if ($mapId && ! $map) {
+            session()->flash('error', 'Denah itu tidak ada atau sedang nonaktif.');
+
+            return;
+        }
+
+        $team->update(['indoor_map_id' => $map?->id]);
+
+        $running = RaceSession::whereIn('user_id', User::where('team_id', $team->id)->pluck('id'))
+            ->whereNotNull('started_at')
+            ->whereNull('finished_at')
+            ->exists();
+
+        session()->flash('success', $map
+            ? "Tim {$team->name} diarahkan ke denah \"{$map->name}\"."
+                .($running ? ' Tim ini sudah memulai race, jadi denah barunya berlaku setelah race direset.' : '')
+            : "Tim {$team->name} kembali memakai denah dari QR START.");
+    }
+
     public function render()
     {
         $teams = $this->getTeamsProperty();
-        
+
         return view('livewire.admin.team-manager', [
-            'teams' => $teams
+            'teams' => $teams,
+            'indoorMaps' => IndoorMap::where('is_active', true)->orderBy('name')->get(['id', 'name']),
         ])->layout(null);
     }
 }

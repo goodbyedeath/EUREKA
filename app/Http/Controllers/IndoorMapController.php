@@ -15,7 +15,7 @@ class IndoorMapController extends Controller
 {
     public function show(Request $request, $id = null)
     {
-        $map = $this->resolve($id);
+        $map = $this->resolve($id, $request->user());
 
         // The plan is the reward for the opening clue. Admins skip it — they need to see
         // the venue to author it — and so does a venue with no clue configured.
@@ -49,7 +49,7 @@ class IndoorMapController extends Controller
      */
     public function apiShow(Request $request, $id = null)
     {
-        $map = $this->resolve($id);
+        $map = $this->resolve($id, $request->user());
 
         if (! $map) {
             return response()->json([
@@ -113,12 +113,34 @@ class IndoorMapController extends Controller
      * A specific plan when asked for, otherwise the first active one — an event normally
      * runs a single venue, so the team should not have to choose.
      */
-    private function resolve($id): ?IndoorMap
+    /**
+     * Which plan to answer with.
+     *
+     * Without an id, the player's own plan — their team's when the crew assigned one. With an id,
+     * that plan, but a player may only read the one that is theirs: plans differ per team now, and
+     * another team's plan is a map of where they are going. Admins author every plan, so they read
+     * any of them.
+     */
+    private function resolve($id, ?\App\Models\User $user = null): ?IndoorMap
     {
         $query = IndoorMap::with(['activeSpots.gameLocation']);
 
-        return $id
-            ? $query->where('is_active', true)->find($id)
-            : $query->where('is_active', true)->orderBy('name')->first();
+        if (! $id) {
+            $own = IndoorMap::forUser($user);
+
+            return $own ? $query->where('is_active', true)->find($own->id) : null;
+        }
+
+        $map = $query->where('is_active', true)->find($id);
+
+        if ($map && $user && ! $user->isAdmin()) {
+            $own = IndoorMap::forUser($user);
+
+            if ($own && $own->id !== $map->id) {
+                return null;
+            }
+        }
+
+        return $map;
     }
 }

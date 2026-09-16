@@ -15,6 +15,7 @@ class Team extends Model
         'department',
         'points',
         'initial_points',
+        'indoor_map_id',
         'created_by'
     ];
 
@@ -24,6 +25,12 @@ class Team extends Model
             'points' => 'integer',
             'initial_points' => 'integer',
         ];
+    }
+
+    /** The floor plan this team is sent to; null falls back to the START code's plan. */
+    public function indoorMap(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(IndoorMap::class);
     }
 
     public function members()

@@ -31,8 +31,14 @@ class RaceController extends Controller
                 ->with('error', __('That is not the start code for this event.'));
         }
 
+        // The plan is the team's when one is assigned; the START code only decides indoor vs
+        // outdoor and starts the clock (operator, 16 Sep).
+        $mapId = $start->indoor_map_id
+            ? (\App\Models\IndoorMap::forUser($request->user())?->id ?? $start->indoor_map_id)
+            : null;
+
         $session = RaceSession::firstOrCreate(
-            ['user_id' => $request->user()->id, 'indoor_map_id' => $start->indoor_map_id],
+            ['user_id' => $request->user()->id, 'indoor_map_id' => $mapId],
             ['started_at' => now(), 'race_start_id' => $start->id],
         );
 
@@ -81,8 +87,14 @@ class RaceController extends Controller
             ], 404);
         }
 
+        // The plan is the team's when one is assigned; the START code only decides indoor vs
+        // outdoor and starts the clock (operator, 16 Sep).
+        $mapId = $start->indoor_map_id
+            ? (\App\Models\IndoorMap::forUser($request->user())?->id ?? $start->indoor_map_id)
+            : null;
+
         $session = RaceSession::firstOrCreate(
-            ['user_id' => $request->user()->id, 'indoor_map_id' => $start->indoor_map_id],
+            ['user_id' => $request->user()->id, 'indoor_map_id' => $mapId],
             ['started_at' => now(), 'race_start_id' => $start->id],
         );
 
