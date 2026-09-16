@@ -52,7 +52,8 @@
                         <div class="carousel-slide {{ $index === 0 ? 'active' : '' }} absolute inset-0 bg-gradient-to-br {{ $slide->background_gradient }}" 
                              @if($slide->hasBackgroundImage()) style="{{ $slide->getBackgroundStyle() }}" @endif>
                             <!-- Overlay for better text readability when using background images -->
-                            @if($slide->hasBackgroundImage())
+                            {{-- Switchable per slide: a picture with its own lettering needs no scrim. --}}
+                            @if($slide->hasBackgroundImage() && $slide->show_overlay !== false)
                                 <div class="absolute inset-0 bg-black bg-opacity-40"></div>
                             @endif
                             <div class="relative flex items-center justify-center h-full hero-content overflow-y-auto">

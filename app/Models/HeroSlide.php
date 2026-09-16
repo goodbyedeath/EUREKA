@@ -16,6 +16,8 @@ class HeroSlide extends Model
         'primary_button_text',
         'primary_button_url',
         'show_primary_button',
+        'show_text',
+        'show_overlay',
         'secondary_button_text',
         'secondary_button_url',
         'background_gradient',
@@ -32,6 +34,8 @@ class HeroSlide extends Model
     protected $casts = [
         'is_active' => 'boolean',
         'show_primary_button' => 'boolean',
+        'show_text' => 'boolean',
+        'show_overlay' => 'boolean',
         'order' => 'integer',
         'element_order' => 'array',
     ];
@@ -258,10 +262,11 @@ class HeroSlide extends Model
         switch ($element) {
             case 'icon':
                 return !empty($this->icon_svg);
+            // "Tampilkan tulisan" off: the slide is the picture; its words are kept for later.
             case 'title':
-                return !empty($this->title);
+                return $this->show_text !== false && !empty($this->title);
             case 'subtitle':
-                return !empty($this->subtitle);
+                return $this->show_text !== false && !empty($this->subtitle);
             case 'primary_button':
                 // Switched off in the slide form: the text and URL are kept, just not shown.
                 return $this->show_primary_button !== false

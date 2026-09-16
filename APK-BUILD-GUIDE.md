@@ -736,7 +736,10 @@ portrait phone with one crops away its sides. So:
 - **Landscape and tablets held sideways**: one full screen, image scaled to cover.
 
 Either way keep text and buttons inside the system insets, and put a dark scrim (about 40% black)
-between image and text, as the website does. A slide with no image uses its gradient the same way.
+between image and text, as the website does — **only when `show_overlay` is true**; the admin can switch
+the layer off per slide. `title` and `subtitle` are null when the slide's text is switched off, and
+`primary_button` is null when its button is: a slide can be the picture alone, with nothing drawn on
+it. A slide with no image uses its gradient the same way.
 
 ---
 

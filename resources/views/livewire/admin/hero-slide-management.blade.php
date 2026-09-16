@@ -223,8 +223,29 @@
                     
                     <form wire:submit.prevent="saveSlide" class="space-y-6" wire:ignore.self>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <!-- What sits on top of the picture -->
+                            <div class="md:col-span-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 p-4 space-y-2">
+                                <p class="text-sm font-semibold text-gray-800 dark:text-gray-100">Di atas gambar</p>
+                                <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                                    <input type="checkbox" wire:model.live="show_text" class="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500">
+                                    Tampilkan tulisan (judul &amp; subjudul)
+                                </label>
+                                <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                                    <input type="checkbox" wire:model.live="show_overlay" class="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500">
+                                    Tampilkan lapisan gelap
+                                </label>
+                                <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                                    <input type="checkbox" wire:model.live="show_primary_button" class="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500">
+                                    Tampilkan tombol primary
+                                </label>
+                                <p class="text-xs text-gray-500 dark:text-gray-400">
+                                    Matikan semuanya untuk slide yang hanya berupa gambar, misalnya poster yang sudah punya tulisan sendiri.
+                                    Isi judul, subjudul, dan tombol tetap disimpan, jadi bisa dinyalakan lagi kapan saja.
+                                </p>
+                            </div>
+
                             <!-- Title -->
-                            <div class="md:col-span-2">
+                            <div class="md:col-span-2 {{ $show_text ? '' : 'opacity-50' }}">
                                 <label for="title" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
                                     Title
                                     <span class="text-gray-500 dark:text-gray-400 font-normal">(Optional)</span>
@@ -236,7 +257,7 @@
                             </div>
 
                             <!-- Subtitle -->
-                            <div class="md:col-span-2">
+                            <div class="md:col-span-2 {{ $show_text ? '' : 'opacity-50' }}">
                                 <label for="subtitle" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
                                     Subtitle
                                     <span class="text-gray-500 dark:text-gray-400 font-normal">(Optional)</span>
@@ -248,17 +269,6 @@
                             </div>
 
                             <!-- Primary Button -->
-                            <div class="md:col-span-2">
-                                <label class="inline-flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-                                    <input type="checkbox" wire:model.live="show_primary_button"
-                                           class="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500">
-                                    Tampilkan tombol primary
-                                </label>
-                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                    Matikan untuk slide yang hanya berisi pesan. Teks dan URL-nya disimpan, jadi bisa dinyalakan lagi kapan saja.
-                                </p>
-                            </div>
-
                             <div class="{{ $show_primary_button ? '' : 'opacity-50' }}">
                                 <label for="primary_button_text" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Primary Button Text</label>
                                 <input type="text" wire:model="primary_button_text" id="primary_button_text" 

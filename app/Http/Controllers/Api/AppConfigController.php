@@ -58,8 +58,11 @@ class AppConfigController extends Controller
         $slides = HeroSlide::getActiveSlides()->map(fn (HeroSlide $s) => [
             'id' => $s->id,
             'order' => (int) $s->order,
-            'title' => $s->title,
-            'subtitle' => $s->subtitle,
+            // Null when the admin switched the slide's text off.
+            'title' => $s->show_text !== false ? $s->title : null,
+            'subtitle' => $s->show_text !== false ? $s->subtitle : null,
+            // Whether to draw the dark layer between picture and text.
+            'show_overlay' => $s->show_overlay !== false,
             // Absolute, or null when the slide is a plain gradient.
             'background_image' => $s->background_image_url,
             // A CSS gradient string. A native client that cannot parse it should fall

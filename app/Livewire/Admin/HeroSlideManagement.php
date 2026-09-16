@@ -20,6 +20,8 @@ class HeroSlideManagement extends Component
     public $title = '';
     public $subtitle = '';
     public $show_primary_button = true;
+    public $show_text = true;
+    public $show_overlay = true;
     public $primary_button_text = 'Get Started';
     public $primary_button_url = '/register';
     public $secondary_button_text = '';
@@ -46,6 +48,8 @@ class HeroSlideManagement extends Component
             'subtitle' => 'nullable|string|max:1000',
             // Required only while the button is shown; a switched-off button may be left blank.
             'show_primary_button' => 'boolean',
+            'show_text' => 'boolean',
+            'show_overlay' => 'boolean',
             'primary_button_text' => ($this->show_primary_button ? 'required' : 'nullable').'|string|max:50',
             'primary_button_url' => ($this->show_primary_button ? 'required' : 'nullable').'|string|max:255',
             'secondary_button_text' => 'nullable|string|max:50',
@@ -91,6 +95,8 @@ class HeroSlideManagement extends Component
         $this->title = $slide->title;
         $this->subtitle = $slide->subtitle;
         $this->show_primary_button = $slide->show_primary_button ?? true;
+        $this->show_text = $slide->show_text ?? true;
+        $this->show_overlay = $slide->show_overlay ?? true;
         $this->primary_button_text = $slide->primary_button_text;
         $this->primary_button_url = $slide->primary_button_url;
         $this->secondary_button_text = $slide->secondary_button_text ?? '';
@@ -124,6 +130,8 @@ class HeroSlideManagement extends Component
             'title' => $this->title ?: null,
             'subtitle' => $this->subtitle ?: null,
             'show_primary_button' => (bool) $this->show_primary_button,
+            'show_text' => (bool) $this->show_text,
+            'show_overlay' => (bool) $this->show_overlay,
             // Kept when switched off, so turning the button back on restores what it said.
             // The columns are NOT NULL; an empty string is what "no text" means here.
             'primary_button_text' => (string) $this->primary_button_text,
@@ -252,6 +260,8 @@ class HeroSlideManagement extends Component
         $this->title = '';
         $this->subtitle = '';
         $this->show_primary_button = true;
+        $this->show_text = true;
+        $this->show_overlay = true;
         $this->primary_button_text = 'Get Started';
         $this->primary_button_url = '/register';
         $this->secondary_button_text = '';
