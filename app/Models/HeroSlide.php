@@ -80,6 +80,25 @@ class HeroSlide extends Model
     }
 
     /**
+     * Width ÷ height of the uploaded background image, or null without one.
+     *
+     * Read from the file so the page can size the slider before the image downloads: on a
+     * portrait phone the slider takes the image's proportions instead of the screen's, so a
+     * landscape picture is shown whole rather than cropped at the sides (operator, 17 Sep).
+     */
+    public function backgroundImageRatio(): ?float
+    {
+        if (! $this->background_image) {
+            return null;
+        }
+
+        $path = \Illuminate\Support\Facades\Storage::disk('public')->path($this->background_image);
+        $size = is_file($path) ? @getimagesize($path) : false;
+
+        return $size && $size[1] > 0 ? round($size[0] / $size[1], 4) : null;
+    }
+
+    /**
      * Get background style for the slide
      */
     public function getBackgroundStyle()

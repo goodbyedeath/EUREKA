@@ -37,9 +37,14 @@
     </nav>
 
     <!-- Hero Carousel Section -->
-    <section class="relative overflow-hidden">
-        {{-- One full screen on every device; see .hero-viewport below. --}}
-        <div class="relative hero-viewport">
+    @php
+        // The first slide with a picture sets the slider's proportions on portrait screens.
+        $heroRatio = $heroSlides->map->backgroundImageRatio()->filter()->first() ?? 1.7778;
+    @endphp
+    <section class="relative overflow-hidden hero-section">
+        {{-- Landscape screens: one full screen. Portrait screens: the image's own proportions,
+             so a landscape picture is shown whole. See the styles at the bottom. --}}
+        <div class="relative hero-viewport" style="--hero-ratio: {{ $heroRatio }}">
             <!-- Carousel Container -->
             <div id="hero-carousel" class="relative h-full">
                 @if($heroSlides->count() > 0)
@@ -392,6 +397,43 @@
 
         .hero-indicators {
             bottom: calc(2rem + env(safe-area-inset-bottom, 0px));
+        }
+
+        /* Portrait phones and tablets: a landscape image in a full-height slider loses its
+           sides to the crop. Size the slider to the image instead — below the navbar, as tall as
+           the picture is at this width — and show the whole picture. Text and buttons shrink to
+           fit over it. */
+        @media (orientation: portrait) {
+            .hero-section {
+                padding-top: calc(4rem + env(safe-area-inset-top, 0px));
+            }
+
+            .hero-viewport {
+                height: auto;
+                min-height: 0;
+                aspect-ratio: var(--hero-ratio, 1.7778);
+            }
+
+            /* contain, not cover: nothing is cut. Slides whose image has other proportions get
+               a dark band rather than a crop. */
+            .carousel-slide {
+                background-size: contain !important;
+                background-color: #0f172a;
+            }
+
+            .hero-content {
+                padding-top: 0.5rem;
+                padding-bottom: 1.75rem;
+            }
+
+            .hero-content h1 { font-size: 1.25rem; line-height: 1.2; margin-bottom: 0.25rem; }
+            .hero-content p { font-size: 0.95rem; line-height: 1.3; margin-bottom: 0.5rem; }
+            .hero-content .mb-4 { margin-bottom: 0.4rem; }
+            .hero-content a { padding: 0.45rem 1rem !important; font-size: 0.9rem !important; }
+            .hero-content a svg { width: 1rem; height: 1rem; }
+
+            .hero-indicators { bottom: 0.5rem; }
+            #prev-slide svg, #next-slide svg { width: 1.5rem; height: 1.5rem; }
         }
 
         /* Short landscape phones: smaller type so a slide still fits the screen. */

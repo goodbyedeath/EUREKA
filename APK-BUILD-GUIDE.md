@@ -725,12 +725,18 @@ button off (17 Sep); draw no button then, not an empty one. Fields: `title`, `su
 `background_image`, `background_gradient`, `text_color`, `button_color`, `button_style`,
 `primary_button`, `secondary_button`, `icon_svg`, ordered by `order`.
 
-**Each slide is one full screen** (operator, 17 Sep). Draw `background_image` edge to edge under
-the status bar and navigation bar, scaled to **cover** — cropped to fill, centred, never
-letterboxed or stretched — on phones, tablets and in both orientations. Keep the text and buttons
-inside the system insets so a notch or gesture bar never covers them, and put a dark scrim
-(about 40% black) between image and text, as the website does. No image means the gradient fills
-the screen the same way.
+**The whole picture must show** (operator, 17 Sep). The slide images are landscape, and filling a
+portrait phone with one crops away its sides. So:
+
+- **Portrait** (the normal way a phone is held): size the carousel to the image's own proportions —
+  full width, height = width ÷ (image width ÷ image height) — and draw the image **whole** (fit,
+  never crop). A 16:9 image on a 390-dp-wide phone makes a carousel about 219 dp tall. Read the
+  proportions from the image you downloaded; slides with other proportions get a dark band, not a
+  crop. Keep the title and buttons small enough to sit on it.
+- **Landscape and tablets held sideways**: one full screen, image scaled to cover.
+
+Either way keep text and buttons inside the system insets, and put a dark scrim (about 40% black)
+between image and text, as the website does. A slide with no image uses its gradient the same way.
 
 ---
 
