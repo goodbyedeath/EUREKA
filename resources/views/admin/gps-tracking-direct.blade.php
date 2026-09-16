@@ -495,10 +495,14 @@
         // Load all map data
         async function loadMapData() {
             try {
-                // Routes the crew switched on, from EUREKA's own copy of the tracker's recordings.
-                const routeSessions = await window.eurekaMapRoutes();
-                displayRoutes(routeSessions);
-                document.getElementById('totalSessions').textContent = routeSessions.length;
+                // Routes the crew switched on and the check-in posts, from EUREKA's own copy.
+                const mapData = await window.eurekaMapData();
+                displayRoutes(mapData.sessions);
+                document.getElementById('totalSessions').textContent = mapData.sessions.length;
+                // Posts are drawn here too: a pin promoted to a post leaves `markers`, so
+                // without this the map empties itself as the crew sets the event up.
+                window.eurekaDrawPosts(map, mapData.posts);
+                window.eurekaFitOnce(map, mapData);
 
                 // Load EUREKA internal live positions (actual users)
                 const eurekaLiveResponse = await fetch('/api/live/positions');

@@ -1034,6 +1034,27 @@ function setupCoordinateListeners() {
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', setupCoordinateListeners);
 
+// Livewire 3 reports a redraw through a hook, not a DOM event. The listeners below wait for
+// 'livewire:morph.updated' on document, which never arrives on its own — so the form could be
+// opened and the coordinate boxes were never bound. Publish the hook as that event once.
+document.addEventListener('livewire:initialized', function () {
+    Livewire.hook('morph.updated', function () {
+        document.dispatchEvent(new CustomEvent('livewire:morph.updated'));
+    });
+    setupCoordinateListeners();
+});
+
+// Belt as well as braces: typing in the coordinate boxes redraws the preview whatever the
+// listeners are bound to. Delegated, so it survives every redraw.
+(function () {
+    let pending = null;
+    document.addEventListener('input', function (e) {
+        if (!e.target.matches('input[wire\\:model="latitude"], input[wire\\:model="longitude"]')) return;
+        clearTimeout(pending);
+        pending = setTimeout(updateMapPreview, 400);
+    });
+})();
+
 // Re-initialize after Livewire updates
 document.addEventListener('livewire:morph.updated', function() {
     console.log('Livewire updated, reinitializing map listeners');

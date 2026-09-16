@@ -1,40 +1,164 @@
-{{-- Routes drawn in the GPS Tracker app, served from EUREKA's own copy (App\Services\TrackerMapSync).
+{{-- Routes drawn in the GPS Tracker app and posts from Quest Locations, both served by EUREKA
+     (App\Services\TrackerMapSync, Api\MapRouteController@web).
 
      The three map pages used to call tracker.questerra-series.com straight from the browser. That
      host has no CDN in front of it and its export is public, so during an event it was a second
      thing that had to stay up — and a screen on the venue WiFi could see routes the crew had not
      chosen. Now every map reads /api/map/routes, which serves only what the crew switched on.
 
-     The shape below matches the tracker's old /map-data payload on purpose, so each page's drawing
-     code is unchanged. --}}
+     Posts matter here because a tracker pin that has become a post is deliberately dropped from
+     `markers` (one place, one symbol). Without drawing posts, promoting every pin emptied the map. --}}
 <script>
-    window.eurekaMapRoutes = async function () {
-        const res = await fetch('/api/map/routes', { headers: { 'Accept': 'application/json' } });
-        if (!res.ok) throw new Error('Map routes HTTP ' + res.status);
+    (function () {
+        function adaptRoutes(data) {
+            // Shaped like the tracker's old /map-data payload, so each page's drawing code is unchanged.
+            return (data.routes || []).map(function (r) {
+                const metres = r.distance_m || 0;
 
-        const data = await res.json();
+                return {
+                    session_id: r.id,
+                    session_name: r.name,
+                    color: r.color,
+                    distance: metres,
+                    distance_formatted: metres >= 1000 ? (metres / 1000).toFixed(2) + ' km' : metres + ' m',
+                    // Stored as [lng, lat] (GeoJSON order); the drawing code wants objects.
+                    route_points: (r.points || []).map(function (p) { return { lng: p[0], lat: p[1] }; }),
+                    markers: (r.markers || []).map(function (m) {
+                        return {
+                            lat: m.latitude, lng: m.longitude,
+                            title: m.title, description: m.description,
+                            icon: m.icon, color: m.color,
+                        };
+                    }),
+                    quest_location_ids: r.quest_location_ids || [],
+                };
+            });
+        }
 
-        return (data.routes || []).map(function (r) {
-            const metres = r.distance_m || 0;
+        async function load() {
+            const res = await fetch('/api/map/routes', { headers: { 'Accept': 'application/json' } });
+            if (!res.ok) throw new Error('Map routes HTTP ' + res.status);
 
-            return {
-                session_id: r.id,
-                session_name: r.name,
-                color: r.color,
-                distance: metres,
-                distance_formatted: metres >= 1000 ? (metres / 1000).toFixed(2) + ' km' : metres + ' m',
-                // Stored as [lng, lat] (GeoJSON order); the drawing code wants objects.
-                route_points: (r.points || []).map(function (p) { return { lng: p[0], lat: p[1] }; }),
-                markers: (r.markers || []).map(function (m) {
-                    return {
-                        lat: m.latitude, lng: m.longitude,
-                        title: m.title, description: m.description,
-                        icon: m.icon, color: m.color,
-                    };
-                }),
-                // Pins that became posts are not in `markers` — these are their quest_location ids.
-                quest_location_ids: r.quest_location_ids || [],
-            };
-        });
-    };
+            const data = await res.json();
+
+            return { sessions: adaptRoutes(data), posts: data.posts || [] };
+        }
+
+        window.eurekaMapData = load;
+
+        // Kept for callers that only draw the line.
+        window.eurekaMapRoutes = async function () {
+            return (await load()).sessions;
+        };
+
+        // A metre-accurate circle is a polygon: 64 points around the centre, with longitude
+        // degrees shrinking by cos(latitude) as you leave the equator.
+        function circle(lng, lat, metres) {
+            const coords = [];
+            const latRadius = metres / 111320;
+            const lngRadius = metres / (111320 * Math.cos(lat * Math.PI / 180) || 1);
+
+            for (let i = 0; i <= 64; i++) {
+                const angle = (i / 64) * 2 * Math.PI;
+                coords.push([lng + lngRadius * Math.cos(angle), lat + latRadius * Math.sin(angle)]);
+            }
+
+            return coords;
+        }
+
+        const drawn = new WeakMap();
+
+        /**
+         * Draw the check-in posts: the radius as a soft disc, the post itself as its symbol.
+         * Safe to call on every refresh — markers are replaced, the radius source is updated.
+         */
+        window.eurekaDrawPosts = function (map, posts, options) {
+            if (!map || !posts) return [];
+            options = options || {};
+
+            // addSource throws while the style is still loading; pages call this from several
+            // places, so wait here rather than relying on every caller to get the timing right.
+            if (!map.isStyleLoaded || !map.isStyleLoaded()) {
+                map.once('idle', function () { window.eurekaDrawPosts(map, posts, options); });
+                return [];
+            }
+
+            (drawn.get(map) || []).forEach(function (m) { m.remove(); });
+
+            const features = posts.map(function (p) {
+                return {
+                    type: 'Feature',
+                    properties: { color: p.color || '#3B82F6' },
+                    geometry: { type: 'Polygon', coordinates: [circle(p.longitude, p.latitude, p.radius || 25)] },
+                };
+            });
+            const collection = { type: 'FeatureCollection', features: features };
+
+            if (map.getSource('eureka-post-radius')) {
+                map.getSource('eureka-post-radius').setData(collection);
+            } else {
+                map.addSource('eureka-post-radius', { type: 'geojson', data: collection });
+                map.addLayer({
+                    id: 'eureka-post-radius-fill', type: 'fill', source: 'eureka-post-radius',
+                    paint: { 'fill-color': ['get', 'color'], 'fill-opacity': 0.12 },
+                });
+                map.addLayer({
+                    id: 'eureka-post-radius-line', type: 'line', source: 'eureka-post-radius',
+                    paint: { 'line-color': ['get', 'color'], 'line-width': 1.5, 'line-opacity': 0.5 },
+                });
+            }
+
+            const markers = posts.map(function (p) {
+                const el = document.createElement('div');
+                el.style.cssText = 'display:flex;align-items:center;justify-content:center;width:34px;height:34px;'
+                    + 'border-radius:50%;font-size:18px;line-height:1;cursor:pointer;'
+                    + 'background:' + (p.color || '#3B82F6') + ';border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4)';
+                // The symbol the crew drew in the tracker; a post typed in by hand has none.
+                el.textContent = p.icon || '📍';
+                el.title = p.name;
+
+                const marker = new maplibregl.Marker({ element: el, anchor: 'center' })
+                    .setLngLat([p.longitude, p.latitude]);
+
+                if (!options.noPopup) {
+                    const name = String(p.name || '').replace(/[<>&"]/g, '');
+                    marker.setPopup(new maplibregl.Popup({ offset: 20 }).setHTML(
+                        '<div style="font-family:system-ui;font-size:13px">'
+                        + '<strong>' + name + '</strong><br>'
+                        + 'Check-in radius ' + (p.radius || 0) + ' m'
+                        + (p.points ? '<br>' + p.points + ' poin' : '')
+                        + '</div>'
+                    ));
+                }
+
+                return marker.addTo(map);
+            });
+
+            drawn.set(map, markers);
+
+            return markers;
+        };
+
+        const fitted = new WeakSet();
+
+        /** Frame everything once, so a venue far from the page's default centre is not off-screen. */
+        window.eurekaFitOnce = function (map, data) {
+            if (!map || fitted.has(map)) return;
+
+            const coords = [];
+            (data.sessions || []).forEach(function (s) {
+                (s.route_points || []).forEach(function (p) { coords.push([p.lng, p.lat]); });
+                (s.markers || []).forEach(function (m) { coords.push([parseFloat(m.lng), parseFloat(m.lat)]); });
+            });
+            (data.posts || []).forEach(function (p) { coords.push([p.longitude, p.latitude]); });
+
+            if (!coords.length) return;
+
+            const bounds = coords.reduce(function (b, c) { return b.extend(c); },
+                new maplibregl.LngLatBounds(coords[0], coords[0]));
+
+            map.fitBounds(bounds, { padding: 60, maxZoom: 16, duration: 0 });
+            fitted.add(map);
+        };
+    })();
 </script>

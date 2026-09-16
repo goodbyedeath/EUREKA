@@ -89,6 +89,11 @@ class MapRouteManager extends Component
         $post = QuestLocation::findOrFail($postId);
         $marker->update(['quest_location_id' => $post->id]);
 
+        // An older post may have no symbol yet; the pin's is better than none.
+        if (blank($post->icon) && filled($marker->icon)) {
+            $post->update(['icon' => $marker->icon]);
+        }
+
         session()->flash('route_msg', "Penanda dihubungkan ke pos \"{$post->name}\". Pos itu yang dipakai; penandanya tidak lagi digambar terpisah.");
     }
 
@@ -126,6 +131,9 @@ class MapRouteManager extends Component
             'radius' => $this->radius,
             'quest_points' => $this->questPoints,
             'marker_color' => $marker->color ?: '#3B82F6',
+            // The flag / star / camera the crew drew in the tracker. Without this the post
+            // would lose the one thing that told them apart on the map.
+            'icon' => $marker->icon,
             'is_active' => true,
             'created_by' => auth()->id(),
         ]);

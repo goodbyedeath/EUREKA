@@ -410,12 +410,15 @@
     // Load GPS data from tracker API
     async function loadUserGpsData() {
         try {
-            // The route the crew switched on, served by EUREKA.
-            const routeSessions = await window.eurekaMapRoutes();
+            // The route the crew switched on, and the posts to check in at.
+            const mapData = await window.eurekaMapData();
 
-            if (routeSessions.length > 0) {
-                displayUserRoutes(routeSessions);
+            if (mapData.sessions.length > 0) {
+                displayUserRoutes(mapData.sessions);
             }
+
+            window.eurekaDrawPosts(map, mapData.posts);
+            window.eurekaFitOnce(map, mapData);
         } catch (error) {
             console.error('Error loading GPS data:', error);
             showNotification('Unable to load route data. Please try again later.', 'error');

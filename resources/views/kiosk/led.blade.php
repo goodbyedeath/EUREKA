@@ -724,7 +724,7 @@
                 </div>
                 <div class="stat-item">
                     <div class="stat-value" id="gps-markers">0</div>
-                    <div>Route Markers</div>
+                    <div>Pos</div>
                 </div>
             </div>
         </div>
@@ -784,12 +784,18 @@
                 routeMarkers.forEach(marker => marker.remove());
                 routeMarkers = [];
 
-                // Routes the crew switched on, from EUREKA's own copy.
-                const routeSessions = await window.eurekaMapRoutes();
+                // Routes the crew switched on, and the posts, from EUREKA's own copy.
+                const mapData = await window.eurekaMapData();
 
-                if (routeSessions.length > 0) {
-                    displayGPSRoutes(routeSessions);
+                if (mapData.sessions.length > 0) {
+                    displayGPSRoutes(mapData.sessions);
                 }
+
+                // No popups on a board nobody can click.
+                window.eurekaDrawPosts(map, mapData.posts, { noPopup: true });
+                window.eurekaFitOnce(map, mapData);
+                // The tile below the map: what a viewer counts on screen are the posts.
+                document.getElementById('gps-markers').textContent = mapData.posts.length;
 
                 // Live positions are not fetched here: they arrive with
                 // /api/kiosk/data, which updateData() already polls. One screen asking
@@ -1086,7 +1092,10 @@
                     }
                 });
             }
-            document.getElementById('total-checkpoints').textContent = totalCheckpoints;
+            // This tile was removed from the board at some point; the write survived and threw
+            // on every refresh. Guarded rather than deleted, in case the tile comes back.
+            const checkpointTile = document.getElementById('total-checkpoints');
+            if (checkpointTile) checkpointTile.textContent = totalCheckpoints;
         }
         
         // Fetch and update data
