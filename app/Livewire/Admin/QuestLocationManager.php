@@ -63,7 +63,7 @@ class QuestLocationManager extends Component
     public function render()
     {
         return view('livewire.admin.quest-location-manager', [
-            'questLocations' => QuestLocation::latest()->paginate(10)
+            'questLocations' => QuestLocation::with('routeMarker.route')->latest()->paginate(10),
         ])->layout(null);
     }
 

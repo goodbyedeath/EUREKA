@@ -83,6 +83,13 @@
                             @if($location->description)
                                 <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">{{ Str::limit($location->description, 50) }}</p>
                             @endif
+                            @if ($location->routeMarker?->route)
+                                <a href="{{ route('admin.map-routes') }}"
+                                   class="inline-flex items-center px-2 py-1 rounded-full text-xs bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200"
+                                   title="Dibuat dari penanda di jalur ini. Titiknya digambar sebagai pos, bukan sebagai penanda.">
+                                    dari jalur: {{ \Illuminate\Support\Str::limit($location->routeMarker->route->name, 24) }}
+                                </a>
+                            @endif
                             @if($location->quest_points > 0)
                                 <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-800 text-blue-800 dark:text-blue-200">
                                     {{ $location->quest_points }} points
@@ -174,6 +181,13 @@
                                 <div class="font-medium text-gray-900 dark:text-gray-100">{{ $location->name }}</div>
                                 @if($location->description)
                                     <div class="text-sm text-gray-500 dark:text-gray-400">{{ Str::limit($location->description, 60) }}</div>
+                                @endif
+                                @if ($location->routeMarker?->route)
+                                    <a href="{{ route('admin.map-routes') }}"
+                                       class="inline-flex items-center px-2 py-0.5 mt-1 rounded-full text-xs bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200"
+                                       title="Dibuat dari penanda di jalur ini.">
+                                        dari jalur: {{ \Illuminate\Support\Str::limit($location->routeMarker->route->name, 24) }}
+                                    </a>
                                 @endif
                                 @if($location->quest_points > 0)
                                     <div class="text-sm text-blue-600 dark:text-blue-400 font-medium">{{ $location->quest_points }} points</div>

@@ -35,6 +35,16 @@ class QuestLocation extends Model
         'quest_points' => 'integer'
     ];
 
+    /**
+     * The tracker pin this post was made from, when it was made that way (Jalur Peta →
+     * "Jadikan pos"). Null for a post typed in by hand. There is only one store of posts —
+     * this table — and this is the door it came through.
+     */
+    public function routeMarker(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(MapRouteMarker::class);
+    }
+
     // Relationships
     public function checkpoints(): HasMany
     {

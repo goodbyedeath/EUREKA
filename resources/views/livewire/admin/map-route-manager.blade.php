@@ -99,6 +99,11 @@
                                     <td class="py-2 pr-3">
                                         @if ($marker->questLocation)
                                             <span class="px-2 py-0.5 text-xs rounded-full bg-blue-100 text-blue-800">pos: {{ $marker->questLocation->name }}</span>
+                                        @elseif ($near = ($nearby[$marker->id] ?? null))
+                                            <span class="px-2 py-0.5 text-xs rounded-full bg-amber-100 text-amber-800"
+                                                  title="Pos ini sudah ada di Quest Locations, sangat dekat dengan penanda.">
+                                                dekat pos "{{ $near['post']->name }}" (~{{ $near['metres'] }} m)
+                                            </span>
                                         @else
                                             <span class="text-xs text-gray-500">penanda peta saja</span>
                                         @endif
@@ -107,6 +112,12 @@
                                         @if ($marker->questLocation)
                                             <a href="{{ route('admin.quest-locations') }}" class="text-blue-600 underline text-xs mr-2">Atur pos</a>
                                             <button type="button" wire:click="detach({{ $marker->id }})" class="text-xs text-gray-600 underline">Lepas</button>
+                                        @elseif ($near = ($nearby[$marker->id] ?? null))
+                                            {{-- Same place, two doors: connect rather than create a twin post. --}}
+                                            <button type="button" wire:click="attach({{ $marker->id }}, {{ $near['post']->id }})"
+                                                    class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs">Hubungkan ke pos ini</button>
+                                            <button type="button" wire:click="promote({{ $marker->id }}, true)"
+                                                    class="ml-1 text-xs text-gray-600 underline">Tetap buat pos baru</button>
                                         @else
                                             <button type="button" wire:click="promote({{ $marker->id }})"
                                                     class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs">Jadikan pos</button>
