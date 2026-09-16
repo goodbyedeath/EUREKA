@@ -39,5 +39,6 @@
 
         <!-- Livewire Scripts -->
         @livewireScripts
+    @include('partials.livewire-failure-notice')
     </body>
 </html>

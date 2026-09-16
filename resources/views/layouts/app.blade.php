@@ -178,6 +178,7 @@
     @endif
     
     @livewireScripts
+    @include('partials.livewire-failure-notice')
     @stack('scripts')
     
     <!-- Flash Messages -->

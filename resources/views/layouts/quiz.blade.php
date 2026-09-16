@@ -125,6 +125,7 @@
 
     <!-- Livewire Scripts -->
     @livewireScripts
+    @include('partials.livewire-failure-notice')
     
     <!-- Camera Capture Script -->
     <script src="{{ asset('js/camera-capture.js') }}"></script>

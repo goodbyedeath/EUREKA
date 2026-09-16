@@ -503,6 +503,7 @@
     <!-- Marzipano is now loaded via Vite as npm package -->
     
     @livewireScripts
+    @include('partials.livewire-failure-notice')
     
     <script>
         document.addEventListener('livewire:init', () => {

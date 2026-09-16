@@ -71,6 +71,7 @@
     <script src="{{ asset('resources/js/app.js') }}"></script>
     
     @livewireScripts
+    @include('partials.livewire-failure-notice')
     @stack('scripts')
 </body>
 </html>

@@ -96,6 +96,7 @@
     </div>
 
     @livewireScripts
+    @include('partials.livewire-failure-notice')
     
     <!-- QR Scanner functionality is handled by npm package via Vite -->
 
