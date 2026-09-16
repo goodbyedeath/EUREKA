@@ -51,62 +51,18 @@
             return (await load()).sessions;
         };
 
-        // A metre-accurate circle is a polygon: 64 points around the centre, with longitude
-        // degrees shrinking by cos(latitude) as you leave the equator.
-        function circle(lng, lat, metres) {
-            const coords = [];
-            const latRadius = metres / 111320;
-            const lngRadius = metres / (111320 * Math.cos(lat * Math.PI / 180) || 1);
-
-            for (let i = 0; i <= 64; i++) {
-                const angle = (i / 64) * 2 * Math.PI;
-                coords.push([lng + lngRadius * Math.cos(angle), lat + latRadius * Math.sin(angle)]);
-            }
-
-            return coords;
-        }
-
         const drawn = new WeakMap();
 
         /**
-         * Draw the check-in posts: the radius as a soft disc, the post itself as its symbol.
-         * Safe to call on every refresh — markers are replaced, the radius source is updated.
+         * Draw the check-in posts: the symbol only. The radius circle was dropped at the
+         * operator's request (16 Sep) — on a venue-sized map the discs swamped the symbols.
+         * Safe to call on every refresh: the previous markers are removed first.
          */
         window.eurekaDrawPosts = function (map, posts, options) {
             if (!map || !posts) return [];
             options = options || {};
 
-            // addSource throws while the style is still loading; pages call this from several
-            // places, so wait here rather than relying on every caller to get the timing right.
-            if (!map.isStyleLoaded || !map.isStyleLoaded()) {
-                map.once('idle', function () { window.eurekaDrawPosts(map, posts, options); });
-                return [];
-            }
-
             (drawn.get(map) || []).forEach(function (m) { m.remove(); });
-
-            const features = posts.map(function (p) {
-                return {
-                    type: 'Feature',
-                    properties: { color: p.color || '#3B82F6' },
-                    geometry: { type: 'Polygon', coordinates: [circle(p.longitude, p.latitude, p.radius || 25)] },
-                };
-            });
-            const collection = { type: 'FeatureCollection', features: features };
-
-            if (map.getSource('eureka-post-radius')) {
-                map.getSource('eureka-post-radius').setData(collection);
-            } else {
-                map.addSource('eureka-post-radius', { type: 'geojson', data: collection });
-                map.addLayer({
-                    id: 'eureka-post-radius-fill', type: 'fill', source: 'eureka-post-radius',
-                    paint: { 'fill-color': ['get', 'color'], 'fill-opacity': 0.12 },
-                });
-                map.addLayer({
-                    id: 'eureka-post-radius-line', type: 'line', source: 'eureka-post-radius',
-                    paint: { 'line-color': ['get', 'color'], 'line-width': 1.5, 'line-opacity': 0.5 },
-                });
-            }
 
             const markers = posts.map(function (p) {
                 const el = document.createElement('div');
