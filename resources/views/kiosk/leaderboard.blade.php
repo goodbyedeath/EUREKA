@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ \App\Models\BrandSetting::title('Leaderboard') }}</title>
+    <link rel="icon" type="image/png" href="{{ \App\Models\BrandSetting::iconUrl() }}">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -51,6 +52,8 @@
     <div class="container mx-auto px-6 py-8">
         <!-- Header -->
         <div class="text-center mb-12">
+            <img src="{{ \App\Models\BrandSetting::iconUrl() }}" alt=""
+                 class="h-14 w-14 mx-auto mb-4 object-contain drop-shadow">
             <div class="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full mb-6 shadow-lg">
                 <i class="fas fa-trophy text-white text-3xl"></i>
             </div>

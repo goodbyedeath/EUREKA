@@ -27,6 +27,10 @@ class KioskController extends Controller
      */
     public function led()
     {
-        return view('kiosk.led');
+        // Indoor events do not want a map of a venue nobody walks across; the crew switches the
+        // panel off in Feature Management and the leaderboard takes the whole board.
+        return view('kiosk.led', [
+            'showMap' => \App\Models\FeatureSetting::isEnabled('kiosk_map'),
+        ]);
     }
 }

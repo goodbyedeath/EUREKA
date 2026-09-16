@@ -4,10 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ \App\Models\BrandSetting::title('LED Kiosk') }}</title>
-    @include('partials.map-config')
-    @include('partials.map-routes-fetch')
-    <script src='/vendor/maplibre/3.6.2/maplibre-gl.js'></script>
-    <link href='/vendor/maplibre/3.6.2/maplibre-gl.css' rel='stylesheet' />
+    <link rel="icon" type="image/png" href="{{ \App\Models\BrandSetting::iconUrl() }}">
+    @if ($showMap)
+        @include('partials.map-config')
+        @include('partials.map-routes-fetch')
+        <script src='/vendor/maplibre/3.6.2/maplibre-gl.js'></script>
+        <link href='/vendor/maplibre/3.6.2/maplibre-gl.css' rel='stylesheet' />
+    @endif
     <style>
         * {
             margin: 0;
@@ -55,6 +58,14 @@
             display: flex;
             height: 100vh;
             width: 100vw;
+        }
+
+        /* Map panel switched off (indoor): one column, centred, with room to breathe. */
+        .kiosk-container.no-map .leaderboard-section {
+            width: 100%;
+            max-width: 1500px;
+            margin: 0 auto;
+            padding: 48px 6vw;
         }
         
         .leaderboard-section {
@@ -663,12 +674,13 @@
          the leaderboard. Dimmed so it never competes with the scores. --}}
     <img class="brand-mark" src="{{ \App\Models\BrandSetting::horizontalUrl() }}" alt="">
     
-    <div class="kiosk-container">
+    <div class="kiosk-container {{ $showMap ? '' : 'no-map' }}">
         <div class="leaderboard-section">
             <h1 class="section-title">🏆 LEADERBOARD</h1>
             <div id="leaderboard-content"></div>
         </div>
         
+        @if ($showMap)
         <div class="map-section">
             <div class="map-overlay">
                 <h1 class="map-title">📍 TEAM POSITIONS</h1>
@@ -693,6 +705,7 @@
                 </div>
             </div>
         </div>
+        @endif
     </div>
 
     <script>
@@ -705,6 +718,7 @@
 
         // Initialize map
         function initMap() {
+            if (!SHOW_MAP || !document.getElementById('map')) return;
             map = new maplibregl.Map({
                 container: 'map',
                 style: {
@@ -741,6 +755,7 @@
         
         // Load GPS Tracking Data from Tracker API
         async function loadGPSTrackingData() {
+            if (!SHOW_MAP || !map) return;
             try {
                 // Clear all existing markers before refresh
                 routeMarkers.forEach(marker => marker.remove());
@@ -1110,16 +1125,23 @@
             }
         }
         
+        // Feature Management -> Kiosk Map Panel. Off for indoor events.
+        const SHOW_MAP = @json($showMap);
+
         // Initialize
         document.addEventListener('DOMContentLoaded', function() {
-            initMap();
+            if (SHOW_MAP) {
+                initMap();
+            }
             updateData();
 
             // Update leaderboard every 5 seconds
             setInterval(updateData, 10000);        // scores move every few minutes, not every 5s
 
-            // Update GPS tracking every 10 seconds
-            setInterval(loadGPSTrackingData, 15000);
+            if (SHOW_MAP) {
+                // Update GPS tracking every 10 seconds
+                setInterval(loadGPSTrackingData, 15000);
+            }
         });
     </script>
 </body>

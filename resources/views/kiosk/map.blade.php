@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ \App\Models\BrandSetting::title('Team Locations') }}</title>
+    <link rel="icon" type="image/png" href="{{ \App\Models\BrandSetting::iconUrl() }}">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="/vendor/maplibre/3.6.2/maplibre-gl.css" rel="stylesheet">
@@ -67,7 +68,8 @@
             <!-- Header -->
             <div class="bg-gradient-to-r from-blue-600 to-indigo-600 p-6 text-white">
                 <div class="flex items-center mb-4">
-                    <i class="fas fa-map-marked-alt text-2xl mr-3"></i>
+                    <img src="{{ \App\Models\BrandSetting::iconUrl() }}" alt=""
+                         class="h-9 w-9 mr-3 object-contain rounded bg-white/90 p-1">
                     <h1 class="text-2xl font-bold">Team Locations</h1>
                 </div>
                 <div class="flex items-center space-x-4 text-blue-100">
