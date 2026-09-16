@@ -14,6 +14,9 @@ Schedule::call(fn () => \App\Models\AppSetting::put('scheduler_heartbeat', now()
 Schedule::command('fekdi:sync')->everyMinute()->withoutOverlapping(10);
 Schedule::command('fekdi:import')->hourly()->withoutOverlapping(30);
 
+// Routes drawn in the tracker app. New ones arrive switched off until the crew picks them.
+Schedule::command('tracker:sync-map')->hourly()->withoutOverlapping(30);
+
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');

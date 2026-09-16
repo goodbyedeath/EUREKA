@@ -44,6 +44,14 @@ return [
         'admin_name' => env('FEKDI_ADMIN_NAME', 'Questerra'),
     ],
 
+    /*
+    | The separate GPS Tracker app. EUREKA only reads its public export, server-side, and keeps
+    | its own copy of the routes (App\Services\TrackerMapSync).
+    */
+    'tracker' => [
+        'base_url' => env('TRACKER_BASE_URL', 'https://tracker.questerra-series.com'),
+    ],
+
     'slack' => [
         'notifications' => [
             'bot_user_oauth_token' => env('SLACK_BOT_USER_OAUTH_TOKEN'),
