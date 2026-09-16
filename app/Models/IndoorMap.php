@@ -40,15 +40,29 @@ class IndoorMap extends Model
      * the team (operator, 16 Sep). Without an assignment it is the plan on the START code they
      * scanned — the behaviour every team had before — and failing that, the first active plan.
      */
-    public static function forUser(?\App\Models\User $user): ?self
+    /** The plan the crew assigned this player's team, if it is still active. */
+    public static function assignedTo(?\App\Models\User $user): ?self
     {
         $assigned = $user?->team?->indoor_map_id;
 
-        if ($assigned) {
-            $map = static::where('is_active', true)->find($assigned);
-            if ($map) {
-                return $map;
-            }
+        return $assigned ? static::where('is_active', true)->find($assigned) : null;
+    }
+
+    public static function forUser(?\App\Models\User $user): ?self
+    {
+        if ($map = static::assignedTo($user)) {
+            return $map;
+        }
+
+        // No assignment: the plan this team actually started on. A venue can have several START
+        // codes, so the newest one is not necessarily the code they scanned.
+        $fromSession = $user ? \App\Models\RaceSession::where('user_id', $user->id)
+            ->whereNotNull('indoor_map_id')
+            ->orderByDesc('id')
+            ->value('indoor_map_id') : null;
+
+        if ($fromSession && $map = static::where('is_active', true)->find($fromSession)) {
+            return $map;
         }
 
         $fromStart = \App\Models\RaceStart::where('is_active', true)

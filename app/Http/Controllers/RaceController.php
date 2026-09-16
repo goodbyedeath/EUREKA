@@ -34,7 +34,7 @@ class RaceController extends Controller
         // The plan is the team's when one is assigned; the START code only decides indoor vs
         // outdoor and starts the clock (operator, 16 Sep).
         $mapId = $start->indoor_map_id
-            ? (\App\Models\IndoorMap::forUser($request->user())?->id ?? $start->indoor_map_id)
+            ? (\App\Models\IndoorMap::assignedTo($request->user())?->id ?? $start->indoor_map_id)
             : null;
 
         $session = RaceSession::firstOrCreate(
@@ -90,7 +90,7 @@ class RaceController extends Controller
         // The plan is the team's when one is assigned; the START code only decides indoor vs
         // outdoor and starts the clock (operator, 16 Sep).
         $mapId = $start->indoor_map_id
-            ? (\App\Models\IndoorMap::forUser($request->user())?->id ?? $start->indoor_map_id)
+            ? (\App\Models\IndoorMap::assignedTo($request->user())?->id ?? $start->indoor_map_id)
             : null;
 
         $session = RaceSession::firstOrCreate(
