@@ -9,6 +9,32 @@ use Livewire\Attributes\Validate;
 
 class FeatureManager extends Component
 {
+    /**
+     * Who actually reads each flag.
+     *
+     * Players are on the Android app, and it reads exactly three of these (build guide §7).
+     * The rest drive the kiosk screens or server behaviour — or nothing at all, because the web
+     * participant dashboard they were written for is retired. Grouping beats deleting: a missing
+     * row reads as "off", which would quietly change server behaviour like workflow timers.
+     */
+    public const AUDIENCE = [
+        'quiz_system' => 'apk',
+        'quest_locations' => 'apk',
+        'gps_tracking' => 'apk',
+        'kiosk_map' => 'kiosk',
+        'leaderboard' => 'kiosk',
+        'workflow_timers' => 'server',
+    ];
+
+    public const GROUPS = [
+        'apk' => ['Dibaca aplikasi Android', 'Hanya saklar di bagian ini yang mengubah apa yang dilihat peserta di HP.'],
+        'kiosk' => ['Layar kiosk', 'Mengatur papan LED dan layar publik di lokasi acara.'],
+        'server' => ['Perilaku server', 'Bukan sekadar tampilan: proses dan timer di server ikut berubah.'],
+        'legacy' => ['Dashboard web lama', 'Peserta memakai aplikasi Android, dan halaman web peserta sudah pensiun. Saklar di sini tidak memengaruhi siapa pun.'],
+    ];
+
+    public bool $showLegacy = false;
+
     public $features;
     public $showEditModal = false;
     public $editingFeature = null;
@@ -42,7 +68,19 @@ class FeatureManager extends Component
 
     public function render()
     {
-        return view('livewire.admin.feature-manager');
+        $byAudience = collect($this->features)->groupBy(fn ($f) => self::AUDIENCE[$f->feature_key] ?? 'legacy');
+
+        $groups = collect(self::GROUPS)
+            ->map(fn ($labels, $key) => [
+                'key' => $key,
+                'title' => $labels[0],
+                'note' => $labels[1],
+                'features' => $byAudience->get($key, collect()),
+            ])
+            ->filter(fn ($g) => $g['features']->isNotEmpty())
+            ->values();
+
+        return view('livewire.admin.feature-manager', ['groups' => $groups]);
     }
 
     public function toggleFeature($featureId)

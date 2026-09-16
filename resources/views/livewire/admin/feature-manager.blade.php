@@ -4,7 +4,10 @@
     <!-- Header -->
     <div class="mb-6">
         <h1 class="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-2">Feature Management</h1>
-        <p class="text-gray-600 dark:text-gray-400">Control which features are available to teams</p>
+        <p class="text-gray-600 dark:text-gray-400">
+            Saklar tampilan, bukan izin akses — server tetap menjaga aksesnya sendiri. Dikelompokkan
+            menurut siapa yang membacanya, karena peserta memakai aplikasi Android.
+        </p>
     </div>
 
     <!-- Bulk Actions -->
@@ -34,9 +37,25 @@
         </button>
     </div>
 
-    <!-- Features Grid -->
-    <div class="grid gap-6">
-        @forelse($features as $feature)
+    <!-- Grouped by who reads the flag. The retired web dashboard's switches are collapsed:
+         they change nothing any player sees, and a long list of them hid the three that matter. -->
+    @forelse($groups as $group)
+    <section class="mb-8">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+            <div>
+                <h2 class="text-lg font-semibold text-gray-800 dark:text-gray-100">{{ $group['title'] }}</h2>
+                <p class="text-sm text-gray-500 dark:text-gray-400">{{ $group['note'] }}</p>
+            </div>
+            @if ($group['key'] === 'legacy')
+                <button wire:click="$toggle('showLegacy')"
+                        class="px-3 py-1.5 text-sm rounded-lg bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-100">
+                    {{ $showLegacy ? 'Sembunyikan' : 'Tampilkan' }} ({{ $group['features']->count() }})
+                </button>
+            @endif
+        </div>
+        @if ($group['key'] !== 'legacy' || $showLegacy)
+        <div class="grid gap-6">
+        @foreach($group['features'] as $feature)
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 overflow-hidden">
             <div class="p-6">
                 <div class="flex items-start justify-between">
@@ -131,7 +150,11 @@
                 </div>
             </div>
         </div>
-        @empty
+        @endforeach
+        </div>
+        @endif
+    </section>
+    @empty
         <div class="text-center py-12 bg-white dark:bg-gray-800 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600">
             <svg class="w-16 h-16 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path>
@@ -139,8 +162,7 @@
             <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">No Features Found</h3>
             <p class="text-gray-500 dark:text-gray-400">Run the feature seeder to populate default features.</p>
         </div>
-        @endforelse
-    </div>
+    @endforelse
 
     @endunless
 

@@ -34,24 +34,43 @@
             100% { background-position: 0% 50%; }
         }
         
+        .brand-block {
+            position: relative;
+            z-index: 1;
+            text-align: center;
+            margin-bottom: 26px;
+        }
+
+        .brand-name {
+            margin-top: 12px;
+            font-size: 1.55rem;
+            font-weight: 800;
+            letter-spacing: .07em;
+            text-transform: uppercase;
+            color: #ffffff;
+        }
+
+        .brand-tagline {
+            margin-top: 6px;
+            font-size: 1rem;
+            color: rgba(255, 255, 255, .7);
+        }
+
         .brand-mark {
-            position: fixed;
-            top: 18px;
-            right: 26px;
-            height: 42px;
+            height: 74px;
             width: auto;
-            max-width: 26vw;
+            max-width: 82%;
             object-fit: contain;
-            opacity: .82;
-            z-index: 20;
-            pointer-events: none;
             /* The board is always dark, so a logo drawn for white paper still
                reads: the shadow gives a dark mark an edge to sit against. */
             filter: drop-shadow(0 2px 6px rgba(0,0,0,.55));
         }
 
         @media (max-width: 1024px) {
-            .brand-mark { height: 30px; top: 12px; right: 14px; }
+            .brand-mark { height: 46px; }
+            .brand-name { font-size: 1.15rem; }
+            .brand-tagline { font-size: .85rem; }
+            .brand-block { margin-bottom: 16px; }
         }
 
         .kiosk-container {
@@ -669,13 +688,17 @@
 <body>
     <div class="loading" id="loading">Loading...</div>
 
-    {{-- The event badge. Fixed to a corner rather than placed in the flow: the
-         board is a full-height flex layout and adding a header row would squeeze
-         the leaderboard. Dimmed so it never competes with the scores. --}}
-    <img class="brand-mark" src="{{ \App\Models\BrandSetting::horizontalUrl() }}" alt="">
-    
     <div class="kiosk-container {{ $showMap ? '' : 'no-map' }}">
         <div class="leaderboard-section">
+            {{-- The masthead: wide logo, event name, tagline. Inside the scores column so it
+                 sits on the dark panel and does not steal height from the board. --}}
+            <header class="brand-block">
+                <img class="brand-mark" src="{{ \App\Models\BrandSetting::horizontalUrl() }}" alt="">
+                <div class="brand-name">{{ \App\Models\BrandSetting::appName() }}</div>
+                @if (filled(\App\Models\BrandSetting::tagline()))
+                    <div class="brand-tagline">{{ \App\Models\BrandSetting::tagline() }}</div>
+                @endif
+            </header>
             <h1 class="section-title">🏆 LEADERBOARD</h1>
             <div id="leaderboard-content"></div>
         </div>
