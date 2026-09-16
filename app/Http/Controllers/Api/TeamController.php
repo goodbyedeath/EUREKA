@@ -152,8 +152,9 @@ class TeamController extends Controller
                     'name' => $data['name'],
                     'description' => $data['description'] ?? null,
                     'department' => $data['department'] ?? null,
-                    'initial_points' => 1000,
-                    'points' => 1000,
+                    // Teams start at zero: the score is what they earn (operator, 16 Sep).
+                    'initial_points' => 0,
+                    'points' => 0,
                     'created_by' => $user->id,
                 ]);
 

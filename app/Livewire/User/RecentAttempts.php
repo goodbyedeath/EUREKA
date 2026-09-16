@@ -457,7 +457,7 @@ class RecentAttempts extends Component
             }
 
             // Calculate earned points using the same logic as quiz-results.blade.php
-            $basePoints = auth()->user()->team ? (auth()->user()->team->initial_points ?? 1000) : 1000;
+            $basePoints = auth()->user()->team ? (auth()->user()->team->initial_points ?? 0) : 0;
             
             // Get bonus points from correct answers
             $userAnswers = \App\Models\UserAnswer::where('quiz_attempt_id', $attempt->id)

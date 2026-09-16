@@ -24,8 +24,8 @@ class TeamManager extends Component
     public $name = '';
     public $description = '';
     public $department = '';
-    public $points = 1000;
-    public $initial_points = 1000;
+    public $points = 0;
+    public $initial_points = 0;
     
     // Points management (for quick actions only)
     public $pointsAction = 'set'; // set, add, deduct
@@ -81,8 +81,8 @@ class TeamManager extends Component
             'name' => '',
             'department' => '',
             'description' => '',
-            'initial_points' => 1000,
-            'points' => 1000
+            'initial_points' => 0,
+            'points' => 0
         ]);
     }
 
@@ -510,8 +510,8 @@ class TeamManager extends Component
         $this->name = '';
         $this->description = '';
         $this->department = '';
-        $this->points = 1000;
-        $this->initial_points = 1000;
+        $this->points = 0;
+        $this->initial_points = 0;
         $this->pointsAction = 'set';
         $this->pointsAmount = 0;
         $this->pointsReason = '';
@@ -539,7 +539,7 @@ class TeamManager extends Component
                     $team->users_count = User::where('team_id', $team->id)->count();
                 } catch (\Exception $e) {
                     Log::warning('Error calculating team data for team ' . $team->id . ': ' . $e->getMessage());
-                    $team->calculated_total_score = $team->initial_points ?? 1000;
+                    $team->calculated_total_score = $team->initial_points ?? 0;
                     $team->users_count = 0;
                 }
             }
@@ -558,7 +558,7 @@ class TeamManager extends Component
     private function calculateTeamTotalScore($team)
     {
         // Single base points for the team (not multiplied by member count)
-        $basePoints = $team->initial_points ?? 1000;
+        $basePoints = $team->initial_points ?? 0;
         $totalBonusPoints = 0;
 
         // Get ALL team members directly from database
@@ -600,7 +600,7 @@ class TeamManager extends Component
         })->where('is_assessed', true)->get();
         
         $assessmentBonus = 0;
-        $basePoints = $user->team ? ($user->team->initial_points ?? 1000) : 1000;
+        $basePoints = $user->team ? ($user->team->initial_points ?? 0) : 0;
         foreach ($assessmentGains as $assessment) {
             // Assessment gain = total_deposit - base_points_used
             $assessmentGain = ($assessment->total_deposit ?? 0) - $basePoints;

@@ -30,7 +30,7 @@ class ScoreBreakdown extends Component
         }
 
         // Base points from team's initial points (not current points)
-        $this->basePoints = $this->team->initial_points ?? 1000;
+        $this->basePoints = $this->team->initial_points ?? 0;
         
         // Get all completed quiz attempts with details using correct calculation
         $attempts = QuizAttempt::with(['user', 'questionnaire.questions'])

@@ -45,7 +45,7 @@ class RaceEmergencyStop
             'scans' => QrCodeScan::whereIn('user_id', $ids)->count(),
             'checkins' => UserQuestCheckpoint::whereIn('user_id', $ids)->count(),
             'unlocks' => GameLocationUnlock::whereIn('user_id', $ids)->count(),
-            'teams_with_points' => Team::whereRaw('points <> COALESCE(initial_points, 1000)')->count(),
+            'teams_with_points' => Team::whereRaw('points <> COALESCE(initial_points, 0)')->count(),
         ];
     }
 
@@ -80,7 +80,7 @@ class RaceEmergencyStop
             GameLocationUnlock::whereIn('user_id', $ids)->delete();
             DB::table('gps_footprints')->whereIn('user_id', $ids)->delete();
             DB::table('gps_tracking_sessions')->whereIn('user_id', $ids)->delete();
-            Team::query()->update(['points' => DB::raw('COALESCE(initial_points, 1000)')]);
+            Team::query()->update(['points' => DB::raw('COALESCE(initial_points, 0)')]);
 
             // Files and cache are not transactional: touch them only once the rows are gone for good.
             DB::afterCommit(function () use ($disk, $photos, $ids) {

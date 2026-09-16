@@ -93,7 +93,7 @@ class DashboardContent extends Component
         $completedCount = 0;
 
         // The team's starting balance, which every assessment carries inside total_deposit.
-        $basePoints = (int) ($user->team->initial_points ?? 1000);
+        $basePoints = (int) ($user->team->initial_points ?? 0);
 
         foreach ($completedAttempts as $attempt) {
             $completedCount++;

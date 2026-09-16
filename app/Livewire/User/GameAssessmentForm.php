@@ -58,7 +58,7 @@ class GameAssessmentForm extends Component
         // Set deposit to team's initial points (always read-only)
         $user = auth()->user();
         if ($user->team) {
-            $this->deposit = (int)($user->team->initial_points ?? 1000);
+            $this->deposit = (int)($user->team->initial_points ?? 0);
         } else {
             $this->deposit = 1000; // Default fallback
         }

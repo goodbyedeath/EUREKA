@@ -664,7 +664,7 @@ class QuizController extends Controller
 
                 // Get base points from team
                 $user = Auth::user();
-                $basePoints = $user && $user->team ? ($user->team->initial_points ?? 1000) : 1000;
+                $basePoints = $user && $user->team ? ($user->team->initial_points ?? 0) : 0;
 
                 $endTime = now();
 

@@ -147,7 +147,7 @@ class GameArchiveService
                 };
 
                 $teamRows = $teams->map(function (Team $t) use ($accounts, $attempts, $stations, $counted, $attemptRow, $iso) {
-                    $base = (int) ($t->initial_points ?? 1000);
+                    $base = (int) ($t->initial_points ?? 0);
                     $mine = $accounts->where('team_id', $t->id);
                     $theirs = $attempts->whereIn('user_id', $mine->pluck('id')->all());
 

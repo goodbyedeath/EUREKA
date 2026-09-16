@@ -177,8 +177,8 @@ class TeamForm extends Component
                     'name' => $this->teamName,
                     'description' => $this->teamDescription,
                     'department' => $this->department,
-                    'points' => 1000,
-                    'initial_points' => 1000,
+                    'points' => 0,
+                    'initial_points' => 0,
                     'created_by' => auth()->id(),
                 ]);
 

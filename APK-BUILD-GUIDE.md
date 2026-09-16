@@ -119,7 +119,7 @@ Setup refusals:
 The team has a right to see what it has achieved. `GET /team` → `team.score`:
 
 ```json
-"score": { "total": 1080, "base_points": 1000, "earned_points": 100,
+"score": { "total": 80, "base_points": 0, "earned_points": 100,
            "assessment_points": -20, "attempts_completed": 1 }
 ```
 
@@ -127,7 +127,7 @@ Show **`total`** large, and under it the breakdown:
 
 | Line | Field | Note |
 |---|---|---|
-| Poin awal | `base_points` | the starting balance every team gets |
+| Poin awal | `base_points` | the starting balance. **0 since 16 Sep** — teams score only what they earn. Still render the row from the field, never a constant: an event can be set up with a balance again. |
 | Poin kuis | `earned_points` | correct answers |
 | Poin game | `assessment_points` | facilitator scores minus penalties — **can be negative**, show the sign |
 

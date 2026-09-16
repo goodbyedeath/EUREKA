@@ -66,7 +66,7 @@ class GameAssessmentService
             }
 
             $team = $locked->user?->team_id ? Team::lockForUpdate()->find($locked->user->team_id) : null;
-            $base = (int) ($team->initial_points ?? 1000);
+            $base = (int) ($team->initial_points ?? 0);
 
             // What this assessment already paid, if it was scored before. An assessment that was
             // "skipped" stored total_deposit = deposit, i.e. a gain of 0, which this reads correctly.

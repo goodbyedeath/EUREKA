@@ -579,7 +579,7 @@ class UserProgress extends Component
         }
 
         // Get base points for this user's team
-        $basePoints = $attempt->user->team->initial_points ?? 1000;
+        $basePoints = $attempt->user->team->initial_points ?? 0;
         
         // Calculate earned points (total_score - base points)
         $earnedPoints = max(0, $attempt->total_score - $basePoints);
@@ -594,7 +594,7 @@ class UserProgress extends Component
     private function calculateTeamPoints($attempt)
     {
         $user = $attempt->user;
-        $basePoints = $user->team ? ($user->team->initial_points ?? 1000) : 1000;
+        $basePoints = $user->team ? ($user->team->initial_points ?? 0) : 0;
         
         // Calculate bonus points from correct answers
         $userAnswers = UserAnswer::where('quiz_attempt_id', $attempt->id)

@@ -30,13 +30,13 @@ class PointsCalculationService
     {
         $accounts = User::where('team_id', $team->id)->pluck('id')->all();
 
-        return $this->scoreFor($accounts, (int) ($team->initial_points ?? 1000), $since);
+        return $this->scoreFor($accounts, (int) ($team->initial_points ?? 0), $since);
     }
 
     /** One account's share of that score, on the same formula and its team's base. */
     public function userScore(User $user, ?\DateTimeInterface $since = null): array
     {
-        return $this->scoreFor([$user->id], (int) ($user->team?->initial_points ?? 1000), $since);
+        return $this->scoreFor([$user->id], (int) ($user->team?->initial_points ?? 0), $since);
     }
 
     private function scoreFor(array $userIds, int $base, ?\DateTimeInterface $since): array
@@ -269,7 +269,7 @@ class PointsCalculationService
         $completedAttempts = $attempts->where('status', QuizAttempt::STATUS_COMPLETED);
         
         if ($completedAttempts->isEmpty()) {
-            return $team->initial_points ?? 1000;
+            return $team->initial_points ?? 0;
         }
         
         $highestPoints = null; // start unset: seeding with initial_points meant a penalised team could never rank below its starting balance
@@ -287,7 +287,7 @@ class PointsCalculationService
             }
         }
         
-        return $highestPoints ?? ($team->initial_points ?? 1000);
+        return $highestPoints ?? ($team->initial_points ?? 0);
     }
 
     /**
@@ -317,7 +317,7 @@ class PointsCalculationService
      */
     public function getUserBasePoints(User $user): int
     {
-        return $user->team ? ($user->team->initial_points ?? 1000) : 1000;
+        return $user->team ? ($user->team->initial_points ?? 0) : 0;
     }
 
     /**

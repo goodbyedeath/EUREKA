@@ -183,10 +183,10 @@ class QuizAttempt extends Model
     {
         // Base points from user's team initial points
         if (!$this->user || !$this->user->team) {
-            return 1000; // Default base points
+            return 0; // No team, no starting balance
         }
         
-        return $this->user->team->initial_points ?? 1000;
+        return $this->user->team->initial_points ?? 0;
     }
 
     /**
