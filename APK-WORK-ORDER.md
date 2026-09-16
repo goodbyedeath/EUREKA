@@ -496,6 +496,32 @@ with mobile data off, and no request is made to any host other than questerra-se
 
 ---
 
+## 18 — History points, and the dashboard question  ·  16 Sep
+
+**Your #23 — done, server-side.** `GET /quiz/attempts` rows now carry `earned_points`,
+`assessment_points` and `points` for every `completed` attempt (null otherwise), computed with
+`PointsCalculationService`. So `base_points + Σ points = team.score.total`, and the per-row
+subtraction you were doing can go. Spec: build guide §11.
+
+**And the question in it:** no, listing `Auth::id()` alone was not intended. The endpoint now lists
+every account on the team, with `by` naming who did each row. One account per team (the printed
+cards) sees no change.
+
+**Your #24 — no such rule.** Flags are display-only; a locked button with a reason beats a hidden
+one, and the server gates every screen regardless. Nothing on the web or kiosk side requires a
+flagged feature to be invisible to teams. Note that the sixteen switches left over from the retired
+web dashboard were deleted on 16 Sep: read `/features` as a list, treat a missing key as "not
+applicable", and never hardcode the set.
+
+**Also changed, and it touches your score card:** teams now start at **0 points**, not 1000
+(operator, 16 Sep). `base_points` is 0 for every new team. Keep rendering the row from the field —
+an event can be set up with a balance again.
+
+**Done when:** a history row shows the number the server sends in `points`, the rows sum to the
+score card, and an unfinished row shows no points rather than 0.
+
+---
+
 ## Talking back — the channel runs both ways now
 
 Until today this was one-way: the server published, you consumed, and anything you had to say

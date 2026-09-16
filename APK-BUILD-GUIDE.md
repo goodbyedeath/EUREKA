@@ -1168,7 +1168,11 @@ team that another team has a briefing it cannot see.
   "id": 412,
   "questionnaire": { "id": 13, "title": "Field Bomb (Pos Merah)" },   // null if the questionnaire was deleted
   "status": "completed",            // started | completed | abandoned — exactly these three
-  "total_score": 80,                // a JSON number, never a string
+  "total_score": 80,                // what submit wrote at hand-in — kept, but see below
+  "earned_points": 40,              // correct answers on this attempt
+  "assessment_points": 30,          // facilitator: additional − penalty, may be negative
+  "points": 70,                     // earned + assessment — what this outpost was worth
+  "by": "Tim 03",                   // the account that did it (a team may have several)
   "total_time_seconds": 214,        // a JSON integer, never a string
   "created_at":   "2026-09-14T09:12:03+00:00",   // ISO-8601, always
   "completed_at": "2026-09-14T09:15:37+00:00"    // ISO-8601, or null while status is "started"
@@ -1183,6 +1187,17 @@ JSON numbers, never strings.
 against a live row. So `0` does not mean "scored zero" — it can equally mean "not finished". Tell
 the two apart with `status` (or `completed_at` being null), never with the number. Leniency does no harm, but do not rely on it elsewhere:
 `/quest-locations` still sends lat/long as strings.
+
+**Show `points`, not `total_score`** (your #23). `total_score` is what submit wrote at hand-in, so it
+carried the starting balance and never the facilitator's game points. The three new fields come from
+`PointsCalculationService`, the same function behind the team score card, so
+`base_points + Σ points over the team's completed rows = team.score.total` exactly. They are **null
+on a row that is not `completed`** — null means "not settled", where 0 would read as "worth nothing".
+
+**The history is the team's, not one account's** (also #23 — listing `Auth::id()` alone was not
+intended). The team is what scores, so every account on it contributes, and `by` names who did each
+row. With one account per team, as the printed login cards make, the list is unchanged. A player
+with no team still sees their own.
 
 `total_attempts` counts everything, not the page: a team that has done thirty outposts sees thirty
 even when listing twenty. `limit` is 1–100; above that is a 422.

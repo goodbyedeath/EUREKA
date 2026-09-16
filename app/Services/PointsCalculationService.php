@@ -65,6 +65,46 @@ class PointsCalculationService
     }
 
     /**
+     * The same score, split per attempt, so a history row can show what that outpost was worth
+     * (APK report #23: rows carried `total_score`, which is what submit wrote — the old base
+     * balance plus quiz points, and never the facilitator's game points).
+     *
+     * Two grouped queries, not two per row. base_points stays out of the rows: it is paid once
+     * for the team, so base + Σ points over the team's completed attempts = teamScore total.
+     *
+     * @param  \Illuminate\Support\Collection<int, int>|array<int, int>  $attemptIds
+     * @return array<int, array{earned_points:int, assessment_points:int, points:int}>
+     */
+    public function breakdownForAttempts($attemptIds, int $base): array
+    {
+        $ids = collect($attemptIds)->all();
+        if (! $ids) {
+            return [];
+        }
+
+        $earned = UserAnswer::whereIn('quiz_attempt_id', $ids)
+            ->where('is_correct', true)
+            ->selectRaw('quiz_attempt_id, SUM(points_earned) AS total')
+            ->groupBy('quiz_attempt_id')
+            ->pluck('total', 'quiz_attempt_id');
+
+        $assessed = GameAssessment::whereIn('quiz_attempt_id', $ids)
+            ->where('is_assessed', true)
+            ->get(['quiz_attempt_id', 'total_deposit'])
+            ->groupBy('quiz_attempt_id')
+            ->map(fn ($rows) => $rows->sum(fn ($a) => (int) $a->total_deposit - $base));
+
+        $out = [];
+        foreach ($ids as $id) {
+            $e = (int) ($earned[$id] ?? 0);
+            $a = (int) ($assessed[$id] ?? 0);
+            $out[$id] = ['earned_points' => $e, 'assessment_points' => $a, 'points' => $e + $a];
+        }
+
+        return $out;
+    }
+
+    /**
      * Calculate earned points from a single quiz attempt (correct answers only)
      * IMPORTANT: Uses points_earned from user_answers table, NOT question->points
      * This ensures fun_game questions (which have points_earned = 0) are handled correctly

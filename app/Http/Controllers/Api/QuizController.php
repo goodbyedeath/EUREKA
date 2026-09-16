@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\Questionnaire;
 use App\Models\QuizAttempt;
 use App\Models\UserAnswer;
+use App\Models\User;
+use App\Services\PointsCalculationService;
 use App\Models\QrCodeScan;
 use App\Models\GameAssessment;
 use App\Services\AnswerValidationService;
@@ -540,17 +542,33 @@ class QuizController extends Controller
 
         $limit = (int) ($data['limit'] ?? 20);
 
-        $rows = QuizAttempt::with('questionnaire:id,title')
-            ->where('user_id', Auth::id())
+        // The team is the unit that scores, so the history is the team's (APK #23: it asked
+        // whether listing Auth::id() alone was intended — it was not). With one account per
+        // team, as the login cards make, this is the same list as before.
+        $user = Auth::user();
+        $accounts = $user->team_id
+            ? User::where('team_id', $user->team_id)->pluck('id')->all()
+            : [$user->id];
+
+        $rows = QuizAttempt::with(['questionnaire:id,title', 'user:id,name'])
+            ->whereIn('user_id', $accounts)
             ->orderByDesc('created_at')
             ->limit($limit)
             ->get();
+
+        // Only completed attempts have a settled score; the rest report null rather than 0,
+        // which would read as "this outpost was worth nothing".
+        $base = (int) ($user->team?->initial_points ?? 0);
+        $breakdown = app(PointsCalculationService::class)->breakdownForAttempts(
+            $rows->where('status', QuizAttempt::STATUS_COMPLETED)->pluck('id'),
+            $base,
+        );
 
         return response()->json([
             'success' => true,
             // The count is of everything, not of this page: a team that has done thirty
             // outposts should see thirty, not the twenty it asked to list.
-            'total_attempts' => QuizAttempt::where('user_id', Auth::id())->count(),
+            'total_attempts' => QuizAttempt::whereIn('user_id', $accounts)->count(),
             'attempts' => $rows->map(fn (QuizAttempt $a) => [
                 'id' => $a->id,
                 'questionnaire' => $a->questionnaire ? [
@@ -558,7 +576,14 @@ class QuizController extends Controller
                     'title' => $a->questionnaire->title,
                 ] : null,
                 'status' => $a->status,
+                // What submit wrote at hand-in. Kept for older builds; the three fields below
+                // are the ones that add up to the team's score card.
                 'total_score' => $a->total_score !== null ? (float) $a->total_score : null,
+                'earned_points' => $breakdown[$a->id]['earned_points'] ?? null,
+                'assessment_points' => $breakdown[$a->id]['assessment_points'] ?? null,
+                'points' => $breakdown[$a->id]['points'] ?? null,
+                // Who did it, for a team whose members each have an account.
+                'by' => $a->user?->name,
                 'total_time_seconds' => $a->total_time_seconds !== null ? (int) $a->total_time_seconds : null,
                 'created_at' => $a->created_at?->toIso8601String(),
                 'completed_at' => $a->completed_at?->toIso8601String(),
