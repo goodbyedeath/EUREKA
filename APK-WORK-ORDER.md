@@ -642,6 +642,51 @@ to submit before the photo, and all of it works with the phone in airplane mode 
 Spec: build guide §4 (`group_photo` — foto bersama); contract: `POST /api/v1/quiz/photo-answer`.
 ---
 
+## 24 — Two from the operator's test, both on your side  ·  20 Sep
+
+### 24a — Objects placed in the 3D editor land in the wrong place in the app
+
+Operator: "algoritma 3D Camera yang di setting via Editor 3D, ketika di buka di APK, 3D object nya
+kacau lokasinya." We re-checked the server before sending this, because it would be the obvious
+suspect. It is not: `position` is derived from the authored bearing/pitch/distance as
+`x = d·cos(pitch)·sin(yaw)`, `y = d·sin(pitch)`, `z = −d·cos(pitch)·cos(yaw)`, and a round-trip back
+to angles agrees to **1.3 mm at the very worst** (50 m out, 89° up — the only loss is rounding to
+4 decimals). The same numbers drive our own web preview, where the placement is correct. So the
+fault is in how the app consumes them.
+
+The four things that produce exactly this symptom:
+
+1. **Handedness.** `position` is right-handed, camera-local, **−z forward**, +x right, +y up,
+   metres. If your scene graph is left-handed (or you feed these into a library that is), z is
+   mirrored and every object lands behind you or on the wrong side. Negate z at the boundary, once,
+   and nowhere else.
+2. **Re-deriving the anchor.** Never recompute a position from lat/long, and never re-derive the
+   bearing from the compass. The admin authored these standing at the outpost; the server's maths
+   is the authority and a magnetometer reading will not agree with it. Anchor the scene to the
+   camera pose **at Start** and place the objects from there, as given.
+3. **Rotation order.** `'YXZ'` — `R = Ry(y)·Rx(x)·Rz(z)`, yaw outermost, degrees, and spin adds to
+   `y`. If your engine composes XYZ, a tilted object rotates inside its own plane instead of
+   turning like a top. Build the quaternion in this order yourself if you cannot set it.
+4. **The far plane.** `distance` reaches 50 m; several defaults stop drawing at 30 and the object
+   is not misplaced but absent.
+
+Guide §9 has all of this. **If, after those four, the placement is still wrong, send us the failing
+case through `POST /api/v1/contract/feedback`** — the location id, one object's `position`,
+`rotation` and `distance` as you received them, and where it actually appeared relative to the
+camera at Start. That is a report we can act on; "kacau" alone we cannot.
+
+### 24b — The login-card scanner should look like the QR scanner
+
+Operator: "Scan QR Login tampilannya di buat seperti scan QR Code." Same camera, same framing, same
+reticle and torch control as the outpost scanner — the crew teaches one gesture at the start line
+and it has to be the same gesture on the login screen. Nothing changes on the wire:
+`EUREKA-LOGIN:<code>` still goes to `POST /api/v1/auth/login-code` (§15), and that prefix stays as
+it is because the cards are already printed.
+
+**Done when:** both scanners are visibly the same screen with different copy, and a printed card
+scans from the login screen as it does now.
+---
+
 ## Talking back — the channel runs both ways now
 
 Until today this was one-way: the server published, you consumed, and anything you had to say
