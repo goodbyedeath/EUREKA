@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Admin\DashboardController;
@@ -313,6 +314,38 @@ Route::prefix('api/user')->name('api.user.')->middleware('auth')->group(function
 
 
 // Ultra Simple Session Management
+
+/*
+ * Livewire's file preview, re-routed around a host quirk.
+ *
+ * This server strips the query string from any URL whose path ends in an image extension —
+ * verified 20 Sep: /x/y.png?a=b reaches PHP with QUERY_STRING empty, /x/y.txt?a=b arrives intact,
+ * and it happens above Apache (removing our own hotlink rules changes nothing). Livewire signs its
+ * preview URLs in the query and the filename keeps the original extension, so every image preview
+ * in the admin — a logo, a hero slide, an AR picture, a photo frame — arrived with no signature and
+ * FilePreviewController answered 401. The admin saw a broken thumbnail and, on some screens, the
+ * red reload bar.
+ *
+ * The path survives; only the query is lost, so the filename still arrives and the signature never
+ * can. Authorisation moves to the session — an authenticated admin, which is the only kind of
+ * account that uploads here — and that is a tighter gate than the unauthenticated signed link it
+ * replaces, not a looser one. Registering the same URI after Livewire replaces its route in the
+ * collection, which is what we want: every temporaryUrl() in the app now resolves here.
+ */
+Route::get('/livewire/preview-file/{filename}', function (string $filename) {
+    // basename() keeps a crafted name from walking out of the temp directory.
+    $name = basename($filename);
+
+    $disk = Storage::disk(config('livewire.temporary_file_upload.disk') ?: 'local');
+    $path = 'livewire-tmp/'.$name;
+
+    abort_unless($name !== '' && $disk->exists($path), 404);
+
+    return $disk->response($path, $name, [
+        'Cache-Control' => 'private, max-age=60, no-store',
+        'Content-Type' => $disk->mimeType($path) ?: 'application/octet-stream',
+    ]);
+})->middleware(['auth', 'admin'])->name('livewire.preview-file');
 
 // Fallback route
 Route::fallback(function () {

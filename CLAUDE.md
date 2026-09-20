@@ -36,6 +36,14 @@ $PHP artisan livewire:publish --assets   # after ANY livewire/livewire version c
 #   vendor/livewire/livewire/dist/manifest.json — the hashes must match.
 ```
 
+**A URL whose path ends in an image extension arrives with no query string.** Verified 20 Sep:
+`/x/y.png?a=b` reaches PHP with `QUERY_STRING` empty and `REQUEST_URI` truncated at the `?`, while
+`/x/y.txt?a=b` arrives intact; it happens above Apache, so removing our own rewrite rules changes
+nothing. Any scheme that puts meaning in the query of an image URL is therefore dead on this host —
+signed URLs worst of all, since the signature lives there. Livewire's file preview was 401ing for
+exactly this reason, and `routes/web.php` now re-registers `livewire/preview-file` to authorise by
+admin session instead. Put cache-busting and access tokens in the *path*, never the query.
+
 **Never create a `.env.production`.** `config:cache` bootstraps a second app instance with
 `APP_ENV` already in the environment, so it loads `.env.<APP_ENV>` in preference to `.env` and
 caches the wrong values. Runtime keeps looking correct, so the breakage appears only after

@@ -26,6 +26,9 @@
                 ['admin.dashboard-management', 'fa-cogs',           'Questionnaires',     'text-emerald-500'],
                 ['admin.games',                'fa-gamepad',        'AR Outposts',        'text-purple-500'],
                 ['admin.race-start',           'fa-flag-checkered', 'Race Start',         'text-rose-500'],
+                // Checks the whole chain, indoor and outdoor alike, so it belongs with the
+                // preparation rather than under one of the two map categories.
+                ['admin.event-readiness',      'fa-clipboard-check','Cek Kesiapan',       'text-amber-500'],
             ],
         ],
         [
@@ -36,8 +39,6 @@
                 ['admin.quest-locations',      'fa-map-marker-alt', 'Quest Locations',    'text-green-500'],
                 ['admin.gps-tracking',         'fa-map-marked-alt', 'GPS Tracking Map',   'text-red-500'],
                 ['admin.map-routes',           'fa-route',          'Jalur Peta',         'text-red-500'],
-                ['admin.event-readiness',      'fa-clipboard-check', 'Cek Kesiapan',       'text-amber-500'],
-                ['admin.user-guide',           'fa-book-open',       'Panduan Pengguna',   'text-sky-500'],
             ],
         ],
         [
@@ -115,6 +116,18 @@
                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700' }}">
             <i class="fas fa-book-open text-indigo-500 w-4 text-center"></i>
             <span class="truncate">Panduan Setup</span>
+        </a>
+
+        {{-- The two guides belong together: this one is what the player reads, and the crew
+             edits it in the same sitting as their own. Operator, 20 Sep. --}}
+        <a href="{{ route('admin.user-guide') }}"
+           @click="if (window.innerWidth < 1024) $store.adminNav.close()"
+           class="flex items-center gap-3 px-2 py-2 mb-2 rounded-md text-sm transition-colors
+                  {{ request()->routeIs('admin.user-guide')
+                     ? 'bg-sky-50 dark:bg-sky-900/30 text-sky-700 dark:text-sky-300 font-semibold'
+                     : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700' }}">
+            <i class="fas fa-book-reader text-sky-500 w-4 text-center"></i>
+            <span class="truncate">Panduan Pengguna</span>
         </a>
 
         @foreach ($nav as $group)
