@@ -17,9 +17,18 @@
      ten seconds, so with a dead session the bar came straight back and read as unclosable. Once
      dismissed it stays away for that failure, and only returns for a different failure or after a
      request has succeeded again. --}}
+{{-- display:none is set inline, and the script toggles that same property.
+
+     It used to rely on the `hidden` attribute while carrying an inline display:flex. `hidden` works
+     through the UA stylesheet rule [hidden] { display: none }, and an inline style outranks a UA
+     rule in the cascade, so in Chrome the attribute hid nothing: this bar sat on every page from
+     load, empty, and neither × nor Esc could dismiss it (Esc worse — its guard read el.hidden,
+     which was true while the bar was plainly on screen, so it returned early every time). Firefox
+     marks that rule !important and behaved, which is how it survived a look at the markup.
+     Verified in a real headless Chrome, before and after — see the operator's report, 20 Sep. --}}
 <div id="lw-failure" role="alert" hidden
      style="position:fixed;left:50%;bottom:20px;transform:translateX(-50%);z-index:9999;max-width:min(92vw,560px);
-            display:flex;gap:12px;align-items:center;padding:12px 16px;border-radius:12px;
+            display:none;gap:12px;align-items:center;padding:12px 16px;border-radius:12px;
             background:#7f1d1d;color:#fee2e2;box-shadow:0 6px 24px rgba(0,0,0,.35);font-size:14px">
     <span id="lw-failure-text" style="flex:1"></span>
     <button type="button" id="lw-failure-close" aria-label="Tutup (Esc)" title="Tutup (Esc)"
@@ -33,9 +42,25 @@
 
         function box() { return document.getElementById('lw-failure'); }
 
+        function showing() {
+            const el = box();
+            return !!el && el.style.display !== 'none';
+        }
+
         function hide() {
             const el = box();
-            if (el) el.hidden = true;
+            if (!el) return;
+            // display is the property that decides this, so it is the property we set. The
+            // attribute stays in step for assistive technology.
+            el.style.display = 'none';
+            el.hidden = true;
+        }
+
+        function show() {
+            const el = box();
+            if (!el) return;
+            el.hidden = false;
+            el.style.display = 'flex';
         }
 
         function messageFor(status) {
@@ -56,7 +81,7 @@
 
         document.addEventListener('keydown', function (e) {
             const el = box();
-            if (e.key === 'Escape' && el && !el.hidden) {
+            if (e.key === 'Escape' && showing()) {
                 dismissed = el.dataset.status || 'unknown';
                 hide();
             }
@@ -77,7 +102,7 @@
 
                     text.textContent = messageFor(status);
                     el.dataset.status = String(status);
-                    el.hidden = false;
+                    show();
                 });
 
                 succeed(function () {
