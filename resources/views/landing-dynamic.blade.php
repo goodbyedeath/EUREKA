@@ -22,7 +22,7 @@
             <div class="flex justify-between h-16">
                 <div class="flex items-center">
                     <div class="flex-shrink-0 flex items-center">
-                        <img src="{{ \App\Models\BrandSetting::iconUrl() }}" alt="EUREKA Logo" class="w-10 h-10">
+                        <img src="{{ \App\Models\BrandSetting::iconUrl() }}" alt="{{ \App\Models\BrandSetting::appName() }}" class="w-10 h-10">
                         <div class="mx-3 text-gray-400 text-2xl font-light">|</div>
                         <h1 class="text-2xl font-bold text-blue-600">{{ \App\Models\BrandSetting::appName() }}</h1>
                     </div>
@@ -167,7 +167,7 @@
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path>
                                             </svg>
                                         </a>
-                                        <a href="https://wa.me/6281380999992?text=Saya%20ingin%20tahu%20lebih%20lanjut%20tentang%20EUREKA%20" class="inline-flex items-center px-8 py-4 border-2 border-white text-lg font-medium rounded-lg text-white hover:bg-white hover:text-blue-600 transition duration-300">
+                                        <a href="https://wa.me/6281380999992?text=Saya%20ingin%20tahu%20lebih%20lanjut%20tentang%20Questerra%20" class="inline-flex items-center px-8 py-4 border-2 border-white text-lg font-medium rounded-lg text-white hover:bg-white hover:text-blue-600 transition duration-300">
                                             Contact Us
                                         </a>
                                     </div>
@@ -250,9 +250,9 @@
     <section class="py-20 bg-gradient-to-r from-blue-600 to-purple-600">
         <div class="max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8">
             <h2 class="text-3xl md:text-4xl font-bold text-white mb-6">Ready to Start Your Learning Journey?</h2>
-            <p class="text-xl text-blue-100 mb-8">Join thousands of learners who are already exploring knowledge with EUREKA.</p>
+            <p class="text-xl text-blue-100 mb-8">Join thousands of learners who are already exploring knowledge with us.</p>
             <div class="flex flex-col sm:flex-row gap-4 justify-center">
-                <a href="https://wa.me/6281380999992?text=Saya%20ingin%20tahu%20lebih%20lanjut%20tentang%20EUREKA%20" class="inline-flex items-center px-8 py-4 border border-transparent text-lg font-medium rounded-lg text-blue-600 bg-white hover:bg-gray-50 transition duration-300 shadow-lg">
+                <a href="https://wa.me/6281380999992?text=Saya%20ingin%20tahu%20lebih%20lanjut%20tentang%20Questerra%20" class="inline-flex items-center px-8 py-4 border border-transparent text-lg font-medium rounded-lg text-blue-600 bg-white hover:bg-gray-50 transition duration-300 shadow-lg">
                     Contact Us
                     <svg class="ml-2 w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path>

@@ -997,7 +997,7 @@
                             <div style="padding: 15px; font-size: 16px;">
                                 <h3 style="margin: 0 0 10px 0; font-weight: bold; color: #10b981; font-size: 18px;">🌟 ${member.name}</h3>
                                 <p style="margin: 5px 0; font-size: 14px;"><strong>Team:</strong> ${team.name}</p>
-                                <p style="margin: 5px 0; font-size: 14px;"><strong>Status:</strong> Live (EUREKA)</p>
+                                <p style="margin: 5px 0; font-size: 14px;"><strong>Status:</strong> Live (Questerra)</p>
                                 <p style="margin: 5px 0; font-size: 12px; color: #666;">Updated: ${member.last_update}</p>
                             </div>
                         `))

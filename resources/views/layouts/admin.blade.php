@@ -201,7 +201,7 @@
                             <i class="fas fa-bars"></i>
                         </button>
                         <div class="flex items-center space-x-2 bg-white/10 backdrop-blur-sm rounded-lg px-3 py-1.5">
-                            <img src="{{ \App\Models\BrandSetting::horizontalUrl() }}" alt="Eureka! Performa" class="h-8 w-auto">
+                            <img src="{{ \App\Models\BrandSetting::horizontalUrl() }}" alt="{{ \App\Models\BrandSetting::appName() }}" class="h-8 w-auto">
                             <div class="border-l border-white/30 h-6"></div>
                             <div>
                                 {{-- The page title is back here now that the brand lives in the

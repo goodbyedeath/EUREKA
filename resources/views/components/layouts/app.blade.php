@@ -90,7 +90,7 @@
                 <div class="flex justify-between h-16">
                     <div class="flex items-center">
                         <div class="flex-shrink-0 flex items-center">
-                            <img src="{{ \App\Models\BrandSetting::iconUrl() }}" alt="EUREKA Logo" class="w-10 h-10">
+                            <img src="{{ \App\Models\BrandSetting::iconUrl() }}" alt="{{ \App\Models\BrandSetting::appName() }}" class="w-10 h-10">
                             <div class="mx-3 text-gray-400 text-2xl font-light">|</div>
                             <h1 class="text-2xl font-bold text-blue-600">{{ \App\Models\BrandSetting::appName() }}</h1>
                         </div>

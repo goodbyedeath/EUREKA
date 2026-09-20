@@ -28,7 +28,7 @@
     <div class="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5 mb-4">
         <h3 class="font-semibold text-gray-900 dark:text-gray-100 mb-1">Name</h3>
         <p class="text-xs text-gray-500 dark:text-gray-400 mb-3">
-            Replaces &ldquo;EUREKA&rdquo; wherever it appeared &mdash; including the browser tab,
+            Replaces &ldquo;Questerra&rdquo; wherever it appeared &mdash; including the browser tab,
             which is where you have been seeing it.
         </p>
 

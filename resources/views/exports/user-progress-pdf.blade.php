@@ -518,7 +518,7 @@
         <div class="executive-summary no-break">
             <h3>Ringkasan Eksekutif</h3>
             <p>
-                Laporan komprehensif ini menganalisis kemajuan pembelajaran dan metrik kinerja pengguna dalam Sistem Manajemen Pembelajaran EUREKA.
+                Laporan komprehensif ini menganalisis kemajuan pembelajaran dan metrik kinerja pengguna dalam Sistem Manajemen Pembelajaran Questerra.
                 Analisis mencakup {{ count($users) }} pengguna di {{ $filters['selectedTeam'] === 'all' ? 'semua tim' : 'tim yang dipilih' }}
                 selama periode {{ $filters['selectedTimeframe'] }} hari yang berakhir pada {{ now()->format('d F Y') }}.
             </p>

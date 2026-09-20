@@ -40,7 +40,7 @@
                 <!-- Logo & Brand -->
                 <div class="flex items-center">
                     <div class="brand-container">
-                        <img src="{{ \App\Models\BrandSetting::horizontalUrl() }}" alt="Eureka! Performa" class="brand-logo">
+                        <img src="{{ \App\Models\BrandSetting::horizontalUrl() }}" alt="{{ \App\Models\BrandSetting::appName() }}" class="brand-logo">
                         <div class="brand-divider"></div>
                         <a href="{{ route('user.dashboard') }}" class="brand-text">
                             Dashboard

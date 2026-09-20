@@ -555,6 +555,27 @@ avatar. If the app never read `avatar`, there is nothing to change.
 
 ---
 
+## 21 — The app is called Questerra  ·  20 Sep
+
+Operator: rename the app from EUREKA to Questerra. The server side is done — window titles, the
+PWA manifest, logo alt text, the landing and login pages, the kiosk popups and the PDF report all
+say Questerra, and the name still comes from the brand row, so an event can override it.
+
+On your side:
+- the launcher label and the name shown in Android's app list and share sheets,
+- any string in the app that spells EUREKA at a person, including splash, about and error copy,
+- the `User-Agent` on your own downloads (`EUREKA-Android/<version>` → `Questerra-Android/<version>`).
+
+**Do not rename:** the login-card QR prefix `EUREKA-LOGIN:` — those cards are printed and in the
+crew's hands; the scanner must keep accepting exactly that string. The applicationId / package
+name is yours to judge: changing it makes an upgrade a fresh install, which loses the token and
+every cached download, so keep it unless you plan a clean re-install for everyone.
+
+**Done when:** the launcher and about screen say Questerra, a printed card still scans, and an
+update over an installed build keeps its session.
+
+---
+
 ## Talking back — the channel runs both ways now
 
 Until today this was one-way: the server published, you consumed, and anything you had to say

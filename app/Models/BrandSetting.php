@@ -58,7 +58,7 @@ class BrandSetting extends Model
      */
     public static function appName(): string
     {
-        return self::current()->app_name ?: (string) config('app.name', 'EUREKA');
+        return self::current()->app_name ?: (string) config('app.name', 'Questerra');
     }
 
     /** The optional line under the name. Empty string when unset, so views can print it raw. */

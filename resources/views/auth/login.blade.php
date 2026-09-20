@@ -33,7 +33,7 @@
             <div class="flex justify-between h-16">
                 <div class="flex items-center">
                     <div class="flex-shrink-0 flex items-center">
-                        <img src="{{ \App\Models\BrandSetting::iconUrl() }}" alt="EUREKA Logo" class="w-10 h-10">
+                        <img src="{{ \App\Models\BrandSetting::iconUrl() }}" alt="{{ \App\Models\BrandSetting::appName() }}" class="w-10 h-10">
                         <div class="mx-3 text-gray-400 text-2xl font-light">|</div>
                         <h1 class="text-2xl font-bold text-blue-600 dark:text-blue-400">{{ \App\Models\BrandSetting::appName() }}</h1>
                     </div>
@@ -76,7 +76,7 @@
             
             <div class="relative z-10 flex flex-col justify-center items-center p-12 text-white text-center">
                 <div class="mb-8">
-                    <img src="{{ \App\Models\BrandSetting::iconUrl() }}" alt="EUREKA Logo" class="w-20 h-20 mx-auto mb-6 drop-shadow-lg">
+                    <img src="{{ \App\Models\BrandSetting::iconUrl() }}" alt="{{ \App\Models\BrandSetting::appName() }}" class="w-20 h-20 mx-auto mb-6 drop-shadow-lg">
                     <h1 class="text-4xl font-bold mb-4">{{ __('Welcome to') }} {{ \App\Models\BrandSetting::appName() }}</h1>
                     <p class="text-xl text-blue-100 leading-relaxed">
                         Interactive Team Building Platform for Modern Education
@@ -117,14 +117,14 @@
             <div class="w-full max-w-md">
                 <!-- Mobile Logo -->
                 <div class="lg:hidden text-center mb-8">
-                    <img src="{{ \App\Models\BrandSetting::iconUrl() }}" alt="EUREKA Logo" class="w-16 h-16 mx-auto mb-4">
+                    <img src="{{ \App\Models\BrandSetting::iconUrl() }}" alt="{{ \App\Models\BrandSetting::appName() }}" class="w-16 h-16 mx-auto mb-4">
                     <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{{ \App\Models\BrandSetting::appName() }}</h1>
                     <p class="text-gray-600 dark:text-gray-300 mt-2">Sign in to your account</p>
                 </div>
 
                 <!-- Desktop Header -->
                 <div class="hidden lg:block text-center mb-8">
-                    <img src="{{ \App\Models\BrandSetting::horizontalUrl() }}" alt="EUREKA Logo" class="w-auto h-auto mb-4">
+                    <img src="{{ \App\Models\BrandSetting::horizontalUrl() }}" alt="{{ \App\Models\BrandSetting::appName() }}" class="w-auto h-auto mb-4">
                     <p class="text-gray-600 dark:text-gray-300">Please sign in to your account to login</p>
                 </div>
 
@@ -221,7 +221,7 @@
                     <div class="mt-6 text-center">
                         <p class="text-sm text-gray-600 dark:text-gray-300">
                             More Info?
-                            <a href="https://wa.me/6281380999992?text=Saya%20ingin%20tahu%20lebih%20lanjut%20tentang%20EUREKA%20" class="font-medium text-blue-600 dark:text-blue-400 hover:text-blue-500 dark:hover:text-blue-300 transition duration-200">
+                            <a href="https://wa.me/6281380999992?text=Saya%20ingin%20tahu%20lebih%20lanjut%20tentang%20Questerra%20" class="font-medium text-blue-600 dark:text-blue-400 hover:text-blue-500 dark:hover:text-blue-300 transition duration-200">
                                 Contact Us
                             </a>
                         </p>

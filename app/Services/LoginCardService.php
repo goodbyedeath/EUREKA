@@ -27,6 +27,11 @@ use SimpleSoftwareIO\QrCode\Facades\QrCode;
  */
 class LoginCardService
 {
+    /**
+     * Printed on cards that are already in the crew's hands, so this string is frozen even though
+     * the product is called Questerra now (operator, 20 Sep). Changing it would make every printed
+     * card unreadable.
+     */
     public const QR_PREFIX = 'EUREKA-LOGIN:';
 
     private const PASSWORD_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';

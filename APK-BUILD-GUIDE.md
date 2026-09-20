@@ -235,7 +235,9 @@ show "Scan START".
 ## 2d. Login cards — scan instead of typing (your #16, operator-approved 15 Sep)
 
 The admin generates team accounts in bulk and prints one card each. The card's QR carries
-`EUREKA-LOGIN:<code>`; e-mail and password are printed underneath as a fallback.
+`EUREKA-LOGIN:<code>`; e-mail and password are printed underneath as a fallback. That prefix is a
+**frozen string**, not a product name: cards carrying it are already printed, so it stays exactly as
+it is even though the app is called Questerra now (20 Sep).
 
 ```
 POST /api/v1/auth/login-code        (public, throttle: 60/min per address)

@@ -1,10 +1,10 @@
 <?php
 
 return [
-    'name' => env('APP_NAME', 'EUREKA'),
+    'name' => env('APP_NAME', 'Questerra'),
     'manifest' => [
-        'name' => env('APP_NAME', 'EUREKA'),
-        'short_name' => 'EUREKA',
+        'name' => env('APP_NAME', 'Questerra'),
+        'short_name' => 'Questerra',
         'start_url' => '/',
         'background_color' => '#ffffff',
         'theme_color' => '#000000',
