@@ -268,7 +268,14 @@
                                 move it; tap a marker to edit it.
                             </p>
                         </div>
-                        <button type="button" wire:click="deleteMap({{ $map->id }})"
+                        <button type="button" wire:click="duplicateMap({{ $map->id }})"
+                                wire:confirm="Salin denah ini beserta penanda, pos, objek 3D, dan kuesionernya?"
+                                wire:loading.attr="disabled" wire:target="duplicateMap({{ $map->id }})"
+                                class="px-3 py-1.5 text-xs rounded-md bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-200 dark:hover:bg-indigo-900/60"
+                                title="Untuk tim lain: salinan mandiri, QR kuesioner baru">
+                            Duplikat untuk tim lain
+                        </button>
+                    <button type="button" wire:click="deleteMap({{ $map->id }})"
                                 wire:confirm="Delete this plan and all its spots?"
                                 class="px-3 py-1.5 text-xs rounded-md bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 hover:bg-red-200">
                             Delete plan

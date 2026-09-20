@@ -115,6 +115,30 @@ class IndoorMapManager extends Component
         $this->mapId = $id;
     }
 
+    /**
+     * Copy this plan for another team — markers, posts, 3D objects, questionnaires and their
+     * questions (operator, 20 Sep). Each team needs its own of all four, and doing that by hand
+     * across four pages is where the broken links came from.
+     */
+    public function duplicateMap(int $id): void
+    {
+        $source = IndoorMap::find($id);
+
+        if (! $source) {
+            session()->flash('error', 'Denah itu tidak ada.');
+
+            return;
+        }
+
+        $result = app(\App\Services\IndoorMapDuplicator::class)->duplicate($source, null, auth()->id());
+
+        $this->mapId = $result['map']->id;
+
+        session()->flash('success', "Denah \"{$result['map']->name}\" dibuat: {$result['spots']} penanda, "
+            ."{$result['posts']} pos, {$result['questionnaires']} kuesioner, {$result['questions']} pertanyaan. "
+            .'QR kuesionernya baru, jadi perlu dicetak ulang. Tetapkan denah ini ke sebuah tim di Team Management.');
+    }
+
     public function deleteMap(int $id): void
     {
         $map = IndoorMap::find($id);
