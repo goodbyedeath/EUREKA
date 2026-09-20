@@ -42,6 +42,18 @@ const arg = (name, fallback = null) => {
 };
 const INTERACT = !args.includes('--no-interact');
 const ONLY = arg('only');
+
+/**
+ * How many pages one browser handles before it is replaced.
+ *
+ * This host runs out of processes long before it runs out of memory — Chromium answers
+ * `pthread_create: Resource temporarily unavailable` and the run dies mid-sweep, which is exactly
+ * how the first full attempt was lost. A browser that is retired every few pages never gets there.
+ */
+const CHUNK = Number(arg('chunk', '5'));
+
+/** Nothing may hang the whole run: a page that will not settle is a finding, not a deadlock. */
+const PAGE_BUDGET_MS = Number(arg('page-budget', '60000'));
 const SHOTS = arg('shots', path.join(APP, 'storage/app/ui-sweep'));
 const LOG = arg('log', path.join(APP, 'storage/app/ui-sweep-run.log'));
 
@@ -149,6 +161,8 @@ async function signIn(browser) {
 async function visit(browser, state, viewport, target) {
     const ctx = await browser.newContext({ viewport: { width: viewport.width, height: viewport.height }, storageState: state });
     const page = await ctx.newPage();
+    // No single call may sit longer than a fifth of the page's whole budget.
+    page.setDefaultTimeout(Math.round(PAGE_BUDGET_MS / 5));
 
     const errors = [];
     const failed = [];
@@ -159,10 +173,10 @@ async function visit(browser, state, viewport, target) {
 
     let status = 'ERR';
     try {
-        const resp = await page.goto(BASE + target, { waitUntil: 'load', timeout: 45000 });
+        const resp = await page.goto(BASE + target, { waitUntil: 'domcontentloaded', timeout: Math.round(PAGE_BUDGET_MS / 3) });
         status = resp ? resp.status() : '—';
         // Long enough for Livewire to mount and for one poll of anything that polls.
-        await page.waitForTimeout(3500);
+        await page.waitForTimeout(3000);
     } catch (e) {
         note(target, 'navigation', String(e.message).split('\n')[0].slice(0, 120));
     }
@@ -183,7 +197,7 @@ async function visit(browser, state, viewport, target) {
 
     fs.mkdirSync(SHOTS, { recursive: true });
     const shot = path.join(SHOTS, `${viewport.name}${target.replace(/\//g, '_') || '_root'}.png`);
-    await page.screenshot({ path: shot }).catch(() => {});
+    await page.screenshot({ path: shot, timeout: Math.round(PAGE_BUDGET_MS / 5) }).catch(() => {});
 
     const real = errors.filter((e) => !IGNORE.some((re) => re.test(e)));
     const realFailed = [...new Set(failed)].filter((f) => !/googletagmanager|fonts\.bunny|cdnjs/.test(f));
@@ -204,7 +218,7 @@ async function visit(browser, state, viewport, target) {
         + `${barShowing ? ' RED-BAR' : ''}`,
     );
 
-    await ctx.close();
+    await ctx.close().catch(() => {});
 }
 
 /**
@@ -269,7 +283,7 @@ async function interactions(browser, state) {
     });
 
     errors.forEach((e) => note('interaction', 'uncaught', e));
-    await ctx.close();
+    await ctx.close().catch(() => {});
 }
 
 function clean(stage) {
@@ -290,17 +304,32 @@ function clean(stage) {
 
     let browser = await launch();
     const state = await signIn(browser);
+    let sinceRestart = 0;
+
+    const restart = async () => {
+        try { await browser.close(); } catch { /* already gone */ }
+        // Let the host reclaim the processes before asking for more.
+        await new Promise((r) => setTimeout(r, 1500));
+        browser = await launch();
+        sinceRestart = 0;
+    };
 
     for (const vp of VIEWPORTS) {
         for (const target of targets) {
             try {
+                // No outer race: a losing race leaves the visit running, and it then logs a second
+                // line for the same page and pulls the context out from under the next browser.
+                // Every await inside visit() is bounded instead, so it cannot outstay its budget.
                 await visit(browser, state, vp, target);
             } catch (e) {
-                // A browser that dies costs one row, not the run.
-                note(target, 'browser', String(e.message).split('\n')[0].slice(0, 120));
-                try { await browser.close(); } catch { /* already gone */ }
-                browser = await launch();
+                // A page that dies or hangs costs one row, not the run.
+                note(target, 'browser', `${String(e.message).split('\n')[0].slice(0, 110)} (${vp.name})`);
+                say(`  ${vp.name.padEnd(7)} ${target.padEnd(28)} ---  ${String(e.message).split('\n')[0].slice(0, 60)}`);
+                await restart();
+                continue;
             }
+
+            if (++sinceRestart >= CHUNK) await restart();
         }
     }
 
