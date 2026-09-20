@@ -173,6 +173,8 @@ Route::middleware(['auth', 'preventbackhistory'])->group(function () {
         // Generated team accounts and their printed QR login cards.
         // Routes recorded in the tracker app: pick which one the event uses, promote its pins to posts.
         Route::get('/map-routes', fn () => view('admin.map-routes'))->name('map-routes');
+        // Team → plan → post → questionnaire, checked end to end before the event.
+        Route::get('/kesiapan', fn () => view('admin.event-readiness'))->name('event-readiness');
         Route::get('/login-cards', fn () => view('admin.login-cards'))->name('login-cards');
         Route::get('/login-cards/pdf', App\Http\Controllers\Admin\LoginCardPdfController::class)->name('login-cards.pdf');
         // Every questionnaire QR in one PDF: ?layout=grid|large, ?all=1 to include inactive ones.

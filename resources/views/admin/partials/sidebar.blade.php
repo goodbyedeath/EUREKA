@@ -36,6 +36,7 @@
                 ['admin.quest-locations',      'fa-map-marker-alt', 'Quest Locations',    'text-green-500'],
                 ['admin.gps-tracking',         'fa-map-marked-alt', 'GPS Tracking Map',   'text-red-500'],
                 ['admin.map-routes',           'fa-route',          'Jalur Peta',         'text-red-500'],
+                ['admin.event-readiness',      'fa-clipboard-check', 'Cek Kesiapan',       'text-amber-500'],
             ],
         ],
         [
