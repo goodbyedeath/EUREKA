@@ -1079,10 +1079,17 @@
         }
         
         // Update statistics
+        // Tiles come and go as the board is redesigned; a write to one that has been removed used
+        // to throw, and everything after the throw — including the live positions — stopped running.
+        function setTile(id, value) {
+            const el = document.getElementById(id);
+            if (el) el.textContent = value;
+        }
+
         function updateStats(data) {
-            document.getElementById('total-teams').textContent = data.leaderboard?.teams?.length || 0;
-            document.getElementById('active-locations').textContent = data.locations?.teams?.length || 0;
-            
+            setTile('total-teams', data.leaderboard?.teams?.length || 0);
+            setTile('active-locations', data.locations?.teams?.length || 0);
+
             // Count total quest checkpoints from teams with locations
             let totalCheckpoints = 0;
             if (data.locations?.teams) {
@@ -1092,10 +1099,7 @@
                     }
                 });
             }
-            // This tile was removed from the board at some point; the write survived and threw
-            // on every refresh. Guarded rather than deleted, in case the tile comes back.
-            const checkpointTile = document.getElementById('total-checkpoints');
-            if (checkpointTile) checkpointTile.textContent = totalCheckpoints;
+            setTile('total-checkpoints', totalCheckpoints);
         }
         
         // Fetch and update data
