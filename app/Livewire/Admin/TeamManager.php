@@ -3,6 +3,8 @@
 namespace App\Livewire\Admin;
 
 use Livewire\Component;
+use App\Models\IndoorMapSpot;
+use App\Models\GameLocationUnlock;
 use App\Models\RaceSession;
 use App\Models\IndoorMap;
 use App\Models\Team;
@@ -674,6 +676,11 @@ class TeamManager extends Component
 
         $team->update(['indoor_map_id' => $map?->id]);
 
+        // Posts opened on the old plan would otherwise stay open on Outpost Access and in the AR
+        // gate, for a plan this team no longer walks (operator, 20 Sep).
+        $closed = $this->closeOffPlanAccess($team, $map?->id);
+        $note = $closed ? " {$closed} akses pos dari denah lama ditutup." : '';
+
         $running = RaceSession::whereIn('user_id', User::where('team_id', $team->id)->pluck('id'))
             ->whereNotNull('started_at')
             ->whereNull('finished_at')
@@ -681,8 +688,42 @@ class TeamManager extends Component
 
         session()->flash('success', $map
             ? "Tim {$team->name} diarahkan ke denah \"{$map->name}\"."
+                .$note
                 .($running ? ' Tim ini sudah memulai race, jadi denah barunya berlaku setelah race direset.' : '')
-            : "Tim {$team->name} kembali memakai denah dari QR START.");
+            : "Tim {$team->name} kembali memakai denah dari QR START.".$note);
+    }
+
+    /**
+     * Revoke this team's open posts that its new plan does not carry.
+     *
+     * Without this the desk kept showing posts from the plan the team has just left, and the AR
+     * gate would still have let them in.
+     *
+     * @return int how many were closed
+     */
+    private function closeOffPlanAccess(Team $team, ?int $mapId): int
+    {
+        // No assignment means the team follows its START code again; nothing is stale by
+        // definition, so only an explicit plan closes anything.
+        if (! $mapId) {
+            return 0;
+        }
+
+        $accounts = User::where('team_id', $team->id)->pluck('id');
+        if ($accounts->isEmpty()) {
+            return 0;
+        }
+
+        $onPlan = IndoorMapSpot::where('indoor_map_id', $mapId)
+            ->where('is_active', true)
+            ->whereNotNull('game_location_id')
+            ->pluck('game_location_id')
+            ->all();
+
+        return GameLocationUnlock::whereIn('user_id', $accounts)
+            ->whereNull('revoked_at')
+            ->when($onPlan, fn ($q) => $q->whereNotIn('game_location_id', $onPlan))
+            ->update(['revoked_at' => now()]);
     }
 
     public function render()

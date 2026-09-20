@@ -8,8 +8,8 @@
             <p class="text-sm text-gray-600 dark:text-gray-400 mt-1 max-w-2xl">
                 Indoor outposts are handed out in a random order, so the app holds no sequence — you do.
                 When crew radio in, tap the team to open their 3D camera. Tap again to close it.
-                Each team sees only the posts on its own floor plan (set in Team Management); a post that
-                is not on a team's plan is greyed out for that team.
+                Tiap tim memakai denahnya sendiri (diatur di Team Management); pos yang tidak ada di denah
+                sebuah tim tampil redup untuk tim itu.
             </p>
         </div>
 
@@ -29,7 +29,7 @@
                 @endforeach
             </select>
 
-            <input type="text" wire:model.live.debounce.300ms="search" placeholder="Find a team…"
+            <input type="text" wire:model.live.debounce.300ms="search" placeholder="Cari tim…"
                    class="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">
 
             <label class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
@@ -48,10 +48,10 @@
     @forelse ($locations as $location)
         @php
             $plansHere = $postPlans->get($location->id, []);
-            $hereCount = $teams->filter(fn ($t) => in_array($location->id, $open[$t->id] ?? []))->count();
+            $hereCount = $rows->filter(fn ($r) => in_array($location->id, $open[$r->key] ?? []))->count();
             // Teams that can actually use this post: on one of its plans, or any team when the
             // post is on no plan at all.
-            $eligible = $teams->filter(fn ($t) => ! $plansHere || in_array($teamPlan[$t->id] ?? null, $plansHere, true))->count();
+            $eligible = $rows->filter(fn ($r) => ! $plansHere || in_array($r->plan, $plansHere, true))->count();
         @endphp
 
         <section class="mb-5 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
@@ -60,7 +60,7 @@
                 <div>
                     <h2 class="font-semibold text-gray-900 dark:text-gray-100">{{ $location->name }}</h2>
                     <p class="text-xs text-gray-500 dark:text-gray-400">
-                        {{ $hereCount }} of {{ $eligible }} teams open
+                        {{ $hereCount }} dari {{ $eligible }} tim terbuka
                         @if ($plansHere)
                             · denah:
                             @foreach ($plansHere as $pid)
@@ -78,54 +78,67 @@
                 @if ($hereCount)
                     <button type="button" wire:click="closeAll({{ $location->id }})"
                             class="px-3 py-1.5 text-xs rounded-md bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600 whitespace-nowrap">
-                        Close all
+                        Tutup semua
                     </button>
                 @endif
             </header>
 
             <div class="p-4">
-                @if ($teams->isEmpty())
+                @if ($rows->isEmpty())
                     <p class="text-sm text-gray-500 dark:text-gray-400">
-                        {{ $search !== '' ? 'No teams match “'.$search.'”.' : 'No teams on this floor plan.' }}
+                        {{ $search !== '' ? 'Tidak ada tim yang cocok dengan “'.$search.'”.' : 'Belum ada tim di denah ini.' }}
                     </p>
                 @else
                     <div class="flex flex-wrap gap-2">
-                        @foreach ($teams as $team)
+                        @foreach ($rows as $row)
                             @php
-                                $mine = $open[$team->id] ?? [];
+                                $mine = $open[$row->key] ?? [];
                                 $isHere = in_array($location->id, $mine);
                                 // With a random order a team belongs at one post at a time, so
                                 // being open somewhere else is usually a leftover worth seeing.
                                 $elsewhere = ! $isHere && count($mine) > 0;
-                                $myPlan = $teamPlan[$team->id] ?? null;
                                 // Not on this team's plan: opening it would change nothing they can
                                 // see. Still closable if it was opened before plans were assigned.
-                                $offPlan = $plansHere && ! in_array($myPlan, $plansHere, true);
-                                $locked = $offPlan && ! $isHere;
+                                $offPlan = $plansHere && ! in_array($row->plan, $plansHere, true);
+                                $noAccount = empty($row->accounts);
+                                $locked = ($offPlan || $noAccount) && ! $isHere;
                             @endphp
 
                             <button type="button"
-                                    wire:key="acc-{{ $location->id }}-{{ $team->id }}"
-                                    wire:click="toggle({{ $location->id }}, {{ $team->id }})"
+                                    wire:key="acc-{{ $location->id }}-{{ $row->key }}"
+                                    @if ($row->kind === 'team')
+                                        wire:click="toggleTeam({{ $location->id }}, {{ $row->id }})"
+                                        wire:target="toggleTeam({{ $location->id }}, {{ $row->id }})"
+                                    @else
+                                        wire:click="toggle({{ $location->id }}, {{ $row->id }})"
+                                        wire:target="toggle({{ $location->id }}, {{ $row->id }})"
+                                    @endif
                                     wire:loading.attr="disabled"
-                                    wire:target="toggle({{ $location->id }}, {{ $team->id }})"
                                     @disabled($locked)
-                                    title="{{ $locked
-                                        ? 'Bukan di denah tim ini ('.($planNames[$myPlan] ?? 'tanpa denah').')'
-                                        : ($isHere ? 'Open — tap to close' : ($elsewhere ? 'Open at another outpost' : 'Closed — tap to open')) }}"
+                                    title="{{ $noAccount
+                                        ? 'Tim ini belum punya akun login'
+                                        : ($locked
+                                            ? 'Bukan di denah tim ini ('.($planNames[$row->plan] ?? 'tanpa denah').')'
+                                            : ($isHere ? 'Terbuka — ketuk untuk menutup' : ($elsewhere ? 'Terbuka di pos lain' : 'Tertutup — ketuk untuk membuka'))) }}"
                                     class="px-4 py-2 rounded-lg text-sm font-medium border-2 transition-colors text-left
                                            {{ $isHere
                                               ? 'bg-green-600 border-green-600 text-white hover:bg-green-700'
                                               : ($locked
                                                   ? 'bg-gray-100 dark:bg-gray-900 border-dashed border-gray-300 dark:border-gray-700 text-gray-400 dark:text-gray-600 cursor-not-allowed'
                                                   : 'bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:border-green-500') }}">
-                                <span class="mr-1.5">{{ $isHere ? '●' : ($locked ? '⊘' : '○') }}</span>{{ $team->name }}
+                                <span class="mr-1.5">{{ $isHere ? '●' : ($locked ? '⊘' : '○') }}</span>{{ $row->name }}
                                 @if ($elsewhere)
-                                    <span class="ml-1 text-amber-500" title="This team is open at another outpost">▲</span>
+                                    <span class="ml-1 text-amber-500" title="Tim ini terbuka di pos lain">▲</span>
                                 @endif
-                                {{-- The plan this team is on, so the crew can see why a button is greyed. --}}
+                                {{-- The plan this team is on, and which accounts it opens, so the crew
+                                     can see why a button is greyed. --}}
                                 <span class="block text-[11px] font-normal {{ $isHere ? 'text-green-100' : 'text-gray-400 dark:text-gray-500' }}">
-                                    {{ $myPlan ? ($planNames[$myPlan] ?? '#'.$myPlan) : 'tanpa denah' }}{{ $team->team?->indoor_map_id ? '' : ' · dari START' }}
+                                    @if ($noAccount)
+                                        belum ada akun login
+                                    @else
+                                        {{ $row->plan ? ($planNames[$row->plan] ?? '#'.$row->plan) : 'tanpa denah' }}{{ $row->assigned ? '' : ' · dari START' }}
+                                        @if ($row->kind === 'user') · akun tanpa tim @endif
+                                    @endif
                                 </span>
                             </button>
                         @endforeach
@@ -136,7 +149,7 @@
     @empty
         <div class="rounded-lg border border-dashed border-gray-300 dark:border-gray-700 p-10 text-center text-gray-500 dark:text-gray-400">
             @if ($plan !== '')
-                No outposts are linked to markers on this floor plan yet. Link them on the Indoor Maps page.
+                Belum ada pos yang terhubung ke penanda di denah ini. Hubungkan lewat halaman Indoor Maps.
             @else
                 No {{ $manualOnly ? 'indoor' : 'active' }} outposts yet.
                 Set a game location's access mode to <span class="font-mono">manual</span> to control it here.
@@ -146,10 +159,10 @@
 
     @if ($locations->isNotEmpty())
         <p class="text-xs text-gray-500 dark:text-gray-400 mt-4">
-            <span class="text-green-600">●</span> open ·
-            <span>○</span> closed ·
-            <span>⊘</span> not on that team's floor plan ·
-            <span class="text-amber-500">▲</span> that team is open at another outpost
+            <span class="text-green-600">●</span> terbuka ·
+            <span>○</span> tertutup ·
+            <span>⊘</span> bukan di denah tim itu, atau tim belum punya akun ·
+            <span class="text-amber-500">▲</span> tim itu terbuka di pos lain
         </p>
     @endif
 </div>
