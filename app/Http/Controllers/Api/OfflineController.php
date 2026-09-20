@@ -104,6 +104,9 @@ class OfflineController extends Controller
             // The same lines /map/routes serves, so a team that synced can draw the route with
             // no signal at all. Empty until the crew switches a route on.
             'routes' => $routes->map(fn (\App\Models\MapRoute $r) => $r->toMapPayload())->values(),
+            // The how-to, so Panduan still opens with no signal.
+            'user_guide' => \App\Models\UserGuideSection::active()->ordered()->get()
+                ->map(fn (\App\Models\UserGuideSection $g) => $g->toApiPayload())->values(),
             'counts' => [
                 'quest_locations' => $questLocations->count(),
                 'game_locations' => $gameLocations->count(),

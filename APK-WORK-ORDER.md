@@ -576,6 +576,24 @@ update over an installed build keeps its session.
 
 ---
 
+## 22 — Panduan comes from the server  ·  20 Sep
+
+The operator has written the player's how-to in plain Indonesian — logging in with a card, team
+setup, scanning START, the opening clue, finding posts, answering, facilitator-scored games, the
+3D camera, the team score, losing signal, and what to do when something looks stuck. It lives at
+/admin/panduan/user, where the crew edits it between events.
+
+Render your Panduan page from `GET /api/v1/guide/user`: `sections[]` of `{ icon, title, lines[] }`,
+already ordered, sentences already split, no markup. The same list is in `/offline/manifest` as
+`user_guide`, so the page works after a Sync with no signal. Cache on `updated_at`.
+
+Spec: build guide §11. Nothing else changes; this replaces any how-to text hardcoded in the app.
+
+**Done when:** Panduan shows the server's sections in order, still opens offline after a Sync, and
+an edit made on the website appears on the next open.
+
+---
+
 ## Talking back — the channel runs both ways now
 
 Until today this was one-way: the server published, you consumed, and anything you had to say

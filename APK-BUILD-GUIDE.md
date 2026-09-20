@@ -1181,6 +1181,23 @@ GET /api/v1/quiz/attempts?limit=20
                               { success, total_attempts, attempts[] }
 ```
 
+**The Panduan page comes from the server too** (operator, 20 Sep), and is a different thing from a
+briefing: `guidance` is what an admin writes for particular teams about this event, while the guide
+below is how the app works, the same for everyone.
+
+```
+GET /api/v1/guide/user     { success, updated_at, sections[] }
+sections[] { id, icon, title, lines[], sort_order, updated_at }
+```
+
+`lines` are whole sentences, already split — render them as a list, one per row, with `icon` (an
+emoji, may be null) beside `title`. No markup is ever sent, so nothing needs parsing. Sections come
+ordered; keep that order. Hidden sections are not sent at all.
+
+The same list rides in `/offline/manifest` as `user_guide`, so Panduan opens with no signal after a
+Sync. Cache on `updated_at` and re-read when it changes: the crew edits these sentences between
+events, and an edit is meant to reach the phones without a new build.
+
 `guidances[]` carries `{ id, title, description, images[], sort_order, updated_at }` — the shape you
 asked for, plus `updated_at` so you can cache on it.
 

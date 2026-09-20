@@ -175,6 +175,8 @@ Route::middleware(['auth', 'preventbackhistory'])->group(function () {
         Route::get('/map-routes', fn () => view('admin.map-routes'))->name('map-routes');
         // Team → plan → post → questionnaire, checked end to end before the event.
         Route::get('/kesiapan', fn () => view('admin.event-readiness'))->name('event-readiness');
+        // The player how-to, shown here and on the app's Panduan page.
+        Route::get('/panduan/user', fn () => view('admin.user-guide'))->name('user-guide');
         Route::get('/login-cards', fn () => view('admin.login-cards'))->name('login-cards');
         Route::get('/login-cards/pdf', App\Http\Controllers\Admin\LoginCardPdfController::class)->name('login-cards.pdf');
         // Every questionnaire QR in one PDF: ?layout=grid|large, ?all=1 to include inactive ones.

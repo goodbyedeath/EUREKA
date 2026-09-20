@@ -37,6 +37,7 @@
                 ['admin.gps-tracking',         'fa-map-marked-alt', 'GPS Tracking Map',   'text-red-500'],
                 ['admin.map-routes',           'fa-route',          'Jalur Peta',         'text-red-500'],
                 ['admin.event-readiness',      'fa-clipboard-check', 'Cek Kesiapan',       'text-amber-500'],
+                ['admin.user-guide',           'fa-book-open',       'Panduan Pengguna',   'text-sky-500'],
             ],
         ],
         [

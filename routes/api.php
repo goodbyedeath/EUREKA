@@ -79,6 +79,10 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::get('/map/routes', [\App\Http\Controllers\Api\MapRouteController::class, 'index'])
             ->name('map.routes');
 
+        // How to play, in plain language, maintained by the crew.
+        Route::get('/guide/user', [\App\Http\Controllers\Api\UserGuideController::class, 'index'])
+            ->name('guide.user');
+
         // Game loop.
         Route::post('/qr/lookup', [\App\Http\Controllers\Api\QRScannerController::class, 'lookup'])->name('qr.lookup');
         Route::get('/quiz/start/{questionnaireId}', [\App\Http\Controllers\Api\QuizController::class, 'start'])->name('quiz.start');
