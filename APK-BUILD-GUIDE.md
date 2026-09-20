@@ -86,7 +86,9 @@ again."* The server enforces it:
 - **Two ways to add each member** (operator, 15 Sep — both stay):
   - **Sudah terdaftar** (only when `participant_directory` is true): a search box →
     `GET /participants?q=<name or e-mail, ≥ 2 chars>` →
-    `{results: [{id, name, email (masked), avatar, available, team_name}]}`. Show up to 20; a row with
+    `{results: [{id, name, email (masked), available, team_name, avatar}]}`. **`avatar` is always null**
+    since 19 Sep — the app shows no participant photos, so the server stopped sending them; do not read
+    it, and do not reserve space for a picture. Show up to 20; a row with
     `available: false` is already in `team_name` — show it greyed with that name, not selectable.
     Picking one adds `{ "participant_id": <id> }`; the server fills in the name and e-mail.
   - **Manual**: type `name` + `email` (`phone`, `position` optional), exactly as before.

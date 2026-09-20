@@ -40,7 +40,9 @@ class ParticipantController extends Controller
                 'id' => $p->id,
                 'name' => $p->name,
                 'email' => $p->maskedEmail(),
-                'avatar' => $p->avatar,
+                // Always null: the app shows no participant photos (operator, 19 Sep), so the
+                // Google avatar URL is no longer sent. Kept as a key for builds that still read it.
+                'avatar' => null,
                 'available' => $p->team_id === null,
                 'team_name' => $p->team_id ? $p->team_name : null,
             ])->values(),

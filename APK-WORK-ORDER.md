@@ -544,6 +544,17 @@ code, and a stale plan id shows the 'ask the crew' path rather than someone else
 
 ---
 
+## 20 — Participant search sends no photo  ·  19 Sep
+
+`GET /participants` rows now carry `avatar: null`, always. The app shows no participant photos
+(operator), so the server stopped sending the Google avatar URLs — long signed links to personal
+pictures that no screen used. The key stays so nothing that reads it breaks.
+
+**Done when:** the team-setup search shows names without an image slot, and nothing requests an
+avatar. If the app never read `avatar`, there is nothing to change.
+
+---
+
 ## Talking back — the channel runs both ways now
 
 Until today this was one-way: the server published, you consumed, and anything you had to say
