@@ -107,11 +107,10 @@ class UserQuizController extends Controller
             // and this gate never fired — expired attempts stayed resumable. Measure
             // forward from the same origin calculateTimeRemaining() uses, so the gate
             // and the countdown shown to the team always agree.
-            $timerStart = $attempt->timer_started_at ?? $attempt->started_at;
-            $elapsed = $timerStart->diffInSeconds(now(), false);
+            $timerStart = $attempt->timerOrigin();
             $timeLimit = $attempt->questionnaire->time_limit * 60;
 
-            if ($elapsed >= $timeLimit) {
+            if ($timerStart && $timerStart->diffInSeconds(now(), false) >= $timeLimit) {
                 return redirect()->route('user.dashboard')
                     ->with('warning', 'Quiz time has expired');
             }

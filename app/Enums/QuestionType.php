@@ -9,6 +9,7 @@ enum QuestionType: string
     case TRUE_FALSE = 'true_false';
     case FUN_GAME = 'fun_game';
     case BRIEF = 'brief';
+    case GROUP_PHOTO = 'group_photo';
 
     /**
      * Get all question type values
@@ -29,6 +30,7 @@ enum QuestionType: string
             self::TRUE_FALSE => 'True/False',
             self::FUN_GAME => 'Fun Game',
             self::BRIEF => 'Brief Feedback',
+            self::GROUP_PHOTO => 'Foto Bersama',
         };
     }
 
@@ -43,6 +45,7 @@ enum QuestionType: string
             self::TRUE_FALSE => 'Users choose between True and False',
             self::FUN_GAME => 'Interactive game activity with manual assessment',
             self::BRIEF => 'User experience feedback question (not scored)',
+            self::GROUP_PHOTO => 'Tim berfoto bersama; admin mengunggah frame, peserta memotret lalu membagikannya',
         };
     }
 
@@ -80,6 +83,11 @@ enum QuestionType: string
             self::BRIEF => [
                 'description' => 'nullable|string|max:1000', // Optional description/guidance
             ],
+            self::GROUP_PHOTO => [
+                // The instruction the team reads before the camera opens.
+                'description' => 'required|string|max:2000',
+                'share_caption' => 'nullable|string|max:500',
+            ],
         };
     }
 
@@ -114,6 +122,13 @@ enum QuestionType: string
                 'points' => 0, // No points for feedback questions
                 'description' => '',
             ],
+            self::GROUP_PHOTO => [
+                'options' => null,
+                // There is no right answer to a photograph: taking it is the task.
+                'correct_answer' => null,
+                'description' => '',
+                'share_caption' => '',
+            ],
         };
     }
 
@@ -123,5 +138,11 @@ enum QuestionType: string
     public function isScored(): bool
     {
         return $this !== self::BRIEF;
+    }
+
+    /** Answered with a photograph rather than typed text. */
+    public function isPhoto(): bool
+    {
+        return $this === self::GROUP_PHOTO;
     }
 }

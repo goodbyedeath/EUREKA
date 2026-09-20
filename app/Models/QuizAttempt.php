@@ -192,6 +192,18 @@ class QuizAttempt extends Model
     /**
      * Check if answers can be edited (only allowed if quiz is not completed)
      */
+    /**
+     * Where this attempt's clock is measured from, or null when no clock has started.
+     *
+     * Both columns are nullable, so every caller has to answer the same question; when each
+     * answered it inline, the ones that forgot the null crashed the endpoint outright instead of
+     * letting the team carry on working.
+     */
+    public function timerOrigin(): ?\Carbon\CarbonInterface
+    {
+        return $this->timer_started_at ?? $this->started_at;
+    }
+
     /** True once a timed attempt's clock has run out. Untimed attempts never expire. */
     public function isTimeExpired(): bool
     {
@@ -199,7 +211,7 @@ class QuizAttempt extends Model
         if (! $limit) {
             return false;
         }
-        $start = $this->timer_started_at ?? $this->started_at;
+        $start = $this->timerOrigin();
 
         return $start !== null && $start->diffInSeconds(now(), false) >= $limit * 60;
     }

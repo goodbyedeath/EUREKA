@@ -45,9 +45,16 @@ class OfflineController extends Controller
 
         // Quest-location photos only. Game locations carry no imagery now — they are
         // purely the 3D experience.
+        // ...plus every "foto bersama" frame. The app draws the frame over the camera to compose
+        // the photo, so a post reached without signal needs it already on the phone.
+        $frames = \App\Models\Question::where('type', \App\Enums\QuestionType::GROUP_PHOTO->value)
+            ->whereNotNull('frame_path')
+            ->pluck('frame_path');
+
         $images = collect()
             ->merge($questLocations->pluck('image_path'))
             ->merge($questLocations->pluck('map_image_path'))
+            ->merge($frames)
             ->filter()
             ->unique()
             ->map(fn ($path) => Storage::disk('public')->url($path))

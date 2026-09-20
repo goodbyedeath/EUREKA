@@ -88,6 +88,8 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::get('/quiz/start/{questionnaireId}', [\App\Http\Controllers\Api\QuizController::class, 'start'])->name('quiz.start');
         Route::get('/quiz/continue/{attemptId}', [\App\Http\Controllers\Api\QuizController::class, 'continue'])->name('quiz.continue');
         Route::post('/quiz/save-answer', [\App\Http\Controllers\Api\QuizController::class, 'saveAnswer'])->name('quiz.save-answer');
+        // "Foto bersama": the finished photograph is the answer.
+        Route::post('/quiz/photo-answer', [\App\Http\Controllers\Api\QuizController::class, 'photoAnswer'])->name('quiz.photo-answer');
         // A team's own record. recent-attempts existed only as a Livewire panel.
         Route::get('/quiz/attempts', [\App\Http\Controllers\Api\QuizController::class, 'attempts'])->name('quiz.attempts');
 

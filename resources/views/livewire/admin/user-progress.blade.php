@@ -193,6 +193,33 @@
         </div>
     </div>
 
+    <!-- Foto Bersama: what the teams photographed -->
+    @if($groupPhotoData->isNotEmpty())
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow transition-colors duration-200">
+        <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 transition-colors duration-200">
+            <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">Foto Bersama</h3>
+            <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                Foto yang dikirim tim dari aplikasi, terbaru di depan. Klik untuk membuka ukuran penuh.
+            </p>
+        </div>
+        <div class="p-6 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+            @foreach($groupPhotoData as $photo)
+                <figure class="rounded-lg overflow-hidden border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700">
+                    <a href="{{ $photo['url'] }}" target="_blank" rel="noopener">
+                        <img src="{{ $photo['url'] }}" alt="Foto bersama {{ $photo['team_name'] }}" loading="lazy"
+                             class="w-full h-40 object-cover bg-white dark:bg-gray-800">
+                    </a>
+                    <figcaption class="p-3">
+                        <div class="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{{ $photo['team_name'] }}</div>
+                        <div class="text-xs text-gray-500 dark:text-gray-400 truncate">{{ $photo['questionnaire_title'] }}</div>
+                        <div class="text-xs text-gray-400 dark:text-gray-500">{{ $photo['taken_at']?->format('d M, H:i') }}</div>
+                    </figcaption>
+                </figure>
+            @endforeach
+        </div>
+    </div>
+    @endif
+
     <!-- Brief Feedback/Debrief Data Section -->
     @if($briefFeedbackData->isNotEmpty())
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow transition-colors duration-200">

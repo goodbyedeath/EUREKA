@@ -594,6 +594,54 @@ an edit made on the website appears on the next open.
 
 ---
 
+## 23 — Foto bersama: a photo question  ·  20 Sep
+
+Operator, 20 Sep: "Tambahkan fitur question type: foto bersama. Peserta harus foto bersama,
+tambahkan kemampuan untuk menambah frame foto (admin upload manual), lalu upload ke sosial media
+mereka." The admin side is built — the frame is uploaded per question — and the API is live.
+
+A question of type `group_photo` arrives like any other in the questions list, with two extra
+fields: `frame_url` (a PNG with a transparent middle, or null) and `share_caption` (or null).
+
+The screen:
+
+1. Show `question` and `description` as the instruction, then a camera preview with `frame_url`
+   drawn over it at the frame's own aspect ratio, so the team frames the shot as it will be
+   published. Front and rear camera both; a group photo is usually the rear one on a tripod or a
+   crew member's hands, so do not force selfie mode.
+2. Capture, then **compose**: the finished image is the photo with the frame burned in, scaled to
+   about 1080 on the long edge, JPEG quality ~85. That is the file the team will post, so what they
+   see before sharing must be exactly what was uploaded.
+3. Upload with `POST /api/v1/quiz/photo-answer {attempt_id, question_id, photo}` (base64, ≤ 6 MB).
+   The reply carries `photo_url`, `share_caption` and `points_earned`.
+4. Offer **Bagikan** — Android's share sheet with the composed JPEG and `share_caption` pre-filled —
+   and **Ulangi** to retake. Sharing is the team's own action through whatever app they choose;
+   there is no social login and the server posts nothing.
+5. Retaking posts again with the same ids. The server replaces the file and the points count once.
+
+What will bite you:
+
+- `save-answer` on this question is refused with `photo_answer_required` (422). There is no text
+  answer, and the question does not belong in the normal answer loop.
+- The session will not submit until the photo is in: `completion.pending` carries
+  `reason: "photo_not_taken"`. Word it plainly — "Belum ada foto bersama" — not "lengkapi jawaban".
+- The clock applies. After `time_expired` the photo is refused like any other write, so put the
+  camera in the question flow, not on the submit screen.
+- `invalid_photo` (422) means not a JPEG/PNG or over 6 MB decoded. Do not resend the same bytes;
+  re-encode smaller. A raw sensor frame will fail this.
+- `frame_url` can be null. Then there is no overlay and the photo is the plain capture — still a
+  valid answer, still worth the points. Never block the team on a missing frame.
+- The frame is listed in `/offline/manifest` under `images`: precache it on Sync, compose offline,
+  and queue the upload in the offline write queue (§4). Queue the **composed** JPEG, show the photo
+  as taken, and let the sharing happen immediately — it does not need the server.
+
+**Done when:** a `group_photo` question opens a framed camera, the composed photo uploads and scores,
+the share sheet offers that exact image with the caption, a retake replaces it, the session refuses
+to submit before the photo, and all of it works with the phone in airplane mode after a Sync.
+
+Spec: build guide §4 (`group_photo` — foto bersama); contract: `POST /api/v1/quiz/photo-answer`.
+---
+
 ## Talking back — the channel runs both ways now
 
 Until today this was one-way: the server published, you consumed, and anything you had to say

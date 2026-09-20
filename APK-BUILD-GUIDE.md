@@ -419,7 +419,7 @@ The server enforces it, so the app is never the weak point:
   "pending": [ { "question_id": 18, "type": "fun_game", "reason": "awaiting_assessment" } ] }
 ```
 
-`reason` is `unanswered` | `game_not_completed` | `awaiting_assessment`. After each `save-answer`,
+`reason` is `unanswered` | `game_not_completed` | `awaiting_assessment` | `photo_not_taken`. After each `save-answer`,
 recompute it locally with the same rules; the server's answer on submit is final. A `save-answer`
 that comes back 422 changed nothing — the previously saved answer still stands and still counts.
 
@@ -489,7 +489,7 @@ The server also records `photo_captured_at` when the field is present.
 
 ### Question types
 
-`App\Enums\QuestionType` — these five, exactly:
+`App\Enums\QuestionType` — these six, exactly:
 
 | `type` | Render as | Scored |
 |---|---|---|
@@ -498,11 +498,70 @@ The server also records `photo_captured_at` when the field is present.
 | `true_false` | two buttons | yes |
 | `fun_game` | `game_name`, `description`, `image_urls`, a Complete button; a facilitator scores it on the team's phone | **no, at answer time** |
 | `brief` | optional feedback text | no |
+| `group_photo` | camera with the event frame over it; the photo is the answer | yes, on upload |
 
 `fun_game` is the one that catches clients out. Its answer is stored **correct with zero points**,
 because a facilitator awards the score afterwards. Call `complete-game` for it, not `save-answer`
 alone. And never sum question points locally to show a score — you will double-count every game.
 Display what the server returns.
+
+### `group_photo` — foto bersama  ·  20 Sep
+
+The team photographs itself. There is no text to type and nothing to mark: taking the photo is
+the task, so the server awards the question's points the moment a valid image arrives.
+
+The question carries two extra fields:
+
+```json
+{ "id": 61, "type": "group_photo", "question": "Foto bersama di Pos Utama",
+  "description": "Seluruh anggota tim dalam satu bingkai.",
+  "frame_url": "https://questerra-series.com/storage/games/photo-frames/ab12.png",
+  "share_caption": "Tim kami di #Questerra" }
+```
+
+- `description` is the instruction to show above the viewfinder.
+- `frame_url` is a PNG with a transparent middle — the event's border and logo. **It may be
+  null**, and then the team simply photographs itself with no frame. Never block on a missing one.
+- `share_caption` may be null too; when present, it is the text to pre-fill in the share sheet.
+
+**You compose the picture, not the server.** Draw `frame_url` over the captured photo at the
+frame's own aspect ratio, letterboxing or cropping the photo to fit rather than stretching the
+frame, and upload the finished JPEG. The frame is what makes every team's photo look like this
+event's, and the team is about to post it — it must already be in the image they share.
+
+Upload with **`POST /api/v1/quiz/photo-answer`**, not `save-answer`:
+
+```json
+{ "attempt_id": 708, "question_id": 61, "photo": "data:image/jpeg;base64,/9j/4AAQ..." }
+```
+
+`photo` is base64 JPEG or PNG, at most 6 MB decoded; the `data:` prefix is optional. Scale the
+capture down before encoding — 1080 on the long edge is plenty for social, and a raw 12 MP frame
+will be refused. A reply:
+
+```json
+{ "success": true, "photo_url": "https://.../storage/group-photos/708-61-xY3.jpg",
+  "share_caption": "Tim kami di #Questerra", "points_earned": 30, "completion": { ... } }
+```
+
+Rules that will bite you if you guess:
+
+- **Retaking is expected.** Post again with the same `attempt_id` + `question_id`; the server
+  replaces the file and the points are counted once. Do not create a second answer.
+- `save-answer` on a `group_photo` question is refused with `photo_answer_required` (422). There
+  is no text form of this answer.
+- Sending something that is not a JPEG or PNG, or is over 6 MB, gives `invalid_photo` (422).
+  Sending a photo for a question of any other type gives `not_a_photo_question` (422).
+- The session will not submit while a photo is missing: `completion.pending` lists that question
+  with `reason: "photo_not_taken"`. Say so in those words — "belum ada foto" — rather than a
+  generic "lengkapi jawaban".
+- The clock still applies. A photo posted after time ran out is refused like any other answer,
+  so take the picture before the timer runs down, not at the submit screen.
+- `frame_url` is listed in `/offline/manifest` under `images`, so precache it on Sync and compose
+  offline. The upload itself goes in the offline write queue (§10) and replays on reconnect —
+  queue the composed JPEG, not the raw capture, and show the photo as taken in the meantime.
+- Sharing is the team's own action, through Android's share sheet, after the upload succeeds.
+  The server neither posts anything nor needs a social account.
 
 ### The facilitator scores on the team's phone
 

@@ -6,6 +6,13 @@ Generated from the live router on questerra-series.com. Base URL `https://queste
 
 Act on these — several change responses your app already handles.
 
+**Latest (20 Sep): the photo question.** A sixth question type, `group_photo` — the team photographs
+itself. Questions gain `frame_url` (a PNG to draw over the camera; may be null) and `share_caption`.
+Answer with `POST /api/v1/quiz/photo-answer {attempt_id, question_id, photo}` — base64 JPEG/PNG ≤ 6 MB,
+composed with the frame by the app — which stores it and awards the question's points; reposting
+replaces the photo. `save-answer` on such a question is refused (`photo_answer_required`). The frame is
+in `/offline/manifest` `images`. Build guide §4; work order §23.
+
 **Latest (15 Sep, fourth change): login cards.** `POST /api/v1/auth/login-code {code, device_name}` (public,
 `throttle:login-code`) returns the login body for a printed card's `EUREKA-LOGIN:<code>`; `401
 invalid_login_code` otherwise. Login refusals gained `account_inactive` / `access_window_expired` keys.
@@ -123,6 +130,7 @@ are kept so existing builds keep working.
 | `GET` | `/api/v1/quiz/assessments/{assessmentId}` | token | yes | `api` |
 | `POST` | `/api/v1/quiz/assessments/{assessmentId}` | token | yes | `api` |
 | `POST` | `/api/v1/quiz/assessments/{assessmentId}/verify-pin` | token | yes | `api` |
+| `POST` | `/api/v1/quiz/photo-answer` | token | yes | `api` |
 | `POST` | `/api/v1/quiz/save-answer` | token | yes | `api` |
 | `POST` | `/api/v1/quiz/submit` | token | yes | `api` |
 | `POST` | `/api/v1/race/clue/{map}` | token | yes | `api` |
@@ -142,6 +150,7 @@ separate budgets. A 429 from us carries `Retry-After`; honour it.
 | `POST /api/v1/quiz/submit` | `attempt_id`, **`verification_photo`** (base64 string) |
 | `POST /api/v1/quiz/save-answer` | `attempt_id`, `question_id`; `answer` optional and may be null |
 | `POST /api/v1/quiz/complete-game` | `attempt_id`, `question_id` |
+| `POST /api/v1/quiz/photo-answer` | `attempt_id`, `question_id`, **`photo`** (base64 JPEG/PNG ≤ 6 MB, frame already drawn in) |
 | `POST /api/v1/quiz/assessments/{id}` | **`facilitator_pin`**, **`facilitator_photo`** (base64 JPEG/PNG ≤ 3 MB), `additional_points` (0–`max_additional_points`), `penalty` (0–`max_penalty`); `notes` optional |
 | `POST /api/v1/quiz/assessments/{id}/verify-pin` | `facilitator_pin` |
 | `POST /api/v1/quest-locations/checkin` | `location_id`, `user_latitude`, `user_longitude` (note the `user_` prefix) |
@@ -161,6 +170,9 @@ the photo as optional cannot submit at all.
 | `time_expired` | 403 | The clock ran out | Stop saving; call `submit` |
 | `game_already_assessed` | 409 | A facilitator already scored this game | Move on |
 | `not_a_game_question` | 422 | `complete-game` called on a normal question | Fix the call |
+| `not_a_photo_question` | 422 | `photo-answer` called on a question that is not `group_photo` | Fix the call |
+| `photo_answer_required` | 422 | `save-answer` called on a `group_photo` question | Use `photo-answer` |
+| `invalid_photo` | 422 | `photo` is not JPEG/PNG, or is over 6 MB | Re-encode smaller; do not retry as is |
 | `unknown_code` | 404 | `qr/lookup`: code is not in this event | Show it; let them rescan |
 | `invalid_login_code` | 401 | `auth/login-code`: card unknown, replaced or revoked | Offer e-mail + password |
 | `account_inactive` | 403 | Login: account switched off (e.g. card revoked) | Tell the team to see the crew |

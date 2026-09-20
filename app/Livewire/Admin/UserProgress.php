@@ -73,6 +73,7 @@ class UserProgress extends Component
         
         // Brief feedback data
         $briefFeedbackData = $this->getBriefFeedbackData();
+        $groupPhotoData = $this->getGroupPhotoData();
 
         return view('livewire.admin.user-progress', [
             'totalUsers' => $totalUsers,
@@ -90,6 +91,7 @@ class UserProgress extends Component
             'teamDetailData' => $teamDetailData,
             'assessmentNotesData' => $assessmentNotesData,
             'briefFeedbackData' => $briefFeedbackData,
+            'groupPhotoData' => $groupPhotoData,
             'completionRate' => $totalAttempts > 0 ? round(($completedAttempts / $totalAttempts) * 100, 1) : 0
         ])->layout(null);
     }
@@ -849,6 +851,54 @@ class UserProgress extends Component
         $this->dispatch('open-verification-photos-modal', $modalData);
     }
     
+    /**
+     * The photographs teams took, newest first.
+     *
+     * Unlike the debrief answers below, these are not limited to finished sessions: the crew watches
+     * the pictures arrive during the event, and a team that photographed itself and then ran out of
+     * time still took the photo.
+     */
+    private function getGroupPhotoData()
+    {
+        $photos = UserAnswer::whereHas('quizAttempt', function ($query) {
+            $query->where('created_at', '>=', now()->subDays($this->selectedTimeframe));
+        })
+        ->whereHas('question', function ($query) {
+            $query->where('type', \App\Enums\QuestionType::GROUP_PHOTO->value);
+        })
+        ->whereNotNull('answer')
+        ->with(['quizAttempt.user:id,name,team_id', 'quizAttempt.user.team:id,name', 'question:id,question', 'quizAttempt.questionnaire:id,title'])
+        ->orderBy('updated_at', 'desc')
+        ->get();
+
+        if ($this->selectedTeam !== 'all') {
+            $photos = $photos->filter(fn ($a) => $a->quizAttempt?->user?->team_id == $this->selectedTeam);
+        }
+
+        if ($this->searchTerm) {
+            $photos = $photos->filter(function ($a) {
+                $user = $a->quizAttempt?->user;
+
+                return stripos($user->team->name ?? '', $this->searchTerm) !== false
+                    || stripos($user->name ?? '', $this->searchTerm) !== false;
+            });
+        }
+
+        return $photos->map(function ($a) {
+            $user = $a->quizAttempt?->user;
+
+            return [
+                'id' => $a->id,
+                'team_name' => $user->team->name ?? 'Tanpa tim',
+                'user_name' => $user->name ?? 'Unknown User',
+                'questionnaire_title' => $a->quizAttempt?->questionnaire?->title ?? '-',
+                'question_text' => $a->question->question ?? '-',
+                'url' => \Illuminate\Support\Facades\Storage::disk('public')->url($a->answer),
+                'taken_at' => $a->updated_at,
+            ];
+        })->values();
+    }
+
     /**
      * Get brief feedback data from debrief questions
      */

@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Enums\QuestionType;
+use App\Models\Question;
 use App\Models\Questionnaire;
 use App\Models\QuizAttempt;
 use App\Models\UserAnswer;
@@ -199,7 +201,7 @@ class QuizController extends Controller
 
             // Load questions
             $questions = $questionnaire->questions()
-                ->select('id', 'question', 'type', 'options', 'points', 'order', 'description', 'game_name', 'images')
+                ->select('id', 'question', 'type', 'options', 'points', 'order', 'description', 'game_name', 'images', 'frame_path', 'share_caption')
                 ->orderBy('order', 'asc')
                 ->get()
                 ->map(fn ($q) => $this->questionRow($q))
@@ -231,7 +233,7 @@ class QuizController extends Controller
                 'success' => true,
                 'attempt' => [
                     'id' => $attempt->id,
-                    'started_at' => $attempt->started_at->toISOString(),
+                    'started_at' => $attempt->started_at?->toISOString(),
                     'status' => $attempt->status,
                 ],
                 'questionnaire' => [
@@ -321,11 +323,11 @@ class QuizController extends Controller
                 // negative and this gate never fired — expired attempts stayed resumable.
                 // Measure forward from the same origin calculateTimeRemaining() uses, so
                 // the gate and the countdown shown to the team always agree.
-                $timerStart = $attempt->timer_started_at ?? $attempt->started_at;
-                $elapsed = $timerStart->diffInSeconds(now(), false);
+                $timerStart = $attempt->timerOrigin();
+                $elapsed = $timerStart?->diffInSeconds(now(), false) ?? 0;
                 $timeLimit = $attempt->questionnaire->time_limit * 60;
 
-                if ($elapsed >= $timeLimit) {
+                if ($timerStart && $elapsed >= $timeLimit) {
                     return response()->json([
                         'success' => false,
                         'message' => 'Quiz time has expired',
@@ -338,7 +340,7 @@ class QuizController extends Controller
 
             // Load questions
             $questions = $attempt->questionnaire->questions()
-                ->select('id', 'question', 'type', 'options', 'points', 'order', 'description', 'game_name', 'images')
+                ->select('id', 'question', 'type', 'options', 'points', 'order', 'description', 'game_name', 'images', 'frame_path', 'share_caption')
                 ->orderBy('order', 'asc')
                 ->get()
                 ->map(fn ($q) => $this->questionRow($q))
@@ -365,7 +367,7 @@ class QuizController extends Controller
                 'success' => true,
                 'attempt' => [
                     'id' => $attempt->id,
-                    'started_at' => $attempt->started_at->toISOString(),
+                    'started_at' => $attempt->started_at?->toISOString(),
                     'status' => $attempt->status,
                 ],
                 'questionnaire' => [
@@ -448,6 +450,13 @@ class QuizController extends Controller
 
                 if (!$question) {
                     throw QuizRuleException::questionNotFound();
+                }
+
+                // A "foto bersama" is answered with the photograph, through photo-answer. Typed text
+                // would otherwise be stored, satisfy the completion gate and carry the question's
+                // points without anyone having taken a picture.
+                if ($question->type === QuestionType::GROUP_PHOTO->value) {
+                    throw new QuizRuleException('photo_answer_required', 'Pertanyaan ini dijawab dengan foto.', 422);
                 }
 
                 // Validate answer.
@@ -603,10 +612,15 @@ class QuizController extends Controller
             return;
         }
 
-        $timerStart = $attempt->timer_started_at ?? $attempt->started_at;
-        $elapsed = $timerStart->diffInSeconds(now(), false);
+        $timerStart = $attempt->timerOrigin();
 
-        if ($elapsed >= $attempt->questionnaire->time_limit * 60) {
+        // No origin means no clock has started yet; refusing the team's work here would be worse
+        // than letting it through, and the gate resumes as soon as a start time exists.
+        if (! $timerStart) {
+            return;
+        }
+
+        if ($timerStart->diffInSeconds(now(), false) >= $attempt->questionnaire->time_limit * 60) {
             throw QuizRuleException::timeExpired();
         }
     }
@@ -964,6 +978,102 @@ class QuizController extends Controller
     }
 
     /**
+     * Answer a "foto bersama" question with the photograph itself.
+     *
+     * The app composes the picture with the frame and sends the finished image, because the frame
+     * is what makes every team's photo look like this event's, and the team is about to post it.
+     * Taking the photo is the whole task: there is no right answer to mark, so a stored photo is
+     * worth the question's points. Retaking replaces the previous one rather than scoring twice.
+     */
+    public function photoAnswer(Request $request)
+    {
+        $data = $request->validate([
+            'attempt_id' => 'required|integer',
+            'question_id' => 'required|integer',
+            'photo' => 'required|string',
+        ]);
+
+        try {
+            $attempt = QuizAttempt::where('id', $data['attempt_id'])
+                ->where('user_id', Auth::id())
+                ->firstOrFail();
+
+            $this->assertSessionOpen($attempt);
+            $this->assertWithinTimeLimit($attempt);
+
+            $question = Question::where('id', $data['question_id'])
+                ->where('questionnaire_id', $attempt->questionnaire_id)
+                ->firstOrFail();
+
+            if ($question->type !== QuestionType::GROUP_PHOTO->value) {
+                throw new QuizRuleException('not_a_photo_question', 'Pertanyaan ini tidak dijawab dengan foto.', 422);
+            }
+
+            $path = $this->storeGroupPhoto($data['photo'], $attempt->id, $question->id);
+
+            $answer = DB::transaction(function () use ($attempt, $question, $path) {
+                $existing = UserAnswer::where('quiz_attempt_id', $attempt->id)
+                    ->where('question_id', $question->id)
+                    ->first();
+
+                // A retake replaces the picture; the old file goes, so a post's worth of storage
+                // does not pile up over an event.
+                if ($existing && $existing->answer && Storage::disk('public')->exists($existing->answer)) {
+                    Storage::disk('public')->delete($existing->answer);
+                }
+
+                return UserAnswer::updateOrCreate(
+                    ['quiz_attempt_id' => $attempt->id, 'question_id' => $question->id],
+                    ['answer' => $path, 'is_correct' => true, 'points_earned' => (int) $question->points],
+                );
+            });
+
+            return response()->json([
+                'success' => true,
+                'photo_url' => Storage::disk('public')->url($path),
+                'share_caption' => $question->share_caption,
+                'points_earned' => (int) $answer->points_earned,
+                'completion' => $this->completion($attempt->fresh()),
+            ]);
+        } catch (QuizRuleException $e) {
+            return $this->ruleRefusal($e);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json(['success' => false, 'error' => 'not_found', 'message' => 'Attempt atau pertanyaan tidak ditemukan.'], 404);
+        }
+    }
+
+    /**
+     * Store the finished photograph. Same shape as the facilitator's photo: base64, JPEG or PNG,
+     * size-checked before it reaches the disk.
+     */
+    private function storeGroupPhoto(string $base64, int $attemptId, int $questionId): string
+    {
+        if (preg_match('#^data:image/[a-z]+;base64,#i', $base64, $m)) {
+            $base64 = substr($base64, strlen($m[0]));
+        }
+
+        $bytes = base64_decode($base64, true);
+        $info = $bytes !== false && strlen($bytes) <= 6 * 1024 * 1024
+            ? @getimagesizefromstring($bytes)
+            : false;
+
+        $ext = match ($info['mime'] ?? null) {
+            'image/jpeg' => 'jpg',
+            'image/png' => 'png',
+            default => null,
+        };
+
+        if (! $ext) {
+            throw new QuizRuleException('invalid_photo', 'photo harus base64 JPEG atau PNG, maksimal 6 MB.', 422);
+        }
+
+        $path = "group-photos/{$attemptId}-{$questionId}-".Str::random(12).".{$ext}";
+        Storage::disk('public')->put($path, $bytes);
+
+        return $path;
+    }
+
+    /**
      * One question as the app receives it. `images` stays as stored (disk-relative paths, which a
      * client that already prefixes a base URL depends on); `image_urls` is the same list made
      * absolute, because a native client has no page origin to resolve "games/…" against and
@@ -977,6 +1087,11 @@ class QuizController extends Controller
             ->map(fn ($p) => preg_match('#^https?://#i', $p) ? $p : Storage::disk('public')->url($p))
             ->values()
             ->all();
+
+        // foto bersama: the PNG the app lays over the camera, and the words it offers when the
+        // team shares the result. Absolute, like image_urls, for the same reason.
+        $row['frame_url'] = $question->frame_path ? Storage::disk('public')->url($question->frame_path) : null;
+        $row['share_caption'] = $question->share_caption;
 
         return $row;
     }
@@ -995,6 +1110,8 @@ class QuizController extends Controller
         foreach ($attempt->questionnaire->questions()->orderBy('order')->get(['questions.id', 'questions.type']) as $q) {
             $reason = match ($q->type) {
                 'brief' => null,
+                // The photo is the answer; without it the session is not finished.
+                'group_photo' => isset($answers[$q->id]) && filled($answers[$q->id]->answer) ? null : 'photo_not_taken',
                 'fun_game' => ! isset($games[$q->id])
                     ? 'game_not_completed'
                     : ($games[$q->id]->is_assessed ? null : 'awaiting_assessment'),
@@ -1039,11 +1156,11 @@ class QuizController extends Controller
             return false;
         }
 
-        $deadline = ($attempt->timer_started_at ?? $attempt->started_at)->copy()
-            ->addMinutes((int) $attempt->questionnaire->time_limit);
+        $deadline = $attempt->timerOrigin()?->copy()
+            ?->addMinutes((int) $attempt->questionnaire->time_limit);
         $verifiedAt = $assessment->pin_verified_at;
 
-        if ($verifiedAt && $verifiedAt->lte($deadline) && now()->lte($deadline->copy()->addMinutes(self::SCORE_GRACE_MINUTES))) {
+        if ($deadline && $verifiedAt && $verifiedAt->lte($deadline) && now()->lte($deadline->copy()->addMinutes(self::SCORE_GRACE_MINUTES))) {
             return true;
         }
 
@@ -1231,8 +1348,11 @@ class QuizController extends Controller
             return null;
         }
 
-        // Use timer_started_at if available, otherwise fall back to started_at
-        $timerStart = $attempt->timer_started_at ?? $attempt->started_at;
+        $timerStart = $attempt->timerOrigin();
+
+        if (! $timerStart) {
+            return $attempt->questionnaire->time_limit * 60;
+        }
 
         // Calculate elapsed time from when timer started until now
         // diffInSeconds with false parameter gives signed difference (positive if future, negative if past)

@@ -34,6 +34,9 @@ class QuestionForm extends Component
     public array $uploadedImages = [];
     public $newImage;
 
+    /** "Foto bersama": the PNG laid over the camera, uploaded by the admin. */
+    public $newFrame;
+
     #[On('edit-question')]
     public function handleEditQuestion($questionId)
     {
@@ -51,6 +54,9 @@ class QuestionForm extends Component
         $rules = [
             'newQuestion.question' => 'required|string|max:1000',
             'newQuestion.type' => ['required', Rule::in(QuestionType::values())],
+            'newQuestion.share_caption' => 'nullable|string|max:500',
+            // PNG keeps the transparent middle a frame needs; JPEG is allowed for a solid border.
+            'newFrame' => 'nullable|image|mimes:png,jpg,jpeg|max:4096',
         ];
 
         // Points validation - not required for brief questions
@@ -218,7 +224,9 @@ class QuestionForm extends Component
             'points' => $question->points,
             'game_name' => $question->game_name ?? '',
             'description' => $question->description ?? '',
-            'images' => $question->images ?? []
+            'images' => $question->images ?? [],
+            'frame_path' => $question->frame_path,
+            'share_caption' => (string) $question->share_caption
         ];
 
         // Ensure we have at least 2 options for multiple choice
@@ -255,6 +263,19 @@ class QuestionForm extends Component
             $questionData['images'] = $this->storeUploadedImages();
         }
 
+        // "Foto bersama": the frame is a file like any other upload; the caption travels with the
+        // question so the app can offer it when the team shares the picture.
+        if ($questionData['type'] === \App\Enums\QuestionType::GROUP_PHOTO->value) {
+            $questionData['correct_answer'] = null;
+
+            if ($this->newFrame) {
+                $questionData['frame_path'] = $this->newFrame->store('games/photo-frames', 'public');
+            }
+        } else {
+            $questionData['frame_path'] = null;
+            $questionData['share_caption'] = null;
+        }
+
         // Handle brief question specifics
         if ($questionData['type'] === 'brief') {
             $questionData['points'] = 0;
@@ -281,9 +302,12 @@ class QuestionForm extends Component
             'points' => 1,
             'game_name' => '',
             'description' => '',
-            'images' => []
+            'images' => [],
+            'frame_path' => null,
+            'share_caption' => ''
         ];
         $this->uploadedImages = [];
+        $this->newFrame = null;
         $this->newImage = null;
         $this->editingQuestionId = null;
         $this->isEditing = false;
@@ -382,6 +406,32 @@ class QuestionForm extends Component
         return $errors;
     }
 
+    /**
+     * A frame is checked the moment it is chosen, not at save time.
+     *
+     * The preview renders straight after the upload, and Livewire refuses to preview anything that is
+     * not an image — a PDF picked by mistake took the whole form down with it. Rejecting it here means
+     * the admin reads a sentence instead.
+     */
+    public function updatedNewFrame()
+    {
+        if (! $this->newFrame) {
+            return;
+        }
+
+        $this->resetErrorBag("newFrame");
+
+        try {
+            $this->validateOnly("newFrame", ["newFrame" => "image|mimes:png,jpg,jpeg|max:4096"], [
+                "newFrame.image" => "The frame must be an image.",
+                "newFrame.mimes" => "The frame must be a PNG or JPG file.",
+                "newFrame.max" => "The frame may not be larger than 4 MB.",
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            $this->newFrame = null;
+            throw $e;
+        }
+    }
     public function updatedNewImage()
     {
         if ($this->newImage && $this->newQuestion['type'] === 'fun_game' && count($this->uploadedImages) < 10) {

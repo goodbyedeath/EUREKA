@@ -71,6 +71,7 @@
                     <option value="true_false">True/False</option>
                     <option value="fun_game">Fun Game</option>
                     <option value="brief">Brief Feedback</option>
+                    <option value="group_photo">Foto Bersama</option>
                 </select>
                 @error('newQuestion.type') 
                     <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> 
@@ -193,6 +194,50 @@
         @endif
 
         <!-- Fun Game Fields -->
+        @if($newQuestion['type'] === 'group_photo')
+            <div class="space-y-4 rounded-lg border border-gray-200 dark:border-gray-700 p-4 bg-gray-50 dark:bg-gray-900">
+                <div>
+                    <label for="photo-instruction" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Instruksi untuk peserta <span class="text-red-500">*</span>
+                    </label>
+                    <textarea wire:model="newQuestion.description" id="photo-instruction" rows="3"
+                              class="w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                              placeholder="mis. Foto bersama seluruh anggota tim di depan panggung, semua wajah terlihat."></textarea>
+                    @error('newQuestion.description') <span class="text-sm text-red-600 dark:text-red-400">{{ $message }}</span> @enderror
+                </div>
+
+                <div>
+                    <label for="photo-frame" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Frame foto</label>
+                    <input type="file" wire:model="newFrame" id="photo-frame" accept="image/png,image/jpeg"
+                           class="text-sm text-gray-600 dark:text-gray-400 file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:text-sm file:bg-blue-50 file:text-blue-700">
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        PNG dengan bagian tengah transparan, supaya wajah peserta terlihat dan tepinya berisi bingkai acara.
+                        Pakai ukuran potret 1080×1350 atau persegi 1080×1080 agar pas di media sosial. Maksimal 4 MB.
+                    </p>
+                    <div wire:loading wire:target="newFrame" class="text-xs text-blue-600 dark:text-blue-400 mt-1">Mengunggah…</div>
+                    @error('newFrame') <span class="text-sm text-red-600 dark:text-red-400">{{ $message }}</span> @enderror
+
+                    @if ($newFrame && in_array(strtolower((string) $newFrame->getClientOriginalExtension()), ["png", "jpg", "jpeg"]))
+                        <img src="{{ $newFrame->temporaryUrl() }}" alt="" class="mt-2 h-32 rounded border border-gray-300 dark:border-gray-600 bg-white">
+                    @elseif (!empty($newQuestion['frame_path']))
+                        <img src="{{ Storage::url($newQuestion['frame_path']) }}" alt="" class="mt-2 h-32 rounded border border-gray-300 dark:border-gray-600 bg-white">
+                        <p class="text-xs text-gray-500 dark:text-gray-400">Frame sekarang. Pilih berkas baru untuk menggantinya.</p>
+                    @else
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Tanpa frame pun bisa: peserta tetap berfoto, hanya tanpa bingkai acara.</p>
+                    @endif
+                </div>
+
+                <div>
+                    <label for="photo-caption" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Caption saat dibagikan</label>
+                    <input type="text" wire:model="newQuestion.share_caption" id="photo-caption" maxlength="500"
+                           class="w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                           placeholder="mis. Tim kami di #FEXDIxIFSE2026 bersama @questerra">
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Teks ini yang aplikasi tawarkan saat peserta membagikan fotonya ke media sosial.</p>
+                    @error('newQuestion.share_caption') <span class="text-sm text-red-600 dark:text-red-400">{{ $message }}</span> @enderror
+                </div>
+            </div>
+        @endif
+
         @if($newQuestion['type'] === 'fun_game')
             <div class="bg-purple-50 dark:bg-purple-900/30 p-4 rounded-lg border border-purple-200 dark:border-purple-800">
                 <h4 class="text-sm font-medium text-purple-900 mb-4 flex items-center">
@@ -404,7 +449,7 @@
         @endif
 
         <!-- Correct Answer -->
-        @if($newQuestion['type'] !== 'fun_game' && $newQuestion['type'] !== 'brief')
+        @if($newQuestion['type'] !== 'fun_game' && $newQuestion['type'] !== 'brief' && $newQuestion['type'] !== 'group_photo')
             <div>
                 <label for="correct-answer" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Correct Answer <span class="text-red-500">*</span>

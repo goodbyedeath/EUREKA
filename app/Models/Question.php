@@ -29,6 +29,8 @@ class Question extends Model
         'description',
         'game_name',
         'images',
+        'frame_path',
+        'share_caption',
         'options',
         'correct_answer',
         'points',
