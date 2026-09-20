@@ -6,7 +6,12 @@
      silently stops responding, and the operator has no way to know a reload is all that is needed.
 
      preventDefault() stops Livewire throwing on the malformed body; the bar below says what
-     happened and offers the fix.
+     happened.
+
+     It used to carry a "Muat ulang" button. The operator had it removed on 20 Sep as useless, and
+     they are right: anyone who reads "muat ulang halaman" reloads the way they always do, and the
+     button only added something to mis-click on a bar whose whole job is to be read and dismissed.
+     The sentences still say when a reload is the fix.
 
      Closing it has to stick (operator, 20 Sep). Pages like Outpost Access refresh themselves every
      ten seconds, so with a dead session the bar came straight back and read as unclosable. Once
@@ -17,10 +22,6 @@
             display:flex;gap:12px;align-items:center;padding:12px 16px;border-radius:12px;
             background:#7f1d1d;color:#fee2e2;box-shadow:0 6px 24px rgba(0,0,0,.35);font-size:14px">
     <span id="lw-failure-text" style="flex:1"></span>
-    <button type="button" onclick="window.location.reload()"
-            style="border:0;border-radius:8px;padding:6px 12px;background:#fee2e2;color:#7f1d1d;font-weight:600;cursor:pointer;white-space:nowrap">
-        Muat ulang
-    </button>
     <button type="button" id="lw-failure-close" aria-label="Tutup (Esc)" title="Tutup (Esc)"
             style="border:0;background:rgba(255,255,255,.12);color:#fff;cursor:pointer;font-size:20px;line-height:1;
                    width:32px;height:32px;border-radius:8px;flex:none">&times;</button>
