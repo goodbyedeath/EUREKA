@@ -231,6 +231,31 @@ A team sitting on the dashboard will not get `race_reset` (it names no attempt).
 returning `race: null` where the app had a running clock means the same thing — clear the clock and
 show "Scan START".
 
+### `race_reset_at` — the stamp that voids a cached world  ·  20 Sep
+
+`GET /race/status` and `GET /offline/manifest` both carry **`race_reset_at`** (ISO 8601, or null if
+the race has never been stopped). It is the time of the most recent emergency stop, and it is sent
+whether or not the team has a session.
+
+**Store it with your cache, and compare it on every `/race/status`.** If the value you get back is
+newer than the one you stored — or `race` is null while you hold a running clock — every per-team
+thing you cached is void. Drop all of it:
+
+- opened posts / the floor plan's `is_open` flags,
+- the clue's solved state,
+- attempts, answers and any queued offline writes naming them,
+- check-ins and the team score.
+
+Then re-fetch and send the team back to "Scan START". Keep the token, the team and everything the
+admin authored — a stop does not touch those.
+
+The operator hit exactly this on 20 Sep: after a stop, the 3D camera page still listed posts as
+open. Entry was correctly refused (`403 awaiting_unlock`), because that question is asked of the
+server — but the **list** was painted from a Sync taken before the stop, and nothing told the app
+to throw it away. Verified server-side the same day: immediately after a stop, `/indoor-map` reports
+every spot `is_open: false` and `/ar/locations/{id}` answers `403 awaiting_unlock`. So a list that
+still shows posts open is a stale cache on your side, and this stamp is how you catch it.
+
 ---
 ## 2d. Login cards — scan instead of typing (your #16, operator-approved 15 Sep)
 

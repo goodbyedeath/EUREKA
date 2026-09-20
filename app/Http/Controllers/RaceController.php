@@ -223,12 +223,16 @@ class RaceController extends Controller
             ->orderByDesc('id')
             ->first();
 
+        // Always sent, session or not: it is what lets a client know the cached world is void.
+        $resetAt = \App\Models\RaceReset::lastAt()?->toIso8601String();
+
         if (! $session) {
-            return response()->json(['success' => true, 'race' => null]);
+            return response()->json(['success' => true, 'race' => null, 'race_reset_at' => $resetAt]);
         }
 
         return response()->json([
             'success' => true,
+            'race_reset_at' => $resetAt,
             'race' => [
                 'session_id' => $session->id,
                 'started_at' => $session->started_at?->toIso8601String(),

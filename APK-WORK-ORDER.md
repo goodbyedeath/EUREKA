@@ -687,6 +687,42 @@ it is because the cards are already printed.
 scans from the login screen as it does now.
 ---
 
+## 25 — After an emergency stop, throw the cached world away  ·  20 Sep
+
+Operator, 20 Sep: after an emergency stop, a team's 3D camera page **still listed posts as open**,
+although entering one was correctly refused.
+
+We checked the server before writing this, by running a real emergency stop inside a transaction and
+asking the API what it then says. It is consistent: no race clocks, no opened posts, `/indoor-map`
+reports every spot `is_open: false`, and `/ar/locations/{id}` answers `403 awaiting_unlock`. The
+refusal you already honour is what kept entry locked. The list is stale on your side — painted from
+a Sync taken before the stop, with nothing to tell it otherwise.
+
+So we have given you the something:
+
+**`race_reset_at`** — ISO 8601, or null if the race has never been stopped — is now on
+`GET /race/status` **and** `GET /offline/manifest`, sent whether or not the team has a session.
+
+- Store it next to your cache when you Sync.
+- Compare it on every `/race/status` poll. **Newer than what you stored means the world was wiped.**
+- `race: null` while you are holding a running clock means the same thing.
+
+On either signal, drop every per-team thing you cached — opened posts and `is_open`, the clue's
+solved state, attempts and answers, any queued offline writes naming them, check-ins, the team score
+— re-fetch, and send the team to "Scan START". Keep the token, the team, and everything the admin
+authored; a stop does not touch those.
+
+Do not infer a reset from a single 4xx, and do not wipe on a failed poll: a team out of signal must
+keep playing. Only a `race_reset_at` that actually moved, or `race: null` against a clock you hold,
+means the race was stopped.
+
+**Done when:** an emergency stop mid-race leaves no post showing as open on any screen — the floor
+plan, the 3D camera list and the dashboard all agree within one poll — and a team with no signal is
+unaffected until it reconnects.
+
+Spec: build guide §2c (`race_reset_at`).
+---
+
 ## Talking back — the channel runs both ways now
 
 Until today this was one-way: the server published, you consumed, and anything you had to say

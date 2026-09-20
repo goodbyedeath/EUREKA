@@ -18,6 +18,21 @@ class RaceReset extends Model
         'summary' => 'array',
     ];
 
+    /**
+     * When the race was last stopped, for a client to compare against its own cache.
+     *
+     * A stop leaves the server consistent — no clocks, no opened posts, every gate shut — but a client
+     * that cached a list at Sync keeps painting the old world until something tells it not to. The
+     * operator saw exactly that on 20 Sep: the 3D camera still listed posts as open while entry was
+     * correctly refused. This is the something.
+     */
+    public static function lastAt(): ?\Illuminate\Support\Carbon
+    {
+        return static::query()->max('reset_at')
+            ? \Illuminate\Support\Carbon::parse(static::query()->max('reset_at'))
+            : null;
+    }
+
     /** The stop that deleted this attempt or assessment, if one did. Auto-increment ids are never reused. */
     public static function forRef(string $kind, int $id): ?self
     {

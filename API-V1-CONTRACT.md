@@ -6,6 +6,11 @@ Generated from the live router on questerra-series.com. Base URL `https://queste
 
 Act on these — several change responses your app already handles.
 
+**Latest (20 Sep, second change): `race_reset_at`.** `GET /race/status` and `GET /offline/manifest` now
+carry `race_reset_at` (ISO 8601 or null) — the time of the last emergency stop, sent with or without a
+session. Compare it with the value stored beside your cache: newer means every per-team cached thing
+(open posts, `is_open`, clue state, attempts, queued writes, check-ins, score) is void. Build guide §2c.
+
 **Latest (20 Sep): the photo question.** A sixth question type, `group_photo` — the team photographs
 itself. Questions gain `frame_url` (a PNG to draw over the camera; may be null) and `share_caption`.
 Answer with `POST /api/v1/quiz/photo-answer {attempt_id, question_id, photo}` — base64 JPEG/PNG ≤ 6 MB,

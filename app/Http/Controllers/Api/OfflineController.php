@@ -71,6 +71,9 @@ class OfflineController extends Controller
 
         return response()->json([
             'success' => true,
+            // Stamped on every sync so a client can tell, on its next /race/status, whether the
+            // world it cached has been wiped by an emergency stop since.
+            'race_reset_at' => \App\Models\RaceReset::lastAt()?->toIso8601String(),
             'bounds' => $this->boundsFor($questLocations),
             // Basemap for a native map (APK #20): the same config/maps.php every web map reads, so
             // switching provider is one .env change for both. Raster XYZ; show the attribution.
