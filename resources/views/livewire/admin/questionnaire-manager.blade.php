@@ -78,12 +78,34 @@
                                        id="editMaxAttempts"
                                        wire:model.defer="editMaxAttempts" 
                                        min="1" 
-                                       max="10"
+                                       max="50"
                                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-100"
-                                       placeholder="Unlimited">
+                                       placeholder="Kosongkan = tak terbatas">
+                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Kosongkan kotak ini untuk percobaan tak terbatas.</p>
                                 @error('editMaxAttempts') 
                                     <span class="text-red-500 text-sm mt-1">{{ $message }}</span> 
                                 @enderror
+                            </div>
+
+                            <!-- Availability window -->
+                            <div>
+                                <label for="editStartDate" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    Mulai berlaku
+                                </label>
+                                <input type="date" id="editStartDate" wire:model.defer="editStartDate"
+                                       class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
+                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Kosongkan kalau tidak dibatasi tanggal.</p>
+                                @error('editStartDate') <span class="text-red-500 text-sm mt-1">{{ $message }}</span> @enderror
+                            </div>
+
+                            <div>
+                                <label for="editEndDate" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    Berakhir
+                                </label>
+                                <input type="date" id="editEndDate" wire:model.defer="editEndDate"
+                                       class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
+                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Setelah tanggal ini QR-nya ditolak dengan "not_available".</p>
+                                @error('editEndDate') <span class="text-red-500 text-sm mt-1">{{ $message }}</span> @enderror
                             </div>
 
                             <!-- QR Code -->

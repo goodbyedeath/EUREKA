@@ -27,11 +27,12 @@ class QuestionnaireCreateForm extends Component
     #[Validate('required|date|after_or_equal:today')]
     public string $start_date = '';
 
-    #[Validate('required|date|after:start_date')]
+    #[Validate('nullable|date|after_or_equal:start_date')]
     public string $end_date = '';
 
     #[Validate('required|integer|min:1|max:10')]
-    public int $max_attempts = 1;
+    /** '' = unlimited. */
+    public string $max_attempts = '1';
 
     #[Validate('boolean')]
     public bool $is_active = false;
@@ -54,9 +55,10 @@ class QuestionnaireCreateForm extends Component
                 'description' => 'nullable|string|max:1000',
                 'photo' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
                 'time_limit' => 'required|integer|min:1|max:300',
-                'start_date' => 'required|date|after_or_equal:today',
-                'end_date' => 'required|date|after:start_date',
-                'max_attempts' => 'required|integer|min:1|max:10',
+                // Optional: a questionnaire with no window is simply open until switched off.
+                'start_date' => 'nullable|date',
+                'end_date' => 'nullable|date|after_or_equal:start_date',
+                'max_attempts' => 'nullable|integer|min:1|max:50',
                 'is_active' => 'boolean'
             ]);
 
@@ -78,9 +80,9 @@ class QuestionnaireCreateForm extends Component
                 'time_limit' => $this->time_limit,
                 'qr_code' => (string) Str::uuid(),
                 'created_by' => auth()->id(),
-                'start_date' => Carbon::parse($this->start_date),
-                'end_date' => Carbon::parse($this->end_date),
-                'max_attempts' => $this->max_attempts,
+                'start_date' => $this->start_date ? Carbon::parse($this->start_date) : null,
+                'end_date' => $this->end_date ? Carbon::parse($this->end_date) : null,
+                'max_attempts' => $this->max_attempts === '' ? null : (int) $this->max_attempts,
                 'is_active' => $this->is_active,
             ]);
 
@@ -118,7 +120,7 @@ class QuestionnaireCreateForm extends Component
         
         // Set default values
         $this->time_limit = 30;
-        $this->max_attempts = 1;
+        $this->max_attempts = '1';
         $this->start_date = now()->format('Y-m-d');
         $this->end_date = now()->addDays(7)->format('Y-m-d');
         $this->is_active = false;

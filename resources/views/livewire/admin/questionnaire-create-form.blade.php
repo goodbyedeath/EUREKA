@@ -104,11 +104,12 @@
 
         <div>
             <label for="max_attempts" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Maximum Attempts <span class="text-red-500">*</span>
+                Maximum Attempts
             </label>
             <select wire:model.live="max_attempts" 
                     id="max_attempts"
                     class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 @error('max_attempts') border-red-300 focus:border-red-500 focus:ring-red-500 @enderror">
+                <option value="">Tak terbatas</option>
                 @for($i = 1; $i <= 10; $i++)
                     <option value="{{ $i }}">{{ $i }} {{ $i === 1 ? 'attempt' : 'attempts' }}</option>
                 @endfor

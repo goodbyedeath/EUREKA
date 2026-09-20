@@ -24,7 +24,13 @@ class QuestionnaireManager extends Component
     public string $editTitle = '';
     public string $editDescription = '';
     public ?int $editTimeLimit = null;
-    public ?int $editMaxAttempts = null;
+    /** '' means unlimited. A typed ?int rejected the empty box, so unlimited never saved. */
+    public string $editMaxAttempts = '';
+
+    /** Both '' mean "no window": the questionnaire is open until it is switched off. */
+    public string $editStartDate = '';
+
+    public string $editEndDate = '';
     public string $editQrCode = '';
     public bool $editIsActive = true;
     /** False marks a bonus post: it scores, but does not hold the race clock open. */
@@ -65,7 +71,9 @@ class QuestionnaireManager extends Component
             $this->editTitle = $this->editQuestionnaire->title;
             $this->editDescription = $this->editQuestionnaire->description ?? '';
             $this->editTimeLimit = $this->editQuestionnaire->time_limit;
-            $this->editMaxAttempts = $this->editQuestionnaire->max_attempts;
+            $this->editMaxAttempts = (string) ($this->editQuestionnaire->max_attempts ?: '');
+            $this->editStartDate = $this->editQuestionnaire->start_date?->format('Y-m-d') ?? '';
+            $this->editEndDate = $this->editQuestionnaire->end_date?->format('Y-m-d') ?? '';
             $this->editQrCode = $this->editQuestionnaire->qr_code ?? '';
             $this->editIsActive = $this->editQuestionnaire->is_active;
             $this->editCountsTowardFinish = (bool) $this->editQuestionnaire->counts_toward_finish;
@@ -92,7 +100,9 @@ class QuestionnaireManager extends Component
         $this->editTitle = '';
         $this->editDescription = '';
         $this->editTimeLimit = null;
-        $this->editMaxAttempts = null;
+        $this->editMaxAttempts = '';
+        $this->editStartDate = '';
+        $this->editEndDate = '';
         $this->editQrCode = '';
         $this->editIsActive = true;
         $this->editCountsTowardFinish = true;
@@ -112,7 +122,9 @@ class QuestionnaireManager extends Component
             'editTitle' => 'required|string|max:255',
             'editDescription' => 'nullable|string|max:1000',
             'editTimeLimit' => 'nullable|integer|min:1|max:1440', // Max 24 hours
-            'editMaxAttempts' => 'nullable|integer|min:1|max:10',
+            'editMaxAttempts' => 'nullable|integer|min:1|max:50',
+            'editStartDate' => 'nullable|date',
+            'editEndDate' => 'nullable|date|after_or_equal:editStartDate',
             'editQrCode' => 'nullable|string|max:255',
             'editVenueMode' => 'nullable|in:outdoor,indoor',
             'editQuestLocationId' => 'nullable|required_if:editVenueMode,outdoor|exists:quest_locations,id',
@@ -126,7 +138,8 @@ class QuestionnaireManager extends Component
             'editTimeLimit.min' => 'Time limit must be at least 1 minute.',
             'editTimeLimit.max' => 'Time limit cannot exceed 1440 minutes (24 hours).',
             'editMaxAttempts.min' => 'Maximum attempts must be at least 1.',
-            'editMaxAttempts.max' => 'Maximum attempts cannot exceed 10.',
+            'editMaxAttempts.max' => 'Maksimal 50 percobaan; kosongkan untuk tak terbatas.',
+            'editEndDate.after_or_equal' => 'Tanggal berakhir tidak boleh sebelum tanggal mulai.',
         ]);
 
         try {
@@ -135,7 +148,10 @@ class QuestionnaireManager extends Component
                     'title' => $this->editTitle,
                     'description' => $this->editDescription ?: null,
                     'time_limit' => $this->editTimeLimit,
-                    'max_attempts' => $this->editMaxAttempts,
+                    // '' = unlimited, which is what the model reads as "no ceiling".
+                    'max_attempts' => $this->editMaxAttempts === '' ? null : (int) $this->editMaxAttempts,
+                    'start_date' => $this->editStartDate ?: null,
+                    'end_date' => $this->editEndDate ?: null,
                     'qr_code' => $this->editQrCode ?: null,
                     'is_active' => $this->editIsActive,
                     'counts_toward_finish' => $this->editCountsTowardFinish,
