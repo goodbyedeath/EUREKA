@@ -201,7 +201,7 @@ class QuizController extends Controller
 
             // Load questions
             $questions = $questionnaire->questions()
-                ->select('id', 'question', 'type', 'options', 'points', 'order', 'description', 'game_name', 'images', 'frame_path', 'share_caption')
+                ->select('id', 'question', 'type', 'options', 'points', 'order', 'description', 'game_name', 'images', 'frame_path', 'share_caption', 'answer_slots')
                 ->orderBy('order', 'asc')
                 ->get()
                 ->map(fn ($q) => $this->questionRow($q))
@@ -221,13 +221,7 @@ class QuizController extends Controller
             Log::debug("Quiz start - Questionnaire ID: {$questionnaire->id}, time_limit from DB: {$questionnaire->time_limit} minutes, timeRemaining calculated: {$timeRemaining} seconds, started_at: {$attempt->started_at}");
 
             // Load existing answers if returning existing attempt
-            $answers = [];
-            if ($isExistingAttempt) {
-                $userAnswers = $attempt->userAnswers()->get();
-                foreach ($userAnswers as $answer) {
-                    $answers[$answer->question_id] = $answer->answer;
-                }
-            }
+            $answers = $isExistingAttempt ? $this->answersForClient($attempt, $questions) : [];
 
             return response()->json([
                 'success' => true,
@@ -340,17 +334,14 @@ class QuizController extends Controller
 
             // Load questions
             $questions = $attempt->questionnaire->questions()
-                ->select('id', 'question', 'type', 'options', 'points', 'order', 'description', 'game_name', 'images', 'frame_path', 'share_caption')
+                ->select('id', 'question', 'type', 'options', 'points', 'order', 'description', 'game_name', 'images', 'frame_path', 'share_caption', 'answer_slots')
                 ->orderBy('order', 'asc')
                 ->get()
                 ->map(fn ($q) => $this->questionRow($q))
                 ->all();
 
             // Load existing answers
-            $answers = [];
-            foreach ($attempt->userAnswers as $answer) {
-                $answers[$answer->question_id] = $answer->answer;
-            }
+            $answers = $this->answersForClient($attempt, $questions);
 
             // Calculate total points
             $totalPoints = 0;
@@ -419,6 +410,9 @@ class QuizController extends Controller
             'attempt_id' => 'required|integer',
             'question_id' => 'required|integer',
             'answer' => 'nullable|string',
+            // Tebak Gambar only: {box key: typed text}, the whole set every time.
+            'answers' => 'nullable|array|max:'.\App\Services\PicturePuzzle::MAX_SLOTS,
+            'answers.*' => 'nullable|string|max:'.\App\Services\PicturePuzzle::MAX_ANSWER_LENGTH,
         ]);
 
         try {
@@ -457,6 +451,17 @@ class QuizController extends Controller
                 // points without anyone having taken a picture.
                 if ($question->type === QuestionType::GROUP_PHOTO->value) {
                     throw new QuizRuleException('photo_answer_required', 'Pertanyaan ini dijawab dengan foto.', 422);
+                }
+
+                // Tebak Gambar is answered box by box, through `answers`.
+                if ($question->type === QuestionType::PICTURE_PUZZLE->value) {
+                    $this->savePuzzleAnswer($attempt, $question, $request->input('answers'));
+
+                    return;
+                }
+
+                if ($request->has('answers')) {
+                    throw new QuizRuleException('not_a_puzzle_question', 'Pertanyaan ini tidak dijawab per kolom.', 422);
                 }
 
                 // Validate answer.
@@ -678,14 +683,44 @@ class QuizController extends Controller
                 $questions = $questionnaire->questions;
                 $answers = $attempt->userAnswers()->get()->keyBy('question_id');
 
+                // Tebak Gambar: mark again against the answer key as it stands now. The mark made at
+                // save time is provisional — an admin who fixes a typo in the key mid-event should
+                // not leave earlier savers scored against the typo — and the per-box result goes back
+                // in the response, the first moment the team is told which boxes were right.
+                $puzzles = [];
+                foreach ($questions->where('type', QuestionType::PICTURE_PUZZLE->value) as $puzzle) {
+                    $saved = $answers[$puzzle->id] ?? null;
+                    $marked = \App\Services\PicturePuzzle::score($puzzle, \App\Services\PicturePuzzle::decode($saved?->answer));
+
+                    if ($saved) {
+                        $saved->update(['is_correct' => $marked['all_correct'], 'points_earned' => $marked['points']]);
+                    }
+
+                    $puzzles[] = [
+                        'question_id' => $puzzle->id,
+                        'correct' => $marked['correct'],
+                        'total' => $marked['total'],
+                        'points_earned' => $saved ? $marked['points'] : 0,
+                        // Which boxes were right — never what the right answer was. The next team to
+                        // reach this post gets the same puzzle.
+                        'slots' => collect(\App\Services\PicturePuzzle::slots($puzzle))
+                            ->map(fn ($s) => ['key' => $s['key'], 'label' => $s['label'], 'correct' => $marked['slots'][$s['key']] ?? false])
+                            ->values()
+                            ->all(),
+                    ];
+                }
+
                 foreach ($questions as $question) {
                     if ($question->type === 'fun_game' || $question->type === 'brief') {
                         continue;
                     }
 
+                    // What the answer earned, not the question's face value when it is right. The
+                    // two agree for every whole-or-nothing type; for "Tebak Gambar" only this one
+                    // carries partial credit, and it is what the team score reads.
                     $userAnswer = $answers[$question->id] ?? null;
-                    if ($userAnswer && $userAnswer->is_correct) {
-                        $earnedPoints += $question->points;
+                    if ($userAnswer) {
+                        $earnedPoints += (int) $userAnswer->points_earned;
                     }
                 }
 
@@ -732,6 +767,7 @@ class QuizController extends Controller
                     'score' => $score,
                     'earned_points' => $earnedPoints,
                     'total_score' => $basePoints + $earnedPoints,
+                    'puzzles' => $puzzles,
                 ];
             });
 
@@ -1093,7 +1129,80 @@ class QuizController extends Controller
         $row['frame_url'] = $question->frame_path ? Storage::disk('public')->url($question->frame_path) : null;
         $row['share_caption'] = $question->share_caption;
 
+        // Tebak Gambar: the boxes the team fills — label and letter count only. answer_slots holds
+        // the right answers, so it is removed unconditionally here, whatever the type and whoever
+        // selected the column: this is the one place every question leaves the server through.
+        unset($row['answer_slots']);
+        $row['slots'] = $question->type === QuestionType::PICTURE_PUZZLE->value
+            ? \App\Services\PicturePuzzle::publicSlots($question)
+            : null;
+
         return $row;
+    }
+
+    /**
+     * Save a Tebak Gambar answer: every box at once, marked and scored on the spot.
+     *
+     * The client sends the whole set each time, so the last save wins and a replayed offline write
+     * is harmless; a box it leaves out is stored empty. What is right is worked out here and kept on
+     * the answer, but not said — the reply is the same "saved" every type gets, so a team cannot
+     * learn a box is wrong by saving it. Which boxes were right is told after the session is
+     * submitted; the right answers themselves never are.
+     */
+    private function savePuzzleAnswer(QuizAttempt $attempt, Question $question, $given): void
+    {
+        if (! is_array($given)) {
+            throw new QuizRuleException('slot_answers_required', 'Isi jawaban per kolom lewat `answers`.', 422);
+        }
+
+        $known = array_column(\App\Services\PicturePuzzle::slots($question), 'key');
+        $unknown = array_values(array_diff(array_map('strval', array_keys($given)), $known));
+        if ($unknown) {
+            throw new QuizRuleException('unknown_slot', 'Kolom tidak dikenal: '.implode(', ', $unknown).'.', 422);
+        }
+
+        // Stored in the question's own box order, every box present.
+        $boxes = [];
+        foreach ($known as $key) {
+            $boxes[$key] = trim((string) ($given[$key] ?? ''));
+        }
+
+        $marked = \App\Services\PicturePuzzle::score($question, $boxes);
+
+        UserAnswer::updateOrCreate(
+            ['quiz_attempt_id' => $attempt->id, 'question_id' => $question->id],
+            [
+                'answer' => json_encode($boxes, JSON_UNESCAPED_UNICODE),
+                // Wholly right only when every box is; partial credit lives in points_earned,
+                // which is what every score in the system reads.
+                'is_correct' => $marked['all_correct'],
+                'points_earned' => $marked['points'],
+            ],
+        );
+    }
+
+    /**
+     * The team's saved answers keyed by question id, to fill the screen back in on a resume.
+     *
+     * Every type is the stored string, except Tebak Gambar, whose answer is its boxes: sent as an
+     * object {box key: typed text} so the app never has to parse JSON out of a string field. These
+     * are what the team typed — nothing here says whether any of it is right.
+     */
+    private function answersForClient(QuizAttempt $attempt, array $questions): array
+    {
+        $puzzleIds = collect($questions)
+            ->where('type', QuestionType::PICTURE_PUZZLE->value)
+            ->pluck('id')
+            ->all();
+
+        $answers = [];
+        foreach ($attempt->userAnswers()->get() as $answer) {
+            $answers[$answer->question_id] = in_array($answer->question_id, $puzzleIds, true)
+                ? (object) \App\Services\PicturePuzzle::decode($answer->answer)
+                : $answer->answer;
+        }
+
+        return $answers;
     }
 
     /**
@@ -1112,6 +1221,11 @@ class QuizController extends Controller
                 'brief' => null,
                 // The photo is the answer; without it the session is not finished.
                 'group_photo' => isset($answers[$q->id]) && filled($answers[$q->id]->answer) ? null : 'photo_not_taken',
+                // Answered once any box holds something: empty boxes score nothing, but a team stuck
+                // on two of ten is not held back — or pushed to type rubbish to get out.
+                'picture_puzzle' => isset($answers[$q->id]) && \App\Services\PicturePuzzle::anyFilled($answers[$q->id]->answer)
+                    ? null
+                    : 'unanswered',
                 'fun_game' => ! isset($games[$q->id])
                     ? 'game_not_completed'
                     : ($games[$q->id]->is_assessed ? null : 'awaiting_assessment'),

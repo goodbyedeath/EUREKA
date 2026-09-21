@@ -584,18 +584,14 @@ class TeamManager extends Component
      */
     private function calculateUserBonusPoints($user)
     {
-        // Get all gained points from correct answers in completed attempts (same as user-progress)
-        $userAnswers = \App\Models\UserAnswer::whereHas('quizAttempt', function($query) use ($user) {
+        // Points actually earned, as user-progress and the leaderboard read them. This used to add
+        // each correct answer's question->points, which counted a fun_game twice — its question
+        // points (the answer is stored correct with 0 earned) on top of the facilitator's score
+        // below — and could not express the partial credit a "Tebak Gambar" answer earns.
+        $earnedPoints = (int) \App\Models\UserAnswer::whereHas('quizAttempt', function($query) use ($user) {
             $query->where('user_id', $user->id)
                   ->where('status', 'completed');
-        })->with(['question'])->where('is_correct', true)->get();
-        
-        $earnedPoints = 0;
-        foreach ($userAnswers as $answer) {
-            if ($answer->question) {
-                $earnedPoints += $answer->question->points ?? 0;
-            }
-        }
+        })->sum('points_earned');
         
         // Add assessment gains (bonus from fun games) - same as user-progress
         $assessmentGains = \App\Models\GameAssessment::whereHas('quizAttempt', function($query) use ($user) {

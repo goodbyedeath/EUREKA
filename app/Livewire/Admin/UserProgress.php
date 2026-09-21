@@ -599,9 +599,10 @@ class UserProgress extends Component
         $basePoints = $user->team ? ($user->team->initial_points ?? 0) : 0;
         
         // Calculate bonus points from correct answers
+        // Every answer's points_earned, not only wholly-correct ones: a "Tebak Gambar" answer with
+        // some boxes right earns part of its points without being is_correct.
         $userAnswers = UserAnswer::where('quiz_attempt_id', $attempt->id)
             ->with(['question'])
-            ->where('is_correct', true)
             ->get();
 
         // Use points_earned from user_answers table, not question->points

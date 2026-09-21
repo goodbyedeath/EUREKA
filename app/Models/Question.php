@@ -31,6 +31,7 @@ class Question extends Model
         'images',
         'frame_path',
         'share_caption',
+        'answer_slots',
         'options',
         'correct_answer',
         'points',
@@ -42,6 +43,9 @@ class Question extends Model
         return [
             'options' => 'array',
             'images' => 'array',
+            // "Tebak Gambar" boxes, answers included — see App\Services\PicturePuzzle. Never sent
+            // to the app as is: QuizController strips the answers before the question leaves.
+            'answer_slots' => 'array',
             'points' => 'integer',
         ];
     }

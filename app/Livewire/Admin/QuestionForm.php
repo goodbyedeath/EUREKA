@@ -37,6 +37,13 @@ class QuestionForm extends Component
     /** "Foto bersama": the PNG laid over the camera, uploaded by the admin. */
     public $newFrame;
 
+    /** "Tebak Gambar" shortcuts: how many boxes to lay out in one go. */
+    public int $crosswordAcross = 5;
+
+    public int $crosswordDown = 5;
+
+    public int $listCount = 5;
+
     #[On('edit-question')]
     public function handleEditQuestion($questionId)
     {
@@ -88,6 +95,17 @@ class QuestionForm extends Component
                     'newImage' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
                 ]);
                 break;
+            case 'picture_puzzle':
+                $rules = array_merge($rules, [
+                    'newQuestion.description' => 'nullable|string|max:2000',
+                    'newQuestion.answer_slots' => 'required|array|min:1|max:'.\App\Services\PicturePuzzle::MAX_SLOTS,
+                    'newQuestion.answer_slots.*.label' => 'required|string|max:100',
+                    'newQuestion.answer_slots.*.answers' => 'required|string|max:2000',
+                    'newQuestion.answer_slots.*.length' => 'nullable|integer|min:1|max:50',
+                    'uploadedImages' => 'nullable|array|max:3',
+                    'uploadedImages.*' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:4096',
+                ]);
+                break;
             case 'brief':
                 $rules = array_merge($rules, [
                     'newQuestion.description' => 'nullable|string|max:1000',
@@ -117,6 +135,10 @@ class QuestionForm extends Component
             'newQuestion.points.min' => 'Points must be at least 1.',
             'newQuestion.correct_answer.required' => 'The correct answer is required.',
             'newQuestion.type.in' => 'Invalid question type selected.',
+            'newQuestion.answer_slots.required' => 'Tambahkan minimal satu kolom jawaban.',
+            'newQuestion.answer_slots.min' => 'Tambahkan minimal satu kolom jawaban.',
+            'newQuestion.answer_slots.*.label.required' => 'Setiap kolom butuh label, mis. "Mendatar 1".',
+            'newQuestion.answer_slots.*.answers.required' => 'Setiap kolom butuh minimal satu jawaban benar.',
         ];
     }
 
@@ -131,6 +153,13 @@ class QuestionForm extends Component
                 session()->flash('questions_error', implode(' ', $validationErrors));
                 return;
             }
+        }
+
+        if ($this->newQuestion['type'] === 'picture_puzzle'
+            && empty($this->newQuestion['images']) && count(array_filter($this->uploadedImages)) === 0) {
+            $this->addError('uploadedImages', 'Tebak Gambar butuh gambarnya. Unggah gambar teka-teki terlebih dahulu.');
+
+            return;
         }
 
         try {
@@ -189,6 +218,12 @@ class QuestionForm extends Component
             $questionData['type'] = $originalType;
             $questionData['correct_answer'] = $originalCorrectAnswer;
 
+            // A Tebak Gambar kept as one keeps its boxes too: the saved answers are keyed to them.
+            if ($originalType === 'picture_puzzle' && $this->newQuestion['type'] !== 'picture_puzzle') {
+                $questionData['answer_slots'] = $question->answer_slots;
+                $questionData['images'] = $question->images;
+            }
+
             if ($originalType !== $this->newQuestion['type']) {
                 session()->flash('questions_warning', 'Warning: Question type and correct answer cannot be changed because users have already submitted answers to this question. Other fields have been updated.');
             }
@@ -226,7 +261,13 @@ class QuestionForm extends Component
             'description' => $question->description ?? '',
             'images' => $question->images ?? [],
             'frame_path' => $question->frame_path,
-            'share_caption' => (string) $question->share_caption
+            'share_caption' => (string) $question->share_caption,
+            'answer_slots' => collect($question->answer_slots ?? [])->map(fn ($s) => [
+                'key' => $s['key'] ?? null,
+                'label' => (string) ($s['label'] ?? ''),
+                'answers' => implode("\n", (array) ($s['answers'] ?? [])),
+                'length' => $s['length'] ?? null,
+            ])->values()->all(),
         ];
 
         // Ensure we have at least 2 options for multiple choice
@@ -258,9 +299,17 @@ class QuestionForm extends Component
             $questionData['options'] = null;
         }
 
-        // Handle image uploads for fun_game type
-        if ($questionData['type'] === 'fun_game') {
+        // Handle image uploads for fun_game type — and for Tebak Gambar, whose picture is the puzzle.
+        if (in_array($questionData['type'], ['fun_game', 'picture_puzzle'], true)) {
             $questionData['images'] = $this->storeUploadedImages();
+        }
+
+        // Tebak Gambar: the boxes carry the answers; there is no single correct_answer to store.
+        if ($questionData['type'] === \App\Enums\QuestionType::PICTURE_PUZZLE->value) {
+            $questionData['answer_slots'] = \App\Services\PicturePuzzle::cleanSlots($this->newQuestion['answer_slots'] ?? []);
+            $questionData['correct_answer'] = null;
+        } else {
+            $questionData['answer_slots'] = null;
         }
 
         // "Foto bersama": the frame is a file like any other upload; the caption travels with the
@@ -304,7 +353,8 @@ class QuestionForm extends Component
             'description' => '',
             'images' => [],
             'frame_path' => null,
-            'share_caption' => ''
+            'share_caption' => '',
+            'answer_slots' => [],
         ];
         $this->uploadedImages = [];
         $this->newFrame = null;
@@ -357,6 +407,49 @@ class QuestionForm extends Component
             'newQuestion.description',
             'newQuestion.images'
         ]);
+    }
+
+    public function addSlot(): void
+    {
+        $slots = $this->newQuestion['answer_slots'] ?? [];
+        if (count($slots) < \App\Services\PicturePuzzle::MAX_SLOTS) {
+            $slots[] = ['key' => null, 'label' => (string) (count($slots) + 1), 'answers' => '', 'length' => null];
+            $this->newQuestion['answer_slots'] = $slots;
+        }
+    }
+
+    public function removeSlot(int $index): void
+    {
+        $slots = $this->newQuestion['answer_slots'] ?? [];
+        unset($slots[$index]);
+        $this->newQuestion['answer_slots'] = array_values($slots);
+    }
+
+    /** Five across and five down in one click, labelled the way the picture numbers them. */
+    public function generateCrossword(): void
+    {
+        $across = max(0, min(15, $this->crosswordAcross));
+        $down = max(0, min(15, $this->crosswordDown));
+        $this->layOutSlots(\App\Services\PicturePuzzle::crosswordSlots($across, $down));
+    }
+
+    /** N numbered boxes — five logos, five flags, five faces. */
+    public function generateList(): void
+    {
+        $this->layOutSlots(\App\Services\PicturePuzzle::listSlots(max(1, min(\App\Services\PicturePuzzle::MAX_SLOTS, $this->listCount))));
+    }
+
+    /**
+     * A shortcut replaces the boxes while none of them holds an answer yet, and adds to them
+     * once one does — pressing it twice must not wipe ten answers the admin just typed.
+     */
+    private function layOutSlots(array $fresh): void
+    {
+        $current = $this->newQuestion['answer_slots'] ?? [];
+        $typed = collect($current)->contains(fn ($s) => trim((string) ($s['answers'] ?? '')) !== '');
+
+        $merged = $typed ? array_merge($current, $fresh) : $fresh;
+        $this->newQuestion['answer_slots'] = array_slice($merged, 0, \App\Services\PicturePuzzle::MAX_SLOTS);
     }
 
     public function addOption()
@@ -434,7 +527,8 @@ class QuestionForm extends Component
     }
     public function updatedNewImage()
     {
-        if ($this->newImage && $this->newQuestion['type'] === 'fun_game' && count($this->uploadedImages) < 10) {
+        $max = $this->newQuestion['type'] === 'picture_puzzle' ? 3 : 10;
+        if ($this->newImage && in_array($this->newQuestion['type'], ['fun_game', 'picture_puzzle'], true) && count($this->uploadedImages) < $max) {
             $this->uploadedImages[] = $this->newImage;
             $this->newImage = null;
         }
@@ -442,7 +536,7 @@ class QuestionForm extends Component
 
     public function removeUploadedImage($index)
     {
-        if ($this->newQuestion['type'] === 'fun_game' && isset($this->uploadedImages[$index])) {
+        if (in_array($this->newQuestion['type'], ['fun_game', 'picture_puzzle'], true) && isset($this->uploadedImages[$index])) {
             unset($this->uploadedImages[$index]);
             $this->uploadedImages = array_values($this->uploadedImages);
         }
@@ -450,7 +544,7 @@ class QuestionForm extends Component
 
     public function removeExistingImage($index)
     {
-        if ($this->newQuestion['type'] === 'fun_game' && isset($this->newQuestion['images'][$index])) {
+        if (in_array($this->newQuestion['type'], ['fun_game', 'picture_puzzle'], true) && isset($this->newQuestion['images'][$index])) {
             // Delete the file from storage if it exists
             $imagePath = $this->newQuestion['images'][$index];
             if ($imagePath && Storage::disk('public')->exists($imagePath)) {

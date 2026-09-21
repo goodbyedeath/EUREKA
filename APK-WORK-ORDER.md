@@ -735,6 +735,36 @@ unaffected until it reconnects.
 Spec: build guide §2c (`race_reset_at`).
 ---
 
+## 26 — Tebak Gambar: one picture, several answer boxes  ·  21 Sep
+
+Operator, 21 Sep: a question type where the team looks at one picture and fills several boxes — a
+crossword with five across and five down (ten boxes), or a sheet of five company logos (five boxes).
+The admin side and the API are live; this is your screen.
+
+1. **The picture, full-screen with pinch-zoom.** `image_urls[0]`. Non-negotiable: a crossword on a
+   phone cannot be read at page width.
+2. **One box per `slots[]` entry, in order**, captioned with `label`; when `length` is set, show
+   "5 huruf" and cap the box to it.
+3. **Save the whole set** on `save-answer` with `answers: {key: text}` — debounce while typing, the
+   same budget as a text question — and put it in the offline write queue like any other answer.
+   Send what was typed; the server does the case/space/punctuation folding.
+4. **Never show right or wrong while the session is open.** The save reply does not say, on purpose.
+5. **After submit**, tick or cross each box from `result.puzzles[].slots[].correct`, and show
+   `correct / total` and `points_earned`. The right answers are never sent — do not look for them.
+6. **Resume** reads this question's answer as an object from `answers[question_id]`.
+
+What will bite you: an empty box is fine and scores 0, and **one** filled box is enough to clear the
+completion gate — do not require every box before Submit. `unknown_slot` means the admin edited the
+boxes under you: re-fetch the question, keep what the team typed in the boxes whose keys survived.
+
+**Done when:** a crossword picture can be zoomed and read on a phone, ten boxes save and survive a
+restart and airplane mode, nothing says right or wrong until Submit, and after Submit each box is
+ticked or crossed with the partial points shown.
+
+Spec: build guide §4 (`picture_puzzle` — Tebak Gambar).
+
+---
+
 ## Talking back — the channel runs both ways now
 
 Until today this was one-way: the server published, you consumed, and anything you had to say

@@ -16,7 +16,9 @@ class PointsCalculationService
      * the three can never disagree again:
      *
      *   total = initial_points (once)
-     *         + Σ points_earned of correct answers  in COMPLETED attempts by the team's accounts
+     *         + Σ points_earned of every answer     in COMPLETED attempts by the team's accounts
+     *           (not only is_correct ones: a Tebak Gambar answer earns partial credit without being
+     *           wholly right; every other type stores 0 when wrong, so for them nothing changes)
      *         + Σ (total_deposit − initial_points)  of assessed games on those attempts
      *
      * The game term = additional − penalty and may be negative: a penalty larger than the award
@@ -46,8 +48,10 @@ class PointsCalculationService
             ->when($since, fn ($q) => $q->where('created_at', '>=', $since))
             ->pluck('id');
 
+        // Every answer's points_earned, right or not. A "Tebak Gambar" answer seven boxes of ten
+        // right is not is_correct yet earned seven tenths of the points; filtering on is_correct
+        // would throw that away. A wrong answer of any other type stores 0, so nothing else moves.
         $earned = (int) UserAnswer::whereIn('quiz_attempt_id', $attemptIds)
-            ->where('is_correct', true)
             ->sum('points_earned');
 
         $assessment = (int) GameAssessment::whereIn('quiz_attempt_id', $attemptIds)
@@ -82,8 +86,8 @@ class PointsCalculationService
             return [];
         }
 
+        // Unfiltered for the same reason as teamScore(): partial credit is earned, not correct.
         $earned = UserAnswer::whereIn('quiz_attempt_id', $ids)
-            ->where('is_correct', true)
             ->selectRaw('quiz_attempt_id, SUM(points_earned) AS total')
             ->groupBy('quiz_attempt_id')
             ->pluck('total', 'quiz_attempt_id');
@@ -111,8 +115,8 @@ class PointsCalculationService
      */
     public function calculateEarnedPoints(QuizAttempt $attempt): int
     {
+        // Unfiltered: see teamScore(). Partial credit counts though the answer is not wholly right.
         return UserAnswer::where('quiz_attempt_id', $attempt->id)
-            ->where('is_correct', true)
             ->get()
             ->sum(function($answer) {
                 // Use points_earned from user_answers table to match Livewire logic

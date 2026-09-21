@@ -6,6 +6,13 @@ Generated from the live router on questerra-series.com. Base URL `https://queste
 
 Act on these — several change responses your app already handles.
 
+**Latest (21 Sep): Tebak Gambar.** A seventh question type, `picture_puzzle`: one picture and several
+labelled boxes. Questions gain `slots[]` (`key`, `label`, `length`) — never the answers. Answer with
+`save-answer` using `answers: {key: text}` (the whole set each time); the reply never says what is
+right. Partial credit per box, rounded down; loose matching (case, spaces, punctuation ignored). The
+`submit` response gains `result.puzzles[]` with per-box `correct` flags — never the right answers.
+`continue` returns a puzzle's saved answer as an object. Build guide §4; work order §26.
+
 **Latest (20 Sep, second change): `race_reset_at`.** `GET /race/status` and `GET /offline/manifest` now
 carry `race_reset_at` (ISO 8601 or null) — the time of the last emergency stop, sent with or without a
 session. Compare it with the value stored beside your cache: newer means every per-team cached thing
@@ -153,7 +160,7 @@ separate budgets. A 429 from us carries `Retry-After`; honour it.
 | Endpoint | Required fields |
 |---|---|
 | `POST /api/v1/quiz/submit` | `attempt_id`, **`verification_photo`** (base64 string) |
-| `POST /api/v1/quiz/save-answer` | `attempt_id`, `question_id`; `answer` optional and may be null |
+| `POST /api/v1/quiz/save-answer` | `attempt_id`, `question_id`; `answer` optional and may be null — or, for `picture_puzzle` only, **`answers`** `{slot key: text}` with every box |
 | `POST /api/v1/quiz/complete-game` | `attempt_id`, `question_id` |
 | `POST /api/v1/quiz/photo-answer` | `attempt_id`, `question_id`, **`photo`** (base64 JPEG/PNG ≤ 6 MB, frame already drawn in) |
 | `POST /api/v1/quiz/assessments/{id}` | **`facilitator_pin`**, **`facilitator_photo`** (base64 JPEG/PNG ≤ 3 MB), `additional_points` (0–`max_additional_points`), `penalty` (0–`max_penalty`); `notes` optional |
@@ -177,6 +184,9 @@ the photo as optional cannot submit at all.
 | `not_a_game_question` | 422 | `complete-game` called on a normal question | Fix the call |
 | `not_a_photo_question` | 422 | `photo-answer` called on a question that is not `group_photo` | Fix the call |
 | `photo_answer_required` | 422 | `save-answer` called on a `group_photo` question | Use `photo-answer` |
+| `slot_answers_required` | 422 | `answer` sent to a `picture_puzzle` question | Send `answers` {key: text} |
+| `unknown_slot` | 422 | A key in `answers` is not one of the question's `slots[].key` | Re-fetch the question |
+| `not_a_puzzle_question` | 422 | `answers` sent to a question that is not `picture_puzzle` | Fix the call |
 | `invalid_photo` | 422 | `photo` is not JPEG/PNG, or is over 6 MB | Re-encode smaller; do not retry as is |
 | `unknown_code` | 404 | `qr/lookup`: code is not in this event | Show it; let them rescan |
 | `invalid_login_code` | 401 | `auth/login-code`: card unknown, replaced or revoked | Offer e-mail + password |

@@ -10,6 +10,7 @@ enum QuestionType: string
     case FUN_GAME = 'fun_game';
     case BRIEF = 'brief';
     case GROUP_PHOTO = 'group_photo';
+    case PICTURE_PUZZLE = 'picture_puzzle';
 
     /**
      * Get all question type values
@@ -31,6 +32,7 @@ enum QuestionType: string
             self::FUN_GAME => 'Fun Game',
             self::BRIEF => 'Brief Feedback',
             self::GROUP_PHOTO => 'Foto Bersama',
+            self::PICTURE_PUZZLE => 'Tebak Gambar',
         };
     }
 
@@ -46,6 +48,7 @@ enum QuestionType: string
             self::FUN_GAME => 'Interactive game activity with manual assessment',
             self::BRIEF => 'User experience feedback question (not scored)',
             self::GROUP_PHOTO => 'Tim berfoto bersama; admin mengunggah frame, peserta memotret lalu membagikannya',
+            self::PICTURE_PUZZLE => 'Satu gambar dengan beberapa kolom jawaban berlabel, misalnya teka-teki silang atau deretan logo',
         };
     }
 
@@ -88,6 +91,12 @@ enum QuestionType: string
                 'description' => 'required|string|max:2000',
                 'share_caption' => 'nullable|string|max:500',
             ],
+            self::PICTURE_PUZZLE => [
+                'answer_slots' => 'required|array|min:1|max:'.\App\Services\PicturePuzzle::MAX_SLOTS,
+                'answer_slots.*.label' => 'required|string|max:100',
+                'answer_slots.*.answers' => 'required',
+                'answer_slots.*.length' => 'nullable|integer|min:1|max:50',
+            ],
         };
     }
 
@@ -129,6 +138,12 @@ enum QuestionType: string
                 'description' => '',
                 'share_caption' => '',
             ],
+            self::PICTURE_PUZZLE => [
+                'options' => null,
+                // Each box carries its own answers; there is no single right answer to store.
+                'correct_answer' => null,
+                'answer_slots' => [],
+            ],
         };
     }
 
@@ -138,6 +153,12 @@ enum QuestionType: string
     public function isScored(): bool
     {
         return $this !== self::BRIEF;
+    }
+
+    /** Answered box by box: several labelled answers to one picture. */
+    public function hasSlots(): bool
+    {
+        return $this === self::PICTURE_PUZZLE;
     }
 
     /** Answered with a photograph rather than typed text. */

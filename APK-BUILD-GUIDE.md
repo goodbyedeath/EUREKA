@@ -526,7 +526,7 @@ The server also records `photo_captured_at` when the field is present.
 
 ### Question types
 
-`App\Enums\QuestionType` — these six, exactly:
+`App\Enums\QuestionType` — these seven, exactly:
 
 | `type` | Render as | Scored |
 |---|---|---|
@@ -536,11 +536,68 @@ The server also records `photo_captured_at` when the field is present.
 | `fun_game` | `game_name`, `description`, `image_urls`, a Complete button; a facilitator scores it on the team's phone | **no, at answer time** |
 | `brief` | optional feedback text | no |
 | `group_photo` | camera with the event frame over it; the photo is the answer | yes, on upload |
+| `picture_puzzle` | one zoomable picture + a labelled text box per `slots[]` entry | yes, **partial** — per box |
 
 `fun_game` is the one that catches clients out. Its answer is stored **correct with zero points**,
 because a facilitator awards the score afterwards. Call `complete-game` for it, not `save-answer`
 alone. And never sum question points locally to show a score — you will double-count every game.
 Display what the server returns.
+
+### `picture_puzzle` — Tebak Gambar  ·  21 Sep
+
+One picture and several labelled answer boxes. A crossword with five across and five down is ten
+boxes; a sheet of five company logos is five. The question carries:
+
+```json
+{ "id": 72, "type": "picture_puzzle", "question": "Tebak lima logo", "points": 10,
+  "description": "Tulis nama perusahaan untuk tiap logo.",
+  "image_urls": ["https://questerra-series.com/storage/games/question-images/ab12.png"],
+  "slots": [ { "key": "s1", "label": "Mendatar 1", "length": 5 },
+             { "key": "s2", "label": "Mendatar 2", "length": null } ] }
+```
+
+- **The picture is the puzzle** — render `image_urls[0]` so it can be opened full-screen with
+  pinch-zoom. A crossword on a phone is unreadable at page width; without zoom this type does not
+  work at all.
+- One text box per `slots[]` entry, **in order**, captioned with `label`. `length` (may be null) is a
+  letter count: show it as a hint ("5 huruf") and cap the box to it; it is not a validation rule.
+- `slots` never carries the answers, and nothing else on the question does either. `slots` is null
+  on every other type.
+
+**Save the whole set every time** with the usual `save-answer`, using `answers` instead of `answer`:
+
+```json
+{ "attempt_id": 708, "question_id": 72, "answers": { "s1": "bank central asia", "s2": "", "s3": "Gojek" } }
+```
+
+Send every box on each save; one you leave out is stored empty. The last save wins, so a replayed
+offline write is harmless. The reply is the plain `{"success": true, "message": "Answer saved"}` every
+type gets — **it never says which boxes are right**, by design: a team must not be able to learn a box
+is wrong by saving it. On resume, `continue` returns this question's answer as an **object**
+`{ "s1": "…", "s2": "…" }` in `answers[question_id]`, not a string.
+
+Scoring, so you can explain it rather than compute it (display what the server returns):
+
+- **Partial credit.** Points are shared equally across the boxes and rounded down: 7 of 10 right on a
+  10-point question is 7.
+- **Loose matching.** Case, spaces and punctuation do not count: "Coca-Cola", "coca cola" and
+  "COCACOLA" are one answer. Do not normalise on the phone — send what was typed.
+- **Empty boxes are fine.** The question counts as answered once *any* box holds something, so it
+  clears `completion.pending` then; empty boxes simply score nothing.
+
+**After submit, and only then,** the `submit` response carries `result.puzzles[]`:
+
+```json
+{ "question_id": 72, "correct": 4, "total": 5, "points_earned": 8,
+  "slots": [ { "key": "s1", "label": "1", "correct": true }, { "key": "s4", "label": "4", "correct": false } ] }
+```
+
+Show each box ticked or crossed from `slots[].correct`. **The right answers are never sent** — the
+next team to reach this post gets the same puzzle — so do not try to show them.
+
+Errors: `slot_answers_required` (422) — `answer` sent to a puzzle instead of `answers`;
+`unknown_slot` (422) — a key that is not one of this question's `slots[].key` (re-fetch, the admin may
+have edited the boxes); `not_a_puzzle_question` (422) — `answers` sent to any other type.
 
 ### `group_photo` — foto bersama  ·  20 Sep
 

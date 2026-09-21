@@ -72,6 +72,7 @@
                     <option value="fun_game">Fun Game</option>
                     <option value="brief">Brief Feedback</option>
                     <option value="group_photo">Foto Bersama</option>
+                    <option value="picture_puzzle">Tebak Gambar</option>
                 </select>
                 @error('newQuestion.type') 
                     <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> 
@@ -234,6 +235,127 @@
                            placeholder="mis. Tim kami di #FEXDIxIFSE2026 bersama @questerra">
                     <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Teks ini yang aplikasi tawarkan saat peserta membagikan fotonya ke media sosial.</p>
                     @error('newQuestion.share_caption') <span class="text-sm text-red-600 dark:text-red-400">{{ $message }}</span> @enderror
+                </div>
+            </div>
+        @endif
+
+        {{-- Tebak Gambar: one picture, several labelled boxes. A crossword with five across and five
+             down is ten boxes; five company logos are five. --}}
+        @if($newQuestion['type'] === 'picture_puzzle')
+            <div class="space-y-5 rounded-lg border border-amber-200 dark:border-amber-800 p-4 bg-amber-50 dark:bg-amber-900/20">
+                <div>
+                    <label for="puzzle-instruction" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Instruksi untuk peserta</label>
+                    <textarea wire:model="newQuestion.description" id="puzzle-instruction" rows="2"
+                              class="w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                              placeholder="mis. Isi teka-teki silang di gambar. Setiap jawaban satu kata."></textarea>
+                    @error('newQuestion.description') <span class="text-sm text-red-600 dark:text-red-400">{{ $message }}</span> @enderror
+                </div>
+
+                {{-- The picture --}}
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                            Gambar teka-teki <span class="text-red-500">*</span>
+                            <span class="block text-xs font-normal text-gray-500 dark:text-gray-400">JPEG, PNG atau WebP, maks. 4 MB. Peserta bisa memperbesarnya di HP, jadi pakai resolusi yang cukup tajam.</span>
+                        </span>
+                        @if(count($uploadedImages) + count($newQuestion['images'] ?? []) < 3)
+                            <label class="inline-flex items-center px-3 py-1 text-xs font-medium text-amber-700 dark:text-amber-300 bg-white dark:bg-gray-800 border border-amber-300 dark:border-amber-700 rounded-md hover:bg-amber-100 dark:hover:bg-amber-900/40 cursor-pointer">
+                                <i class="fas fa-upload mr-1"></i> Unggah gambar
+                                <input type="file" wire:model="newImage" accept="image/jpeg,image/png,image/jpg,image/webp" class="hidden">
+                            </label>
+                        @endif
+                    </div>
+                    <div wire:loading wire:target="newImage" class="text-xs text-amber-700 dark:text-amber-300 mb-2">Mengunggah…</div>
+
+                    <div class="flex flex-wrap gap-3">
+                        @foreach($newQuestion['images'] ?? [] as $index => $imagePath)
+                            <div class="relative">
+                                <img src="{{ Storage::url($imagePath) }}" alt="Gambar teka-teki {{ $index + 1 }}" class="h-32 rounded border border-gray-300 dark:border-gray-600 bg-white">
+                                <button type="button" wire:click="removeExistingImage({{ $index }})" title="Hapus gambar"
+                                        class="absolute top-1 right-1 bg-red-600 text-white rounded-full w-6 h-6 text-xs">&times;</button>
+                            </div>
+                        @endforeach
+                        @foreach($uploadedImages as $index => $uploadedImage)
+                            @if($uploadedImage)
+                                <div class="relative">
+                                    <img src="{{ $uploadedImage->temporaryUrl() }}" alt="" class="h-32 rounded border border-gray-300 dark:border-gray-600 bg-white">
+                                    <button type="button" wire:click="removeUploadedImage({{ $index }})" title="Batalkan gambar ini"
+                                            class="absolute top-1 right-1 bg-red-600 text-white rounded-full w-6 h-6 text-xs">&times;</button>
+                                </div>
+                            @endif
+                        @endforeach
+                    </div>
+                    @error('uploadedImages') <span class="block text-sm text-red-600 dark:text-red-400 mt-1">{{ $message }}</span> @enderror
+                    @error('uploadedImages.*') <span class="block text-sm text-red-600 dark:text-red-400 mt-1">{{ $message }}</span> @enderror
+                    @error('newImage') <span class="block text-sm text-red-600 dark:text-red-400 mt-1">{{ $message }}</span> @enderror
+                </div>
+
+                {{-- Shortcuts --}}
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div class="rounded-md bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-3">
+                        <div class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Teka-teki silang</div>
+                        <div class="flex flex-wrap items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                            mendatar <input type="number" min="0" max="15" wire:model="crosswordAcross" class="w-16 rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+                            menurun <input type="number" min="0" max="15" wire:model="crosswordDown" class="w-16 rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+                            <button type="button" wire:click="generateCrossword" class="px-3 py-1.5 rounded-md bg-amber-600 hover:bg-amber-700 text-white text-xs">Buat kolom</button>
+                        </div>
+                    </div>
+                    <div class="rounded-md bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-3">
+                        <div class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Daftar bernomor (logo, bendera, wajah…)</div>
+                        <div class="flex flex-wrap items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                            <input type="number" min="1" max="{{ \App\Services\PicturePuzzle::MAX_SLOTS }}" wire:model="listCount" class="w-16 rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"> kolom
+                            <button type="button" wire:click="generateList" class="px-3 py-1.5 rounded-md bg-amber-600 hover:bg-amber-700 text-white text-xs">Buat kolom</button>
+                        </div>
+                    </div>
+                </div>
+                <p class="text-xs text-gray-500 dark:text-gray-400 -mt-2">
+                    Tombol "Buat kolom" mengganti daftar selama belum ada jawaban yang diisi; setelah ada, kolom baru ditambahkan di bawahnya.
+                </p>
+
+                {{-- The boxes --}}
+                <div class="space-y-2">
+                    <div class="flex items-center justify-between">
+                        <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
+                            Kolom jawaban ({{ count($newQuestion['answer_slots'] ?? []) }}) <span class="text-red-500">*</span>
+                        </span>
+                        <button type="button" wire:click="addSlot" class="text-xs text-amber-700 dark:text-amber-300 underline">+ Tambah kolom</button>
+                    </div>
+                    @error('newQuestion.answer_slots') <span class="block text-sm text-red-600 dark:text-red-400">{{ $message }}</span> @enderror
+
+                    @forelse($newQuestion['answer_slots'] ?? [] as $i => $slot)
+                        <div wire:key="slot-{{ $slot['key'] ?? 'new' }}-{{ $i }}"
+                             class="grid grid-cols-12 gap-2 items-start rounded-md bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-2">
+                            <div class="col-span-12 sm:col-span-3">
+                                <input type="text" wire:model="newQuestion.answer_slots.{{ $i }}.label" maxlength="100" placeholder="Label, mis. Mendatar 1"
+                                       class="w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 text-sm">
+                                @error("newQuestion.answer_slots.$i.label") <span class="text-xs text-red-600 dark:text-red-400">{{ $message }}</span> @enderror
+                            </div>
+                            <div class="col-span-12 sm:col-span-6">
+                                <textarea wire:model="newQuestion.answer_slots.{{ $i }}.answers" rows="2" placeholder="Jawaban benar — satu per baris kalau ada lebih dari satu"
+                                          class="w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 text-sm"></textarea>
+                                @error("newQuestion.answer_slots.$i.answers") <span class="text-xs text-red-600 dark:text-red-400">{{ $message }}</span> @enderror
+                            </div>
+                            <div class="col-span-9 sm:col-span-2">
+                                <input type="number" min="1" max="50" wire:model="newQuestion.answer_slots.{{ $i }}.length" placeholder="Huruf"
+                                       title="Jumlah huruf (opsional) — ditampilkan ke peserta sebagai petunjuk"
+                                       class="w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 text-sm">
+                            </div>
+                            <div class="col-span-3 sm:col-span-1 text-right">
+                                <button type="button" wire:click="removeSlot({{ $i }})" title="Hapus kolom"
+                                        class="px-2 py-1.5 rounded-md bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 text-xs">&times;</button>
+                            </div>
+                        </div>
+                    @empty
+                        <div class="text-center text-sm text-gray-500 dark:text-gray-400 py-4 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-md">
+                            Belum ada kolom. Pakai salah satu tombol "Buat kolom" di atas, atau "+ Tambah kolom".
+                        </div>
+                    @endforelse
+                </div>
+
+                <div class="text-xs text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 rounded-md p-3 border border-gray-200 dark:border-gray-700 space-y-1">
+                    <p><strong>Penilaian:</strong> poin soal dibagi rata per kolom dan dibulatkan ke bawah — 7 dari 10 benar pada soal 10 poin = 7 poin. Kolom kosong bernilai 0.</p>
+                    <p><strong>Pencocokan:</strong> huruf besar/kecil, spasi, titik, dan tanda hubung diabaikan — "Coca-Cola", "coca cola", dan "COCACOLA" sama.</p>
+                    <p><strong>Umpan balik:</strong> peserta baru tahu kolom mana yang benar setelah sesi disubmit, dan jawaban benarnya tidak pernah ditampilkan — tim berikutnya di pos ini mendapat teka-teki yang sama.</p>
                 </div>
             </div>
         @endif
@@ -449,7 +571,7 @@
         @endif
 
         <!-- Correct Answer -->
-        @if($newQuestion['type'] !== 'fun_game' && $newQuestion['type'] !== 'brief' && $newQuestion['type'] !== 'group_photo')
+        @if(! in_array($newQuestion['type'], ['fun_game', 'brief', 'group_photo', 'picture_puzzle'], true))
             <div>
                 <label for="correct-answer" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Correct Answer <span class="text-red-500">*</span>
