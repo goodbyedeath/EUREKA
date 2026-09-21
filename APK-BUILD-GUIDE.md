@@ -249,6 +249,18 @@ thing you cached is void. Drop all of it:
 Then re-fetch and send the team back to "Scan START". Keep the token, the team and everything the
 admin authored — a stop does not touch those.
 
+**First sight is guarded** (v43's rule, adopted here 21 Sep). With nothing stored yet — a fresh
+install, a cleared app — a `race_reset_at` only counts if the race the phone is holding started
+*before* it. Otherwise a rehearsal stop from yesterday, seen for the first time this morning, would
+throw away today's unsent answers. The cached manifest's value is the baseline until a
+`/race/status` value has been stored.
+
+**The floor-plan picture is per team, and team setup can change which one.** A Sync run right after
+login, before team setup, has no team to ask about yet, so `/indoor-map` answers with the START
+code's plan. Once the team exists — and whenever the crew assigns it a plan in Team Management —
+the live `map.id` can differ from the one you precached. Compare them on each fetch and re-download
+the picture when they differ; otherwise a team out of signal navigates by another team's map.
+
 The operator hit exactly this on 20 Sep: after a stop, the 3D camera page still listed posts as
 open. Entry was correctly refused (`403 awaiting_unlock`), because that question is asked of the
 server — but the **list** was painted from a Sync taken before the stop, and nothing told the app

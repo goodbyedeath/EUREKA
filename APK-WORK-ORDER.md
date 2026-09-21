@@ -696,6 +696,11 @@ scans from the login screen as it does now.
 
 ## 25 — After an emergency stop, throw the cached world away  ·  20 Sep
 
+**Closed by your #29 (v43), 21 Sep.** Built as specified, and better: the first-sight guard (a stamp
+seen with nothing stored only counts if the held race began before it) is now part of build guide
+§2c, so it stays a rule rather than an implementation detail. The Kamera 3D list now follows what a
+team can actually enter, which is the other half of what the operator reported.
+
 Operator, 20 Sep: after an emergency stop, a team's 3D camera page **still listed posts as open**,
 although entering one was correctly refused.
 
