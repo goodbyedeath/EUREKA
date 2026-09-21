@@ -1005,7 +1005,12 @@ Nothing is authored to line up with a physical thing, so absolute orientation is
 **What this means for your build:**
 
 - **Drop the Start gate.** Open the camera straight into the scene.
-- Take the camera pose at entry as the origin and place objects camera-local from it.
+- Take the camera's **position and heading** at entry as the origin — **levelled**: keep only the yaw
+  about the world vertical (ARCore's world y is gravity-up) and discard pitch and roll — then place
+  objects from it. Not the whole camera pose: that carries however the phone happened to be tilted
+  when the camera opened, and every object tips by the same angle. A player holding the phone 30°
+  down saw everything 30° out; that was the "kacau" the operator reported on 20 Sep, fixed client-side
+  in v42 and written here so no build repeats it.
 - No QR step, no calibration step, no plane hit-test.
 - Keep **Re-centre**: still useful when tracking is lost and regained, or when a player wanders off
   and returns. It just re-zeroes forward to wherever they are pointing now.
@@ -1137,7 +1142,9 @@ above eye level. A plane requirement therefore gates entry on something the scen
 on dark or featureless ground it blocks the outpost entirely — a team standing in the right place,
 unable to start, for a reason nobody at the venue can diagnose.
 
-Anchor to the camera pose at Start and place from there. No plane detection, no hit-test.
+Anchor to the camera's position and **levelled heading** at Start — yaw about gravity only, pitch and
+roll dropped — and place from there. No plane detection, no hit-test. (This line used to say "the
+camera pose", which includes the phone's tilt; v42 found that the scene then tipped by that tilt.)
 
 ### Response shape
 

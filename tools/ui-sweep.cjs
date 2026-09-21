@@ -44,6 +44,16 @@ const INTERACT = !args.includes('--no-interact');
 const ONLY = arg('only');
 
 /**
+ * Run the list in slices: --skip=5 --take=5 does pages six to ten and stops.
+ *
+ * On this host the whole sweep in one go is a bad guest — a browser held open for a quarter of an
+ * hour walks the account into its process ceiling. A few pages at a time, watched, costs the same
+ * in total and never takes the box with it.
+ */
+const SKIP = Number(arg('skip', '0'));
+const TAKE = Number(arg('take', '0')) || null;
+
+/**
  * How many pages one browser handles before it is replaced.
  *
  * This host runs out of processes long before it runs out of memory — Chromium answers
@@ -139,11 +149,18 @@ async function signIn(browser) {
     const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
     const page = await ctx.newPage();
 
-    await page.goto(`${BASE}/login`, { waitUntil: 'load', timeout: 45000 });
-    await page.fill('input[name="email"]', email);
+    // domcontentloaded, not load: this page pulls fonts and an icon set from other people's CDNs,
+    // and when one of them is slow `load` never arrives — the sign-in then failed on a form that
+    // had been sitting there, ready, for half a minute.
+    await page.goto(`${BASE}/login`, { waitUntil: 'domcontentloaded', timeout: 45000 });
+
+    const emailField = page.locator('input[name="email"]');
+    await emailField.waitFor({ state: 'visible', timeout: 20000 });
+
+    await emailField.fill(email);
     await page.fill('input[name="password"]', password);
     await Promise.all([
-        page.waitForNavigation({ waitUntil: 'load', timeout: 45000 }).catch(() => {}),
+        page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {}),
         page.click('button[type="submit"]'),
     ]);
 
@@ -296,7 +313,9 @@ function clean(stage) {
 }
 
 (async () => {
-    const targets = PAGES.filter((p) => !ONLY || p.includes(ONLY));
+    const matching = PAGES.filter((p) => !ONLY || p.includes(ONLY));
+    const targets = matching.slice(SKIP, TAKE ? SKIP + TAKE : undefined);
+    if (SKIP || TAKE) say(`slice: pages ${SKIP + 1}-${SKIP + targets.length} of ${matching.length}`);
     say(`ui-sweep: ${targets.length} pages x ${VIEWPORTS.length} viewports, ${INTERACT ? 'with' : 'without'} interactions`);
     say(`screenshots -> ${SHOTS}\n`);
 

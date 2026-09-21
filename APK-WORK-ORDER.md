@@ -646,6 +646,13 @@ Spec: build guide §4 (`group_photo` — foto bersama); contract: `POST /api/v1/
 
 ### 24a — Objects placed in the 3D editor land in the wrong place in the app
 
+**Closed by your #28 (v42), 21 Sep.** None of our four suspects: the anchor was built from the whole
+ARCore camera pose, so the scene tipped by however the phone was held when the camera opened. It
+now keeps only the heading and drops pitch and roll. That was a fifth cause we did not list — and our
+own guide had said "anchor to the camera pose", which is what invites it. Build guide §9 now says
+*levelled heading* in both places. The rest of this section is kept as the record of what was ruled
+out.
+
 Operator: "algoritma 3D Camera yang di setting via Editor 3D, ketika di buka di APK, 3D object nya
 kacau lokasinya." We re-checked the server before sending this, because it would be the obvious
 suspect. It is not: `position` is derived from the authored bearing/pitch/distance as
