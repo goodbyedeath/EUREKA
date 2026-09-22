@@ -49,6 +49,41 @@ admin session instead. Put cache-busting and access tokens in the *path*, never 
 caches the wrong values. Runtime keeps looking correct, so the breakage appears only after
 optimizing.
 
+## Game flow — read this before answering anything about posts, AR, QR codes or offline
+
+Confirmed with the operator on 22 Sep, after answers that reasoned from pieces and got it wrong.
+
+**Race start** (both modes): the team scans the START QR (`race_starts`, `/admin/race-start`) and the
+race clock runs. Indoor teams must then answer the START clue, which leads them to their Indoor Map.
+START is the clock and the clue — it is **not** how posts open.
+
+**Each post, indoor:**
+1. **Indoor Map** (`/admin/indoor-maps`) is the team's plan. Each post spot links to an **AR Outpost**
+   (`game_location_id`).
+2. The team reaches the post → the facilitator there tells the admin → the admin opens that AR
+   Outpost for that team in **Outpost Access** (`/admin/outpost-access`, writes `game_location_unlocks`).
+3. **AR Outpost** (`/admin/games`, `access_mode = manual`): until then `GET /api/v1/ar/locations/{id}`
+   answers `403 awaiting_unlock` ("menunggu kru"); after it, the full scene, playable (verified: 5 and
+   3 objects on the live posts). The app re-checks every 15 s.
+4. Tapping the 3D object gives the clue to where the post's **paper questionnaire QR** is hidden →
+   scan (`qr/lookup`, station gate) → question session (`quiz/start`) → facilitator scoring → submit.
+
+**Outdoor** differs only at steps 2–3: a GPS check-in inside the radius (`access_mode = geofence`)
+instead of the crew.
+
+**The questionnaire QR** is the `qr_code` made when the questionnaire is created (one generator,
+`QuestionnaireService::generateUniqueQrCode`, a UUID). The same code is printed, matched by
+`qr/lookup`, and seals the questionnaire's offline copy — there is no second code.
+
+**Offline:** Sync downloads map tiles, the `.glb` models, the Indoor Map and the sealed
+questionnaires. The AR scene itself and every gate — START, clue, check-in or crew unlock,
+`qr/lookup`, `quiz/start` — still need the server. A session already started survives a dropped
+connection.
+
+**Open, for the operator to decide:** a correct START clue currently also unlocks *every* AR Outpost
+on the team's plan (`RaceController::openPostsAfterClue`, added 15 Sep from APK report #21), which
+bypasses Outpost Access. Do not describe the flow above as what the server does until that is settled.
+
 ## Conventions worth following
 
 - **`openapi.json` is the machine-readable contract for `/api/v1`, and the Android client is
