@@ -42,6 +42,12 @@ class IndoorMapManager extends Component
     public int $spotSize = 28;
     public string $spotContent = '';
     public $spotImageUpload;
+
+    /** The photo the spot has now, so the edit form can show it — it used to show nothing at all. */
+    public ?string $spotImagePath = null;
+
+    /** Take the photo off on save. */
+    public bool $spotRemoveImage = false;
     public ?int $spotGameLocationId = null;
     public bool $showSpotModal = false;
 
@@ -95,10 +101,11 @@ class IndoorMapManager extends Component
             $map = IndoorMap::findOrFail($this->editingMapId);
             // Replacing the plan removes the old file; spots keep their percentages, which
             // still land correctly as long as the new plan frames the same area.
-            if (isset($data['image_path']) && $map->image_path) {
-                Storage::disk('public')->delete($map->image_path);
-            }
+            $previous = $map->image_path;
             $map->update($data);
+            if (isset($data['image_path']) && $previous) {
+                $this->deleteIfUnused($previous);
+            }
         } else {
             $data['created_by'] = Auth::id();
             $map = IndoorMap::create($data);
@@ -146,11 +153,15 @@ class IndoorMapManager extends Component
             return;
         }
 
-        if ($map->image_path) {
-            Storage::disk('public')->delete($map->image_path);
-        }
+        $files = collect([$map->image_path])
+            ->merge(IndoorMapSpot::where('indoor_map_id', $map->id)->pluck('image_path'))
+            ->filter()->unique()->all();
 
-        $map->delete();   // spots cascade
+        $map->delete();   // spots cascade; their photos are handled below, which they never were
+
+        foreach ($files as $path) {
+            $this->deleteIfUnused($path);
+        }
         $this->mapId = IndoorMap::orderBy('name')->value('id');
         session()->flash('indoor_msg', __('Indoor map deleted.'));
     }
@@ -189,6 +200,7 @@ class IndoorMapManager extends Component
         $this->spotSize = $spot->size;
         $this->spotContent = (string) $spot->content;
         $this->spotGameLocationId = $spot->game_location_id;
+        $this->spotImagePath = $spot->image_path;
         $this->showSpotModal = true;
     }
 
@@ -220,10 +232,20 @@ class IndoorMapManager extends Component
 
         if ($this->spotImageUpload) {
             $data['image_path'] = $this->spotImageUpload->store('indoor-spots', 'public');
+        } elseif ($this->spotRemoveImage) {
+            $data['image_path'] = null;
         }
 
         if ($this->spotId) {
-            IndoorMapSpot::findOrFail($this->spotId)->update($data);
+            $spot = IndoorMapSpot::findOrFail($this->spotId);
+            $previous = $spot->image_path;
+            $spot->update($data);
+
+            // A replaced or removed photo leaves the disk — unless a duplicated plan's spot still
+            // shows it, which replicate() makes likely.
+            if ($previous && array_key_exists('image_path', $data) && $data['image_path'] !== $previous) {
+                $this->deleteIfUnused($previous);
+            }
         } else {
             IndoorMapSpot::create($data);
         }
@@ -231,6 +253,63 @@ class IndoorMapManager extends Component
         $this->showSpotModal = false;
         $this->resetSpotForm();
         session()->flash('indoor_msg', __('Spot saved.'));
+    }
+
+    /**
+     * A photo is checked the moment it is chosen: the form previews it straight away, and Livewire
+     * cannot preview anything that is not an image — a wrong file would take the modal down.
+     */
+    public function updatedSpotImageUpload(): void
+    {
+        if (! $this->spotImageUpload) {
+            return;
+        }
+
+        $this->resetErrorBag('spotImageUpload');
+        try {
+            $this->validateOnly('spotImageUpload', ['spotImageUpload' => 'image|mimes:jpeg,jpg,png,webp|max:5120'], [
+                'spotImageUpload.image' => 'File ini bukan gambar.',
+                'spotImageUpload.mimes' => 'Pakai JPG, PNG atau WebP.',
+                'spotImageUpload.max' => 'Maksimal 5 MB.',
+            ]);
+            $this->spotRemoveImage = false;
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            $this->spotImageUpload = null;
+            throw $e;
+        }
+    }
+
+    public function removeSpotImage(): void
+    {
+        $this->spotImageUpload = null;
+        $this->spotRemoveImage = true;
+    }
+
+    public function keepSpotImage(): void
+    {
+        $this->spotRemoveImage = false;
+    }
+
+    public function discardSpotImageUpload(): void
+    {
+        $this->spotImageUpload = null;
+    }
+
+    /**
+     * Delete a plan or spot picture only when nothing else shows it.
+     *
+     * "Duplikat denah" copies spots with replicate(), so the copy points at the original's files.
+     * Deleting unconditionally meant that removing a spot from the copy blanked the photo on the
+     * original plan too.
+     */
+    private function deleteIfUnused(string $path): void
+    {
+        $inUse = IndoorMapSpot::where('image_path', $path)->exists()
+            || IndoorMap::where('image_path', $path)->exists();
+
+        if (! $inUse) {
+            Storage::disk('public')->delete($path);
+        }
     }
 
     /** Dragging a marker only moves it; everything else about the spot is left alone. */
@@ -259,11 +338,11 @@ class IndoorMapManager extends Component
             return;
         }
 
-        if ($spot->image_path) {
-            Storage::disk('public')->delete($spot->image_path);
-        }
-
+        $photo = $spot->image_path;
         $spot->delete();
+        if ($photo) {
+            $this->deleteIfUnused($photo);
+        }
         $this->showSpotModal = false;
         session()->flash('indoor_msg', __('Spot removed.'));
     }
@@ -298,6 +377,8 @@ class IndoorMapManager extends Component
         $this->spotSize = 28;
         $this->spotContent = '';
         $this->spotImageUpload = null;
+        $this->spotImagePath = null;
+        $this->spotRemoveImage = false;
         $this->spotGameLocationId = null;
         $this->resetValidation();
     }

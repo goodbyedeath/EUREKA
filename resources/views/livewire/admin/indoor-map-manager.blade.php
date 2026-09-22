@@ -189,12 +189,44 @@
                               class="mt-1 w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"></textarea>
                 </div>
 
+                {{-- The photo. It used to be a bare file input, so a spot that already had a photo
+                     looked as if it had none, and there was no way to take one off. --}}
                 <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Photo shown on tap</label>
-                    <input type="file" wire:model="spotImageUpload" accept="image/*"
-                           class="mt-1 w-full text-sm text-gray-600 dark:text-gray-300">
+
+                    @php
+                        $newPhotoPreviewable = $spotImageUpload
+                            && in_array(strtolower((string) $spotImageUpload->getClientOriginalExtension()), ['jpg', 'jpeg', 'png', 'webp'], true);
+                    @endphp
+
+                    @if ($newPhotoPreviewable)
+                        <div class="mt-2 flex items-start gap-3">
+                            <img src="{{ $spotImageUpload->temporaryUrl() }}" alt="Foto baru" class="h-28 rounded border border-blue-400 bg-white">
+                            <div class="text-xs space-y-1">
+                                <p class="text-blue-700 dark:text-blue-300 font-medium">Foto baru — dipasang saat disimpan{{ $spotImagePath ? ', menggantikan foto lama' : '' }}.</p>
+                                <button type="button" wire:click="discardSpotImageUpload" class="text-gray-600 dark:text-gray-400 underline">Batalkan foto baru</button>
+                            </div>
+                        </div>
+                    @elseif ($spotImagePath && ! $spotRemoveImage)
+                        <div class="mt-2 flex items-start gap-3">
+                            <img src="{{ Storage::url($spotImagePath) }}" alt="Foto sekarang" class="h-28 rounded border border-gray-300 dark:border-gray-600 bg-white">
+                            <div class="text-xs space-y-1">
+                                <p class="text-gray-600 dark:text-gray-400">Foto sekarang. Pilih file di bawah untuk menggantinya.</p>
+                                <button type="button" wire:click="removeSpotImage" class="text-red-600 dark:text-red-400 underline">Hapus foto</button>
+                            </div>
+                        </div>
+                    @elseif ($spotImagePath && $spotRemoveImage)
+                        <div class="mt-2 text-xs rounded-md bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 p-2 text-red-700 dark:text-red-300">
+                            Foto akan dihapus saat disimpan.
+                            <button type="button" wire:click="keepSpotImage" class="underline ml-1">Urungkan</button>
+                        </div>
+                    @endif
+
+                    <input type="file" wire:model="spotImageUpload" accept="image/jpeg,image/png,image/webp"
+                           class="mt-2 w-full text-sm text-gray-600 dark:text-gray-300">
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">JPG, PNG atau WebP, maksimal 5 MB.</p>
                     @error('spotImageUpload') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
-                    <div wire:loading wire:target="spotImageUpload" class="text-xs text-blue-600 mt-1">Uploading…</div>
+                    <div wire:loading wire:target="spotImageUpload" class="text-xs text-blue-600 mt-1">Mengunggah…</div>
                 </div>
 
                 <div>
