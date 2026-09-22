@@ -772,9 +772,13 @@ briefing. The server has removed `GET /guidance` and `/guidance/{id}` (both now 
 unreachable editor. Delete the wrapper you kept; nothing replaces it, and there is nothing to bring
 back. Panduan (`/guide/user`) is unaffected.
 
-**The per-account login lockout** — still with the operator, who asked what it would mean in practice.
-No server change for now; your on-phone throttle stays as the only lockout. We will tell you here if
-that changes.
+**The per-account login lockout — no, operator's decision, 22 Sep.** There will be no server-side
+lockout. Two reasons. It would add nothing: card passwords are 10 random characters (~58 bits) and
+card codes 192 bits, so under the existing limits (5/min per account and address, 60/min per
+address) guessing is out of reach. And it would hand out a weapon: the team's e-mail is printed on its
+card, so anyone at the venue who sees a card could fail ten times and lock that team out mid-race,
+right password or not. Keep your on-phone throttle exactly as built — it is the only lockout, and it
+never blocks `account_inactive`, `access_window_expired` or `game_ended`, which is right.
 
 Everything else in #29 matched the contract, and two of your notes are now rules in it: the
 first-sight guard (build guide §2c) and re-downloading the floor plan when its id changes (§2c).
