@@ -6,6 +6,10 @@ Generated from the live router on questerra-series.com. Base URL `https://queste
 
 Act on these — several change responses your app already handles.
 
+**Latest (22 Sep): `/guidance` removed.** `GET /api/v1/guidance` and `/guidance/{id}` are gone (404).
+The per-team briefing had no admin screen and was always empty; the app dropped its page in v43.
+Delete the wrapper. Work order §27.
+
 **Latest (21 Sep): Tebak Gambar.** A seventh question type, `picture_puzzle`: one picture and several
 labelled boxes. Questions gain `slots[]` (`key`, `label`, `length`) — never the answers. Answer with
 `save-answer` using `answers: {key: text}` (the whole set each time); the reply never says what is

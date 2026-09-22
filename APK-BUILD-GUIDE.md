@@ -179,7 +179,7 @@ replay:
 1. Show the **Game ended** screen, full-screen over everything: the server's `message`,
    `archive.name`, and one button, **Uninstall**. No back, no retry, no login form, no dashboard.
 2. **Wipe** local state: token, stored attempt and assessment ids, the offline write queue (discard —
-   never replay it), cached offline manifest, map tiles, AR models, guidance, branding, and any photo
+   never replay it), cached offline manifest, map tiles, AR models, branding, and any photo
    still on disk.
 3. **Stop** everything that makes requests: location tracking and its foreground service, WorkManager
    jobs, alarms, polling timers.
@@ -1328,22 +1328,23 @@ rejected answer will be rejected again.
 | CameraX binds to the **Activity** lifecycle, not the composable | Reported by the client team, 11 Sep. Navigating away from the QR scanner does not release the camera, so ARCore then opens to a black frame. "Two cameras, never both alive" is easy to satisfy by accident and hard to satisfy on purpose: unbind on dispose **and** release any live provider immediately before starting the AR Activity, with one launcher as the only route in. This was the real cause of an earlier "no 3D camera" report; a missing CAMERA permission was a second, separate cause. |
 | Don't trust the device clock | Read `/quiz/timer/{attemptId}`. |
 
-### Guidance and attempt history — both now exist
+### Attempt history — and the briefing that was removed
 
-Reported as blocking, and correctly: both lived only as Livewire pages, so a team holding just the
-app could never reach them. The briefing was the worse of the two — instructions a team is told to
-read, that they had no way to read.
+**`/api/v1/guidance` and `/api/v1/guidance/{id}` no longer exist** (operator, 22 Sep). The per-team
+briefing ("Pengarahan") had no admin screen, so it was always empty; you removed its page in v43, and
+the server has now removed the endpoints, the model and the unreachable editor behind them. Both
+paths answer 404. Delete the wrapper; do not treat the 404 as an outage. Nothing replaces it — the
+how-to lives in Panduan below, which is a different thing.
+
+Attempt history lived only as a Livewire page, so a team holding just the app could never reach it:
 
 ```
-GET /api/v1/guidance          { success, count, guidances[] }
-GET /api/v1/guidance/{id}     { success, guidance }
 GET /api/v1/quiz/attempts?limit=20
                               { success, total_attempts, attempts[] }
 ```
 
-**The Panduan page comes from the server too** (operator, 20 Sep), and is a different thing from a
-briefing: `guidance` is what an admin writes for particular teams about this event, while the guide
-below is how the app works, the same for everyone.
+**The Panduan page comes from the server too** (operator, 20 Sep): how the app works, the same for
+everyone.
 
 ```
 GET /api/v1/guide/user     { success, updated_at, sections[] }
@@ -1357,22 +1358,6 @@ ordered; keep that order. Hidden sections are not sent at all.
 The same list rides in `/offline/manifest` as `user_guide`, so Panduan opens with no signal after a
 Sync. Cache on `updated_at` and re-read when it changes: the crew edits these sentences between
 events, and an edit is meant to reach the phones without a new build.
-
-`guidances[]` carries `{ id, title, description, images[], sort_order, updated_at }` — the shape you
-asked for, plus `updated_at` so you can cache on it.
-
-Three things done as you asked, and verified rather than assumed:
-
-- **`active()` → `forUser()` → `ordered()`**, mirroring `GuidanceView` exactly. `forUser()` is the
-  one that matters: a briefing aimed at one team must not reach another. Tested with two accounts
-  and a targeted row — A sees 2, B sees 1.
-- **`images` are absolute URLs.** Stored relative; resolved through the public disk on the way out,
-  because you cache for offline and cannot resolve a relative path from a cold start.
-- **Inactive rows are filtered**, confirmed by a deliberately inactive row not appearing.
-
-`GET /guidance/{id}` answers `404 guidance_not_found` both for a row that does not exist and for one
-that is not yours — deliberately the same, since a distinct "exists but not for you" would tell one
-team that another team has a briefing it cannot see.
 
 **`attempts[]` row shape — confirmed field by field against the controller:**
 

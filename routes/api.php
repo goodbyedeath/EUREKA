@@ -93,10 +93,6 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         // A team's own record. recent-attempts existed only as a Livewire panel.
         Route::get('/quiz/attempts', [\App\Http\Controllers\Api\QuizController::class, 'attempts'])->name('quiz.attempts');
 
-        // The event briefing, which existed only as a Livewire page.
-        Route::get('/guidance', [\App\Http\Controllers\Api\GuidanceController::class, 'index'])->name('guidance.index');
-        Route::get('/guidance/{id}', [\App\Http\Controllers\Api\GuidanceController::class, 'show'])->name('guidance.show');
-
         Route::get('/quiz/timer/{attemptId}', [\App\Http\Controllers\Api\QuizController::class, 'timer'])->name('quiz.timer');
         Route::post('/quiz/submit', [\App\Http\Controllers\Api\QuizController::class, 'submit'])->name('quiz.submit');
 

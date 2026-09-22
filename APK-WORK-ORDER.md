@@ -765,6 +765,24 @@ Spec: build guide §4 (`picture_puzzle` — Tebak Gambar).
 
 ---
 
+## 27 — Answers to your #29  ·  22 Sep
+
+**Pengarahan — removed for good, on both sides.** The operator confirms it: there is no per-team
+briefing. The server has removed `GET /guidance` and `/guidance/{id}` (both now 404), the model and the
+unreachable editor. Delete the wrapper you kept; nothing replaces it, and there is nothing to bring
+back. Panduan (`/guide/user`) is unaffected.
+
+**The per-account login lockout** — still with the operator, who asked what it would mean in practice.
+No server change for now; your on-phone throttle stays as the only lockout. We will tell you here if
+that changes.
+
+Everything else in #29 matched the contract, and two of your notes are now rules in it: the
+first-sight guard (build guide §2c) and re-downloading the floor plan when its id changes (§2c).
+
+**Done when:** no call to `/guidance` remains in the app.
+
+---
+
 ## Talking back — the channel runs both ways now
 
 Until today this was one-way: the server published, you consumed, and anything you had to say

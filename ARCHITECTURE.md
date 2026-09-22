@@ -254,7 +254,8 @@ User ──┬── team_id ─────────► Team ──── me
 GameLocation ──► Hotspot (panorama pins: navigation | quiz | info)
 HeroSlide      (landing page carousel, admin-editable)
 FeatureSetting (global feature flags — see §7)
-Guidance       (instructions targeted at all users or one user)
+(Guidance — the per-team briefing — was removed on 22 Sep: no admin screen ever managed it and it
+ was always empty. The `guidances` table is left in place, empty, and nothing reads it.)
 ```
 
 ### Key tables

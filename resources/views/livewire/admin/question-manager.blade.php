@@ -7,8 +7,40 @@
         <h3 class="text-lg font-medium">Questions ({{ count($questions) }})</h3>
         
         @if(session('questions_message'))
-            <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">
+            <div class="bg-green-100 dark:bg-green-900/30 border border-green-400 dark:border-green-800 text-green-700 dark:text-green-300 px-4 py-3 rounded">
                 {{ session('questions_message') }}
+            </div>
+        @endif
+
+        {{-- Set by this component and never shown here before, which is why a refused delete looked
+             like a dead button. --}}
+        @if(session('questions_error'))
+            <div class="bg-red-100 dark:bg-red-900/30 border border-red-400 dark:border-red-800 text-red-700 dark:text-red-300 px-4 py-3 rounded">
+                {{ session('questions_error') }}
+            </div>
+        @endif
+
+        @if($pendingDelete)
+            <div role="alert" class="rounded-lg border border-amber-400 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/30 p-4 space-y-3">
+                <div class="text-amber-900 dark:text-amber-100">
+                    <strong>"{{ \Illuminate\Support\Str::limit($pendingDelete['question'], 80) }}" sudah dijawab {{ $pendingDelete['answers'] }} kali.</strong>
+                    <p class="text-sm mt-1">
+                        Menghapus soal ini juga menghapus jawaban tersebut — termasuk foto dan penilaian fasilitatornya —
+                        dan poin dari jawaban itu keluar dari skor tim. Ini tidak bisa dibatalkan.
+                        Kalau acaranya sedang berjalan, lebih aman menonaktifkan kuesionernya.
+                    </p>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                    <button type="button" wire:click="deleteQuestionWithAnswers"
+                            wire:confirm="Hapus soal ini beserta {{ $pendingDelete['answers'] }} jawabannya? Tidak bisa dibatalkan."
+                            class="px-4 py-2 rounded-md bg-red-600 hover:bg-red-700 text-white text-sm">
+                        Hapus beserta {{ $pendingDelete['answers'] }} jawaban
+                    </button>
+                    <button type="button" wire:click="cancelDelete"
+                            class="px-4 py-2 rounded-md bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 text-sm">
+                        Batal
+                    </button>
+                </div>
             </div>
         @endif
 
