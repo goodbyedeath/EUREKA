@@ -55,7 +55,7 @@
                             <!-- Time Limit -->
                             <div>
                                 <label for="editTimeLimit" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                    Time Limit (minutes)
+                                    Time Limit (minutes) <span class="text-red-500">*</span>
                                 </label>
                                 <input type="number" 
                                        id="editTimeLimit"
@@ -63,7 +63,7 @@
                                        min="1" 
                                        max="1440"
                                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-100"
-                                       placeholder="No limit">
+                                       placeholder="mis. 30">
                                 @error('editTimeLimit') 
                                     <span class="text-red-500 text-sm mt-1">{{ $message }}</span> 
                                 @enderror

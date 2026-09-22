@@ -121,7 +121,9 @@ class QuestionnaireManager extends Component
         $this->validate([
             'editTitle' => 'required|string|max:255',
             'editDescription' => 'nullable|string|max:1000',
-            'editTimeLimit' => 'nullable|integer|min:1|max:1440', // Max 24 hours
+            // Required: the column is NOT NULL, so the "No limit" the form used to offer could only
+            // end in a raw SQL error. Same range as the create form.
+            'editTimeLimit' => 'required|integer|min:1|max:1440',
             'editMaxAttempts' => 'nullable|integer|min:1|max:50',
             'editStartDate' => 'nullable|date',
             'editEndDate' => 'nullable|date|after_or_equal:editStartDate',
@@ -135,6 +137,8 @@ class QuestionnaireManager extends Component
             'editTitle.required' => 'Title is required.',
             'editTitle.max' => 'Title cannot exceed 255 characters.',
             'editDescription.max' => 'Description cannot exceed 1000 characters.',
+            'editTimeLimit.required' => 'Durasi wajib diisi, dalam menit.',
+            'editTimeLimit.integer' => 'Durasi harus berupa angka menit.',
             'editTimeLimit.min' => 'Time limit must be at least 1 minute.',
             'editTimeLimit.max' => 'Time limit cannot exceed 1440 minutes (24 hours).',
             'editMaxAttempts.min' => 'Maximum attempts must be at least 1.',

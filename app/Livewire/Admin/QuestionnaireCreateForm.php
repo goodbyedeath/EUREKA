@@ -37,6 +37,20 @@ class QuestionnaireCreateForm extends Component
     #[Validate('boolean')]
     public bool $is_active = false;
 
+    /**
+     * The post a team checks in at before this questionnaire opens. Only the edit form had it, so a
+     * new questionnaire was always created unplayable — the station gate refuses one with no post —
+     * and had to be opened again to be finished (operator, 22 Sep: "ada yang miss").
+     */
+    public string $venue_mode = '';
+
+    public $quest_location_id = '';
+
+    public $game_location_id = '';
+
+    /** Off for a bonus post: it still scores, but the race clock does not wait for it. */
+    public bool $counts_toward_finish = true;
+
     public bool $isSubmitting = false;
 
     public bool $showCreateModal = true;
@@ -54,12 +68,24 @@ class QuestionnaireCreateForm extends Component
                 'title' => 'required|string|max:255',
                 'description' => 'nullable|string|max:1000',
                 'photo' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
-                'time_limit' => 'required|integer|min:1|max:300',
+                // The same range as the edit form, so what one accepts the other does too.
+                'time_limit' => 'required|integer|min:1|max:1440',
                 // Optional: a questionnaire with no window is simply open until switched off.
                 'start_date' => 'nullable|date',
                 'end_date' => 'nullable|date|after_or_equal:start_date',
                 'max_attempts' => 'nullable|integer|min:1|max:50',
-                'is_active' => 'boolean'
+                'is_active' => 'boolean',
+                'counts_toward_finish' => 'boolean',
+                'venue_mode' => 'nullable|in:outdoor,indoor',
+                'quest_location_id' => 'nullable|required_if:venue_mode,outdoor|exists:quest_locations,id',
+                'game_location_id' => 'nullable|required_if:venue_mode,indoor|exists:game_locations,id',
+            ], [
+                'time_limit.required' => 'Durasi wajib diisi, dalam menit.',
+                'time_limit.min' => 'Durasi minimal 1 menit.',
+                'time_limit.max' => 'Durasi maksimal 1440 menit (24 jam).',
+                'quest_location_id.required_if' => 'Pilih pos outdoor untuk kuesioner ini.',
+                'game_location_id.required_if' => 'Pilih pos indoor untuk kuesioner ini.',
+                'end_date.after_or_equal' => 'Tanggal berakhir tidak boleh sebelum tanggal mulai.',
             ]);
 
             $photoPath = null;
@@ -84,6 +110,10 @@ class QuestionnaireCreateForm extends Component
                 'end_date' => $this->end_date ? Carbon::parse($this->end_date) : null,
                 'max_attempts' => $this->max_attempts === '' ? null : (int) $this->max_attempts,
                 'is_active' => $this->is_active,
+                'counts_toward_finish' => $this->counts_toward_finish,
+                'venue_mode' => $this->venue_mode ?: null,
+                'quest_location_id' => $this->venue_mode === 'outdoor' ? (int) $this->quest_location_id : null,
+                'game_location_id' => $this->venue_mode === 'indoor' ? (int) $this->game_location_id : null,
             ]);
 
             $this->resetForm();
@@ -115,14 +145,22 @@ class QuestionnaireCreateForm extends Component
             'start_date', 
             'end_date', 
             'max_attempts', 
-            'is_active'
+            'is_active',
+            'venue_mode',
+            'quest_location_id',
+            'game_location_id',
+            'counts_toward_finish',
         ]);
         
         // Set default values
         $this->time_limit = 30;
         $this->max_attempts = '1';
-        $this->start_date = now()->format('Y-m-d');
-        $this->end_date = now()->addDays(7)->format('Y-m-d');
+        // No window by default. This used to pre-fill "today → +7 days" behind a red asterisk, so
+        // every new questionnaire quietly closed a week later — the very way every active one on this
+        // install once expired unnoticed. A window is still one click away when it is wanted.
+        $this->start_date = '';
+        $this->end_date = '';
+        $this->counts_toward_finish = true;
         $this->is_active = false;
         $this->isSubmitting = false;
     }
@@ -164,6 +202,9 @@ class QuestionnaireCreateForm extends Component
 
     public function render()
     {
-        return view('livewire.admin.questionnaire-create-form');
+        return view('livewire.admin.questionnaire-create-form', [
+            'questLocations' => \App\Models\QuestLocation::where('is_active', true)->orderBy('name')->get(['id', 'name']),
+            'gameLocations' => \App\Models\GameLocation::where('is_active', true)->orderBy('name')->get(['id', 'name']),
+        ]);
     }
 }

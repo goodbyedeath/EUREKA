@@ -94,7 +94,7 @@
                    wire:model.live.debounce.500ms="time_limit" 
                    id="time_limit"
                    min="1"
-                   max="300"
+                   max="1440"
                    placeholder="30"
                    class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 @error('time_limit') border-red-300 focus:border-red-500 focus:ring-red-500 @enderror">
             @error('time_limit') 
@@ -124,7 +124,7 @@
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
             <label for="start_date" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Start Date <span class="text-red-500">*</span>
+                Mulai berlaku
             </label>
             <input type="date" 
                    wire:model.live="start_date" 
@@ -138,7 +138,7 @@
 
         <div>
             <label for="end_date" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                End Date <span class="text-red-500">*</span>
+                Berakhir
             </label>
             <input type="date" 
                    wire:model.live="end_date" 
@@ -151,6 +151,57 @@
         </div>
     </div>
 
+    <p class="-mt-2 text-xs text-gray-500 dark:text-gray-400">
+        Opsional. Kosongkan keduanya agar kuesioner selalu berlaku sampai dinonaktifkan — kalau diisi, kuesioner
+        tidak bisa discan di luar tanggal itu.
+    </p>
+
+    <!-- Post: the same control the edit form has. Without one, the station gate refuses every scan. -->
+    <div class="rounded-md border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/30 p-3 space-y-3"
+         x-data="{ mode: @entangle('venue_mode') }">
+        <div>
+            <p class="text-sm font-medium text-gray-900 dark:text-gray-100">Pos</p>
+            <p class="text-xs text-gray-600 dark:text-gray-400">
+                Tim hanya bisa scan kuesioner ini setelah scan QR START dan check-in di pos yang dipilih
+                (outdoor: check-in GPS; indoor: pos dibuka kru di Outpost Access). Tanpa pos, kuesioner tidak bisa discan.
+            </p>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+                <label for="venue_mode" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Venue</label>
+                <select id="venue_mode" x-model="mode"
+                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-gray-100">
+                    <option value="">— Belum ditentukan —</option>
+                    <option value="outdoor">Outdoor (check-in GPS)</option>
+                    <option value="indoor">Indoor (dibuka kru)</option>
+                </select>
+                @error('venue_mode') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
+            </div>
+            <div x-show="mode === 'outdoor'" x-cloak>
+                <label for="quest_location_id" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Pos outdoor (Quest Location)</label>
+                <select id="quest_location_id" wire:model="quest_location_id"
+                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-gray-100">
+                    <option value="">— Pilih pos —</option>
+                    @foreach($questLocations as $location)
+                        <option value="{{ $location->id }}">{{ $location->name }}</option>
+                    @endforeach
+                </select>
+                @error('quest_location_id') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
+            </div>
+            <div x-show="mode === 'indoor'" x-cloak>
+                <label for="game_location_id" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Pos indoor (Game Location)</label>
+                <select id="game_location_id" wire:model="game_location_id"
+                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-gray-100">
+                    <option value="">— Pilih pos —</option>
+                    @foreach($gameLocations as $location)
+                        <option value="{{ $location->id }}">{{ $location->name }}</option>
+                    @endforeach
+                </select>
+                @error('game_location_id') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
+            </div>
+        </div>
+    </div>
+
     <!-- Active Status -->
     <div class="flex items-center">
         <input type="checkbox" 
@@ -160,6 +211,17 @@
         <label for="is_active" class="ml-2 block text-sm text-gray-700 dark:text-gray-300">
             Make questionnaire active immediately
         </label>
+    </div>
+
+    <div>
+        <div class="flex items-center">
+            <input type="checkbox" wire:model="counts_toward_finish" id="counts_toward_finish"
+                   class="h-4 w-4 text-indigo-600 dark:text-indigo-400 focus:ring-indigo-500 border-gray-300 dark:border-gray-600 rounded">
+            <label for="counts_toward_finish" class="ml-2 block text-sm text-gray-700 dark:text-gray-300">Counts toward finishing</label>
+        </div>
+        <p class="ml-6 text-xs text-gray-500 dark:text-gray-400">
+            Biarkan menyala untuk pos biasa. Matikan untuk pos bonus: tetap memberi poin, tapi jam race tim tidak menunggunya.
+        </p>
     </div>
 
     <!-- Action Buttons -->
