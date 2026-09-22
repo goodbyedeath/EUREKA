@@ -45,45 +45,6 @@
         <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ strlen($description) }}/1000 characters</p>
     </div>
 
-    <!-- Photo Upload Field -->
-    <div>
-        <label for="photo" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Photo</label>
-        <div class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 dark:border-gray-600 border-dashed rounded-md hover:border-indigo-400 transition-colors">
-            <div class="space-y-1 text-center">
-                @if($photo)
-                    <div class="mb-4">
-                        {{-- No thumbnail before saving: Livewire's preview URL keeps its signature
-                             in the query string, and this host's image optimisation re-fetches any
-                             path ending in an image extension without it, so it 401s. The upload is
-                             unaffected — the photo saves and is shown from /storage afterwards. --}}
-                        <div class="text-center">
-                            <i class="fas fa-image text-gray-400 dark:text-gray-500 text-2xl"></i>
-                            <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">Photo selected: {{ $photo->getClientOriginalName() }}</p>
-                        </div>
-                        
-                        <button type="button" wire:click="$set('photo', null)" class="mt-2 text-sm text-red-600 dark:text-red-400 hover:text-red-800">
-                            Remove Photo
-                        </button>
-                    </div>
-                @else
-                    <i class="fas fa-cloud-upload-alt text-gray-400 dark:text-gray-500 text-3xl"></i>
-                    <div class="text-sm text-gray-600 dark:text-gray-400">
-                        <label for="photo" class="relative cursor-pointer bg-white dark:bg-gray-800 rounded-md font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-indigo-500">
-                            <span>Upload a photo</span>
-                            <input wire:model="photo" id="photo" name="photo" type="file" class="sr-only" accept="image/*">
-                        </label>
-                        <p class="pl-1">or drag and drop</p>
-                    </div>
-                    <p class="text-xs text-gray-500 dark:text-gray-400">PNG, JPG up to 2MB</p>
-                @endif
-            </div>
-        </div>
-        @error('photo') 
-            <p class="mt-2 text-sm text-red-600 dark:text-red-400">{{ $message }}</p> 
-        @enderror
-        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Optional: Add a photo that will be displayed when teams view this questionnaire</p>
-    </div>
-
     <!-- Time Limit and Max Attempts Row -->
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>

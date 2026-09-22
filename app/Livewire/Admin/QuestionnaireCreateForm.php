@@ -4,14 +4,12 @@
 namespace App\Livewire\Admin;
 
 use Livewire\Component;
-use Livewire\WithFileUploads;
 use App\Models\Questionnaire;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
 
 class QuestionnaireCreateForm extends Component
 {
-    use \App\Livewire\Concerns\GuardsFileUploads;
     // No #[Validate] attributes here any more: they ran on every keystroke with rules that disagreed
     // with the ones used on save — duration capped at 300 instead of 1440, the start date required
     // though it is optional, and "Tak terbatas" for attempts flagged as missing. rules() below is the
@@ -20,7 +18,9 @@ class QuestionnaireCreateForm extends Component
 
     public string $description = '';
 
-    public $photo = null;
+    // No photo field (operator, 22 Sep). Only the retired web participant view ever showed one and the
+    // app never receives it, so it was a field that changed nothing a player could see. photo_path
+    // stays on the model for the rows that already have one.
 
     /** Untyped on purpose: a cleared number input sends '', which an int property silently turned back into 30. */
     public $time_limit = 30;
@@ -62,7 +62,6 @@ class QuestionnaireCreateForm extends Component
         return [
             'title' => 'required|string|max:255',
             'description' => 'nullable|string|max:1000',
-            'photo' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             // The same range as the edit form, so what one accepts the other does too.
             'time_limit' => 'required|integer|min:1|max:1440',
             // Optional: a questionnaire with no window is simply open until switched off.
@@ -98,21 +97,9 @@ class QuestionnaireCreateForm extends Component
         try {
             $this->validate();
 
-            $photoPath = null;
-            if ($this->photo) {
-                try {
-                    $photoPath = $this->photo->store('questionnaire-photos', 'public');
-                } catch (\Exception $e) {
-                    \Log::error('Photo upload failed: ' . $e->getMessage());
-                    session()->flash('message', 'Photo upload failed, but questionnaire was created without photo.');
-                    session()->flash('message_type', 'warning');
-                }
-            }
-
             $questionnaire = Questionnaire::create([
                 'title' => trim($this->title),
                 'description' => trim($this->description),
-                'photo_path' => $photoPath,
                 'time_limit' => $this->time_limit,
                 'qr_code' => (string) Str::uuid(),
                 'created_by' => auth()->id(),
@@ -150,7 +137,6 @@ class QuestionnaireCreateForm extends Component
         $this->reset([
             'title', 
             'description', 
-            'photo',
             'time_limit', 
             'start_date', 
             'end_date', 
@@ -177,25 +163,7 @@ class QuestionnaireCreateForm extends Component
 
     public function updated($propertyName)
     {
-        // Validate photo separately with custom logic
-        if ($propertyName === 'photo' && $this->photo) {
-            if (!in_array($this->photo->getClientOriginalExtension(), ['jpg', 'jpeg', 'png', 'gif'])) {
-                $this->addError('photo', 'The photo must be a valid image file (jpg, jpeg, png, gif).');
-                $this->photo = null;
-                return;
-            }
-            
-            if ($this->photo->getSize() > 2048 * 1024) { // 2MB in bytes
-                $this->addError('photo', 'The photo must not be larger than 2MB.');
-                $this->photo = null;
-                return;
-            }
-        }
-        
-        // Skip other validation for photo uploads due to temporary file issues
-        if ($propertyName !== 'photo') {
-            $this->validateOnly($propertyName);
-        }
+        $this->validateOnly($propertyName);
         
         // A start date no longer fills in an end date a week later. An empty end means open-ended,
         // and an end before the start is a validation message, not something to fix up silently.
