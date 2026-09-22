@@ -101,7 +101,8 @@ class QuestionnaireCreateForm extends Component
                 'title' => trim($this->title),
                 'description' => trim($this->description),
                 'time_limit' => $this->time_limit,
-                'qr_code' => (string) Str::uuid(),
+                // The system's one generator, shared with duplication and the QR Code Manager.
+                'qr_code' => \App\Services\QuestionnaireService::generateUniqueQrCode(),
                 'created_by' => auth()->id(),
                 'start_date' => $this->start_date ? Carbon::parse($this->start_date) : null,
                 'end_date' => $this->end_date ? Carbon::parse($this->end_date) : null,
