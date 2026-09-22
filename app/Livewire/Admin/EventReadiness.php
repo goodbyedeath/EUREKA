@@ -189,6 +189,10 @@ class EventReadiness extends Component
             $q->questions_count ? null : 'belum ada pertanyaan',
             $q->isAvailable() ? null : 'di luar tanggal berlaku',
             $q->qr_code ? null : 'belum punya QR',
+            // The offline copy of a questionnaire is sealed with its QR code, so the code is also the
+            // key. The generated ones are 36-character UUIDs; a short hand-typed code can be guessed,
+            // and with it the questions read before anyone reaches the post.
+            $q->qr_code && mb_strlen(trim((string) $q->qr_code)) < 16 ? 'kode QR pendek — soal offline-nya bisa ditebak tanpa ke pos' : null,
         ]));
     }
 

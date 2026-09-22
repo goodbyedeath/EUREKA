@@ -1308,6 +1308,80 @@ Queue player actions taken offline (`save-answer`, `checkin`) and replay them wh
 **with backoff** — and drop a queued item on a `4xx` rather than retrying it forever, because a
 rejected answer will be rejected again.
 
+### Offline, phase 1 — questionnaires, questions and the floor plan  ·  22 Sep
+
+The operator's requirement from the start: the app keeps working when the internet drops. Until now
+the manifest carried maps, models and pictures but **no quiz content and no floor plan** — on purpose,
+because questionnaires are QR-gated and shipping them ahead of time would hand a team the whole hunt.
+So a questionnaire could not survive a dead network however well the app was built. That gap was the
+server's. It is closed like this:
+
+```
+GET /api/v1/offline/manifest   (new fields)
+{ "content_updated_at": "2026-09-22T15:08:10+00:00",
+  "offline_crypto": { "version": 1, "kdf": "PBKDF2-HMAC-SHA256", "iterations": 100000,
+                      "salt": "<base64, 16 bytes>", "cipher": "AES-256-GCM" },
+  "questionnaires": [ {
+      "id": 40, "qr_hash": "<hex>",
+      "venue_mode": "outdoor", "quest_location_id": 36, "game_location_id": null,
+      "counts_toward_finish": true, "time_limit": 30, "start_date": null, "end_date": null,
+      "question_count": 5,
+      "sealed": { "nonce": "<base64, 12 bytes>", "ciphertext": "<base64, ciphertext ‖ 16-byte tag>" },
+      "assets": [ { "ref": "a1", "url": "https://…/api/v1/offline/questionnaires/40/assets/a1" } ] } ],
+  "indoor_map": { "map": { … }, "spots": [ … ] }   // exactly /indoor-map's shape, or null
+}
+```
+
+**Every questionnaire is sealed with the QR code printed at its post.** The phone holds all of them
+from Sync, but can read one only after scanning its code — there, with no network. Before that it is
+ciphertext, and the manifest never contains the code itself. Implement exactly:
+
+```
+code    = the scanned string, trimmed            (what you already send to qr/lookup)
+master  = PBKDF2-HMAC-SHA256(password = code as UTF-8, salt = offline_crypto.salt,
+                             iterations = offline_crypto.iterations, length = 32 bytes)
+qr_hash = lowercase hex of HMAC-SHA256(key = master, data = "questerra/qr-id")
+key     = HMAC-SHA256(key = master, data = "questerra/enc")          → the AES-256 key
+```
+
+- **Which questionnaire was scanned:** compute `qr_hash` once and look for it among `questionnaires`.
+  No match means the code is a START code, a login card, or not this event's — handle it as today.
+- **Open it:** AES-256-GCM, `Cipher.getInstance("AES/GCM/NoPadding")`, `GCMParameterSpec(128, nonce)`,
+  `updateAAD("questerra/questionnaire/{id}")` (UTF-8), then `doFinal(ciphertext)` — the tag is already
+  appended, which is what Java expects. The plaintext is JSON: `{ title, description, questions[] }`,
+  each question exactly the shape `quiz/start` sends.
+- **Pictures:** a question's `image_urls` and `frame_url` hold `"asset:<ref>"` instead of a URL. During
+  Sync download every `assets[].url` (with the token, one after another — they count against the
+  120/min budget). Each body is `nonce(12) ‖ ciphertext ‖ tag(16)`, opened with the same key and
+  `AAD = "questerra/asset/{id}/{ref}"`. A value that is already `https://…` was hosted elsewhere and
+  could not be sealed; fetch it as before.
+- `SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256")` does the KDF (API 26+). 100,000 iterations
+  is ~0.1–0.3 s on a phone — once per scan, not per question.
+- **No right answer is in there**, sealed or not — the same rule as online. Don't look for one.
+- Keep decrypted content in memory or `EncryptedFile`, never plain storage, and don't persist the
+  scanned code. The point of all this is that a team cannot read a post's questions without having
+  stood at it; a decrypted copy lying in plain storage undoes that.
+
+**What phase 1 lets a team do with no signal, and what it does not:**
+
+1. **The floor plan opens offline.** Render `indoor_map` when `/indoor-map` cannot be reached; its
+   pictures are in `images`. `is_open` is as of the Sync. A post the crew opens reaches the phone only
+   through the venue WiFi — the operator's decision: indoor venues are expected to have it.
+2. **A questionnaire started online keeps going offline.** Starting still needs signal: `quiz/start`
+   is where the server checks the station gate and starts the clock. Once it has answered, render
+   the questions from the sealed local copy (open it with the code just scanned) so a weak connection
+   never has to download pictures mid-session, and if the network then drops, carry on: answers into
+   the write queue, `submit` queued, `quiz/continue` served from your cache of the `quiz/start` reply.
+3. **Scanning a post with no signal:** match `qr_hash`, say which questionnaire it is and that the
+   start needs a moment of signal — **do not show its questions yet.** Showing them before
+   `quiz/start` would give the team time the server's clock does not count. (Phase 2 will allow
+   starting offline; not yet.)
+4. **The clock offline:** count down from the `time_remaining` the server last gave you with a
+   monotonic clock (`SystemClock.elapsedRealtime()`), never the wall clock.
+5. **Stale copy:** `content_updated_at` is on the manifest and on every `/race/status`. Newer than the
+   one stored with your Sync means the crew edited a questionnaire, a question or a floor plan — Sync
+   again when you have signal. Do not wipe anything on a failed poll.
+
 ---
 
 ## 11. Traps — things that have already bitten someone

@@ -1117,27 +1117,8 @@ class QuizController extends Controller
      */
     private function questionRow($question): array
     {
-        $row = $question->toArray();
-        $row['image_urls'] = collect((array) ($question->images ?? []))
-            ->filter(fn ($p) => is_string($p) && $p !== '')
-            ->map(fn ($p) => preg_match('#^https?://#i', $p) ? $p : Storage::disk('public')->url($p))
-            ->values()
-            ->all();
-
-        // foto bersama: the PNG the app lays over the camera, and the words it offers when the
-        // team shares the result. Absolute, like image_urls, for the same reason.
-        $row['frame_url'] = $question->frame_path ? Storage::disk('public')->url($question->frame_path) : null;
-        $row['share_caption'] = $question->share_caption;
-
-        // Tebak Gambar: the boxes the team fills — label and letter count only. answer_slots holds
-        // the right answers, so it is removed unconditionally here, whatever the type and whoever
-        // selected the column: this is the one place every question leaves the server through.
-        unset($row['answer_slots']);
-        $row['slots'] = $question->type === QuestionType::PICTURE_PUZZLE->value
-            ? \App\Services\PicturePuzzle::publicSlots($question)
-            : null;
-
-        return $row;
+        // One door for every question, shared with the offline manifest — see QuestionPayload.
+        return \App\Support\QuestionPayload::forApp($question);
     }
 
     /**

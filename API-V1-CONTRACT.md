@@ -6,6 +6,12 @@ Generated from the live router on questerra-series.com. Base URL `https://queste
 
 Act on these — several change responses your app already handles.
 
+**Latest (22 Sep, second change): offline phase 1.** `/offline/manifest` gains `questionnaires[]` — each
+sealed with AES-256-GCM under a key derived from its post's QR code (PBKDF2-HMAC-SHA256, 100k) — plus
+`offline_crypto`, `indoor_map` (the team's plan, `/indoor-map`'s shape) and `content_updated_at`, which
+`/race/status` now carries too. New: `GET /offline/questionnaires/{id}/assets/{ref}` — one encrypted
+question picture. Starting a questionnaire still needs signal. Build guide §10; work order §28.
+
 **Latest (22 Sep): `/guidance` removed.** `GET /api/v1/guidance` and `/guidance/{id}` are gone (404).
 The per-team briefing had no admin screen and was always empty; the app dropped its page in v43.
 Delete the wrapper. Work order §27.

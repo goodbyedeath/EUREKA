@@ -227,12 +227,15 @@ class RaceController extends Controller
         $resetAt = \App\Models\RaceReset::lastAt()?->toIso8601String();
 
         if (! $session) {
-            return response()->json(['success' => true, 'race' => null, 'race_reset_at' => $resetAt]);
+            return response()->json(['success' => true, 'race' => null, 'race_reset_at' => $resetAt,
+                'content_updated_at' => \App\Http\Controllers\Api\OfflineController::contentUpdatedAt()]);
         }
 
         return response()->json([
             'success' => true,
             'race_reset_at' => $resetAt,
+            // Newer than the value stored at Sync means the crew edited a questionnaire or a plan.
+            'content_updated_at' => \App\Http\Controllers\Api\OfflineController::contentUpdatedAt(),
             'race' => [
                 'session_id' => $session->id,
                 'started_at' => $session->started_at?->toIso8601String(),

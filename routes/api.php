@@ -74,6 +74,11 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
 
         Route::get('/offline/manifest', [\App\Http\Controllers\Api\OfflineController::class, 'manifest'])
             ->name('offline.manifest');
+        // A sealed questionnaire's picture, encrypted with its post's QR code. No image extension on
+        // the path: this host strips the query string from those, and it keeps the ref opaque.
+        Route::get('/offline/questionnaires/{questionnaire}/assets/{ref}', [\App\Http\Controllers\Api\OfflineController::class, 'questionnaireAsset'])
+            ->where('ref', 'a[0-9]{1,4}')
+            ->name('offline.questionnaire-asset');
 
         // The route line for the outdoor map, drawn in the tracker app and copied here.
         Route::get('/map/routes', [\App\Http\Controllers\Api\MapRouteController::class, 'index'])

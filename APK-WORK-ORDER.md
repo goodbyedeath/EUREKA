@@ -787,6 +787,38 @@ first-sight guard (build guide §2c) and re-downloading the floor plan when its 
 
 ---
 
+## 28 — Offline, phase 1: questionnaires and the floor plan survive a dead network  ·  22 Sep
+
+The operator found that the floor plan, questionnaires and questions do not work offline, and asked
+whether the server or the app was at fault. **The server.** The contract told you to pre-download
+everything in `/offline/manifest`, and the manifest never contained quiz content or the floor plan;
+questions only ever came from `quiz/start`. You built what was specified. It now carries them.
+
+Build guide §10, "Offline, phase 1", has the whole spec. In short:
+
+1. **Sync** also stores `questionnaires[]` (sealed) and downloads every `assets[].url` (encrypted
+   pictures), plus `indoor_map` and its pictures from `images`.
+2. **Floor plan offline** from `indoor_map` when `/indoor-map` cannot be reached.
+3. **Scan → `qr_hash`** to know which questionnaire it is, with no network; open it with the key from
+   the scanned code. The crypto is exact — PBKDF2-HMAC-SHA256 100k, two HMAC labels, AES-256-GCM with
+   AAD. Get one byte wrong and nothing opens, so test against the server early.
+4. **Starting still needs signal** (`quiz/start`). Once started, render from the local copy and carry
+   on through a dropped connection: answers and submit queued, the clock on `elapsedRealtime()`.
+   With no signal at scan time, name the questionnaire and ask for a moment of signal — do not show
+   its questions.
+5. **Re-sync** when `/race/status`'s `content_updated_at` is newer than the one you stored.
+
+Decisions behind it, so you do not relitigate them: questions travel sealed rather than in the clear,
+because a team must not read a post's questions before standing at it (operator, 22 Sep); indoor posts
+the crew opens need the venue WiFi (operator, 22 Sep); starting offline is phase 2, not this.
+
+**Done when:** in airplane mode after a Sync, the floor plan opens; a questionnaire started with signal
+survives the signal dropping — questions, pictures, answers, submit — and uploads when it returns; a
+post scanned with no signal is named but not opened; and nothing readable about a questionnaire is in
+the app's storage before its code has been scanned.
+
+---
+
 ## Talking back — the channel runs both ways now
 
 Until today this was one-way: the server published, you consumed, and anything you had to say

@@ -58,10 +58,26 @@ class IndoorMapController extends Controller
             ], 404);
         }
 
-        $open = $this->openLocationIdsFor($request->user());
+        return response()->json(['success' => true] + $this->payload($map, $request->user()));
+    }
 
-        return response()->json([
-            'success' => true,
+    /**
+     * The player's own plan, shaped exactly as apiShow() answers — for the offline manifest, so a team
+     * that synced can open its floor plan with no signal. Null when the player has no plan to read.
+     */
+    public function offlinePayloadFor(?\App\Models\User $user): ?array
+    {
+        $map = $this->resolve(null, $user);
+
+        return $map ? $this->payload($map, $user) : null;
+    }
+
+    /** `map` and `spots`, the one shape both the live endpoint and the offline copy use. */
+    private function payload(IndoorMap $map, ?\App\Models\User $user): array
+    {
+        $open = $this->openLocationIdsFor($user);
+
+        return [
             'map' => [
                 'id' => $map->id,
                 'name' => $map->name,
@@ -90,8 +106,8 @@ class IndoorMapController extends Controller
                 // the crew has just opened for them — otherwise the map is a wall of
                 // identical markers with no indication of where to go next.
                 'is_open' => $s->game_location_id !== null && $open->contains($s->game_location_id),
-            ])->values(),
-        ]);
+            ])->values()->all(),
+        ];
     }
 
     /**
