@@ -939,14 +939,12 @@ outposts — a stage, an entrance, a photo with a caption. Those have `game_loca
 `is_open` says whether that spot's post is open for this team; it is always false when `is_post` is
 false. `game_location_id` is the AR outpost the marker stands for.
 
-**A correct START clue opens every post on the plan** (operator, 15 Sep — your #21). When
-`POST /race/clue/{map}` returns `correct: true, already_solved: false`, the server has written an
-open unlock for this team on every active spot of that plan that has a `game_location_id`. It is the
-same row the crew's Outpost Access panel writes, so `is_open`, the station gate (`checkin_required`,
-indoor) and the AR gate (`awaiting_unlock`) all agree at once. **The crew can still close a post** for
-a team afterwards, and answering the clue again (`already_solved: true`) does not reopen it.
-`is_open` stays the only field to read — there is no `unlocked_by`. Re-read the plan after a correct
-answer. A plan with no clue opens nothing by itself: the crew opens its posts.
+**A correct START clue opens the floor plan and nothing else** (operator, 22 Sep — this reverses the
+15 Sep rule from your #21, under which a correct clue opened every post on the plan). Each AR Outpost
+opens only when the team reaches it: the facilitator at that post tells the admin, and the admin
+opens it for that team in Outpost Access. Until then `is_open` is false, the AR gate answers
+`awaiting_unlock` and the station gate `checkin_required` — the waiting state, not an error.
+`is_open` stays the only field to read; re-read the plan while waiting (the 30 s you already use).
 
 The clue gates nothing else on the server: `/indoor-map` and `qr/lookup` do not check
 `clue_solved`. Until it is solved no post is open, so the station gate already refuses indoor scans.

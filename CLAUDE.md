@@ -80,9 +80,9 @@ questionnaires. The AR scene itself and every gate — START, clue, check-in or 
 `qr/lookup`, `quiz/start` — still need the server. A session already started survives a dropped
 connection.
 
-**Open, for the operator to decide:** a correct START clue currently also unlocks *every* AR Outpost
-on the team's plan (`RaceController::openPostsAfterClue`, added 15 Sep from APK report #21), which
-bypasses Outpost Access. Do not describe the flow above as what the server does until that is settled.
+**Decided 22 Sep:** the START clue opens the floor plan only. Until then a correct clue unlocked every
+AR Outpost on the plan (`openPostsAfterClue`, from APK #21 on 15 Sep), bypassing Outpost Access; that
+rule is removed. Posts open only through Outpost Access (indoor) or the GPS radius (outdoor).
 
 ## Conventions worth following
 

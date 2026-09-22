@@ -198,8 +198,10 @@ class RaceController extends Controller
             ]);
         }
 
+        // The clue leads to the floor plan and opens nothing else. Each AR Outpost is opened by the
+        // admin in Outpost Access once the facilitator reports the team has arrived (operator,
+        // 22 Sep) — reversing the 15 Sep rule that opened every post on the plan here.
         $session->update(['clue_solved_at' => now()]);
-        $this->openPostsAfterClue($session, $map);
 
         return redirect()->route('user.indoor-map', $map->id);
     }
@@ -296,8 +298,10 @@ class RaceController extends Controller
             ]);
         }
 
+        // The clue leads to the floor plan and opens nothing else. Each AR Outpost is opened by the
+        // admin in Outpost Access once the facilitator reports the team has arrived (operator,
+        // 22 Sep) — reversing the 15 Sep rule that opened every post on the plan here.
         $session->update(['clue_solved_at' => now()]);
-        $this->openPostsAfterClue($session, $map);
 
         return response()->json([
             'success' => true,
@@ -305,28 +309,6 @@ class RaceController extends Controller
             'already_solved' => false,
             'indoor_map_id' => $map->id,
         ]);
-    }
-
-    /**
-     * A correct START clue opens every post on that floor plan for the team (operator, 15 Sep — APK
-     * report #21). It writes the same unlock rows the crew's Outpost Access panel writes, so the
-     * floor plan's is_open, the station gate and the AR gate all agree without a second rule — and
-     * the crew can still close a post for that team afterwards, as they always could.
-     */
-    private function openPostsAfterClue(RaceSession $session, IndoorMap $map): void
-    {
-        $locationIds = \App\Models\IndoorMapSpot::where('indoor_map_id', $map->id)
-            ->where('is_active', true)
-            ->whereNotNull('game_location_id')
-            ->distinct()
-            ->pluck('game_location_id');
-
-        foreach ($locationIds as $locationId) {
-            \App\Models\GameLocationUnlock::updateOrCreate(
-                ['game_location_id' => $locationId, 'user_id' => $session->user_id],
-                ['granted_by' => null, 'granted_at' => now(), 'revoked_at' => null],
-            );
-        }
     }
 
     private function sessionFor(Request $request, IndoorMap $map): ?RaceSession

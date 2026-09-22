@@ -819,6 +819,21 @@ the app's storage before its code has been scanned.
 
 ---
 
+## 29 — The START clue opens the plan, not the posts  ·  22 Sep
+
+The operator, 22 Sep: the 3D Camera at an indoor post opens only when the team is there — the
+facilitator reports it and the admin opens that post in Outpost Access. The 15 Sep rule from your #21,
+under which a correct START clue opened every post on the plan at once, bypassed that and is removed.
+
+Nothing changes on the wire. After a correct clue, expect every post on the plan `is_open: false` and
+`/ar/locations/{id}` answering `awaiting_unlock` until the crew opens it. If the app ever treated a
+correct clue as "posts are open", take that out.
+
+**Done when:** after answering the START clue, no post shows open and the 3D Camera waits for the
+crew; opening one post in Outpost Access opens that post alone, within one re-check.
+
+---
+
 ## Talking back — the channel runs both ways now
 
 Until today this was one-way: the server published, you consumed, and anything you had to say

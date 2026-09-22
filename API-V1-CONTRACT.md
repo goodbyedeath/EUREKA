@@ -6,6 +6,10 @@ Generated from the live router on questerra-series.com. Base URL `https://queste
 
 Act on these — several change responses your app already handles.
 
+**Latest (22 Sep, third change): the START clue no longer opens posts.** A correct `race/clue` answer
+leads to the floor plan and opens nothing; every AR Outpost opens only through the crew (Outpost
+Access). Reverses the 15 Sep rule from #21. No shape changed. Build guide §8; work order §29.
+
 **Latest (22 Sep, second change): offline phase 1.** `/offline/manifest` gains `questionnaires[]` — each
 sealed with AES-256-GCM under a key derived from its post's QR code (PBKDF2-HMAC-SHA256, 100k) — plus
 `offline_crypto`, `indoor_map` (the team's plan, `/indoor-map`'s shape) and `content_updated_at`, which

@@ -114,7 +114,7 @@ class EventReadiness extends Component
                 $plan && $mySpots->isEmpty() ? 'denah belum punya penanda' : null,
                 $plan && $mySpots->isNotEmpty() && $myPosts->isEmpty() ? 'tidak satu pun penanda terhubung ke pos' : null,
                 $unlinked->isNotEmpty() && $myPosts->isNotEmpty() ? $unlinked->count().' penanda belum terhubung ke pos' : null,
-                $plan && blank($plan->clue_answer) ? 'denah tanpa jawaban clue (pos terbuka otomatis setelah START)' : null,
+                $plan && blank($plan->clue_answer) ? 'denah tanpa jawaban clue — di aplikasi tim tidak bisa melewati pertanyaan START' : null,
             ]) : [];
 
             $problems = array_values(array_filter(array_merge(
