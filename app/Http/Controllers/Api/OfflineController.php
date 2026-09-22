@@ -63,9 +63,9 @@ class OfflineController extends Controller
         // screen from this manifest lists the outposts in the same order.
         $gameLocations = GameLocation::where('is_active', true)
             ->orderBy('created_at', 'desc')
-            ->with(['arModel', 'questLocation', 'hotspots.arModel'])
+            ->with(\App\Http\Controllers\ArExperienceController::sceneRelations())
             ->get(['id', 'name', 'ar_model_path', 'ar_model_id', 'ar_sky_path', 'experience_type',
-                'latitude', 'longitude', 'radius', 'quest_location_id']);
+                'latitude', 'longitude', 'radius', 'quest_location_id', 'access_mode']);
 
         // Every model a team could see: the location default plus any object that
         // overrides it. Resolved through modelUrl() so library-backed and legacy
@@ -109,6 +109,16 @@ class OfflineController extends Controller
 
         // The team's own floor plan, exactly as /indoor-map answers — so the plan screen opens with
         // no signal. is_open is as of this sync; a crew opening a post needs the venue WiFi.
+        // Every AR Outpost's scene — which objects, where, and what a tap shows — exactly as
+        // /ar/locations answers once the post is open, so the 3D Camera renders with no signal
+        // (operator, 22 Sep: the app is installed for the event and removed after it, so the
+        // clues travel in the clear). The gate is not in here: indoor still waits for the crew.
+        $ar = app(\App\Http\Controllers\ArExperienceController::class);
+        $scenes = $gameLocations->filter->usesAr()->mapWithKeys(fn ($g) => [$g->id => $ar->scenePayload($g)]);
+        $images = $images
+            ->merge($scenes->flatMap(fn ($scene) => collect($scene['objects'])->pluck('image')))
+            ->filter()->unique()->values();
+
         $indoorMap = app(\App\Http\Controllers\IndoorMapController::class)->offlinePayloadFor(request()->user());
         if ($indoorMap) {
             $images = $images
@@ -173,6 +183,9 @@ class OfflineController extends Controller
                 'radius' => $g->resolvedRadius(),
                 'coordinate_source' => $g->coordinateSource(),
                 'quest_location_id' => $g->quest_location_id,
+                'access_mode' => $g->access_mode ?: 'geofence',
+                // The /ar/locations body minus `success`, or null for an outpost with no 3D model.
+                'scene' => $scenes[$g->id] ?? null,
             ])->values(),
             // The same lines /map/routes serves, so a team that synced can draw the route with
             // no signal at all. Empty until the crew switches a route on.

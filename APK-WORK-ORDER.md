@@ -834,6 +834,27 @@ crew; opening one post in Outpost Access opens that post alone, within one re-ch
 
 ---
 
+## 30 — The 3D Camera offline, and the plan behind the clue  ·  22 Sep
+
+Operator, 22 Sep: the 3D Camera must work with no internet — the objects *and* where the admin placed
+them. Every AR Outpost's scene is now in `/offline/manifest` as `game_locations[].scene`, identical to
+what `/ar/locations/{id}` returns once open (verified on both live posts: 5 and 3 objects).
+
+1. **Sync** keeps `scene` per outpost; its models are in `models`, its tap pictures in `images`.
+2. **Indoor:** render the synced scene when the post is open for the team (`is_open`, over the venue
+   WiFi) — the crew's opening is still the gate.
+3. **Outdoor:** judge the radius from the phone's own GPS against `scene.location`; fully offline.
+4. Online, `/ar/locations` as before; the synced scene is the fallback, not a replacement for the gate.
+5. **The floor plan** — live or synced — opens only after the START clue is answered (build guide §8).
+
+The clues are in the clear on purpose (operator: the app lives on the phone for the event only).
+
+**Done when:** in airplane mode after a Sync, an outdoor post's 3D Camera opens inside its radius and
+plays; an indoor post opened by the crew plays with no download; an unopened indoor post still waits;
+and the floor plan does not show before the clue is answered.
+
+---
+
 ## Talking back — the channel runs both ways now
 
 Until today this was one-way: the server published, you consumed, and anything you had to say

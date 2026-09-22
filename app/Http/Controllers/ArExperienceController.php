@@ -243,9 +243,7 @@ class ArExperienceController extends Controller
      */
     public function apiShow(Request $request, $id)
     {
-        $gameLocation = GameLocation::with(['arModel', 'questLocation', 'hotspots.arModel', 'hotspots' => function ($query) {
-            $query->where('is_active', true)->orderBy('tour_order');
-        }])->findOrFail($id);
+        $gameLocation = GameLocation::with(self::sceneRelations())->findOrFail($id);
 
         if (! $gameLocation->usesAr()) {
             return response()->json([
@@ -294,8 +292,25 @@ class ArExperienceController extends Controller
             }
         }
 
-        return response()->json([
-            'success' => true,
+        return response()->json(['success' => true] + $this->scenePayload($gameLocation));
+    }
+
+    /** What a scene needs loaded: the model, the linked quest location, and the active objects in order. */
+    public static function sceneRelations(): array
+    {
+        return ['arModel', 'questLocation', 'hotspots.arModel', 'hotspots' => function ($query) {
+            $query->where('is_active', true)->orderBy('tour_order');
+        }];
+    }
+
+    /**
+     * The scene as the app renders it — `location` and `objects` — shared by the live endpoint and
+     * the offline manifest, so a scene synced before the event is the scene the server would
+     * have answered with. Load the location with sceneRelations() first.
+     */
+    public function scenePayload(GameLocation $gameLocation): array
+    {
+        return [
             'location' => [
                 'id' => $gameLocation->id,
                 'name' => $gameLocation->name,
@@ -311,8 +326,8 @@ class ArExperienceController extends Controller
                 // client should show a waiting state rather than a distance.
                 'access_mode' => $gameLocation->access_mode ?: 'geofence',
             ],
-            'objects' => $gameLocation->hotspots->map(fn ($h) => $this->placeHotspot($h))->values(),
-        ]);
+            'objects' => $gameLocation->hotspots->map(fn ($h) => $this->placeHotspot($h))->values()->all(),
+        ];
     }
 
     /**

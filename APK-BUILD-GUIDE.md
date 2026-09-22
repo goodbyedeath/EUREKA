@@ -925,6 +925,12 @@ does what it already does: **read `race.indoor_map_id` from `/race/status` and a
 Asking for a plan that is not the team's is a **404** — another team's plan is a map of where they
 are going. So never keep a plan id from an earlier race or a cached list; take it from the race.
 
+**Show the plan only after the START clue is answered** — the live one and the synced copy alike
+(22 Sep). The API does not hold `/indoor-map` back, and since offline phase 1 the plan is on the
+phone from Sync, before START; the clue is the gate, and the app is where it is kept. Open the plan
+when `POST /race/clue/{map}` answers `correct: true`, or when `/race/status` says `clue_solved: true`;
+until then show the clue.
+
 Two things to get right:
 
 - **`spots` is top level, not inside `map`.** Easy to mis-nest.
@@ -1359,6 +1365,25 @@ key     = HMAC-SHA256(key = master, data = "questerra/enc")          → the AES
 - Keep decrypted content in memory or `EncryptedFile`, never plain storage, and don't persist the
   scanned code. The point of all this is that a team cannot read a post's questions without having
   stood at it; a decrypted copy lying in plain storage undoes that.
+
+**The 3D Camera offline — every AR Outpost's scene is in the manifest** (operator, 22 Sep). Each
+`game_locations[]` row now carries `access_mode` and **`scene`**: exactly the body `/ar/locations/{id}`
+answers once the post is open, minus `success` — `{ location, objects[] }`, the objects with their
+placement, rotation, scale, animations and tap content as the admin set them up. It is null for an
+outpost with no 3D model. Every model is in `models` and every tap picture in `images`, so nothing
+is fetched at the post. Clues travel in the clear on purpose: the app is installed for the event and
+removed after it, and `game_ended` silences it once the session is over (§2b).
+
+The scene is on the phone; **the gate is not**, and still decides:
+
+- **Indoor (`access_mode: "manual"`)** — render the synced scene only once the post is open for the
+  team: `is_open` from the plan, kept fresh over the venue WiFi. Without the crew's opening it stays
+  WAITING_UNLOCK, whatever is cached.
+- **Outdoor (`access_mode: "geofence"`)** — measure the distance from the phone's GPS to
+  `scene.location.latitude/longitude` yourself and open inside `radius`, with the hysteresis of §9's
+  edge cases. Both null means the outpost is not bound to a place: no geofence. This is fully offline.
+- **Online, ask the server** (`/ar/locations/{id}`) as before; use the synced scene when it cannot be
+  reached. The two are identical, so the camera looks the same either way.
 
 **What phase 1 lets a team do with no signal, and what it does not:**
 

@@ -75,10 +75,11 @@ instead of the crew.
 `QuestionnaireService::generateUniqueQrCode`, a UUID). The same code is printed, matched by
 `qr/lookup`, and seals the questionnaire's offline copy — there is no second code.
 
-**Offline:** Sync downloads map tiles, the `.glb` models, the Indoor Map and the sealed
-questionnaires. The AR scene itself and every gate — START, clue, check-in or crew unlock,
-`qr/lookup`, `quiz/start` — still need the server. A session already started survives a dropped
-connection.
+**Offline:** Sync downloads map tiles, the `.glb` models, every AR Outpost's scene (objects and the
+placement the admin set, identical to `/ar/locations`), the Indoor Map and the sealed
+questionnaires. The gates still decide: START, the clue, the crew's opening indoors (venue WiFi),
+`qr/lookup` and `quiz/start` need the server; an outdoor post's radius can be judged by the phone.
+The floor plan is shown only after the clue. A session already started survives a dropped connection.
 
 **Decided 22 Sep:** the START clue opens the floor plan only. Until then a correct clue unlocked every
 AR Outpost on the plan (`openPostsAfterClue`, from APK #21 on 15 Sep), bypassing Outpost Access; that

@@ -6,6 +6,12 @@ Generated from the live router on questerra-series.com. Base URL `https://queste
 
 Act on these — several change responses your app already handles.
 
+**Latest (22 Sep, fourth change): AR scenes in the manifest.** `/offline/manifest` `game_locations[]` gains
+`access_mode` and `scene` — the `/ar/locations/{id}` body (`location`, `objects`) minus `success` — with
+every model in `models` and every tap picture in `images`. The gate is not in it: indoor still waits for
+the crew; outdoor may be judged from the phone's GPS. Also: show the floor plan only after the START
+clue. Build guide §8, §10; work order §30.
+
 **Latest (22 Sep, third change): the START clue no longer opens posts.** A correct `race/clue` answer
 leads to the floor plan and opens nothing; every AR Outpost opens only through the crew (Outpost
 Access). Reverses the 15 Sep rule from #21. No shape changed. Build guide §8; work order §29.
