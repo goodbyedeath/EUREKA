@@ -1456,6 +1456,31 @@ The same list rides in `/offline/manifest` as `user_guide`, so Panduan opens wit
 Sync. Cache on `updated_at` and re-read when it changes: the crew edits these sentences between
 events, and an edit is meant to reach the phones without a new build.
 
+### Results, question by question  ·  23 Sep
+
+Your #32, from the operator's field test: the Results screen had only the totals. `POST /quiz/submit`
+now returns `result.questions[]`, and the same detail can be read back later:
+
+```
+GET /api/v1/quiz/attempts/{attemptId}
+{ attempt { id, status, started_at, completed_at, total_time_seconds, by },
+  questionnaire { id, title },
+  earned_points, assessment_points, total_score,
+  questions: [ { question_id, type, question, points, points_earned, correct, answered } ],
+  puzzles:  [ … same per-box shape as submit … ] }
+```
+
+- **`correct` is `true`, `false` or `null`.** Null means right and wrong do not apply or nothing was
+  marked: a `fun_game` (a facilitator scores it), a `brief` (feedback), or a question left unanswered.
+  Draw a tick, a cross, or neither — never invent a cross for a null.
+- **`points_earned` is what that question actually paid**: partial credit for Tebak Gambar, and for a
+  `fun_game` the facilitator's award (deposit minus the team's starting balance), which can be
+  negative when a penalty outweighs it. `points` is the question's face value.
+- **No right answer is ever included**, here or in `puzzles` — the next team gets the same questions.
+- The read-back is per team, like `/quiz/attempts`: any account on the team can open its own team's
+  attempt, another team's is `404 attempt_not_found`. An attempt wiped by an emergency stop answers
+  `409 race_reset`, as elsewhere.
+
 **`attempts[]` row shape — confirmed field by field against the controller:**
 
 ```json

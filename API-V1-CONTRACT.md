@@ -6,6 +6,12 @@ Generated from the live router on questerra-series.com. Base URL `https://queste
 
 Act on these — several change responses your app already handles.
 
+**Latest (23 Sep): per-question results.** `POST /quiz/submit` gains `result.questions[]`
+(`question_id, type, question, points, points_earned, correct (bool|null), answered`), and the new
+`GET /api/v1/quiz/attempts/{attemptId}` reads the whole result back — totals, `questions[]` and
+`puzzles[]` — for any attempt of the caller's own team. No right answer in either. Build guide §11;
+work order §31.
+
 **Latest (22 Sep, fourth change): AR scenes in the manifest.** `/offline/manifest` `game_locations[]` gains
 `access_mode` and `scene` — the `/ar/locations/{id}` body (`location`, `objects`) minus `success` — with
 every model in `models` and every tap picture in `images`. The gate is not in it: indoor still waits for
@@ -162,6 +168,7 @@ are kept so existing builds keep working.
 | `GET` | `/api/v1/quiz/assessments/{assessmentId}` | token | yes | `api` |
 | `POST` | `/api/v1/quiz/assessments/{assessmentId}` | token | yes | `api` |
 | `POST` | `/api/v1/quiz/assessments/{assessmentId}/verify-pin` | token | yes | `api` |
+| `GET` | `/api/v1/quiz/attempts/{attemptId}` | token | yes | `api` |
 | `POST` | `/api/v1/quiz/photo-answer` | token | yes | `api` |
 | `POST` | `/api/v1/quiz/save-answer` | token | yes | `api` |
 | `POST` | `/api/v1/quiz/submit` | token | yes | `api` |

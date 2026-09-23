@@ -416,4 +416,59 @@ class PointsCalculationService
             'user_count' => $userCount,
         ];
     }
+
+    /**
+     * One attempt, question by question — what the team sees on the Results screen.
+     *
+     * Asked for by the operator after a field test (APK report #32, 23 Sep): the screen showed only
+     * the totals, so a team could not tell which question had paid and which had not.
+     *
+     * `correct` is deliberately nullable. A fun_game is scored by a facilitator, so right and wrong
+     * do not apply; `brief` is feedback; an unanswered question has nothing to mark. **No right
+     * answer is ever included** — the next team gets the same questionnaire.
+     *
+     * fun_game's points live on its assessment (total_deposit − the team's starting balance, which
+     * may be negative when a penalty outweighs the award), never on the answer row, which is why its
+     * points_earned is read from there.
+     *
+     * @return list<array{question_id: int, type: string, question: string, points: int, points_earned: int, correct: bool|null, answered: bool}>
+     */
+    public function questionBreakdown(QuizAttempt $attempt, int $base): array
+    {
+        $answers = UserAnswer::where('quiz_attempt_id', $attempt->id)->get()->keyBy('question_id');
+        $games = GameAssessment::where('quiz_attempt_id', $attempt->id)->get()->keyBy('question_id');
+
+        return $attempt->questionnaire->questions()->orderBy('order')
+            ->get(['id', 'question', 'type', 'points'])
+            ->map(function ($q) use ($answers, $games, $base) {
+                $answer = $answers[$q->id] ?? null;
+                $game = $games[$q->id] ?? null;
+
+                [$earned, $correct, $answered] = match ($q->type) {
+                    'fun_game' => [
+                        $game && $game->is_assessed ? (int) $game->total_deposit - $base : 0,
+                        null,
+                        (bool) $game,
+                    ],
+                    'brief' => [0, null, $answer && filled($answer->answer)],
+                    default => [
+                        (int) ($answer->points_earned ?? 0),
+                        $answer ? (bool) $answer->is_correct : null,
+                        (bool) $answer && filled($answer->answer),
+                    ],
+                };
+
+                return [
+                    'question_id' => $q->id,
+                    'type' => $q->type,
+                    'question' => $q->question,
+                    'points' => (int) $q->points,
+                    'points_earned' => $earned,
+                    'correct' => $answered ? $correct : null,
+                    'answered' => $answered,
+                ];
+            })
+            ->values()
+            ->all();
+    }
 }

@@ -768,6 +768,9 @@ class QuizController extends Controller
                     'earned_points' => $earnedPoints,
                     'total_score' => $basePoints + $earnedPoints,
                     'puzzles' => $puzzles,
+                    // Question by question, so the Results screen can show which one paid
+                    // (operator's field test, APK report #32). Never a right answer.
+                    'questions' => app(PointsCalculationService::class)->questionBreakdown($attempt->fresh(), $basePoints),
                 ];
             });
 
@@ -1160,6 +1163,83 @@ class QuizController extends Controller
                 'points_earned' => $marked['points'],
             ],
         );
+    }
+
+    /**
+     * One finished attempt's result, read back — the Results screen reopened from history.
+     *
+     * The submit reply carries this once; a team that closed the app, or a crew member looking at a
+     * team's phone later, has no way back to it (APK report #32). Readable by the team that owns the
+     * attempt — history is per team, as /quiz/attempts already is — and it carries no right answer.
+     */
+    public function attemptResult(Request $request, $attemptId)
+    {
+        $user = Auth::user();
+        $accounts = $user->team_id
+            ? User::where('team_id', $user->team_id)->pluck('id')
+            : collect([$user->id]);
+
+        $attempt = QuizAttempt::with('questionnaire')->whereIn('user_id', $accounts)->find($attemptId);
+
+        if (! $attempt) {
+            if ($reset = RaceReset::forRef('attempt', (int) $attemptId)) {
+                return RaceReset::response($reset);
+            }
+
+            return response()->json(['success' => false, 'error' => 'attempt_not_found',
+                'message' => 'That quiz attempt does not exist, or belongs to another team.'], 404);
+        }
+
+        $base = (int) ($user->team?->initial_points ?? 0);
+        $breakdown = app(PointsCalculationService::class)->breakdownForAttempts([$attempt->id], $base)[$attempt->id] ?? null;
+
+        return response()->json([
+            'success' => true,
+            'attempt' => [
+                'id' => $attempt->id,
+                'status' => $attempt->status,
+                'started_at' => $attempt->started_at?->toIso8601String(),
+                'completed_at' => $attempt->completed_at?->toIso8601String(),
+                'total_time_seconds' => $attempt->total_time_seconds !== null ? (int) $attempt->total_time_seconds : null,
+                'by' => $attempt->user?->name,
+            ],
+            'questionnaire' => $attempt->questionnaire ? [
+                'id' => $attempt->questionnaire->id,
+                'title' => $attempt->questionnaire->title,
+            ] : null,
+            'earned_points' => $breakdown['earned_points'] ?? 0,
+            'assessment_points' => $breakdown['assessment_points'] ?? 0,
+            'total_score' => $attempt->total_score !== null ? (float) $attempt->total_score : null,
+            'questions' => app(PointsCalculationService::class)->questionBreakdown($attempt, $base),
+            'puzzles' => $this->puzzleResults($attempt),
+        ]);
+    }
+
+    /**
+     * Tebak Gambar, box by box: which were right, never what was right.
+     */
+    private function puzzleResults(QuizAttempt $attempt): array
+    {
+        $answers = $attempt->userAnswers()->get()->keyBy('question_id');
+
+        return $attempt->questionnaire->questions()
+            ->where('type', QuestionType::PICTURE_PUZZLE->value)
+            ->orderBy('order')
+            ->get()
+            ->map(function ($puzzle) use ($answers) {
+                $saved = $answers[$puzzle->id] ?? null;
+                $marked = \App\Services\PicturePuzzle::score($puzzle, \App\Services\PicturePuzzle::decode($saved?->answer));
+
+                return [
+                    'question_id' => $puzzle->id,
+                    'correct' => $marked['correct'],
+                    'total' => $marked['total'],
+                    'points_earned' => $saved ? $marked['points'] : 0,
+                    'slots' => collect(\App\Services\PicturePuzzle::slots($puzzle))
+                        ->map(fn ($s) => ['key' => $s['key'], 'label' => $s['label'], 'correct' => $marked['slots'][$s['key']] ?? false])
+                        ->values()->all(),
+                ];
+            })->values()->all();
     }
 
     /**

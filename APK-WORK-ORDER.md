@@ -855,6 +855,26 @@ and the floor plan does not show before the clue is answered.
 
 ---
 
+## 31 — Results, question by question  ·  23 Sep
+
+Your #32 is built. `POST /quiz/submit` now carries `result.questions[]`, and
+`GET /quiz/attempts/{attemptId}` returns the same result later — totals, `questions[]`, `puzzles[]` —
+so a team that closed the app, or a crew member checking a phone afterwards, can reopen it.
+
+Row: `{ question_id, type, question, points, points_earned, correct, answered }`. `correct` is
+nullable and null is not a cross: a `fun_game` is the facilitator's to score, a `brief` is feedback,
+an unanswered question was never marked. `points_earned` is what the question actually paid — partial
+for Tebak Gambar, the facilitator's award for a `fun_game`, possibly negative when a penalty outweighs
+it. Totals still come from the server; never add them up yourself.
+
+The four other findings in #32 were yours and are in v47 — nothing needed here.
+
+**Done when:** after hand-in the Results screen lists every question with its points and a tick, a
+cross or neither; reopening that attempt from history shows the same screen; and a fun_game scored
+afterwards shows the facilitator's points.
+
+---
+
 ## Talking back — the channel runs both ways now
 
 Until today this was one-way: the server published, you consumed, and anything you had to say

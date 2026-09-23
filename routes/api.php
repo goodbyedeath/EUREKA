@@ -97,6 +97,9 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::post('/quiz/photo-answer', [\App\Http\Controllers\Api\QuizController::class, 'photoAnswer'])->name('quiz.photo-answer');
         // A team's own record. recent-attempts existed only as a Livewire panel.
         Route::get('/quiz/attempts', [\App\Http\Controllers\Api\QuizController::class, 'attempts'])->name('quiz.attempts');
+        // One attempt's result, question by question — the Results screen reopened later.
+        Route::get('/quiz/attempts/{attemptId}', [\App\Http\Controllers\Api\QuizController::class, 'attemptResult'])
+            ->whereNumber('attemptId')->name('quiz.attempt-result');
 
         Route::get('/quiz/timer/{attemptId}', [\App\Http\Controllers\Api\QuizController::class, 'timer'])->name('quiz.timer');
         Route::post('/quiz/submit', [\App\Http\Controllers\Api\QuizController::class, 'submit'])->name('quiz.submit');
