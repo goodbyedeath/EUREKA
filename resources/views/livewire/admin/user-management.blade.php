@@ -20,6 +20,32 @@
         </div>
     @endif
 
+    {{-- The database refuses to delete whoever authored a questionnaire. That refusal used to arrive
+         as an unhandled SQL error, so the button looked dead. --}}
+    @if ($pendingDelete)
+        <div role="alert" class="mb-4 rounded-lg border border-amber-400 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/30 p-4 space-y-3">
+            <div class="text-amber-900 dark:text-amber-100">
+                <strong>"{{ $pendingDelete['name'] }}" tercatat sebagai pembuat {{ $pendingDelete['questionnaires'] }} kuesioner.</strong>
+                <p class="text-sm mt-1">
+                    Kuesioner dan soalnya tidak ikut terhapus. Untuk menghapus akun ini, kepemilikan kuesioner itu
+                    dipindahkan ke akun Anda — hanya catatan siapa yang membuatnya, tidak mengubah isinya.
+                    Kalau ragu, nonaktifkan saja akunnya.
+                </p>
+            </div>
+            <div class="flex flex-wrap gap-2">
+                <button type="button" wire:click="deleteWithQuestionnaires"
+                        wire:confirm="Pindahkan {{ $pendingDelete['questionnaires'] }} kuesioner ke akun Anda lalu hapus akun ini?"
+                        class="px-4 py-2 rounded-md bg-red-600 hover:bg-red-700 text-white text-sm">
+                    Pindahkan {{ $pendingDelete['questionnaires'] }} kuesioner &amp; hapus akun
+                </button>
+                <button type="button" wire:click="cancelDelete"
+                        class="px-4 py-2 rounded-md bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 text-sm">
+                    Batal
+                </button>
+            </div>
+        </div>
+    @endif
+
     <!-- Stats Cards -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">

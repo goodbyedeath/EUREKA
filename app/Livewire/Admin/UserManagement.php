@@ -4,9 +4,11 @@ namespace App\Livewire\Admin;
 
 use App\Models\User;
 use App\Models\Team;
+use App\Models\Questionnaire;
 use Livewire\Component;
 use Livewire\WithPagination;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 
 class UserManagement extends Component
@@ -177,24 +179,85 @@ class UserManagement extends Component
         $this->showModal = true;
     }
 
+    /**
+     * An account the database will not let go of yet, waiting for the admin to say what to do.
+     *
+     * @var array{id: int, name: string, questionnaires: int}|null
+     */
+    public ?array $pendingDelete = null;
+
     public function delete($userId)
     {
         $user = User::findOrFail($userId);
-        
+
         // Prevent self-deletion
         if ($user->id === auth()->id()) {
             session()->flash('error', 'You cannot delete your own account.');
             return;
         }
-        
+
         // Prevent deleting the last admin
         if ($user->role === 'admin' && User::where('role', 'admin')->count() <= 1) {
             session()->flash('error', 'Cannot delete the last admin user.');
             return;
         }
-        
-        $user->delete();
-        session()->flash('message', 'User berhasil dihapus!');
+
+        // questionnaires.created_by is ON DELETE RESTRICT, so the database refuses to remove whoever
+        // authored one — and the refusal used to arrive as an unhandled SQL error, which the admin saw
+        // as a button that did nothing (operator, 23 Sep). Ask first instead.
+        $authored = Questionnaire::where('created_by', $user->id)->count();
+        if ($authored > 0) {
+            $this->pendingDelete = ['id' => $user->id, 'name' => $user->name ?: $user->email, 'questionnaires' => $authored];
+
+            return;
+        }
+
+        $this->remove($user);
+    }
+
+    /**
+     * Hand the account's questionnaires to the admin doing the deleting, then remove it.
+     *
+     * `created_by` is bookkeeping — who first saved the questionnaire — and grants nothing an admin
+     * does not already have, so moving it keeps the questionnaires and their questions untouched.
+     */
+    public function deleteWithQuestionnaires()
+    {
+        if (! $this->pendingDelete) {
+            return;
+        }
+
+        $user = User::findOrFail($this->pendingDelete['id']);
+
+        if ($user->id === auth()->id()) {
+            $this->pendingDelete = null;
+            session()->flash('error', 'You cannot delete your own account.');
+
+            return;
+        }
+
+        $moved = Questionnaire::where('created_by', $user->id)->update(['created_by' => auth()->id()]);
+        $this->pendingDelete = null;
+
+        $this->remove($user, " {$moved} kuesionernya kini tercatat atas nama Anda.");
+    }
+
+    public function cancelDelete()
+    {
+        $this->pendingDelete = null;
+    }
+
+    /** The delete itself, with the database's own refusals turned into a sentence. */
+    private function remove(User $user, string $extra = ''): void
+    {
+        try {
+            $user->delete();
+            session()->flash('message', 'Akun dihapus.'.$extra);
+        } catch (\Illuminate\Database\QueryException $e) {
+            Log::error('Failed to delete user', ['user_id' => $user->id, 'error' => $e->getMessage()]);
+            session()->flash('error', 'Akun ini masih terhubung ke data lain, jadi belum bisa dihapus. '
+                .'Nonaktifkan akunnya, atau hubungi yang mengelola data itu.');
+        }
     }
 
     public function setSessionTimeout($userId, $timeout)
