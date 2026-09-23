@@ -321,12 +321,16 @@
                         <button type="button" wire:click="addSlot" class="text-xs text-amber-700 dark:text-amber-300 underline">+ Tambah kolom</button>
                     </div>
                     @error('newQuestion.answer_slots') <span class="block text-sm text-red-600 dark:text-red-400">{{ $message }}</span> @enderror
+                    <p class="text-xs text-gray-500 dark:text-gray-400">
+                        <strong>Label</strong> adalah tulisan di atas kotak jawaban yang dilihat peserta. Tombol pintasan hanya
+                        menomori 1, 2, 3 — ubah sesuai nomor di gambar, misalnya "Mendatar 5" atau "Menurun 8".
+                    </p>
 
                     @forelse($newQuestion['answer_slots'] ?? [] as $i => $slot)
                         <div wire:key="slot-{{ $slot['key'] ?? 'new' }}-{{ $i }}"
                              class="grid grid-cols-12 gap-2 items-start rounded-md bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-2">
                             <div class="col-span-12 sm:col-span-3">
-                                <input type="text" wire:model="newQuestion.answer_slots.{{ $i }}.label" maxlength="100" placeholder="Label, mis. Mendatar 1"
+                                <input type="text" wire:model="newQuestion.answer_slots.{{ $i }}.label" maxlength="100" placeholder="Label, mis. Mendatar 5"
                                        class="w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 text-sm">
                                 @error("newQuestion.answer_slots.$i.label") <span class="text-xs text-red-600 dark:text-red-400">{{ $message }}</span> @enderror
                             </div>
