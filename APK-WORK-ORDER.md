@@ -1230,6 +1230,41 @@ finished and handed in.
 
 ---
 
+## 42 — The bell is the crew's choice, and it is on the wire  ·  operator 24 Sep
+
+§41 told you to ring a bell at the deadline. What it sounds like is no longer yours to decide: the
+crew picks it in the admin (Outpost Access, where the same bell rings on their desk), and the choice
+travels with the race.
+
+```json
+"bell": { "tone": "sirine", "volume": 45, "repeat": 2, "sound_url": null }
+```
+
+It rides on **`GET /race/status`** — present whenever a run exists, absent with `race: null` — and on
+**`GET /offline/manifest`**, so a phone has it before the event starts.
+
+1. **Four named tones, and they are not files:** `bel` (three even strikes, the default), `lonceng`
+   (two long strikes that keep ringing), `sirine` (a sweep 500→1400 Hz, twice), `bip` (five short hard
+   beeps). Synthesise or bundle them on your side — the desk draws its own from the same names. That
+   is deliberate: a tone that is a *name* cannot arrive late, miss the cache or 404 in a basement.
+2. **`volume` 0–100 and `repeat` 1–5 are instructions, not hints.** Apply them to the deadline bell.
+   The ten-minute warning stays one quieter note whatever `repeat` says — a warning that repeats five
+   times is an alarm, and the alarm is for the deadline.
+3. **`custom` means the crew uploaded a sound**, and `sound_url` is a plain path URL — never a signed
+   query, which this host strips. Cache it at Sync beside the models and the tiles. **If it is
+   missing, unfetched or unplayable, ring `bel`.** A phone that stays silent at the deadline is the
+   one failure that matters here.
+4. **Keep the last `bell` you saw** and read it again on every poll. The alert is scheduled locally
+   from `deadline_at`, so it has to work with no signal; and a crew that changes the tone between two
+   routes must not have to make every phone sync again.
+5. Nothing else about §41 changes. The bell still only announces — the finish comes from the server.
+
+**Done when:** the crew changes the tone in the admin, the next poll changes what the phone rings, an
+uploaded sound plays after a Sync and in airplane mode, a broken `sound_url` falls back to `bel`
+instead of silence, and `volume` and `repeat` are audibly obeyed.
+
+---
+
 ## Talking back — the channel runs both ways now
 
 Until today this was one-way: the server published, you consumed, and anything you had to say

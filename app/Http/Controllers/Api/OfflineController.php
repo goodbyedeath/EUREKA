@@ -157,6 +157,10 @@ class OfflineController extends Controller
                 'attribution' => html_entity_decode(strip_tags((string) config('maps.attribution', '')), ENT_QUOTES | ENT_HTML5),
                 'max_zoom' => (int) config('maps.maxZoom', 19),
             ],
+            // What to sound when the race clock runs out — the crew's choice, so the desk and
+            // every phone ring the same thing. A built-in tone is a name the client draws itself;
+            // 'custom' also carries sound_url, which is cached like any other asset.
+            'bell' => \App\Support\BellChoice::payload(),
             'images' => $images,
             'models' => $models,
             'pages' => $pages,

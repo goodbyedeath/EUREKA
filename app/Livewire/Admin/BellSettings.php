@@ -3,6 +3,7 @@
 namespace App\Livewire\Admin;
 
 use App\Models\AppSetting;
+use App\Support\BellChoice;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Component;
@@ -23,13 +24,8 @@ class BellSettings extends Component
 {
     use \App\Livewire\Concerns\GuardsFileUploads;
 
-    /** Every built-in tone, with the words the crew chooses by. The ids are also the JS keys. */
-    public const TONES = [
-        'bel' => 'Bel — tiga nada (bawaan)',
-        'lonceng' => 'Lonceng — dua pukulan panjang',
-        'sirine' => 'Sirine — sapuan naik-turun',
-        'bip' => 'Bip — lima nada pendek, paling menusuk',
-    ];
+    /** The tones live in BellChoice: the phones are offered the same list. */
+    public const TONES = BellChoice::TONES;
 
     public string $tone = 'bel';
     public int $volume = 70;
@@ -47,40 +43,27 @@ class BellSettings extends Component
 
     public static function tone(): string
     {
-        $tone = AppSetting::row('bell_tone')?->value;
-
-        // 'custom' survives only while the file does, so a deleted upload falls back to the bell
-        // rather than ringing nothing.
-        if ($tone === 'custom') {
-            return self::customPath() ? 'custom' : 'bel';
-        }
-
-        return array_key_exists((string) $tone, self::TONES) ? (string) $tone : 'bel';
+        return BellChoice::tone();
     }
 
     public static function volume(): int
     {
-        return max(0, min(100, (int) (AppSetting::row('bell_volume')?->value ?? 70)));
+        return BellChoice::volume();
     }
 
     public static function repeat(): int
     {
-        return max(1, min(5, (int) (AppSetting::row('bell_repeat')?->value ?? 1)));
+        return BellChoice::repeat();
     }
 
     public static function customPath(): ?string
     {
-        $path = AppSetting::row('bell_custom_path')?->value;
-
-        return $path && Storage::disk('public')->exists($path) ? $path : null;
+        return BellChoice::customPath();
     }
 
-    /** The URL the browser plays, or null when no sound was uploaded. */
     public static function customUrl(): ?string
     {
-        $path = self::customPath();
-
-        return $path ? Storage::disk('public')->url($path) : null;
+        return BellChoice::customUrl();
     }
 
     public function updated(string $field): void

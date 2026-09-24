@@ -15,6 +15,16 @@ again when the 3D camera first opens), distinguish *needs Google Play Services f
 block login or the rest of the game** over it. Nothing in this API changes. Build guide §9; work order
 §39.
 
+**Latest (24 Sep, fifth change): the bell at the deadline is the crew's to choose, and it is sent to
+you.** A new **`bell`** object rides on `GET /race/status` (only when a run exists) and on
+`GET /offline/manifest`: `{ "tone": "bel" | "lonceng" | "sirine" | "bip" | "custom", "volume": 0-100,
+"repeat": 1-5, "sound_url": null | "https://…" }`. The four named tones are **not files** — each end
+draws its own, so a bell can ring with no signal; `custom` means the crew uploaded a sound and
+`sound_url` is where it is, to be cached at Sync like any other asset. Cache the last `bell` you saw
+and ring it at `deadline_at` even offline; if `custom` cannot be fetched or played, fall back to `bel`
+rather than staying silent. A crew changing the tone mid-event reaches you on the next poll, without a
+re-sync. Build guide §8; work order §42.
+
 **Latest (24 Sep, fourth change): a race can end on time, and says which ending it was.** A START code
 can now carry a **time limit in minutes**, so a run ends on whichever comes first: every counting post
 cleared, or the clock running out. `GET /race/status` `race` gains **`deadline_at`** (ISO 8601 or null),

@@ -1060,6 +1060,23 @@ whichever comes first: every counting post cleared, or the time running out.
   through the deadline sounds it once when it wakes rather than counting how many it missed. The alert
   is an announcement, not a decision — the finish still comes from `/race/status`, and the screen must
   agree with the server even if the two are a few seconds apart.
+- **The bell is configured by the crew, and sent to you.** `GET /race/status` (whenever a run exists)
+  and `GET /offline/manifest` both carry:
+
+  ```json
+  "bell": { "tone": "sirine", "volume": 45, "repeat": 2, "sound_url": null }
+  ```
+
+  `tone` is `bel` (three notes), `lonceng` (two long strikes), `sirine` (a sweep, twice), `bip` (five
+  hard beeps) or `custom`. **The four named tones are not files.** Each end draws its own — the desk
+  synthesises them in the browser, you synthesise or bundle them — which is why a bell can ring in a
+  basement with no signal. `volume` is 0–100 and `repeat` is 1–5; honour both, and apply `repeat` to
+  the ten-minute warning as one note, not as the full pattern.
+  `custom` means the crew uploaded a sound: `sound_url` is a plain path URL (never a signed query —
+  this host strips it), to be cached at Sync beside the models and tiles. **If it is missing,
+  unfetched or unplayable, ring `bel`.** A silent phone at the deadline is the one outcome nobody
+  wants. Keep the last `bell` you saw so the alert survives a dead spot, and re-read it on each poll:
+  a crew that changes the tone between routes should not need every phone to sync again.
 - A code with **no** limit behaves exactly as it always has.
 
 ### When the race ends — 23 Sep

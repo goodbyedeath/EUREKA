@@ -291,6 +291,10 @@ class RaceController extends Controller
                 'clue_solved' => $session->clueSolved(),
                 'clue_wrong_attempts' => (int) $session->clue_wrong_attempts,
             ],
+            // The bell for the deadline above, as the crew set it. Sent on the poll and not only at
+            // Sync, so a tone changed while the teams are out still reaches them; four small fields,
+            // and only when a run exists. Cache the last one seen: the bell has to ring offline.
+            'bell' => \App\Support\BellChoice::payload(),
             'clue' => $session->indoor_map_id && ! $session->clueSolved()
                 ? ['question' => $session->indoorMap?->clue_question]
                 : null,
