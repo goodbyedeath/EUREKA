@@ -1231,6 +1231,14 @@ This is per post, decided by the crew. It is **not** a substitute for §9's firs
 phone that cannot run AR at all still needs to be found at the start table, because the other posts
 may well have their cameras on.
 
+**Answering your open question (report #43): no, a camera-off post does not belong on Kamera 3D.**
+Keep it as you built it — reached from the floor plan, which is the team's plan of record indoors, and
+absent from the 3D list because there is no camera there to open. Listing it under a screen named for
+the camera would promise a thing the post does not do, and a team that found it there would be looking
+for a reticle. What must be true is that the spot on the plan opens the object *list* (it does) so the
+priced objects are still claimable; if a build ever reaches a camera-off post with no way through from
+the plan, that is a defect worth a report.
+
 ### Two cameras, never both alive
 
 | | Stack |
