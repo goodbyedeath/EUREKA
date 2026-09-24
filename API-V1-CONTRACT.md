@@ -15,6 +15,14 @@ again when the 3D camera first opens), distinguish *needs Google Play Services f
 block login or the rest of the game** over it. Nothing in this API changes. Build guide §9; work order
 §39.
 
+**Latest (24 Sep, sixth change): `counts.ar_posts`, so the Kamera 3D button can be locked.**
+`GET /offline/manifest` `counts` gains **`ar_posts`** — how many active posts really open a camera
+(`uses_ar` true). Zero means the crew ran this event with the 3D switched off everywhere: lock the
+dashboard's Kamera 3D button, visibly disabled with a reason, rather than hiding it or opening an empty
+screen (operator's instruction). Re-read it at each Sync — one post switched back on unlocks it. A
+camera-off post itself stays off the 3D list and is reached from the floor plan, unchanged. Build guide
+§9 and §10; work order §43.
+
 **Latest (24 Sep, fifth change): the bell at the deadline is the crew's to choose, and it is sent to
 you.** A new **`bell`** object rides on `GET /race/status` (only when a run exists) and on
 `GET /offline/manifest`: `{ "tone": "bel" | "lonceng" | "sirine" | "bip" | "custom", "volume": 0-100,

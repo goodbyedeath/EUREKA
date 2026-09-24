@@ -1265,6 +1265,36 @@ instead of silence, and `volume` and `repeat` are audibly obeyed.
 
 ---
 
+## 43 — Lock the Kamera 3D button when no post uses a camera  ·  operator 24 Sep
+
+Your report #43 asked whether a camera-off post should be listed on Kamera 3D. It should not, and the
+answer is in build guide §9 beside the `ar_enabled` rules. The operator's own instruction adds the case
+you did not ask about: **an event where the crew switched the camera off everywhere.** Then the 3D list
+is empty, and an empty screen reached through a live button is a team standing still wondering what it
+did wrong.
+
+```json
+"counts": { "game_locations": 14, "ar_posts": 0, … }
+```
+
+1. **`counts.ar_posts`** is new in `GET /offline/manifest`: how many posts really open a camera — the
+   posts whose `uses_ar` is true. It is the same gate the server applies, counted once for you.
+2. **Zero means lock the button.** Visibly disabled, with a short reason in the team's own words
+   (*"Event ini tidak memakai kamera 3D"*), and not tappable.
+3. **Do not hide it.** A button that vanished reads as a broken install and brings the team to the
+   crew; a locked one with a reason answers itself. Same argument as the camera-off post opening as a
+   list instead of showing nothing.
+4. **Re-read it at every Sync.** One post switched back on makes `ar_posts` non-zero, and the button
+   must come alive without a reinstall.
+5. Per-post behaviour is unchanged: a camera-off post stays off the 3D list and is reached from the
+   floor plan, where its objects open as a list and its priced objects are still claimable.
+
+**Done when:** with every post's camera off, the dashboard shows Kamera 3D locked with a reason and a
+tap does nothing; with one post switched back on, the next Sync unlocks it; and a post reached from the
+floor plan still claims its points either way.
+
+---
+
 ## Talking back — the channel runs both ways now
 
 Until today this was one-way: the server published, you consumed, and anything you had to say

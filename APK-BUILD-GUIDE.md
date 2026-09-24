@@ -1239,6 +1239,14 @@ for a reticle. What must be true is that the spot on the plan opens the object *
 priced objects are still claimable; if a build ever reaches a camera-off post with no way through from
 the plan, that is a defect worth a report.
 
+**And when no post uses the camera at all, lock the dashboard's Kamera 3D button** — the operator's
+instruction, 24 Sep: *"tinggal kunci aja tombolnya jadi user tidak bisa interaksi"*. The manifest now
+counts it for you: **`counts.ar_posts`**, the number of posts that really open a camera. Zero means an
+event run without AR, and the button must be visibly disabled with a short reason rather than hidden or
+tappable — a missing button reads as a broken app, and a live one that opens an empty screen wastes a
+team's clock at the worst moment. Read it at Sync and re-read it on the next Sync; one post switched
+back on makes the button live again with no reinstall. Work order §43.
+
 ### Two cameras, never both alive
 
 | | Stack |
@@ -1585,7 +1593,7 @@ GET /api/v1/offline/manifest
   "game_locations":  [ { id, name, experience_type, model, uses_ar,
                          latitude, longitude, radius, coordinate_source, quest_location_id } ],
   "images": [...], "models": [...], "pages": [...],
-  "counts": { … } }
+  "counts": { …, "ar_posts": 14 } }
 ```
 
 Fetch this once the team is registered and **pre-download everything on it while you still have

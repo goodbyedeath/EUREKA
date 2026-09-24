@@ -205,6 +205,10 @@ class OfflineController extends Controller
             'counts' => [
                 'quest_locations' => $questLocations->count(),
                 'game_locations' => $gameLocations->count(),
+                // How many posts actually open a camera. Zero means every post on this event has its
+                // 3D switched off, and the dashboard's Kamera 3D button should be locked rather than
+                // opening a screen with nothing in it (operator, 24 Sep).
+                'ar_posts' => $gameLocations->filter(fn ($g) => $g->usesAr() && $g->arEnabled())->count(),
                 'images' => $images->count(),
                 'models' => $models->count(),
                 'pages' => $pages->count(),
