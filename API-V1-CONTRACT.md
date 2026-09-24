@@ -21,7 +21,8 @@ block login or the rest of the game** over it. Nothing in this API changes. Buil
 dashboard's Kamera 3D button, visibly disabled with a reason, rather than hiding it or opening an empty
 screen (operator's instruction). **Only zero locks it** — one AR post out of fourteen leaves the button
 live, because that post still needs the screen; the test is `== 0`, never a fraction. Re-read it at
-each Sync — one post switched back on unlocks it. A camera-off post itself stays off the 3D list and is reached from the floor plan, unchanged. Build guide
+each Sync — one post switched back on unlocks it. A camera-off post itself stays off the 3D list
+and is reached from the floor plan, unchanged. Build guide
 §9 and §10; work order §43.
 
 **Latest (24 Sep, fifth change): the bell at the deadline is the crew's to choose, and it is sent to
