@@ -64,7 +64,7 @@ class OfflineController extends Controller
         $gameLocations = GameLocation::where('is_active', true)
             ->orderBy('created_at', 'desc')
             ->with(\App\Http\Controllers\ArExperienceController::sceneRelations())
-            ->get(['id', 'name', 'ar_model_path', 'ar_model_id', 'ar_sky_path', 'experience_type',
+            ->get(['id', 'name', 'ar_model_path', 'ar_model_id', 'ar_sky_path', 'experience_type', 'ar_enabled',
                 'latitude', 'longitude', 'radius', 'quest_location_id', 'access_mode']);
 
         // Every model a team could see: the location default plus any object that
@@ -114,7 +114,8 @@ class OfflineController extends Controller
         // (operator, 22 Sep: the app is installed for the event and removed after it, so the
         // clues travel in the clear). The gate is not in here: indoor still waits for the crew.
         $ar = app(\App\Http\Controllers\ArExperienceController::class);
-        $scenes = $gameLocations->filter->usesAr()->mapWithKeys(fn ($g) => [$g->id => $ar->scenePayload($g)]);
+        $scenes = $gameLocations->filter->hasExperience()
+            ->mapWithKeys(fn ($g) => [$g->id => $ar->scenePayload($g, request()->user())]);
         $images = $images
             ->merge($scenes->flatMap(fn ($scene) => collect($scene['objects'])->pluck('image')))
             ->filter()->unique()->values();
@@ -131,6 +132,7 @@ class OfflineController extends Controller
         $questionnaires = \App\Models\Questionnaire::where('is_active', true)
             ->orderBy('id')
             ->get()
+            ->load('extraPosts:id')
             ->map(fn (\App\Models\Questionnaire $q) => $seal->manifestEntry($q))
             ->filter()
             ->values();
@@ -175,7 +177,10 @@ class OfflineController extends Controller
                 'name' => $g->name,
                 'experience_type' => $g->experience_type,
                 'model' => $g->modelUrl(),
-                'uses_ar' => $g->usesAr(),
+                // "Open the camera here", not "has a model": false for a post whose camera the crew
+                // switched off, so a client that has not learned `ar_enabled` yet still does the right
+                // thing — it simply offers no 3D at that post (operator, 24 Sep).
+                'uses_ar' => $g->usesAr() && $g->arEnabled(),
                 // Lets an offline client show distance and refuse to open the scene away
                 // from the outpost without needing the network. Null until an admin binds it.
                 'latitude' => $g->resolvedLatitude(),

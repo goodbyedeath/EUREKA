@@ -45,6 +45,7 @@ class RaceEmergencyStop
             'scans' => QrCodeScan::whereIn('user_id', $ids)->count(),
             'checkins' => UserQuestCheckpoint::whereIn('user_id', $ids)->count(),
             'unlocks' => GameLocationUnlock::whereIn('user_id', $ids)->count(),
+            'object_claims' => \App\Models\HotspotClaim::whereIn('user_id', $ids)->count(),
             'teams_with_points' => Team::whereRaw('points <> COALESCE(initial_points, 0)')->count(),
         ];
     }
@@ -78,6 +79,9 @@ class RaceEmergencyStop
             RaceSession::whereIn('user_id', $ids)->delete();
             UserQuestCheckpoint::whereIn('user_id', $ids)->delete();    // check-ins and live positions
             GameLocationUnlock::whereIn('user_id', $ids)->delete();
+            // Points taken from 3D objects are part of the run, so a restarted race offers them
+            // again rather than leaving a team paid for a tap it can no longer repeat.
+            \App\Models\HotspotClaim::whereIn('user_id', $ids)->delete();
             DB::table('gps_footprints')->whereIn('user_id', $ids)->delete();
             DB::table('gps_tracking_sessions')->whereIn('user_id', $ids)->delete();
             Team::query()->update(['points' => DB::raw('COALESCE(initial_points, 0)')]);

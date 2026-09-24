@@ -182,6 +182,8 @@ Route::middleware(['auth', 'preventbackhistory'])->group(function () {
         Route::get('/login-cards/pdf', App\Http\Controllers\Admin\LoginCardPdfController::class)->name('login-cards.pdf');
         // Every questionnaire QR in one PDF: ?layout=grid|large, ?all=1 to include inactive ones.
         Route::get('/questionnaires/qr-pdf', App\Http\Controllers\Admin\QuestionnaireQrPdfController::class)->name('questionnaires.qr-pdf');
+        // Every START code in one PDF, same options. Ten routes means ten codes to print.
+        Route::get('/race-start/qr-pdf', App\Http\Controllers\Admin\RaceStartQrPdfController::class)->name('race-start.qr-pdf');
         // Panduan setup, ditulis untuk operator acara dan bukan untuk programmer.
         Route::get('/panduan', fn () => view('admin.guide'))->name('guide');
     });

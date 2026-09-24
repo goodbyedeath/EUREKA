@@ -18,6 +18,15 @@ class GameManager extends Component
     
     // Default view coordinates (legacy; AR calibrates from the QR instead)
     public $is_active = true;
+    /**
+     * Camera on or off for this post.
+     *
+     * Off keeps the objects and their text — the clue that names the paper QR's hiding place, and the
+     * bonus points — but the app lists them instead of opening ARCore. Not every phone can run the
+     * camera (operator, 24 Sep), and a post is its content, not its renderer.
+     */
+    public bool $ar_enabled = true;
+
     public $target_type = 'all_users';
     public $target_user_id = null;
     /** The post this outpost sits at; its coordinates gate the AR scene. */
@@ -40,6 +49,7 @@ class GameManager extends Component
         'target_user_id' => 'nullable|exists:users,id',
         'quest_location_id' => 'nullable|exists:quest_locations,id',
         'access_mode' => 'required|in:geofence,manual',
+        'ar_enabled' => 'boolean',
     ];
 
     protected $messages = [
@@ -65,6 +75,7 @@ class GameManager extends Component
             $this->name = $game->name;
             $this->description = $game->description;
             $this->is_active = $game->is_active;
+            $this->ar_enabled = (bool) ($game->ar_enabled ?? true);
             $this->target_type = $game->target_type ?? 'all_users';
             $this->target_user_id = $game->target_user_id;
             $this->quest_location_id = $game->quest_location_id;
@@ -95,10 +106,15 @@ class GameManager extends Component
             'description' => $this->description,
             // Default view coordinates (legacy; AR calibrates from the QR instead)
             'is_active' => $this->is_active,
-            'target_type' => $this->target_type,
-            'target_user_id' => $this->target_user_id,
+            // Every outpost serves every team. The old "Specific Team" choice was enforced nowhere —
+            // no query has ever read these two columns — and offered no team to pick, so it promised
+            // a restriction it never applied (operator, 23 Sep: an outpost is for all teams). Access
+            // is per team where it belongs: Outpost Access indoors, the GPS radius outdoors.
+            'target_type' => 'all_users',
+            'target_user_id' => null,
             'quest_location_id' => $this->quest_location_id ?: null,
             'access_mode' => $this->access_mode,
+            'ar_enabled' => $this->ar_enabled,
             'created_by' => 1, // Default admin user ID
         ];
 
@@ -330,6 +346,7 @@ class GameManager extends Component
         $this->name = '';
         $this->description = '';
         $this->is_active = true;
+        $this->ar_enabled = true;
         $this->target_type = 'all_users';
         $this->target_user_id = null;
         $this->quest_location_id = null;

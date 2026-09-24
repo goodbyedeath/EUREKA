@@ -114,7 +114,9 @@ return [
 
         'errorlog' => [
             'driver' => 'errorlog',
-            'level' => env('LOG_LEVEL', 'debug'),
+            // Its own level: this one goes to the HOST's PHP error log, which is not ours to fill.
+            // Raising LOG_LEVEL to see the app's own info lines must not flood it.
+            'level' => env('LOG_ERRORLOG_LEVEL', 'error'),
             'replace_placeholders' => true,
         ],
 

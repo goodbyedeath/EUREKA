@@ -109,7 +109,22 @@
             </select>
             <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
                 This is the only difference between the two modes. The clock itself behaves
-                identically: it starts on this scan and stops when the last counting post is cleared.
+                identically: it starts on this scan.
+            </p>
+        </div>
+
+        {{-- The second way a race can end (operator, 24 Sep). Empty keeps the old behaviour: the run
+             lasts until every counting post is cleared, however long that takes. --}}
+        <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Batas waktu race (menit)</label>
+            <input type="number" min="1" max="1440" wire:model="timeLimitMinutes" placeholder="tanpa batas"
+                   class="mt-1 w-40 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">
+            @error('timeLimitMinutes') <span class="text-red-500 text-xs block">{{ $message }}</span> @enderror
+            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                Race berakhir pada yang <strong>lebih dulu terjadi</strong>: semua pos selesai, atau waktu ini habis
+                terhitung sejak tim memindai QR ini. Saat waktu habis, jamnya berhenti tepat di batas itu,
+                kuis yang sedang dibuka masih boleh diselesaikan, tetapi <strong>pos baru tidak lagi terbuka</strong>.
+                Kosongkan untuk tanpa batas.
             </p>
         </div>
 
@@ -143,6 +158,16 @@
                 <span class="px-3 py-2 rounded-md bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-200 text-sm">
                     {{ session('race_msg') }}
                 </span>
+            @endif
+            {{-- Ten routes means ten codes; printing them one browser sheet at a time is ten trips
+                 through a dialog (operator, 24 Sep). Each card names the route it leads to. --}}
+            @if ($starts->where('is_active', true)->isNotEmpty())
+                <a href="{{ route('admin.race-start.qr-pdf') }}"
+                   class="px-3 py-2 rounded-md bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 text-sm"
+                   title="Semua QR START aktif, dua per baris">Unduh semua QR (PDF)</a>
+                <a href="{{ route('admin.race-start.qr-pdf', ['layout' => 'large']) }}"
+                   class="px-3 py-2 rounded-md bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 text-sm"
+                   title="Satu halaman A4 per kode, untuk ditempel atau dibagikan">PDF besar</a>
             @endif
             <button type="button" wire:click="openForm"
                     class="px-4 py-2 rounded-md bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium">
@@ -223,6 +248,12 @@
                                     Indoor &middot; {{ $start->indoorMap->name ?? 'plan removed' }}
                                 @else
                                     Outdoor
+                                @endif
+                                {{-- Timed or not: the crew must be able to tell at a glance which codes carry a deadline. --}}
+                                @if ($start->time_limit_minutes)
+                                    <span class="ml-1 px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200 text-xs whitespace-nowrap">{{ $start->time_limit_minutes }} menit</span>
+                                @else
+                                    <span class="ml-1 text-xs text-gray-400 dark:text-gray-500">tanpa batas waktu</span>
                                 @endif
                             </td>
                             <td class="px-4 py-2 text-gray-600 dark:text-gray-400">

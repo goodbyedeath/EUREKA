@@ -154,42 +154,80 @@ class TeamManager extends Component
         $this->resetForm();
     }
 
+    /**
+     * Remove one team and put its accounts back to new.
+     *
+     * The surgical tool between the two blunt ones: Arsipkan ends the whole session, Emergency Stop
+     * wipes every team's run. This is for one team that has to start over — a botched setup in the
+     * app, the wrong people on the wrong account.
+     *
+     * It used to delete only the attempts, and its own confirmation promised the accounts were "reset
+     * to NEW" (operator, 23 Sep). They were not: the race clock, the posts the crew had opened, the
+     * scans and the GPS trail all stayed, so a team that re-registered with the same login card woke
+     * up inside its old race — sometimes already finished, with half its posts shut. It now clears
+     * the same per-account trail an emergency stop does, for these accounts only.
+     *
+     * Kept on purpose: the accounts themselves and their login cards, because the point is to let
+     * the same people start again; and the authored content, which is never a team's to delete.
+     */
     public function forceDeleteTeam($teamId)
     {
         try {
             $team = Team::findOrFail($teamId);
-            
-            // Use database transaction for safe deletion
-            DB::transaction(function () use ($team) {
-                // Get user IDs associated with this team
+            $disk = \Illuminate\Support\Facades\Storage::disk('local');
+            $removed = [];
+
+            DB::transaction(function () use ($team, &$removed) {
                 $userIds = User::where('team_id', $team->id)->pluck('id');
-                
+
                 if ($userIds->count() > 0) {
-                    // Reset team_id for all users in this team
+                    // Photographs live on disk, so collect their paths before the rows go.
+                    $removed['photos'] = GameAssessment::whereIn('user_id', $userIds)
+                        ->pluck('facilitator_photo')
+                        ->filter(fn ($path) => str_starts_with((string) $path, 'facilitator-photos/'))
+                        ->values()->all();
+
                     User::whereIn('id', $userIds)->update(['team_id' => null]);
-                    
-                    // Delete user answers for quiz attempts from these users
-                    UserAnswer::whereHas('quizAttempt', function($query) use ($userIds) {
+
+                    UserAnswer::whereHas('quizAttempt', function ($query) use ($userIds) {
                         $query->whereIn('user_id', $userIds);
                     })->delete();
-                    
-                    // Delete game assessments for quiz attempts from these users
-                    GameAssessment::whereHas('quizAttempt', function($query) use ($userIds) {
+
+                    GameAssessment::whereHas('quizAttempt', function ($query) use ($userIds) {
                         $query->whereIn('user_id', $userIds);
                     })->delete();
-                    
-                    // Delete quiz attempts from these users
-                    QuizAttempt::whereIn('user_id', $userIds)->delete();
+
+                    $removed['attempts'] = QuizAttempt::whereIn('user_id', $userIds)->delete();
+
+                    // The rest of the trail. Without these the account is not new: the clock keeps
+                    // running, and a post the crew opened — or one closed because it was finished —
+                    // stays as it was.
+                    $removed['races'] = RaceSession::whereIn('user_id', $userIds)->delete();
+                    $removed['scans'] = \App\Models\QrCodeScan::whereIn('user_id', $userIds)->delete();
+                    $removed['checkins'] = \App\Models\UserQuestCheckpoint::whereIn('user_id', $userIds)->delete();
+                    $removed['unlocks'] = GameLocationUnlock::whereIn('user_id', $userIds)->delete();
+                    $removed['claims'] = \App\Models\HotspotClaim::whereIn('user_id', $userIds)->delete();
+                    DB::table('gps_footprints')->whereIn('user_id', $userIds)->delete();
+                    DB::table('gps_tracking_sessions')->whereIn('user_id', $userIds)->delete();
                 }
-                
-                // Delete team members
+
                 $team->members()->delete();
-                
-                // Finally delete the team
                 $team->delete();
             });
-            
-            session()->flash('success', 'Team and all related data deleted successfully! All users have been removed from the team.');
+
+            // Files are not transactional: touch them only once the rows are gone for good.
+            if (! empty($removed['photos'])) {
+                $disk->delete($removed['photos']);
+            }
+
+            Log::info('Team force deleted', ['team_id' => $teamId] + array_map(
+                fn ($v) => is_array($v) ? count($v) : $v, $removed
+            ));
+
+            session()->flash('success', sprintf(
+                'Tim dihapus. Akunnya dilepas dan kembali kosong: %d attempt, %d jam race, %d scan, %d pos terbuka dan jejak GPS-nya dihapus. Kartu loginnya tetap berlaku.',
+                $removed['attempts'] ?? 0, $removed['races'] ?? 0, $removed['scans'] ?? 0, $removed['unlocks'] ?? 0,
+            ));
         } catch (\Exception $e) {
             Log::error('Force team deletion error: ' . $e->getMessage(), [
                 'team_id' => $teamId,

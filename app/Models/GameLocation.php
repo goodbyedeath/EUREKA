@@ -21,6 +21,9 @@ class GameLocation extends Model
         // experience_type is 'ar' once a model is uploaded; 'panorama' is the legacy
         // default meaning "not set up yet" (the 360° viewer itself was removed).
         'experience_type',
+        // False: this post keeps its objects and their text, but the app shows them as a list rather
+        // than opening the camera — for phones ARCore does not support (operator, 24 Sep).
+        'ar_enabled',
         'ar_model_id',
         'ar_model_path',
         'ar_sky_path',
@@ -63,6 +66,24 @@ class GameLocation extends Model
     public function usesAr(): bool
     {
         return $this->experience_type === self::EXPERIENCE_AR && $this->modelUrl() !== null;
+    }
+
+    /**
+     * Whether the camera is switched on for this post.
+     *
+     * A post with the camera off still has everything that matters — the clue in each object's text
+     * and the bonus points — it is only presented as a list. Kept separate from `usesAr()`, which
+     * answers "is there a 3D scene to render at all".
+     */
+    public function arEnabled(): bool
+    {
+        return (bool) ($this->ar_enabled ?? true);
+    }
+
+    /** There is something to show at this post: a 3D scene, or objects to read. */
+    public function hasExperience(): bool
+    {
+        return $this->usesAr() || (! $this->arEnabled() && $this->hotspots()->where('is_active', true)->exists());
     }
 
     public const ACCESS_GEOFENCE = 'geofence';
@@ -204,6 +225,7 @@ class GameLocation extends Model
 
     protected $casts = [
         'is_active' => 'boolean',
+        'ar_enabled' => 'boolean',
         'radius' => 'integer',
         'max_check_ins_per_user' => 'integer',
         'quest_points' => 'integer',

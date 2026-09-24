@@ -85,6 +85,10 @@ class OfflineQuestionnaireSeal
             'venue_mode' => $questionnaire->venue_mode,
             'quest_location_id' => $questionnaire->quest_location_id,
             'game_location_id' => $questionnaire->game_location_id,
+            // Every post this questionnaire may be opened at. One questionnaire can now be shared
+            // by several posts, or by all of them, so the single id above is only the first.
+            'game_location_ids' => $questionnaire->postIds(),
+            'all_posts' => (bool) $questionnaire->all_posts,
             'counts_toward_finish' => (bool) $questionnaire->counts_toward_finish,
             'time_limit' => $questionnaire->time_limit !== null ? (int) $questionnaire->time_limit : null,
             'start_date' => $questionnaire->start_date?->toDateString(),

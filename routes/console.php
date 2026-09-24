@@ -11,6 +11,10 @@ Schedule::call(fn () => \App\Models\AppSetting::put('scheduler_heartbeat', now()
     ->everyMinute()->name('scheduler-heartbeat');
 
 // FEKDI x IFSE (24–27 Sep 2026). Both do nothing that reaches the client while the admin switch is off.
+// A race whose START code sets a time limit ends when it runs out, even if nobody is looking:
+// /race/status and the station gate close it on contact, this catches the phones that went quiet.
+Schedule::command('race:close-expired')->everyMinute()->withoutOverlapping(5);
+
 Schedule::command('fekdi:sync')->everyMinute()->withoutOverlapping(10);
 Schedule::command('fekdi:import')->hourly()->withoutOverlapping(30);
 

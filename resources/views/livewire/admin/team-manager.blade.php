@@ -188,7 +188,7 @@
                                     </button>
                                     @if($team->members->count() > 0 || $team->users_count > 0)
                                         <button wire:click="forceDeleteTeam({{ $team->id }})"
-                                                wire:confirm="⚠️ FORCE DELETE: This will PERMANENTLY delete the team, remove ALL users from the team, and DELETE all their quiz attempts, answers, and game assessments. This will reset user accounts to NEW. This action CANNOT be undone! Are you absolutely sure?"
+                                                wire:confirm="⚠️ HAPUS PAKSA: tim ini dihapus, akunnya dilepas dan dikembalikan ke keadaan baru — attempt, jawaban, penilaian fasilitator, jam race, scan, pos yang terbuka dan jejak GPS-nya ikut terhapus. Akun dan kartu loginnya TETAP berlaku, jadi tim bisa mendaftar ulang. Tidak bisa dibatalkan. Lanjutkan?"
                                                 class="text-red-800 hover:text-red-900"
                                                 title="Force delete with all members and reset linked accounts">
                                             <i class="fas fa-exclamation-triangle"></i>

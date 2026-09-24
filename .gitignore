@@ -28,3 +28,11 @@ Thumbs.db
 # runtime output; it never belongs in version control.
 error_log
 *.log
+
+# Secrets: the dated copies `cp .env .env.backup-HHMMSS` leaves behind.
+.env.backup*
+
+# The Android client is its own project with its own tree — 30 MB of node_modules and a
+# build directory of .class/.dex files. It reaches this side through the contract files,
+# not through this repository.
+/APK/

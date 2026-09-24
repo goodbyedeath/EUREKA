@@ -43,9 +43,48 @@ class QuizAttempt extends Model
         static::saved(function (self $attempt) {
             if ($attempt->status === self::STATUS_COMPLETED
                 && ($attempt->wasRecentlyCreated || $attempt->wasChanged('status'))) {
+                self::closeFinishedPost($attempt);
                 RaceSession::maybeFinishFor($attempt->user_id);
             }
         });
+    }
+
+    /**
+     * A post whose questionnaire has just been answered is closed for that team.
+     *
+     * Operator, 23 Sep: a finished post must not be openable again from the floor plan. Revoking
+     * the access is the part that binds — the AR gate then answers `awaiting_unlock` and the
+     * station gate `checkin_required`, whatever the app has cached — while `is_done` on
+     * `/indoor-map` is how the team sees it. Indoor only: outdoor posts are governed by the GPS
+     * radius, which is not ours to revoke.
+     *
+     * The crew can always reopen it in Outpost Access; the row is revoked, never deleted.
+     */
+    private static function closeFinishedPost(self $attempt): void
+    {
+        $questionnaire = $attempt->questionnaire ?? Questionnaire::find($attempt->questionnaire_id);
+
+        if (! $questionnaire || $questionnaire->venue_mode !== 'indoor') {
+            return;
+        }
+
+        // The post it was played at; older attempts carry none, so fall back to the questionnaire's.
+        $postId = (int) ($attempt->game_location_id ?: $questionnaire->game_location_id);
+
+        if (! $postId) {
+            return;
+        }
+
+        // A post may carry more than one questionnaire. Closing it on the first would lock the team
+        // out of the second, so it closes only when everything there has been answered.
+        $teamId = User::where('id', $attempt->user_id)->value('team_id');
+        $accountIds = $teamId
+            ? User::where('team_id', $teamId)->pluck('id')
+            : collect([$attempt->user_id]);
+
+        if (app(\App\Services\StationProgress::class)->finishedPosts($accountIds)->contains($postId)) {
+            GameLocationUnlock::closeForTeamAt($postId, (int) $attempt->user_id);
+        }
     }
 
     /**
@@ -58,6 +97,13 @@ class QuizAttempt extends Model
     protected $fillable = [
         'user_id',
         'questionnaire_id',
+        // Named by the phone that made it, so a retried offline upload finds this attempt
+        // instead of starting a second one. Null for everything started online.
+        'client_token',
+        'started_offline',
+        // The post this attempt was played at. Only meaningful for a questionnaire shared by
+        // several posts, where it is what keeps the plays apart; null everywhere else.
+        'game_location_id',
         'started_at',
         'completed_at',
         'total_score',

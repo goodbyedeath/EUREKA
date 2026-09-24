@@ -17,12 +17,12 @@ const ESSENTIAL_CACHE_URLS = [
 const OFFLINE_CAPABLE_ROUTES = [
     '/',
     '/user/dashboard',
-    '/user/quest-locations',
+    '/quest-locations',
+    '/gps-tracking',
+    '/indoor-map',
     '/quiz/',
     '/team-registration',
-    '/kiosk/led',
-    '/team-member-view',
-    '/test-offline'
+    '/kiosk/led'
 ];
 
 // API endpoints to cache for offline functionality

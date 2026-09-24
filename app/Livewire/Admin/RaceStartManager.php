@@ -29,6 +29,13 @@ class RaceStartManager extends Component
     public ?int $indoorMapId = null;
     public bool $isActive = true;
 
+    /**
+     * Minutes a team gets from its START scan. Empty = no deadline, which is how every code behaved
+     * before today. The race then ends on whichever comes first: every post cleared, or this
+     * (operator, 24 Sep).
+     */
+    public $timeLimitMinutes = '';
+
     /** Typed confirmation for the emergency stop. */
     public string $stopConfirm = '';
 
@@ -39,7 +46,7 @@ class RaceStartManager extends Component
     public function openForm(?int $id = null): void
     {
         $this->showQr = false;
-        $this->reset(['editingId', 'name', 'code', 'indoorMapId', 'isActive']);
+        $this->reset(['editingId', 'name', 'code', 'indoorMapId', 'isActive', 'timeLimitMinutes']);
         $this->isActive = true;
         $this->resetValidation();
 
@@ -49,6 +56,7 @@ class RaceStartManager extends Component
             $this->code = $start->code;
             $this->indoorMapId = $start->indoor_map_id;
             $this->isActive = $start->is_active;
+            $this->timeLimitMinutes = $start->time_limit_minutes !== null ? (string) $start->time_limit_minutes : '';
         } else {
             // A blank field invites someone to type "START" and print it, so offer a real
             // code up front and let them accept it.
@@ -76,6 +84,11 @@ class RaceStartManager extends Component
             'code' => 'required|string|max:255|unique:race_starts,code,' . ($this->editingId ?? 'NULL'),
             'indoorMapId' => 'nullable|exists:indoor_maps,id',
             'isActive' => 'boolean',
+            // Up to 24 hours. '' is "no deadline", so nullable rather than required.
+            'timeLimitMinutes' => 'nullable|integer|min:1|max:1440',
+        ], [
+            'timeLimitMinutes.min' => 'Batas waktu minimal 1 menit.',
+            'timeLimitMinutes.max' => 'Batas waktu maksimal 1440 menit (24 jam).',
         ]);
 
         $data = [
@@ -83,6 +96,9 @@ class RaceStartManager extends Component
             'code' => $this->code,
             'indoor_map_id' => $this->indoorMapId ?: null,
             'is_active' => $this->isActive,
+            'time_limit_minutes' => $this->timeLimitMinutes === '' || $this->timeLimitMinutes === null
+                ? null
+                : (int) $this->timeLimitMinutes,
         ];
 
         if ($this->editingId) {

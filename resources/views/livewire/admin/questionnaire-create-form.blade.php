@@ -149,16 +149,33 @@
                 </select>
                 @error('quest_location_id') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
             </div>
+            {{-- Several posts may share one questionnaire: the same booth is a different number on
+                 each team's plan, and some questionnaires belong at every post. --}}
             <div x-show="mode === 'indoor'" x-cloak>
-                <label for="game_location_id" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Pos indoor (Game Location)</label>
-                <select id="game_location_id" wire:model="game_location_id"
-                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-gray-100">
-                    <option value="">— Pilih pos —</option>
-                    @foreach($gameLocations as $location)
-                        <option value="{{ $location->id }}">{{ $location->name }}</option>
-                    @endforeach
-                </select>
-                @error('game_location_id') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Pos indoor (Game Location)</label>
+
+                <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 mb-2">
+                    <input type="checkbox" wire:model.live="all_posts"
+                           class="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-indigo-600 focus:ring-indigo-500">
+                    Berlaku di semua pos
+                </label>
+
+                <div x-show="!$wire.all_posts"
+                     class="max-h-40 overflow-y-auto rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 p-2 space-y-1">
+                    @forelse($gameLocations as $location)
+                        <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
+                            <input type="checkbox" value="{{ $location->id }}" wire:model="game_location_ids"
+                                   class="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-indigo-600 focus:ring-indigo-500">
+                            {{ $location->name }}
+                        </label>
+                    @empty
+                        <p class="text-sm text-gray-500 dark:text-gray-400">Belum ada pos indoor.</p>
+                    @endforelse
+                </div>
+                <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">
+                    Dipilih lebih dari satu: tim memainkannya sekali di tiap pos, dan QR yang dicetak sama untuk semuanya.
+                </p>
+                @error('game_location_ids') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
             </div>
         </div>
     </div>

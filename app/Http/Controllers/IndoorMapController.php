@@ -76,6 +76,7 @@ class IndoorMapController extends Controller
     private function payload(IndoorMap $map, ?\App\Models\User $user): array
     {
         $open = $this->openLocationIdsFor($user);
+        $done = $this->finishedLocationIdsFor($user);
 
         return [
             'map' => [
@@ -106,6 +107,10 @@ class IndoorMapController extends Controller
                 // the crew has just opened for them — otherwise the map is a wall of
                 // identical markers with no indication of where to go next.
                 'is_open' => $s->game_location_id !== null && $open->contains($s->game_location_id),
+                // Already answered: the post is spent for this team and must not be walked into
+                // again (operator, 23 Sep). The server closes it as well — the access is revoked on
+                // hand-in — so this is what the map shows, not the whole of what stops them.
+                'is_done' => $s->game_location_id !== null && $done->contains($s->game_location_id),
             ])->values()->all(),
         ];
     }
@@ -123,6 +128,27 @@ class IndoorMapController extends Controller
             ->whereNotNull('granted_at')
             ->whereNull('revoked_at')
             ->pluck('game_location_id');
+    }
+
+    /**
+     * The outposts this team has already finished a questionnaire at.
+     *
+     * The team, not the account: a team may hold two phones and a post answered on either one is
+     * answered. A questionnaire linked to several posts counts only at the post it was played at,
+     * which is exactly what `quiz_attempts.game_location_id` records; older attempts have none, so
+     * they fall back to the questionnaire's own post.
+     */
+    private function finishedLocationIdsFor(?\App\Models\User $user): \Illuminate\Support\Collection
+    {
+        if (! $user) {
+            return collect();
+        }
+
+        $accountIds = $user->team_id
+            ? \App\Models\User::where('team_id', $user->team_id)->pluck('id')
+            : collect([$user->id]);
+
+        return app(\App\Services\StationProgress::class)->finishedPosts($accountIds);
     }
 
     /**

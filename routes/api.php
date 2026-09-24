@@ -66,6 +66,9 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         // The AR scene, same shape the web viewer receives.
         Route::get('/ar/locations/{id}', [\App\Http\Controllers\ArExperienceController::class, 'apiShow'])
             ->name('ar.location');
+        // Tapping a priced 3D object pays the team, once, behind the same gate as the scene.
+        Route::post('/ar/objects/{hotspotId}/claim', [\App\Http\Controllers\ArExperienceController::class, 'claimObject'])
+            ->whereNumber('hotspotId')->name('ar.object.claim');
 
         // Everything a client caches before losing signal.
         // Indoor navigation: a picture of the venue with the outposts marked.
@@ -91,6 +94,10 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         // Game loop.
         Route::post('/qr/lookup', [\App\Http\Controllers\Api\QRScannerController::class, 'lookup'])->name('qr.lookup');
         Route::get('/quiz/start/{questionnaireId}', [\App\Http\Controllers\Api\QuizController::class, 'start'])->name('quiz.start');
+        // Offline phase 2: a questionnaire opened with no signal, handed to the server when it
+        // returns. The gates are the same ones, judged late.
+        Route::post('/quiz/offline-start', [\App\Http\Controllers\Api\QuizController::class, 'offlineStart'])
+            ->name('quiz.offline-start');
         Route::get('/quiz/continue/{attemptId}', [\App\Http\Controllers\Api\QuizController::class, 'continue'])->name('quiz.continue');
         Route::post('/quiz/save-answer', [\App\Http\Controllers\Api\QuizController::class, 'saveAnswer'])->name('quiz.save-answer');
         // "Foto bersama": the finished photograph is the answer.

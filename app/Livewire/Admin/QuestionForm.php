@@ -68,7 +68,9 @@ class QuestionForm extends Component
 
         // Points validation - not required for brief questions
         if ($this->newQuestion['type'] !== 'brief') {
-            $rules['newQuestion.points'] = 'required|integer|min:1';
+            // 10 000 is the ceiling the operator asked for (23 Sep); the field used to stop at 100
+            // in the browser while the server had no limit at all, so a typo could store anything.
+            $rules['newQuestion.points'] = 'required|integer|min:1|max:10000';
         }
 
         // Type-specific validation
@@ -133,6 +135,7 @@ class QuestionForm extends Component
             'newQuestion.question.max' => 'The question may not be greater than 1000 characters.',
             'newQuestion.points.required' => 'Points are required.',
             'newQuestion.points.min' => 'Points must be at least 1.',
+            'newQuestion.points.max' => 'Poin maksimal 10.000 per pertanyaan.',
             'newQuestion.correct_answer.required' => 'The correct answer is required.',
             'newQuestion.type.in' => 'Invalid question type selected.',
             'newQuestion.answer_slots.required' => 'Tambahkan minimal satu kolom jawaban.',

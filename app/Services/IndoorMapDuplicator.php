@@ -17,9 +17,16 @@ use Illuminate\Support\Facades\DB;
  * questionnaires. Setting that up team by team meant the same walk through four pages for every
  * team — the single biggest cost in preparing an event, and where the broken links came from.
  *
- * So the copy is deep on purpose: plan → markers → posts → 3D objects → questionnaires →
- * questions. Two teams must be able to answer the same questions without sharing an attempt or a
- * QR code, which is what a shallow copy would have given them.
+ * Two modes, because those are two different events:
+ *
+ *  - **Share** (the default, operator 23 Sep): the copy's markers point at the *same* AR Outposts
+ *    and so at the same questionnaires. One booth, one 3D scene, one printed QR — the numbering on
+ *    the plan is all that differs per team. Nothing is shared that should not be: an attempt and an
+ *    Outpost Access unlock are per team account, always were, and a questionnaire may now be linked
+ *    to several posts at once.
+ *  - **Copy**: the old deep copy — plan → markers → posts → 3D objects → questionnaires →
+ *    questions, each post and questionnaire its own row with its own QR. For a second venue, or
+ *    when the teams really do answer different questions at the same booth.
  *
  * Images are not re-uploaded; both plans point at the same stored file, because an image is the
  * venue and does not differ per team.
@@ -27,11 +34,13 @@ use Illuminate\Support\Facades\DB;
 class IndoorMapDuplicator
 {
     /**
-     * @return array{map: IndoorMap, spots: int, posts: int, questionnaires: int, questions: int}
+     * @param  bool  $sharePosts  true: the copy's markers point at the source's posts; false: every
+     *                            post, 3D object and questionnaire is copied for this plan alone.
+     * @return array{map: IndoorMap, spots: int, posts: int, questionnaires: int, questions: int, shared: bool}
      */
-    public function duplicate(IndoorMap $source, ?string $name = null, ?int $userId = null): array
+    public function duplicate(IndoorMap $source, ?string $name = null, ?int $userId = null, bool $sharePosts = true): array
     {
-        return DB::transaction(function () use ($source, $name, $userId) {
+        return DB::transaction(function () use ($source, $name, $userId, $sharePosts) {
             $copy = $source->replicate();
             $copy->name = $name ?: $this->nextName($source->name);
             $copy->created_by = $userId ?: $source->created_by;
@@ -48,7 +57,7 @@ class IndoorMapDuplicator
                 $spotCopy = $spot->replicate();
                 $spotCopy->indoor_map_id = $copy->id;
 
-                if ($spot->game_location_id) {
+                if ($spot->game_location_id && ! $sharePosts) {
                     $postCopies[$spot->game_location_id] ??= $this->copyPost($spot->game_location_id, $copy->name, $counts);
                     $spotCopy->game_location_id = $postCopies[$spot->game_location_id];
                 }
@@ -57,7 +66,7 @@ class IndoorMapDuplicator
                 $counts['spots']++;
             }
 
-            return ['map' => $copy] + $counts;
+            return ['map' => $copy, 'shared' => $sharePosts] + $counts;
         });
     }
 
@@ -85,6 +94,9 @@ class IndoorMapDuplicator
             $q = $questionnaire->replicate();
             $q->title = $this->suffixed($questionnaire->title, $planName);
             $q->game_location_id = $copy->id;
+            // The copy belongs to the copied post alone. Carrying "berlaku di semua pos" over would
+            // put a second questionnaire at every post in the event.
+            $q->all_posts = false;
             // Its own QR: two teams scanning one code would share attempts and the station gate.
             // The column is NOT NULL, so the code is generated before the insert, not after.
             $q->qr_code = QuestionnaireService::generateUniqueQrCode();

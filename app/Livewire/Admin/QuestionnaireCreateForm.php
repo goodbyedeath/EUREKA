@@ -43,7 +43,17 @@ class QuestionnaireCreateForm extends Component
 
     public $quest_location_id = '';
 
-    public $game_location_id = '';
+    /**
+     * Indoor posts this questionnaire may be opened at. A list, not one id: the two floor plans walk
+     * the same booths in a different order, and some questionnaires belong at every post. The first
+     * one chosen is stored as `game_location_id`; the rest are links (operator, 23 Sep).
+     *
+     * @var list<int|string>
+     */
+    public array $game_location_ids = [];
+
+    /** Every active post, including ones created later — the case a list of links cannot cover. */
+    public bool $all_posts = false;
 
     /** Off for a bonus post: it still scores, but the race clock does not wait for it. */
     public bool $counts_toward_finish = true;
@@ -73,7 +83,12 @@ class QuestionnaireCreateForm extends Component
             'counts_toward_finish' => 'boolean',
             'venue_mode' => 'nullable|in:outdoor,indoor',
             'quest_location_id' => 'nullable|required_if:venue_mode,outdoor|exists:quest_locations,id',
-            'game_location_id' => 'nullable|required_if:venue_mode,indoor|exists:game_locations,id',
+            'all_posts' => 'boolean',
+            'game_location_ids' => [
+                \Illuminate\Validation\Rule::requiredIf(fn () => $this->venue_mode === 'indoor' && ! $this->all_posts),
+                'array',
+            ],
+            'game_location_ids.*' => 'exists:game_locations,id',
         ];
     }
 
@@ -85,7 +100,7 @@ class QuestionnaireCreateForm extends Component
             'time_limit.min' => 'Durasi minimal 1 menit.',
             'time_limit.max' => 'Durasi maksimal 1440 menit (24 jam).',
             'quest_location_id.required_if' => 'Pilih pos outdoor untuk kuesioner ini.',
-            'game_location_id.required_if' => 'Pilih pos indoor untuk kuesioner ini.',
+            'game_location_ids.required' => 'Pilih minimal satu pos indoor, atau centang "Berlaku di semua pos".',
             'end_date.after_or_equal' => 'Tanggal berakhir tidak boleh sebelum tanggal mulai.',
         ];
     }
@@ -96,6 +111,12 @@ class QuestionnaireCreateForm extends Component
         
         try {
             $this->validate();
+
+            // The first post chosen is the one stored on the row — what every older screen and the
+            // refusal messages read; the rest become links.
+            $postIds = $this->venue_mode === 'indoor' && ! $this->all_posts
+                ? collect($this->game_location_ids)->map(fn ($id) => (int) $id)->filter()->unique()->values()->all()
+                : [];
 
             $questionnaire = Questionnaire::create([
                 'title' => trim($this->title),
@@ -111,8 +132,11 @@ class QuestionnaireCreateForm extends Component
                 'counts_toward_finish' => $this->counts_toward_finish,
                 'venue_mode' => $this->venue_mode ?: null,
                 'quest_location_id' => $this->venue_mode === 'outdoor' ? (int) $this->quest_location_id : null,
-                'game_location_id' => $this->venue_mode === 'indoor' ? (int) $this->game_location_id : null,
+                'game_location_id' => $postIds[0] ?? null,
+                'all_posts' => $this->venue_mode === 'indoor' && $this->all_posts,
             ]);
+
+            $questionnaire->extraPosts()->sync(array_slice($postIds, 1));
 
             $this->resetForm();
             
@@ -145,7 +169,8 @@ class QuestionnaireCreateForm extends Component
             'is_active',
             'venue_mode',
             'quest_location_id',
-            'game_location_id',
+            'game_location_ids',
+            'all_posts',
             'counts_toward_finish',
         ]);
         

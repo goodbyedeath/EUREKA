@@ -235,11 +235,16 @@
                             class="mt-1 w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">
                         <option value="">— none —</option>
                         @foreach ($gameLocations as $gl)
-                            <option value="{{ $gl->id }}">{{ $gl->name }}</option>
+                            {{-- The plans already using it: picking one on purpose is how two teams
+                                 share a booth, so it must be visible here. --}}
+                            <option value="{{ $gl->id }}">
+                                {{ $gl->name }}@if(! empty($outpostUsedBy[$gl->id])) — dipakai {{ implode(', ', $outpostUsedBy[$gl->id]) }}@endif
+                            </option>
                         @endforeach
                     </select>
                     <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                        Optional. Links this marker to the AR outpost it stands for.
+                        Optional. Links this marker to the AR outpost it stands for. Satu pos boleh dipakai
+                        beberapa denah — satu booth, satu kamera 3D, satu QR; aksesnya tetap dibuka per tim.
                     </p>
                 </div>
 
@@ -300,12 +305,22 @@
                                 move it; tap a marker to edit it.
                             </p>
                         </div>
-                        <button type="button" wire:click="duplicateMap({{ $map->id }})"
-                                wire:confirm="Salin denah ini beserta penanda, pos, objek 3D, dan kuesionernya?"
-                                wire:loading.attr="disabled" wire:target="duplicateMap({{ $map->id }})"
+                        {{-- Two different events. Sharing is the usual one: the same booths, walked in
+                             another order. Copying is for a second venue, or teams that really answer
+                             different questions at the same booth. --}}
+                        <button type="button" wire:click="duplicateMap({{ $map->id }}, true)"
+                                wire:confirm="Buat denah baru dengan penanda yang sama, menunjuk pos (AR Outpost) dan kuesioner yang sama?"
+                                wire:loading.attr="disabled" wire:target="duplicateMap"
                                 class="px-3 py-1.5 text-xs rounded-md bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-200 dark:hover:bg-indigo-900/60"
-                                title="Untuk tim lain: salinan mandiri, QR kuesioner baru">
-                            Duplikat untuk tim lain
+                                title="Satu booth, satu kamera 3D, satu QR — dipakai semua tim. Nomor posnya saja yang beda per denah.">
+                            Duplikat — pakai pos yang sama
+                        </button>
+                        <button type="button" wire:click="duplicateMap({{ $map->id }}, false)"
+                                wire:confirm="Salin denah ini beserta pos, objek 3D, dan kuesionernya sebagai data baru? QR kuesionernya baru dan harus dicetak ulang."
+                                wire:loading.attr="disabled" wire:target="duplicateMap"
+                                class="px-3 py-1.5 text-xs rounded-md bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600"
+                                title="Salinan mandiri: pos, objek 3D dan kuesioner sendiri, QR baru">
+                            Duplikat + salin pos
                         </button>
                     <button type="button" wire:click="deleteMap({{ $map->id }})"
                                 wire:confirm="Delete this plan and all its spots?"

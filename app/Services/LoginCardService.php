@@ -36,14 +36,40 @@ class LoginCardService
 
     private const PASSWORD_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
 
-    /** @return Collection<int, LoginCard> */
-    public function generate(int $count, string $namePrefix, ?int $hours, User $admin): Collection
+    /**
+     * The number a new batch of this prefix should start at: one past the highest already printed.
+     *
+     * It used to count **all** cards ever made, whatever their name, so a second batch with a new
+     * prefix came out as "Amazing 04 … Amazing 13" (operator, 23 Sep). The crew reads these numbers
+     * off a printed card and calls them over a radio; they have to start at 01.
+     */
+    public function nextNumberFor(string $namePrefix): int
     {
-        return DB::transaction(function () use ($count, $namePrefix, $hours, $admin) {
+        $prefix = trim($namePrefix) !== '' ? trim($namePrefix) : 'Tim';
+
+        $highest = LoginCard::with('user:id,name')->get()
+            ->map(fn (LoginCard $c) => $c->user?->name)
+            ->filter()
+            ->map(function (string $name) use ($prefix) {
+                return preg_match('/^'.preg_quote($prefix, '/').'\s+(\d+)$/u', $name, $m) ? (int) $m[1] : 0;
+            })
+            ->max();
+
+        return (int) $highest + 1;
+    }
+
+    /**
+     * @param  int|null  $startAt  the first number printed; null continues after the highest card
+     *                             already carrying this prefix.
+     * @return Collection<int, LoginCard>
+     */
+    public function generate(int $count, string $namePrefix, ?int $hours, User $admin, ?int $startAt = null): Collection
+    {
+        return DB::transaction(function () use ($count, $namePrefix, $hours, $admin, $startAt) {
             $batch = now()->format('Ymd-His');
             $prefix = trim($namePrefix) !== '' ? trim($namePrefix) : 'Tim';
             $slug = Str::slug($prefix) ?: 'tim';
-            $next = LoginCard::count();
+            $next = ($startAt !== null ? max(1, $startAt) : $this->nextNumberFor($prefix)) - 1;
             $cards = collect();
 
             for ($i = 1; $i <= $count; $i++) {
@@ -90,6 +116,58 @@ class LoginCardService
             $card->user->forceFill(['password' => Hash::make($password)])->save();
             $card->user->tokens()->delete();
         });
+    }
+
+    /**
+     * Throw a card away, with the account it was printed for.
+     *
+     * Revoking switches an account off and keeps its history; this is for a card that should never
+     * have been printed — a wrong prefix, a batch numbered from the wrong place, one too many.
+     * So it is refused the moment the account has played anything: a team's answers are not a
+     * card's to delete, and the tool for that is Force Delete in Team Management, deliberately.
+     *
+     * @return string|null the reason it was refused, or null when it is gone
+     */
+    public function delete(LoginCard $card): ?string
+    {
+        $user = $card->user;
+
+        if (! $user) {
+            $card->delete();
+
+            return null;
+        }
+
+        $trail = [
+            'sudah tergabung ke tim '.($user->team?->name ?? ''),
+            'punya attempt kuis',
+            'sudah memulai race',
+            'sudah scan pos',
+            'sudah mengambil poin objek',
+        ];
+
+        $checks = [
+            $user->team_id !== null,
+            \App\Models\QuizAttempt::where('user_id', $user->id)->exists(),
+            \App\Models\RaceSession::where('user_id', $user->id)->exists(),
+            \App\Models\QrCodeScan::where('user_id', $user->id)->exists(),
+            \App\Models\HotspotClaim::where('user_id', $user->id)->exists(),
+        ];
+
+        foreach ($checks as $i => $hit) {
+            if ($hit) {
+                return 'Kartu ini tidak dihapus: akunnya '.trim($trail[$i])
+                    .'. Cabut kartunya, atau hapus timnya di Team Management.';
+            }
+        }
+
+        DB::transaction(function () use ($card, $user) {
+            $user->tokens()->delete();
+            $card->delete();
+            $user->delete();
+        });
+
+        return null;
     }
 
     public function setRevoked(LoginCard $card, bool $revoked): void

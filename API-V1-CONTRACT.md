@@ -6,6 +6,115 @@ Generated from the live router on questerra-series.com. Base URL `https://queste
 
 Act on these — several change responses your app already handles.
 
+**Latest (24 Sep, second change): check ARCore at install, not at a post — client-side, no API
+change.** Two of four trial teams were told "ARCore tidak support" **at their first booth**, with the
+paper-QR clue locked inside the 3D scene; both phones were otherwise fine and the server answered 200
+with three objects. The APK must run `ArCoreApk.checkAvailability()` on first launch after install (and
+again when the 3D camera first opens), distinguish *needs Google Play Services for AR* (offer
+`requestInstall()`) from *device can never* (tell them to see the crew before the race), and **never
+block login or the rest of the game** over it. Nothing in this API changes. Build guide §9; work order
+§39.
+
+**Latest (24 Sep, fourth change): a race can end on time, and says which ending it was.** A START code
+can now carry a **time limit in minutes**, so a run ends on whichever comes first: every counting post
+cleared, or the clock running out. `GET /race/status` `race` gains **`deadline_at`** (ISO 8601 or null),
+**`time_limit_minutes`** and **`finished_reason`** (`all_posts` | `time_limit` | null while running);
+`POST /race/start` carries `deadline_at` and `time_limit_minutes` too, so a team sees its deadline the
+moment it scans. `elapsed_seconds` never exceeds the limit, and `finished_at` is stamped **at the
+deadline**, not when anyone noticed. After the deadline the station gate answers **`403 race_time_up`**
+(with `deadline_at`, `finished_at`) for a **new** post — a questionnaire already open may still be
+finished and handed in, deliberately. A code with no limit behaves exactly as before. Build guide §8;
+work order §41.
+
+**Latest (24 Sep, third change): a post can run without the camera.** `ar_enabled` is new in the
+scene body — `location.ar_enabled` in `/ar/locations/{id}` and in the synced
+`game_locations[].scene`. False means the crew switched the 3D camera off for that post: render the
+`objects[]` as a **list** (title, description, points, `claimed`) instead of starting ARCore, and let a
+row be tapped to claim through the same `POST /ar/objects/{id}/claim`. `objects[].model` may be null
+there. Gates, QR scan and questionnaire are unchanged. A `404` with "nothing to show yet" means the
+camera is off and no objects were written. Not a replacement for the first-run ARCore check (§9). Build
+guide §9; work order §40.
+
+**Latest (24 Sep, second change): check ARCore at first launch — client-side, no API change.** In the
+trial two of four phones could not run the 3D camera, and it surfaced at the first booth with a clock
+already running; the server was answering 200 with a full scene for both. The app must run
+`ArCoreApk.checkAvailability()` on the first launch after install, offer `requestInstall()` when Play
+Services for AR is missing or old, say plainly when the device is not capable, re-check on resume, and
+**never block the rest of the app** on the result. Nothing to call here. Build guide §2a, §9; work
+order §39.
+
+**Latest (24 Sep): one route per team — `POST /race/start` can refuse.** Ten rotations means ten
+START codes in one room, and scanning the wrong one used to open a **second** clock quietly: sessions
+are keyed on (account, plan), so `/race/status` then reported the newer one and the team's whole route
+changed. A START code for a different plan, while the team has a clock running, now answers **`409
+already_on_another_route`** with `route {id, name}` and `race {session_id, started_at,
+elapsed_seconds, indoor_map_id}` — show the message and send them to their own card. Re-scanning the
+**same** code is unchanged (`just_started: false`), and a team that has finished may be moved. It is
+judged per team, so the second phone is caught too. Build guide §8; work order §38.
+
+**Latest (23 Sep, eighth change): tapping a 3D object pays.** The AR editor has always offered a
+price per object and the app has always shown it, but nothing paid it — there was no endpoint and no
+sum included it. Now: **`POST /api/v1/ar/objects/{hotspotId}/claim`** (no body) → `{points, claimed_at,
+object, score}`; the scene body gains **`objects[].claimed`** (per team, also in the synced copy); and
+`score` everywhere gains **`object_points`**, which is part of `total`. Once per team, not per phone —
+a repeat answers `409 already_claimed` **with** `points` and `score`, so treat it as already-done. Gates
+are the scene's own: `403 awaiting_unlock` (indoor, crew), `403 checkin_required` (outdoor), `403
+race_not_started`; `422 object_has_no_points` when the object is priced at 0. An emergency stop clears
+the claims with the rest of the run. Build guide §2a, §9; work order §37.
+
+**Latest (23 Sep, seventh change): the read-back names its post.** `GET /quiz/attempts/{attemptId}`
+gains **`post`** — `{type: "indoor"|"outdoor", id, name}`, or null — the booth that attempt was played
+at, in the same shape `qr/lookup` sends. Reported by the client team (v48): a result reopened from
+history could not name the post, and since a questionnaire may be shared by several posts its title no
+longer says. Build guide §11.
+
+**Latest (23 Sep, sixth change): a finished post closes itself.** `/indoor-map` `spots[]` gains
+**`is_done`** — true once the team has answered every questionnaire at that post (a post with two
+questionnaires stays false until both are in). Draw it as finished and do not let it be opened again.
+The server does not rely on the app: handing in the last questionnaire **revokes that team's access**
+to the post, so `/ar/locations/{id}` returns `403 awaiting_unlock` and `qr/lookup` `403
+checkin_required` afterwards. A crew member may reopen it in Outpost Access — then `is_open` is true
+again while `is_done` stays true. Per team, so both phones agree. Build guide §8; work order §36.
+
+**Latest (23 Sep, fifth change): offline phase 2 — a questionnaire can be started with no signal.**
+New: `POST /api/v1/quiz/offline-start {qr_code, client_token, elapsed_seconds}`. The team opens the
+sealed copy at the post, plays with a stopwatch (`elapsedRealtime`), and hands the attempt to the
+server when the network returns; the 200 body is exactly `/quiz/start`'s plus `repeat`. The start is
+reconstructed as `now − elapsed`, clamped to the questionnaire's `time_limit` and never before the
+team's race start, so the device clock buys nothing. `client_token` makes a retried upload idempotent.
+The gates are unchanged, only judged late — `race_not_started`, `checkin_required` (a post the crew
+never opened is refused), `not_available`, `max_attempts_reached`, `session_in_progress`,
+`unknown_code`, `too_many_starts`. A `fun_game` still needs signal to be scored, so a questionnaire
+containing one can be played offline but not handed in until then. Build guide §10; work order §35.
+
+**Latest (23 Sep, fourth change): the race ends, and `/race/status` says so.** This was missing from
+the contract entirely — the operator played ten posts and the app never closed. `GET /race/status`
+`race` carries **`finished`** (bool) and **`finished_at`** (ISO 8601 or null), and `elapsed_seconds`
+stops growing at that moment: that is the team's official time. The server sets it when the team
+completes the last questionnaire with `counts_toward_finish` — **per team, not per phone**, so a team
+playing on two devices sees `finished: true` on both. Finishing locks nothing: scans, `quiz/start` and
+the AR gate keep working, because a bonus post is still playable afterwards. `openapi.json` cannot show
+these fields — it probes `/race/status` with no session, where `race` is null. Build guide §8; work
+order §34.
+
+**Latest (23 Sep, third change): one AR Outpost serves every team.** The ten booths are now one shared
+set of outposts, so the same `game_location_id` appears on several teams' plans under a different
+marker name — `111` is "Pos 01" for one team and "Pos 02" for another. No shape changed and access is
+still per team (`is_open`, `awaiting_unlock`, `checkin_required` unchanged). Two assumptions to drop:
+a route number comes from `/indoor-map` `spots[].name`, never from the outpost; and outposts are now
+named after what happens there ("QRIS Tap Experience"), so `location.name` in `/ar/locations/{id}`
+reads differently after the next sync. Build guide §8; work order §33.
+
+**Latest (23 Sep, second change): one questionnaire, several posts.** An admin can link a questionnaire
+to more than one post, or to *semua pos* (every post). Consequences for the client: `qr/lookup` 200 now
+carries **`post`** (`{type: "indoor", id, name}` or null) — the post this play belongs to, since the same
+code is printed at more than one booth; a `403 checkin_required` for a shared questionnaire carries **no
+`post`** (the server cannot know which booth the team is at) — show the `message` alone; `max_attempts`
+counts **per post**, so a finished questionnaire opens again at the next post that the crew unlocks; and
+`/offline/manifest` `questionnaires[]` gains **`game_location_ids`** and **`all_posts`** — read the list,
+not the single `game_location_id`. Nothing changes for a questionnaire with one post. Build guide §4, §10;
+work order §32.
+
 **Latest (23 Sep): per-question results.** `POST /quiz/submit` gains `result.questions[]`
 (`question_id, type, question, points, points_earned, correct (bool|null), answered`), and the new
 `GET /api/v1/quiz/attempts/{attemptId}` reads the whole result back — totals, `questions[]` and

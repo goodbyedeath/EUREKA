@@ -73,6 +73,11 @@ login, but only **after** the password is correct. Do not treat that message as 
 
 ---
 
+**On the very first launch after install, check ARCore before anything else** and remember the answer
+(§9, "Check ARCore on the first run"). A phone that cannot run the 3D camera has to be found at the
+start table, not at the first post — it happened in the 24 Sep trial and cost two teams their morning.
+Never block login or the rest of the app on the result.
+
 ## 2a. The team — set up once, then show its score
 
 ### Team setup happens exactly once — operator rule, 14 Sep
@@ -121,8 +126,8 @@ Setup refusals:
 The team has a right to see what it has achieved. `GET /team` → `team.score`:
 
 ```json
-"score": { "total": 80, "base_points": 0, "earned_points": 100,
-           "assessment_points": -20, "attempts_completed": 1 }
+"score": { "total": 95, "base_points": 0, "earned_points": 100,
+           "assessment_points": -20, "object_points": 15, "attempts_completed": 1 }
 ```
 
 Show **`total`** large, and under it the breakdown:
@@ -132,6 +137,7 @@ Show **`total`** large, and under it the breakdown:
 | Poin awal | `base_points` | the starting balance. **0 since 16 Sep** — teams score only what they earn. Still render the row from the field, never a constant: an event can be set up with a balance again. |
 | Poin kuis | `earned_points` | correct answers |
 | Poin game | `assessment_points` | facilitator scores minus penalties — **can be negative**, show the sign |
+| Poin objek | `object_points` | 3D objects the team has collected at the posts (§9). 0 when the crew priced none |
 
 **No rank, no other teams** — operator decision. `rank` and `total_teams` are gone from the response.
 
@@ -142,6 +148,7 @@ returns:
 total = base_points
       + Σ points_earned of correct answers   in SUBMITTED questionnaires of this team
       + Σ (additional − penalty) of scored games in SUBMITTED questionnaires of this team
+      + Σ points of 3D objects this team has claimed                    (§9, new 23 Sep)
 ```
 
 It is the same function (`PointsCalculationService::teamScore`) behind `/admin/user-progress` and the
@@ -388,6 +395,25 @@ All three refusals are `403` with the `message` to show:
 
 `race_not_started` and `station_not_linked` carry no `post`. After an emergency race stop every team is
 back at `race_not_started`.
+
+**One questionnaire can now serve several posts — operator, 23 Sep.** The two floor plans walk the same
+booths in a different order, and a questionnaire may be marked *berlaku di semua pos*. So the code you
+scan no longer identifies one post:
+
+- The gate reads "opened at **one of** its posts". A `checkin_required` for a questionnaire with more
+  than one post carries **no `post` object** — the server cannot know which booth the team is standing
+  at, and naming the wrong one would send them across the venue. Show the `message` alone.
+- `qr/lookup` 200 now carries **`post`** — `{type: "indoor", id, name}`, or `null` outdoor and when the
+  questionnaire has no post the crew has opened. It is the post this play belongs to: label the quiz
+  screen and the result with it, since the title alone no longer says where the team is.
+- **One play per post.** `max_attempts` counts per post for a shared questionnaire, so `1` means once
+  at each booth. Finishing it at one post leaves it open at the next — scan again there as usual. A
+  questionnaire with a single post behaves exactly as before.
+- One live session at a time still holds: a session open at one post must be finished before scanning
+  the same questionnaire at another (`409 session_in_progress`).
+- In the offline manifest each questionnaire carries **`game_location_ids`** (every post it may be
+  opened at) and **`all_posts`**; `game_location_id` stays as the first of them. Use the list, not the
+  single id, when deciding what to offer at a post.
 
 **The 200 body, verified live (Pos Merah):**
 
@@ -913,8 +939,27 @@ GET /api/v1/indoor-map/{id}       → a specific one
   "spots": [ { "id": 26, "name": "test", "x": 88.54, "y": 12.689,
                "shape": "pin", "color": "#705757", "size": 28,
                "content": "", "image": "https://…",
-               "game_location_id": null, "is_post": false, "is_open": false } ] }
+               "game_location_id": null, "is_post": false,
+               "is_open": false, "is_done": false } ] }
 ```
+
+**One route per team — `409 already_on_another_route`, 24 Sep.** With ten rotations there are ten
+START codes in the room, and a team that scans someone else's card used to get a second clock: the
+session key is (account, plan), so `/race/status` began reporting the newer one and the route changed
+under them. `POST /race/start` now refuses a code for a different plan while the team has a clock
+running:
+
+```json
+{ "success": false, "error": "already_on_another_route",
+  "route": { "id": 64, "name": "Tim 05" },
+  "race": { "session_id": 163, "elapsed_seconds": 412, "indoor_map_id": 64 },
+  "message": "Tim ini sudah memulai rute Tim 05. Pakai QR START rute itu, atau hubungi panitia." }
+```
+
+Show the `message` and keep the team on the race it already has — the `race` block is the running one,
+so you can go straight back to it. Re-scanning the **same** code still answers 200 with
+`just_started: false`. Judged per team, so the second phone is caught as well; once the race is
+finished the crew can move a team to another route.
 
 **The plan is per team now** (operator, 16 Sep). An indoor event runs several teams on different
 routes at once, so the crew assigns a floor plan to each team in Team Management; a team without
@@ -945,6 +990,16 @@ outposts — a stage, an entrance, a photo with a caption. Those have `game_loca
 `is_open` says whether that spot's post is open for this team; it is always false when `is_post` is
 false. `game_location_id` is the AR outpost the marker stands for.
 
+**`is_done` — the post is spent** (operator, 23 Sep). True once the team has answered **every**
+questionnaire at that post; a post carrying two questionnaires stays false until both are in. Draw it
+as finished — a tick, greyed, whatever fits — and **do not let it be opened again**: no AR camera, no
+scan screen. The server agrees and does not rely on you: handing in the last questionnaire revokes
+the team's access there, so `/ar/locations/{id}` answers `403 awaiting_unlock` and `qr/lookup` answers
+`403 checkin_required` from that moment. `is_done` is per team, so the other phone of the same team
+sees it too, and it survives a crew member reopening the post — `is_open` can go back to true while
+`is_done` stays true, which is exactly the case "let them in once more". In the offline manifest the
+flag is as of the Sync, like `is_open`.
+
 **A correct START clue opens the floor plan and nothing else** (operator, 22 Sep — this reverses the
 15 Sep rule from your #21, under which a correct clue opened every post on the plan). Each AR Outpost
 opens only when the team reaches it: the facilitator at that post tells the admin, and the admin
@@ -955,9 +1010,209 @@ opens it for that team in Outpost Access. Until then `is_open` is false, the AR 
 The clue gates nothing else on the server: `/indoor-map` and `qr/lookup` do not check
 `clue_solved`. Until it is solved no post is open, so the station gate already refuses indoor scans.
 
+**One AR Outpost is shared by every team — operator, 23 Sep.** The venue has ten booths and each team
+walks them in a different order, so the same `game_location_id` now appears on several teams' plans
+under a different marker name. On Tim 01's plan outpost `111` is "Pos 01"; on Tim 03's it is "Pos 02".
+Three things follow:
+
+- **The route number is the marker's `name` from `/indoor-map`, never the outpost's.** An outpost is
+  named after what happens there ("QRIS Tap Experience"), not after a position in a route it no longer
+  owns. Use `location.name` from `/ar/locations/{id}` as a title if you like, but label the plan and
+  the progress list from the spot.
+- **Do not key anything route-shaped on `game_location_id`.** The scene behind it is the same for
+  everyone and may be cached by that id; "Pos 3", "third post visited" and anything ordered must come
+  from the plan the team is actually holding.
+- **Access is unchanged and still per team.** `is_open`, `awaiting_unlock` and `checkin_required` are
+  decided per account, so a post opened for one team stays shut for the others even though they share
+  it. Verified on the live server.
+
+The offline manifest's `game_locations[]` is the whole event, not the team's route — draw from
+`indoor_map.spots`, and use the manifest only to look a post up by its id.
+
+### The deadline on the START code — 24 Sep
+
+A START code can carry a **time limit in minutes**, set by the crew per route. A run then ends on
+whichever comes first: every counting post cleared, or the time running out.
+
+```json
+"race": { "started_at": "…T09:16:35+00:00", "elapsed_seconds": 5400,
+          "deadline_at": "…T10:46:35+00:00", "time_limit_minutes": 90,
+          "finished_at": "…T10:46:35+00:00", "finished": true, "finished_reason": "time_limit", … }
+```
+
+- **`deadline_at`** is the moment the run must stop, or null when that code sets no limit. Count down
+  to it if you like — but **never decide the finish yourself**; the server stamps it, and it stamps it
+  *at the deadline*, not when a phone happened to poll. `POST /race/start` carries it too, so the
+  deadline can be shown from the first second.
+- **`elapsed_seconds` never exceeds the limit.** A phone that polls ten minutes late still reads the
+  official time.
+- **`finished_reason`** is `all_posts` or `time_limit`. Say which on the finish screen: a team that ran
+  out of time deserves different words from one that cleared every post.
+- **After the deadline, new posts are closed.** `qr/lookup` and a new `quiz/start` answer
+  **`403 race_time_up`** with `deadline_at` and `finished_at`; show the message. A questionnaire the
+  team already had open is **not** blocked — `quiz/start` returns the same attempt, answers still save
+  and `submit` is still accepted, so nothing a team was in the middle of is lost.
+- **Sound an alert when the time runs out.** The crew's desk rings a bell at the deadline (24 Sep) and
+  the team should hear one too: a phone in a pocket on the far side of a venue is the only clock the
+  team has. Three short notes plus a vibration at `deadline_at`, once — not a loop — and one quieter
+  warning at **ten minutes left**, which is the point the desk turns its countdown amber. Keep it
+  local: it is scheduled from `deadline_at`, so it fires with no signal, and a phone that was asleep
+  through the deadline sounds it once when it wakes rather than counting how many it missed. The alert
+  is an announcement, not a decision — the finish still comes from `/race/status`, and the screen must
+  agree with the server even if the two are a few seconds apart.
+- A code with **no** limit behaves exactly as it always has.
+
+### When the race ends — 23 Sep
+
+This was never written down, and it should have been: **the race ends by itself, and `/race/status` is
+where you learn it.** The operator ran ten posts and the app never closed.
+
+Observed live, the same session before and after its last counting post:
+
+```json
+{ "race": { "session_id": 125, "started_at": "2026-09-23T14:27:02+00:00",
+            "elapsed_seconds": 4140, "finished_at": null, "finished": false,
+            "mode": "indoor", "indoor_map_id": 56, "clue_solved": true, "clue_wrong_attempts": 0 } }
+
+{ "race": { "session_id": 125, "started_at": "2026-09-23T14:27:02+00:00",
+            "elapsed_seconds": 4140, "finished_at": "2026-09-23T15:36:02+00:00", "finished": true,
+            "mode": "indoor", "indoor_map_id": 56, "clue_solved": true, "clue_wrong_attempts": 0 } }
+```
+
+- **`finished` is the flag; `finished_at` is when.** Both appear on the same `/race/status` the app
+  already polls every 10 s, so nothing new has to be called.
+- **`elapsed_seconds` stops growing** at `finished_at`. That is the team's official time — show it,
+  and stop your own local ticker rather than letting it run past the server's number.
+- **The server decides, not the app.** The clock stops the moment the team completes the last
+  questionnaire whose `counts_toward_finish` is true — read it from `/race/status`, never conclude it
+  yourself from a count of posts; a bonus post and an optional one do not count and only the server
+  knows which.
+- **It is per team, not per phone** (operator, 23 Sep). A team may play on two devices, so posts
+  cleared on either one count towards the same finish, and when it happens **every** phone of that
+  team sees `finished: true` on its next poll.
+- **Finishing does not lock anything.** Scans, `quiz/start` and the AR gate go on working, because a
+  team that has finished may still play a bonus post. Show the finished state and the final time; do
+  not block the rest of the app.
+- After an emergency stop the session is gone: `race: null` and the team starts again from START.
+
 ---
 
 ## 9. AR and the 3D camera
+
+### Check the phone can do AR at all — on first launch, not at a post  ·  operator 24 Sep
+
+In the operator's trial two of four teams reached their first post and were told **"ARCore tidak
+support"** there. Both had been playing happily until then: login, floor plan, QR scanner, quiz all
+work without ARCore, so nothing warned anybody until the team was standing at a booth with a
+facilitator waiting. The server was healthy for both — `/ar/locations/{id}` answered 200 with three
+objects and every `.glb` served — because this is a property of the handset, not of the event.
+
+**So the app must ask the question once, at the start, and say the answer plainly.**
+
+**When:** on the first launch after install, before or right after login — and again the first time the
+3D camera is opened, because the answer changes once the user installs what is missing. Do not cache a
+negative answer for ever.
+
+```kotlin
+when (ArCoreApk.getInstance().checkAvailability(context)) {
+    SUPPORTED_INSTALLED           -> ready
+    SUPPORTED_APK_TOO_OLD,
+    SUPPORTED_NOT_INSTALLED       -> offer ArCoreApk.requestInstall(activity, true)
+    UNSUPPORTED_DEVICE_NOT_CAPABLE -> this phone cannot, ever
+    UNKNOWN_CHECKING              -> re-poll; it resolves in a moment
+    UNKNOWN_ERROR, UNKNOWN_TIMED_OUT -> treat as "cannot check now", retry later
+}
+```
+
+Three outcomes, three different messages — the distinction is the whole point, because two of them are
+fixable in two minutes and one is not:
+
+| State | What to show | What the crew does |
+|---|---|---|
+| `SUPPORTED_INSTALLED` | nothing | — |
+| `SUPPORTED_NOT_INSTALLED` / `APK_TOO_OLD` | "Kamera 3D butuh **Layanan Google Play untuk AR**. Pasang sekarang (±30 MB)?" with a button that calls `requestInstall()` | nothing; the team fixes it on the spot |
+| `UNSUPPORTED_DEVICE_NOT_CAPABLE` | "HP ini tidak mendukung Kamera 3D. Lapor ke panitia **sebelum race dimulai** — HP perlu diganti." | swap the phone, or hand the team the post clues verbally |
+| `UNKNOWN_*` | "Belum bisa memeriksa Kamera 3D. Coba lagi." | retry |
+
+Rules that matter as much as the check:
+
+- **Never block the rest of the app.** A phone without ARCore can still log in, read the plan, scan
+  the paper QR and answer every questionnaire; it only loses the 3D camera and the bonus points from
+  tapping objects. Blocking login over AR would turn a small problem into a dead team.
+- **Show it before the race, not at the post.** The point is that the crew can swap a handset while
+  everyone is still at the start line.
+- On the AR screen itself, keep the state machine of §9: an unsupported device is its own terminal
+  state with the message above — not `WAITING_UNLOCK`, and not an empty black camera.
+- The check needs no network and no server call. Nothing in the API changes.
+
+### Check ARCore on the first run, not at the first post — operator 24 Sep
+
+In tonight's trial two of four teams reached their first booth, opened the 3D camera and were told
+**"ARCore tidak support"**. The server was fine for both — 14 posts open, `/ar/locations/{id}` answered
+200 with three objects, every `.glb` served — so the phones were never going to work, and nobody knew
+until the teams were standing at a post with a clock running. That is the wrong moment to find out.
+
+**Check at first launch after install, before the team is anywhere.** `ArCoreApk.getInstance()
+.checkAvailability(context)` and handle every value, not just the happy one:
+
+| Availability | Meaning | What to do |
+|---|---|---|
+| `SUPPORTED_INSTALLED` | ready | nothing; remember it and move on |
+| `SUPPORTED_NOT_INSTALLED` | phone is capable, Play Services for AR missing | offer it: `requestInstall()`, or send them to the Play Store entry for *Google Play Services for AR* (~30 MB) |
+| `SUPPORTED_APK_TOO_OLD` | installed but outdated | same: `requestInstall()` updates it |
+| `UNSUPPORTED_DEVICE_NOT_CAPABLE` | not on Google's certified list | **say so plainly and early**: this phone cannot run the 3D camera, ask the crew for another device before the race starts |
+| `UNKNOWN_CHECKING` | still deciding | it is transient — poll every ~200 ms for a few seconds, never treat it as a failure |
+| `UNKNOWN_ERROR` / `UNKNOWN_TIMED_OUT` | could not tell | retry once later; if it persists, treat it as "not ready" but let them in |
+
+Rules that matter more than the table:
+
+- **Never block the app on this.** Login, team setup, the floor plan, the clue, the QR scanner, the
+  questionnaires and the score all work without ARCore. A phone that fails the check must still be
+  able to play everything else — the 3D camera is one step of a post, not the app.
+- **Re-check, do not cache forever.** A team that installs Play Services for AR mid-event must be
+  able to continue without reinstalling the APK: re-run the check when the app resumes and when the
+  3D camera is opened.
+- **Say it in the team's language, once, plainly.** For the unsupported case the message has to reach
+  a facilitator, not just the player: *"HP ini tidak mendukung kamera 3D (ARCore). Beri tahu panitia —
+  pos tetap bisa dimainkan lewat petunjuk dari fasilitator."*
+- **Tell the crew what the phone said.** Show the result on the app's own settings/about screen so a
+  facilitator can read it out without digging through Android settings.
+
+Tonight's fallback, for the record: the clue that names the paper QR's hiding place lives in the 3D
+object's text, so a phone with no ARCore is stuck at every post until a facilitator reads the clue
+aloud. The check exists so that is arranged before the start, not discovered at Pos 01.
+
+### `ar_enabled: false` — a post the crew switched the camera off for  ·  24 Sep
+
+Not every phone runs ARCore, so the admin can now turn the camera off **per post**. The post keeps
+everything that matters — each object's title, its description (the clue that names the paper QR's
+hiding place) and its bonus points — and `location.ar_enabled` tells you to render them **as a list
+instead of opening the camera**:
+
+```json
+{ "location": { "id": 117, "name": "BINS", "access_mode": "manual", "ar_enabled": false, … },
+  "objects": [ { "id": 67, "title": "Koin Emas", "description": "Petunjuk: QR kertas ada di …",
+                 "points": 5, "claimed": false, "media_type": null, … } ] }
+```
+
+- **Read `location.ar_enabled` before starting an ARCore session.** False means no camera at this
+  post: show the objects as rows — title, description, and the points row exactly as the object sheet
+  does — and let a tap on a row claim its points through the usual
+  `POST /ar/objects/{hotspotId}/claim`. Nothing else about the post changes: same gate, same QR scan
+  afterwards, same questionnaire.
+- The gate still comes first. A post with the camera off is still `403 awaiting_unlock` until the crew
+  opens it, and still `403 checkin_required` outdoors.
+- `objects[].model` may be null here, and that is not an error — there is nothing to render.
+- It is in the synced copy too (`game_locations[].scene.location.ar_enabled`), so an offline phone
+  makes the same choice. The manifest row's **`uses_ar` is false for such a post as well** — it means
+  "open the camera here", not "has a model", so a build that has not learned `ar_enabled` yet still
+  offers no 3D at that post instead of starting a session that cannot work.
+- `404` with *"This location has nothing to show yet"* means the camera is off **and** the crew has
+  not written any objects: tell the team to ask the facilitator rather than showing an empty screen.
+
+This is per post, decided by the crew. It is **not** a substitute for §9's first-run ARCore check: a
+phone that cannot run AR at all still needs to be found at the start table, because the other posts
+may well have their cameras on.
 
 ### Two cameras, never both alive
 
@@ -1055,6 +1310,32 @@ camera opens straight into the scene.
 **Object sheet** — slides up from the bottom on tap: title as a heading, description, the points
 row, then at most one extra (image **or** link; a link opens externally), and a Close button. The
 scene stays live behind it; closing returns to the same pose rather than restarting.
+
+**The points row is now real money — 23 Sep.** Until today `objects[].points` was displayed and
+nothing paid it: no endpoint took the tap and no total included it. The operator's client requires
+it, so it works now, and the app has to collect it:
+
+```
+POST /api/v1/ar/objects/{hotspotId}/claim        (no body)
+200 { "success": true, "points": 15, "claimed_at": "…",
+      "object": { "id": 67, "title": "Peti Harta" },
+      "score": { "total": 95, …, "object_points": 15 } }
+```
+
+- **Call it once, when the team taps an object whose `points` is above 0.** The 200 carries the
+  team's whole new `score`, so update the card from that rather than adding anything up. It is always
+  an object — for an account that has not registered its team yet it is that account's own score.
+- **`objects[].claimed`** is new in the scene body (and in the synced copy): true when this team has
+  already been paid for that object. Show the points row as collected and do not offer it again.
+- **`409 already_claimed`** is the normal answer to a repeat — from the same phone, from the team's
+  other phone, or from a retry after a dropped connection. It carries `points` and `score` too, so
+  treat it as success-that-already-happened, never as an error to show.
+- **The gate is the scene's own gate**: indoor, `403 awaiting_unlock` until the crew opens the post;
+  outdoor, `403 checkin_required` until the team has checked in; and `403 race_not_started` before
+  START. `422 object_has_no_points` means the crew priced that object at 0 — do not show a points row
+  for it at all.
+- **Once per team, not per phone.** An emergency stop clears the claims with the rest of the run, so
+  after a reset the objects pay again.
 
 ### No QR is involved. Open the camera and show the objects.
 
@@ -1328,6 +1609,7 @@ GET /api/v1/offline/manifest   (new fields)
   "questionnaires": [ {
       "id": 40, "qr_hash": "<hex>",
       "venue_mode": "outdoor", "quest_location_id": 36, "game_location_id": null,
+      "game_location_ids": [], "all_posts": false,
       "counts_toward_finish": true, "time_limit": 30, "start_date": null, "end_date": null,
       "question_count": 5,
       "sealed": { "nonce": "<base64, 12 bytes>", "ciphertext": "<base64, ciphertext ‖ 16-byte tag>" },
@@ -1395,15 +1677,56 @@ The scene is on the phone; **the gate is not**, and still decides:
    the questions from the sealed local copy (open it with the code just scanned) so a weak connection
    never has to download pictures mid-session, and if the network then drops, carry on: answers into
    the write queue, `submit` queued, `quiz/continue` served from your cache of the `quiz/start` reply.
-3. **Scanning a post with no signal:** match `qr_hash`, say which questionnaire it is and that the
-   start needs a moment of signal — **do not show its questions yet.** Showing them before
-   `quiz/start` would give the team time the server's clock does not count. (Phase 2 will allow
-   starting offline; not yet.)
+3. **Scanning a post with no signal:** match `qr_hash` and open it — **phase 2 (below) now allows
+   starting offline.** Until you have built that, say which questionnaire it is and ask for a moment
+   of signal rather than showing its questions.
 4. **The clock offline:** count down from the `time_remaining` the server last gave you with a
    monotonic clock (`SystemClock.elapsedRealtime()`), never the wall clock.
 5. **Stale copy:** `content_updated_at` is on the manifest and on every `/race/status`. Newer than the
    one stored with your Sync means the crew edited a questionnaire, a question or a floor plan — Sync
    again when you have signal. Do not wipe anything on a failed poll.
+
+### Offline, phase 2 — starting with no signal  ·  23 Sep
+
+Phase 1 put the questions on the phone but kept the **start** on the server, because that is where
+the gates are checked and the clock begins. A venue whose WiFi drops exactly as a team reaches a post
+therefore stopped the game. It no longer has to.
+
+**On the phone, with no signal:** match `qr_hash` as in phase 1, open the sealed questionnaire with
+the scanned code, **generate a `client_token`** (a UUID — this is the attempt's name), start a
+stopwatch on `SystemClock.elapsedRealtime()`, and play. Answers go into the write queue as usual.
+
+**When signal returns, before flushing that queue:**
+
+```
+POST /api/v1/quiz/offline-start
+{ "qr_code": "<the scanned string>", "client_token": "<your uuid>", "elapsed_seconds": 420 }
+```
+
+The 200 body is **exactly `/quiz/start`'s** — `attempt`, `questionnaire`, `questions`, `answers`,
+`completion`, `totalPoints`, `timeRemaining` — plus `"repeat": true|false`. Take `attempt.id` and
+replay your queued `save-answer` and `submit` against it; the ids you used locally are yours alone.
+
+- **`elapsed_seconds` is the stopwatch, never the calendar.** The server reconstructs the start as
+  `now − elapsed`, so the device clock buys nothing. It is clamped to the questionnaire's own
+  `time_limit` and never lands before the team's race start: send 24 hours and you get
+  `timeRemaining: 0`, with `submit` still accepted, as after any time-out.
+- **Retrying is safe and is the expected case.** The same `client_token` returns the same attempt
+  with `repeat: true` — nothing is played twice. A *different* token for a session still open at that
+  post also returns the open attempt rather than a second one.
+- **The gates are not waived, only judged late.** Same refusals as `quiz/start`: `403
+  race_not_started`, `403 checkin_required` (the crew never opened that post — keep the play queued
+  and tell the team to find a facilitator; do not drop it), `403 not_available`, `403
+  max_attempts_reached`, `409 session_in_progress`, `404 unknown_code`, `429 too_many_starts`.
+  `checkin_required` is the one that matters: a questionnaire answered at a post the crew never
+  opened is a team that was never there, and the server will not take it.
+- **What still needs signal:** a `fun_game` question is scored by the facilitator through
+  `complete-game` + `assessments/{id}`, which are server calls. A questionnaire containing one can be
+  started and answered offline, but cannot be handed in until the network is back — `submit` will
+  answer `409 questions_incomplete` until the facilitator's score exists. Say so on screen rather
+  than looking stuck.
+- The clock, the scoring and the finish rule are unchanged: the server times it, the server scores
+  it, and the race clock stops when the last counting post is cleared (§8).
 
 ---
 
@@ -1439,6 +1762,10 @@ Attempt history lived only as a Livewire page, so a team holding just the app co
 GET /api/v1/quiz/attempts?limit=20
                               { success, total_attempts, attempts[] }
 ```
+
+`GET /api/v1/quiz/attempts/{attemptId}` reads one result back — and now carries **`post`**
+(`{type, id, name}`, or null), the booth it was played at, in the same shape `qr/lookup` sends. Your
+report in v48: the read-back could not name the post, and a shared questionnaire's title does not say.
 
 **The Panduan page comes from the server too** (operator, 20 Sep): how the app works, the same for
 everyone.

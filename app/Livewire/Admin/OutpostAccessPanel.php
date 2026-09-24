@@ -43,6 +43,17 @@ class OutpostAccessPanel extends Component
     /** One floor plan's posts and teams only; '' shows everything. */
     public string $plan = '';
 
+    /**
+     * Hide whoever has never logged in (operator, 23 Sep: "supaya tombolnya lebih sederhana").
+     *
+     * A team that has not logged in cannot be at a post, so its row is a column of buttons the crew
+     * will never press — and on a desk operated while listening to a radio, every extra button is a
+     * place to mis-tap. Accounts created for a later session, and teams with no account at all, are
+     * exactly what this hides. `last_login_at` is stamped by the app's own login, so it tells the
+     * truth for the phones in the venue.
+     */
+    public bool $playingOnly = true;
+
     /** Open or close every account of one team at one outpost. */
     public function toggleTeam(int $locationId, int $teamId): void
     {
@@ -224,7 +235,7 @@ class OutpostAccessPanel extends Component
         $accounts = User::with('team:id,name,indoor_map_id')
             ->where('role', 'user')
             ->orderBy('name')
-            ->get(['id', 'name', 'team_id']);
+            ->get(['id', 'name', 'team_id', 'last_login_at']);
 
         $accountPlan = $this->planIdsFor($accounts);
 
@@ -244,6 +255,8 @@ class OutpostAccessPanel extends Component
                     // assignment when it has one.
                     'plan' => $mine->isNotEmpty() ? ($accountPlan[$mine->first()->id] ?? null) : $team->indoor_map_id,
                     'assigned' => $team->indoor_map_id !== null,
+                    // One phone logged in is enough: a team plays on the leader's device.
+                    'playing' => $mine->contains(fn (User $u) => $u->last_login_at !== null),
                 ];
             })
             ->concat($accounts->whereNull('team_id')->map(fn (User $u) => (object) [
@@ -255,12 +268,21 @@ class OutpostAccessPanel extends Component
                 'account_names' => [$u->name],
                 'plan' => $accountPlan[$u->id] ?? null,
                 'assigned' => false,
+                'playing' => $u->last_login_at !== null,
             ]))
             ->when($this->search !== '', fn ($all) => $all->filter(
                 fn ($r) => str_contains(mb_strtolower($r->name), mb_strtolower($this->search))
                     || collect($r->account_names)->contains(fn ($n) => str_contains(mb_strtolower($n), mb_strtolower($this->search)))
             ))
             ->values();
+
+        // Counted before hiding, so the desk can say what it is not showing rather than simply
+        // losing a team the crew is about to ask for.
+        $resting = $rows->reject(fn ($r) => $r->playing)->count();
+
+        if ($this->playingOnly) {
+            $rows = $rows->filter(fn ($r) => $r->playing)->values();
+        }
 
         $postPlans = $this->postPlans();
         $planNames = IndoorMap::where('is_active', true)->orderBy('name')->pluck('name', 'id');
@@ -283,12 +305,66 @@ class OutpostAccessPanel extends Component
             ->flatMap(fn ($id) => $openByAccount[$id] ?? [])
             ->unique()->values()->all()]);
 
+        // How far each team is, and whether its clock has stopped. The desk is where the crew asks
+        // "why has that team not finished?" (operator, 23 Sep), so the count lives here rather than
+        // in a report read after the event. One query for the attempts, one for the sessions.
+        $progress = app(\App\Services\StationProgress::class);
+        $required = $progress->required();
+        $clearedByAccount = $progress->clearedKeysByAccount($accounts->pluck('id'), $required);
+        $neededByPlan = [];
+
+        $sessions = RaceSession::with('raceStart')
+            ->whereIn('user_id', $accounts->pluck('id'))
+            ->whereNotNull('started_at')
+            ->orderBy('started_at')
+            ->get()
+            ->groupBy('user_id');
+
+        $standings = $rows->map(function ($row) use ($clearedByAccount, $required, $progress, &$neededByPlan, $sessions) {
+            $planKey = $row->plan ?? 0;
+            $neededByPlan[$planKey] ??= $progress->requiredCount($row->plan, $required);
+
+            // Two phones may have split the route, so the team's figure is the union of its accounts.
+            $cleared = collect($row->accounts)
+                ->flatMap(fn ($id) => $clearedByAccount[$id] ?? [])
+                ->unique()->count();
+
+            $session = collect($row->accounts)
+                ->flatMap(fn ($id) => $sessions[$id] ?? [])
+                ->sortByDesc('started_at')->first();
+
+            // race:close-expired closes an expired run within the minute, but the desk is read at the
+            // second — and a chip that still says "berjalan" while the bell should be ringing is worse
+            // than a query. Idempotent: a second call sees finished_at and does nothing.
+            $session?->finishIfOverTime();
+
+            // The deadline is sent as an instant, not as "seconds left": the desk counts down in the
+            // browser between polls, and a number computed here would be ten seconds stale on arrival.
+            $deadline = $session?->deadlineAt();
+
+            return (object) [
+                'key' => $row->key,
+                'name' => $row->name,
+                'cleared' => $cleared,
+                'needed' => $neededByPlan[$planKey],
+                'started' => $session !== null,
+                'finished' => $session?->finished_at !== null,
+                'clock' => $session?->elapsedForHumans(),
+                'deadline_at' => $deadline?->toIso8601String(),
+                // True only for a run the clock ended, so the bell rings for that and not for a team
+                // that finished early by clearing every post (operator, 24 Sep).
+                'out_of_time' => $session?->finished_reason === RaceSession::REASON_TIME_LIMIT,
+            ];
+        })->values();
+
         return view('livewire.admin.outpost-access-panel', [
             'locations' => $locations,
             'rows' => $rows,
+            'standings' => $standings,
             'open' => $open,
             'postPlans' => $postPlans,
             'planNames' => $planNames,
+            'resting' => $resting,
         ]);
     }
 }

@@ -33,7 +33,7 @@ class GameArchiveService
 
     public const ENDED_MESSAGE = 'Game sudah berakhir. Terima kasih telah bermain — silakan uninstall aplikasi ini.';
 
-    public function __construct(private PointsCalculationService $points)
+    public function __construct(private PointsCalculationService $points, private StationProgress $stations)
     {
     }
 
@@ -51,12 +51,10 @@ class GameArchiveService
                 'members' => $t->members_count,
                 'accounts' => $accountIds->count(),
                 'score' => $this->points->teamScore($t)['total'],
-                'stations_done' => QuizAttempt::whereIn('user_id', $accountIds)
-                    ->where('status', QuizAttempt::STATUS_COMPLETED)
-                    ->whereIn('questionnaire_id', $counted)
-                    ->distinct()
-                    ->count('questionnaire_id'),
-                'stations_total' => $counted->count(),
+                // Stations, not questionnaires: a questionnaire shared by several posts is one
+                // station at each of them (StationProgress).
+                'stations_done' => $this->stations->clearedCount($accountIds, $counted),
+                'stations_total' => $this->stations->requiredCount($t->indoor_map_id, $counted),
             ];
         })->sortByDesc('score')->values();
 
@@ -66,7 +64,7 @@ class GameArchiveService
             'accounts' => User::where('role', 'user')->count(),
             'accounts_without_team' => User::where('role', 'user')->whereNull('team_id')->count(),
             'live_sessions' => QuizAttempt::where('status', QuizAttempt::STATUS_STARTED)->whereNull('completed_at')->count(),
-            'stations_total' => $counted->count(),
+            'stations_total' => $this->stations->requiredCount(null, $counted),
         ];
     }
 
@@ -146,7 +144,9 @@ class GameArchiveService
                     ];
                 };
 
-                $teamRows = $teams->map(function (Team $t) use ($accounts, $attempts, $stations, $counted, $attemptRow, $iso) {
+                $countedIds = $counted->pluck('id');
+
+                $teamRows = $teams->map(function (Team $t) use ($accounts, $attempts, $stations, $counted, $countedIds, $attemptRow, $iso) {
                     $base = (int) ($t->initial_points ?? 0);
                     $mine = $accounts->where('team_id', $t->id);
                     $theirs = $attempts->whereIn('user_id', $mine->pluck('id')->all());
@@ -158,9 +158,8 @@ class GameArchiveService
                         'description' => $t->description,
                         'registered_at' => $iso($t->created_at),
                         'score' => $this->points->teamScore($t),
-                        'stations_done' => $theirs->where('status', QuizAttempt::STATUS_COMPLETED)
-                            ->whereIn('questionnaire_id', $counted->all())->pluck('questionnaire_id')->unique()->count(),
-                        'stations_total' => $counted->count(),
+                        'stations_done' => $this->stations->clearedCount($mine->pluck('id'), $counted),
+                        'stations_total' => $this->stations->requiredCount($t->indoor_map_id, $counted),
                         'members' => $t->members->map(fn ($m) => [
                             'name' => $m->name,
                             'email' => $m->email,
@@ -176,7 +175,7 @@ class GameArchiveService
                         'stations' => $theirs->groupBy('questionnaire_id')->map(fn ($group, $qid) => [
                             'questionnaire_id' => (int) $qid,
                             'title' => $stations->firstWhere('id', (int) $qid)?->title ?? 'Pos #'.$qid,
-                            'counted' => $counted->contains((int) $qid),
+                            'counted' => $countedIds->contains((int) $qid),
                             'completed' => $group->contains('status', QuizAttempt::STATUS_COMPLETED),
                             'attempts' => $group->map(fn ($a) => $attemptRow($a, $base))->values()->all(),
                         ])->values()->all(),
@@ -215,7 +214,7 @@ class GameArchiveService
                         'archived_at' => now()->toIso8601String(),
                         'archived_by' => ['id' => $admin->id, 'name' => $admin->name],
                         'stations' => $stations->map(fn ($s) => [
-                            'id' => $s->id, 'title' => $s->title, 'counted' => $counted->contains($s->id),
+                            'id' => $s->id, 'title' => $s->title, 'counted' => $counted->pluck('id')->contains($s->id),
                         ])->values()->all(),
                         'leaderboard' => $teamRows->map(fn ($r) => [
                             'rank' => $r['rank'],
@@ -328,8 +327,9 @@ class GameArchiveService
         return $id ? GameArchive::select(['id', 'name', 'archived_at'])->find($id) : null;
     }
 
+    /** The questionnaires an event is finished by, with their posts loaded. */
     private function countedStationIds()
     {
-        return Questionnaire::where('is_active', true)->where('counts_toward_finish', true)->pluck('id');
+        return $this->stations->required();
     }
 }

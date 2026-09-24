@@ -113,8 +113,14 @@ class QRScannerController extends Controller
                 ], 403);
             }
 
+            // The post the team is standing at, for a questionnaire shared by several: attempts are
+            // counted there, so finishing it at one booth leaves it open at the next.
+            $postId = $questionnaire->servesManyPosts()
+                ? app(\App\Services\StationGate::class)->openPost(Auth::id(), $questionnaire)
+                : null;
+
             // Check if user can scan this questionnaire
-            if (!QrCodeScan::canUserScanQuestionnaire(Auth::id(), $questionnaire)) {
+            if (!QrCodeScan::canUserScanQuestionnaire(Auth::id(), $questionnaire, $postId)) {
                 return response()->json([
                     'success' => false,
                     'error' => 'max_attempts_reached',
@@ -141,7 +147,11 @@ class QRScannerController extends Controller
                     'title' => $questionnaire->title,
                     'description' => $questionnaire->description,
                     'time_limit' => $questionnaire->time_limit,
-                ]
+                ],
+                // Which post this play belongs to. A questionnaire may now be shared by several
+                // posts, so the same code is printed at more than one booth and the title alone no
+                // longer says where the team is.
+                'post' => $this->postFor($questionnaire, $postId),
             ]);
 
         } catch (\Exception $e) {
@@ -156,5 +166,23 @@ class QRScannerController extends Controller
                 'message' => 'An error occurred while processing the QR code. Please try again.'
             ], 500);
         }
+    }
+
+    /**
+     * The post a scan belongs to: the one the crew opened for this team when the questionnaire is
+     * shared, otherwise the single post it is linked to. Null outdoor, where the post is the quest
+     * location the app already knows from the check-in.
+     *
+     * @return array{type: string, id: int, name: string}|null
+     */
+    private function postFor(Questionnaire $questionnaire, ?int $openPostId): ?array
+    {
+        if ($questionnaire->venue_mode !== 'indoor') {
+            return null;
+        }
+
+        $post = \App\Models\GameLocation::find($openPostId ?: $questionnaire->game_location_id, ['id', 'name']);
+
+        return $post ? ['type' => 'indoor', 'id' => $post->id, 'name' => $post->name] : null;
     }
 }

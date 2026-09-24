@@ -12,6 +12,13 @@ This is a live Hostinger deployment, not a dev box. `questerra-series.com` serve
 `~/domains/questerra-series.com/public_html/`, with the app in `EUREKA_APP/` *inside* the web root
 and three `.htaccess` files controlling access.
 
+**120 tasks, PHP and non-PHP, for the whole account** (hPanel, "total proses PHP dan non-PHP per akun";
+the operator confirmed the number on 24 Sep). LVE counts threads, not just processes: idle is ~31 and a
+single headless Chromium run is ~112, which is why `tools/ui-sweep.cjs` takes a lock and why a load test
+starts failing around two dozen concurrent PHP processes. Past the line every `fork` fails — plain `echo`
+included — so a shell that suddenly cannot run anything is this limit, not a broken shell: let the browser
+or the test finish.
+
 **Always use PHP 8.3.** The web server runs 8.3.30; the SSH default `php` is 8.2.30 and cannot
 install this lockfile.
 

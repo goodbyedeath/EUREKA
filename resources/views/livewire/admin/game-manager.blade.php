@@ -230,21 +230,43 @@
 
                         <!-- Settings -->
                         <div class="grid grid-cols-2 gap-4">
+                            {{-- No team picker: an outpost serves every team, and the marker on each
+                                 team's floor plan is what puts it on their route. Who may open it,
+                                 and when, is decided per team in Outpost Access (indoor) or by the
+                                 GPS radius (outdoor). --}}
                             <div>
-                                <label for="target_type" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                    Target Type
-                                </label>
-                                <select wire:model="target_type" id="target_type"
-                                        class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-100">
-                                    <option value="all_users">All Teams</option>
-                                    <option value="specific_user">Specific Team</option>
-                                </select>
+                                <span class="block text-sm font-medium text-gray-700 dark:text-gray-300">Untuk tim</span>
+                                <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
+                                    Semua tim. Beberapa denah boleh menunjuk pos ini — satu booth, satu kamera 3D,
+                                    satu QR. Aksesnya tetap dibuka per tim di Outpost Access.
+                                </p>
                             </div>
                             <div class="flex items-center pt-6">
                                 <input type="checkbox" wire:model="is_active" id="is_active"
                                        class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
                                 <label for="is_active" class="ml-2 block text-sm text-gray-700 dark:text-gray-300">
                                     Active
+                                </label>
+                            </div>
+
+                            {{-- Not every phone runs ARCore. Off keeps the objects and their clues;
+                                 the app lists them instead of opening the camera. --}}
+                            <div class="sm:col-span-2 rounded-md border border-gray-200 dark:border-gray-700 p-3">
+                                <label class="flex items-start gap-2">
+                                    <input type="checkbox" wire:model.live="ar_enabled"
+                                           class="mt-0.5 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                                    <span>
+                                        <span class="block text-sm font-medium text-gray-700 dark:text-gray-300">Kamera 3D aktif di pos ini</span>
+                                        <span class="block text-xs text-gray-600 dark:text-gray-400">
+                                            @if ($ar_enabled)
+                                                Tim membuka kamera dan menekan objek untuk mendapat petunjuk QR dan poin bonus.
+                                            @else
+                                                <strong>Tanpa kamera.</strong> Objek dan teksnya tetap ada — aplikasi menampilkannya
+                                                sebagai daftar, jadi HP yang tidak mendukung ARCore tetap bisa memainkan pos ini.
+                                                Poin bonus objek tetap bisa diambil.
+                                            @endif
+                                        </span>
+                                    </span>
                                 </label>
                             </div>
                         </div>

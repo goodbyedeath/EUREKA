@@ -25,6 +25,9 @@ class RaceStart extends Model
         'name',
         'code',
         'indoor_map_id',
+        // Minutes a team gets from its START scan; null = no deadline. The race ends either when
+        // every post is cleared or when this runs out (operator, 24 Sep).
+        'time_limit_minutes',
         'is_active',
         'created_by',
     ];

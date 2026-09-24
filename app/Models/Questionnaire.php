@@ -39,6 +39,8 @@ class Questionnaire extends Model
         'venue_mode',
         'quest_location_id',
         'game_location_id',
+        // True: openable at every active post, including ones added later. See posts().
+        'all_posts',
         'time_limit',
         'created_by',
         'start_date',
@@ -56,6 +58,7 @@ class Questionnaire extends Model
             'time_limit' => 'integer',
             'max_attempts' => 'integer',
             'counts_toward_finish' => 'boolean',
+            'all_posts' => 'boolean',
             'total_points' => 'integer',
         ];
     }
@@ -73,6 +76,49 @@ class Questionnaire extends Model
     public function quizAttempts(): HasMany
     {
         return $this->hasMany(QuizAttempt::class);
+    }
+
+    /** The extra posts this questionnaire may also be opened at, beyond `game_location_id`. */
+    public function extraPosts(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    {
+        return $this->belongsToMany(GameLocation::class);
+    }
+
+    /**
+     * Every post this questionnaire may be opened at, newest rule first.
+     *
+     * One questionnaire, many posts: the two floor plans walk the same booths in a different order,
+     * and some questionnaires (a group photo, a closing question) belong at all of them. `all_posts`
+     * takes in posts created later too, which a list of links cannot.
+     *
+     * Outdoor questionnaires are unaffected — their post is the quest location.
+     *
+     * @return list<int>
+     */
+    public function postIds(): array
+    {
+        if ($this->venue_mode !== 'indoor') {
+            return [];
+        }
+
+        if ($this->all_posts) {
+            return GameLocation::where('is_active', true)->pluck('id')->all();
+        }
+
+        return collect([$this->game_location_id])
+            ->merge($this->relationLoaded('extraPosts')
+                ? $this->extraPosts->pluck('id')
+                : $this->extraPosts()->pluck('game_locations.id'))
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    /** Whether this questionnaire is opened at more than one post — the case the post-scoped rules exist for. */
+    public function servesManyPosts(): bool
+    {
+        return $this->all_posts || count($this->postIds()) > 1;
     }
 
     // Scopes
@@ -127,21 +173,30 @@ class Questionnaire extends Model
         return true;
     }
 
-    public function getUserAttemptCount($userId): int
+    /**
+     * Completed attempts by this team.
+     *
+     * A questionnaire shared by several posts counts per post, so `max_attempts: 1` means once at
+     * each post rather than once in the whole event — otherwise sharing it would leave every post
+     * after the first with nothing to play. A questionnaire with one post counts as it always did,
+     * including the rows from before attempts recorded a post at all.
+     */
+    public function getUserAttemptCount($userId, ?int $postId = null): int
     {
         return $this->quizAttempts()
             ->where('user_id', $userId)
+            ->when($postId && $this->servesManyPosts(), fn ($q) => $q->where('game_location_id', $postId))
             ->where('status', QuizAttempt::STATUS_COMPLETED)
             ->count();
     }
 
-    public function canUserAttempt($userId): bool
+    public function canUserAttempt($userId, ?int $postId = null): bool
     {
         if (!$this->max_attempts) {
             return true;
         }
 
-        return $this->getUserAttemptCount($userId) < $this->max_attempts;
+        return $this->getUserAttemptCount($userId, $postId) < $this->max_attempts;
     }
 
     public function getUserInProgressAttempt($userId): ?QuizAttempt

@@ -1,5 +1,10 @@
+# The application directory sits inside the web root, so deny direct access to
+# everything here (.env, storage/, vendor/, error_log, source code...).
+# EUREKA_APP/public/ re-grants access to itself in its own .htaccess.
+Require all denied
+
 <IfModule mod_rewrite.c>
-RewriteEngine on 
-RewriteCond %{REQUEST_URI} !^public 
-RewriteRule ^(.*)$ public/$1 [L]
+    RewriteEngine On
+    RewriteCond %{REQUEST_URI} !^/EUREKA_APP/public/
+    RewriteRule ^(.*)$ /EUREKA_APP/public/$1 [L]
 </IfModule>

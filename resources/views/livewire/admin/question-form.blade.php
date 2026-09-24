@@ -93,7 +93,7 @@
                     id="question-points"
                     wire:model="newQuestion.points" 
                     min="1"
-                    max="100"
+                    max="10000"
                     step="1"
                     @if($newQuestion['type'] === 'brief') 
                         readonly value="0" 

@@ -17,6 +17,7 @@ use App\Services\WorkflowTimerService;
 use App\Models\FeatureSetting;
 use App\Exceptions\QuizRuleException;
 use App\Models\RaceReset;
+use App\Models\RaceSession;
 use App\Services\FacilitatorPin;
 use App\Services\GameAssessmentService;
 use Illuminate\Support\Facades\Storage;
@@ -127,8 +128,15 @@ class QuizController extends Controller
                 ], 403);
             }
 
+            // Which post the team is playing this at. For a questionnaire shared by several posts
+            // that decides the attempt: one play per post, counted per post. Null for outdoor and
+            // for the single-post case, where it changes nothing.
+            $postId = $questionnaire->servesManyPosts()
+                ? app(\App\Services\StationGate::class)->openPost(Auth::id(), $questionnaire)
+                : null;
+
             // Check max attempts
-            if (!$questionnaire->canUserAttempt(Auth::id())) {
+            if (!$questionnaire->canUserAttempt(Auth::id(), $postId)) {
                 return response()->json([
                     'success' => false,
                     'message' => 'You have reached the maximum number of attempts for this quiz',
@@ -139,6 +147,7 @@ class QuizController extends Controller
             // Same gate as qr/lookup, for a NEW attempt: it closes scans recorded before the rule existed.
             // Resuming an attempt already open at this station is never blocked.
             $resuming = QuizAttempt::where('user_id', Auth::id())->where('questionnaire_id', $questionnaire->id)
+                ->when($postId, fn ($q) => $q->where('game_location_id', $postId))
                 ->where('status', QuizAttempt::STATUS_STARTED)->whereNull('completed_at')->exists();
             if (! $resuming && ($refusal = app(\App\Services\StationGate::class)->refusal(Auth::id(), $questionnaire->id))) {
                 return $refusal;
@@ -157,10 +166,12 @@ class QuizController extends Controller
 
             // Use database transaction with lock to prevent race conditions
             $isExistingAttempt = false;
-            $attempt = DB::transaction(function () use ($questionnaire, &$isExistingAttempt) {
+            $attempt = DB::transaction(function () use ($questionnaire, $postId, &$isExistingAttempt) {
                 // Check if user already has an active attempt (with row lock)
                 $existingAttempt = QuizAttempt::where('user_id', Auth::id())
                     ->where('questionnaire_id', $questionnaire->id)
+                    // A shared questionnaire is a different session at each post.
+                    ->when($postId, fn ($q) => $q->where('game_location_id', $postId))
                     ->where('status', QuizAttempt::STATUS_STARTED)
                     ->whereNull('completed_at')
                     ->lockForUpdate()  // Prevent concurrent creation
@@ -180,6 +191,7 @@ class QuizController extends Controller
                 \Log::info("CREATING NEW ATTEMPT for user " . Auth::id() . " on questionnaire {$questionnaire->id}");
                 $newAttempt = QuizAttempt::create([
                     'questionnaire_id' => $questionnaire->id,
+                    'game_location_id' => $postId,
                     'user_id' => Auth::id(),
                     'status' => QuizAttempt::STATUS_STARTED,
                     'started_at' => now(),
@@ -199,52 +211,7 @@ class QuizController extends Controller
                 }
             }
 
-            // Load questions
-            $questions = $questionnaire->questions()
-                ->select('id', 'question', 'type', 'options', 'points', 'order', 'description', 'game_name', 'images', 'frame_path', 'share_caption', 'answer_slots')
-                ->orderBy('order', 'asc')
-                ->get()
-                ->map(fn ($q) => $this->questionRow($q))
-                ->all();
-
-            // Calculate total points
-            $totalPoints = 0;
-            foreach ($questions as $question) {
-                if ($question['type'] !== 'fun_game' && $question['type'] !== 'brief') {
-                    $totalPoints += $question['points'];
-                }
-            }
-
-            // Calculate time remaining
-            $timeRemaining = $this->calculateTimeRemaining($attempt);
-
-            Log::debug("Quiz start - Questionnaire ID: {$questionnaire->id}, time_limit from DB: {$questionnaire->time_limit} minutes, timeRemaining calculated: {$timeRemaining} seconds, started_at: {$attempt->started_at}");
-
-            // Load existing answers if returning existing attempt
-            $answers = $isExistingAttempt ? $this->answersForClient($attempt, $questions) : [];
-
-            return response()->json([
-                'success' => true,
-                'attempt' => [
-                    'id' => $attempt->id,
-                    'started_at' => $attempt->started_at?->toISOString(),
-                    'status' => $attempt->status,
-                ],
-                'questionnaire' => [
-                    'id' => $questionnaire->id,
-                    'title' => $questionnaire->title,
-                    'description' => $questionnaire->description,
-                    'time_limit' => $questionnaire->time_limit,
-                ],
-                'completion' => $this->completion($attempt),
-                'questions' => $questions,
-                // Always an object. An empty PHP array encodes as [] and a filled one keyed by
-                // question_id as {}, so a fresh attempt and a resumed one disagreed on the type of
-                // the same field — and a client modelling it as a map rejected every first attempt.
-                'answers' => (object) $answers,
-                'totalPoints' => $totalPoints,
-                'timeRemaining' => $timeRemaining,
-            ]);
+            return response()->json($this->startPayload($attempt, $questionnaire, $isExistingAttempt));
 
         } catch (\Exception $e) {
             Log::error('Quiz start error', [
@@ -258,6 +225,205 @@ class QuizController extends Controller
                 'message' => 'An error occurred while starting the quiz'
             ], 500);
         }
+    }
+
+    /**
+     * The body /quiz/start answers with — shared, so an attempt started offline arrives in exactly
+     * the same shape and the client needs no second parser.
+     */
+    private function startPayload(QuizAttempt $attempt, Questionnaire $questionnaire, bool $isExistingAttempt): array
+    {
+        $questions = $questionnaire->questions()
+            ->select('id', 'question', 'type', 'options', 'points', 'order', 'description', 'game_name', 'images', 'frame_path', 'share_caption', 'answer_slots')
+            ->orderBy('order', 'asc')
+            ->get()
+            ->map(fn ($q) => $this->questionRow($q))
+            ->all();
+
+        $totalPoints = 0;
+        foreach ($questions as $question) {
+            if ($question['type'] !== 'fun_game' && $question['type'] !== 'brief') {
+                $totalPoints += $question['points'];
+            }
+        }
+
+        $timeRemaining = $this->calculateTimeRemaining($attempt);
+
+        Log::debug("Quiz start - Questionnaire ID: {$questionnaire->id}, time_limit from DB: {$questionnaire->time_limit} minutes, timeRemaining calculated: {$timeRemaining} seconds, started_at: {$attempt->started_at}");
+
+        // Load existing answers if returning existing attempt
+        $answers = $isExistingAttempt ? $this->answersForClient($attempt, $questions) : [];
+
+        return [
+            'success' => true,
+            'attempt' => [
+                'id' => $attempt->id,
+                'started_at' => $attempt->started_at?->toISOString(),
+                'status' => $attempt->status,
+            ],
+            'questionnaire' => [
+                'id' => $questionnaire->id,
+                'title' => $questionnaire->title,
+                'description' => $questionnaire->description,
+                'time_limit' => $questionnaire->time_limit,
+            ],
+            'completion' => $this->completion($attempt),
+            'questions' => $questions,
+            // Always an object. An empty PHP array encodes as [] and a filled one keyed by
+            // question_id as {}, so a fresh attempt and a resumed one disagreed on the type of
+            // the same field — and a client modelling it as a map rejected every first attempt.
+            'answers' => (object) $answers,
+            'totalPoints' => $totalPoints,
+            'timeRemaining' => $timeRemaining,
+        ];
+    }
+
+    /**
+     * Offline phase 2 — hand in a questionnaire the team opened with no signal.
+     *
+     * Phase 1 put the questions on the phone, sealed under the post's QR code, but starting still
+     * needed the server: that is where the gates are checked and the clock starts. A venue whose
+     * WiFi drops exactly as a team reaches a post therefore stopped the game. This closes it.
+     *
+     * The rules do not move, they only arrive late:
+     *
+     *  - the same gates as `quiz/start` — START scanned, the post opened for this team. Judged now,
+     *    against the record now: a post the crew never opened is refused, and the team's queued play
+     *    with it. The alternative is accepting quiz answers from a team that was never at the post.
+     *  - the clock is the phone's **stopwatch**, not its calendar. `elapsed_seconds` comes from
+     *    `elapsedRealtime()`, and the start is reconstructed as `now − elapsed`, clamped to the
+     *    questionnaire's own limit and never earlier than the team's race start. Moving the device
+     *    clock therefore buys nothing.
+     *  - `client_token` names the attempt, so an upload that is retried — the usual case on a
+     *    flaky connection — finds the attempt it already made instead of starting a second one.
+     *
+     * Answers and the hand-in still travel through `save-answer` and `submit`; this call only puts
+     * the attempt on the server so they have something to attach to.
+     */
+    public function offlineStart(Request $request)
+    {
+        $data = $request->validate([
+            'qr_code' => 'required|string|max:255',
+            // A phone-made id (a UUID will do). It is what makes a retried upload idempotent.
+            'client_token' => 'required|string|min:8|max:64',
+            'elapsed_seconds' => 'required|integer|min:0|max:86400',
+        ]);
+
+        $key = 'quiz_attempts:'.Auth::id();
+        if (RateLimiter::tooManyAttempts($key, 10)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Too many quiz attempts. Please wait.',
+                'error' => 'too_many_starts',
+                'retry_after' => RateLimiter::availableIn($key),
+            ], 429)->header('Retry-After', (string) RateLimiter::availableIn($key));
+        }
+        RateLimiter::hit($key, 60);
+
+        // Already uploaded: answer with that attempt rather than making a second one.
+        $existing = QuizAttempt::with('questionnaire')
+            ->where('user_id', Auth::id())
+            ->where('client_token', $data['client_token'])
+            ->first();
+
+        if ($existing) {
+            if (! $existing->questionnaire) {
+                return response()->json(['success' => false, 'error' => 'questionnaire_not_found',
+                    'message' => 'Questionnaire not found'], 404);
+            }
+
+            return response()->json($this->startPayload($existing, $existing->questionnaire, true) + ['repeat' => true]);
+        }
+
+        $questionnaire = Questionnaire::with('questions')->where('qr_code', trim($data['qr_code']))->first();
+
+        if (! $questionnaire) {
+            return response()->json(['success' => false, 'error' => 'unknown_code',
+                'message' => 'This code is not part of the event.'], 404);
+        }
+
+        if (! $questionnaire->isAvailable()) {
+            return response()->json(['success' => false, 'error' => 'not_available',
+                'reason' => $questionnaire->is_active ? 'window_closed' : 'inactive',
+                'message' => 'This questionnaire is not currently available'], 403);
+        }
+
+        // One live session at a time, as online.
+        if ($live = QuizAttempt::liveSessionFor(Auth::id(), $questionnaire->id)) {
+            return response()->json([
+                'success' => false,
+                'error' => 'session_in_progress',
+                'attempt_id' => $live->id,
+                'questionnaire' => ['id' => $live->questionnaire->id, 'title' => $live->questionnaire->title],
+                'message' => 'Finish every question at "'.$live->questionnaire->title.'" first.',
+            ], 409);
+        }
+
+        $postId = $questionnaire->servesManyPosts()
+            ? app(\App\Services\StationGate::class)->openPost(Auth::id(), $questionnaire)
+            : null;
+
+        // The gates, judged late but not waived.
+        if ($refusal = app(\App\Services\StationGate::class)->refusal(Auth::id(), $questionnaire->id)) {
+            return $refusal;
+        }
+
+        if (! $questionnaire->canUserAttempt(Auth::id(), $postId)) {
+            return response()->json(['success' => false, 'error' => 'max_attempts_reached',
+                'message' => 'You have reached the maximum number of attempts for this quiz'], 403);
+        }
+
+        // The scan the team really made, recorded now so the rest of the runtime behaves as usual.
+        QrCodeScan::recordScan(Auth::id(), $questionnaire->id, trim($data['qr_code']));
+
+        $limit = max(60, (int) $questionnaire->time_limit * 60);
+        $elapsed = min((int) $data['elapsed_seconds'], $limit);
+        $startedAt = now()->subSeconds($elapsed);
+
+        // Never before the team's own race start: an attempt cannot predate the race it belongs to.
+        $raceStart = RaceSession::where('user_id', Auth::id())->whereNotNull('started_at')->min('started_at');
+        if ($raceStart && $startedAt->lt($raceStart)) {
+            $startedAt = \Illuminate\Support\Carbon::parse($raceStart);
+        }
+
+        $attempt = DB::transaction(function () use ($questionnaire, $postId, $data, $startedAt) {
+            // A session already open at this post is the same play, reached twice.
+            $open = QuizAttempt::where('user_id', Auth::id())
+                ->where('questionnaire_id', $questionnaire->id)
+                ->when($postId, fn ($q) => $q->where('game_location_id', $postId))
+                ->where('status', QuizAttempt::STATUS_STARTED)
+                ->whereNull('completed_at')
+                ->lockForUpdate()
+                ->orderByDesc('started_at')
+                ->first();
+
+            if ($open) {
+                $open->update(['client_token' => $open->client_token ?: $data['client_token']]);
+
+                return $open;
+            }
+
+            return QuizAttempt::create([
+                'questionnaire_id' => $questionnaire->id,
+                'game_location_id' => $postId,
+                'user_id' => Auth::id(),
+                'client_token' => $data['client_token'],
+                'started_offline' => true,
+                'status' => QuizAttempt::STATUS_STARTED,
+                'started_at' => $startedAt,
+                'timer_started_at' => $startedAt,
+            ]);
+        });
+
+        Log::info('Offline attempt accepted', [
+            'user_id' => Auth::id(), 'attempt_id' => $attempt->id,
+            'questionnaire_id' => $questionnaire->id, 'game_location_id' => $postId,
+            'elapsed_seconds' => $elapsed, 'started_at' => $startedAt->toIso8601String(),
+        ]);
+
+        return response()->json($this->startPayload($attempt, $questionnaire, $attempt->wasRecentlyCreated === false) + [
+            'repeat' => false,
+        ]);
     }
 
     /**
@@ -1207,12 +1373,45 @@ class QuizController extends Controller
                 'id' => $attempt->questionnaire->id,
                 'title' => $attempt->questionnaire->title,
             ] : null,
+            // Where it was played. Reported by the client team, 23 Sep: the read-back carried no
+            // post, so a result reopened from history could not name the booth — and since a
+            // questionnaire may be shared by several posts, its title no longer says.
+            'post' => $this->postForAttempt($attempt),
             'earned_points' => $breakdown['earned_points'] ?? 0,
             'assessment_points' => $breakdown['assessment_points'] ?? 0,
             'total_score' => $attempt->total_score !== null ? (float) $attempt->total_score : null,
             'questions' => app(PointsCalculationService::class)->questionBreakdown($attempt, $base),
             'puzzles' => $this->puzzleResults($attempt),
         ]);
+    }
+
+    /**
+     * The post an attempt belongs to, in the shape `qr/lookup` already uses.
+     *
+     * Indoor: the post it was played at, falling back to the questionnaire's own for attempts made
+     * before that was recorded. Outdoor: the quest location, which is the post there.
+     *
+     * @return array{type: string, id: int, name: string}|null
+     */
+    private function postForAttempt(QuizAttempt $attempt): ?array
+    {
+        $questionnaire = $attempt->questionnaire;
+
+        if (! $questionnaire) {
+            return null;
+        }
+
+        if ($questionnaire->venue_mode === 'outdoor') {
+            $post = \App\Models\QuestLocation::find($questionnaire->quest_location_id, ['id', 'name']);
+
+            return $post ? ['type' => 'outdoor', 'id' => $post->id, 'name' => $post->name] : null;
+        }
+
+        $post = \App\Models\GameLocation::find(
+            $attempt->game_location_id ?: $questionnaire->game_location_id, ['id', 'name']
+        );
+
+        return $post ? ['type' => 'indoor', 'id' => $post->id, 'name' => $post->name] : null;
     }
 
     /**

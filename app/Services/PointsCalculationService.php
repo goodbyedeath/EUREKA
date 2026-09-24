@@ -59,11 +59,19 @@ class PointsCalculationService
             ->get(['total_deposit'])
             ->sum(fn ($a) => (int) $a->total_deposit - $base);
 
+        // The third source (operator, 23 Sep): a 3D object with a price, tapped at the post. It does
+        // not belong to any attempt — a team may tap the object and never open the questionnaire —
+        // so it is summed from the claims themselves, on the amount recorded at the time.
+        $objects = (int) \App\Models\HotspotClaim::whereIn('user_id', $userIds ?: [0])
+            ->when($since, fn ($q) => $q->where('claimed_at', '>=', $since))
+            ->sum('points');
+
         return [
-            'total' => $base + $earned + $assessment,
+            'total' => $base + $earned + $assessment + $objects,
             'base_points' => $base,
             'earned_points' => $earned,
             'assessment_points' => $assessment,
+            'object_points' => $objects,
             'attempts_completed' => $attemptIds->count(),
         ];
     }

@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\GameLocation;
 use App\Models\GameLocationUnlock;
 use App\Models\Questionnaire;
 use App\Models\RaceSession;
@@ -17,6 +18,10 @@ use Illuminate\Http\JsonResponse;
  *  3. the team has checked in at that post — outdoor: a GPS check-in at the Quest Location;
  *     indoor: the crew has opened the Game Location for the team on Outpost Access.
  *
+ * Operator, 23 Sep: a questionnaire may now serve several posts, or every post. Rule 3 then reads
+ * "at one of its posts", and which one it was decides the attempt — so `openPost()` returns it and
+ * the caller records it on the attempt. With one post, all of this is the old behaviour exactly.
+ *
  * Checked by qr/lookup (before the scan is recorded, so a refusal burns no attempt) and again by
  * quiz/start for a new attempt, which closes scans recorded before this rule existed.
  */
@@ -30,14 +35,14 @@ class StationGate
         }
 
         // Read fresh: quiz/start holds a cached copy of the questionnaire that predates any relinking.
-        $q = Questionnaire::with(['questLocation:id,name', 'gameLocation:id,name'])
-            ->find($questionnaireId, ['id', 'title', 'venue_mode', 'quest_location_id', 'game_location_id']);
+        $q = $this->questionnaire($questionnaireId);
         if (! $q) {
             return null;
         }
 
+        $postIds = $q->postIds();
         $outdoor = $q->venue_mode === 'outdoor' && $q->questLocation;
-        $indoor = $q->venue_mode === 'indoor' && $q->gameLocation;
+        $indoor = $q->venue_mode === 'indoor' && $postIds !== [];
 
         if (! $outdoor && ! $indoor) {
             return $this->refuse('station_not_linked', 'Pos untuk kuesioner ini belum disiapkan. Hubungi panitia.');
@@ -45,6 +50,20 @@ class StationGate
 
         if (! RaceSession::where('user_id', $userId)->whereNotNull('started_at')->exists()) {
             return $this->refuse('race_not_started', 'Scan QR START terlebih dahulu untuk memulai race.');
+        }
+
+        // The race's own deadline (operator, 24 Sep): once it has passed no new post opens. A
+        // questionnaire already started is left alone on purpose — this gate guards the door, and a
+        // team must be able to hand in the work it was in the middle of.
+        if ($over = $this->overTimeSession($userId)) {
+            return $this->refuse(
+                'race_time_up',
+                'Waktu race sudah habis. Kuis yang sedang dibuka masih bisa diselesaikan, tetapi pos baru tidak.',
+                [
+                    'finished_at' => $over->finished_at?->toIso8601String(),
+                    'deadline_at' => $over->deadlineAt()?->toIso8601String(),
+                ],
+            );
         }
 
         if ($outdoor) {
@@ -57,14 +76,80 @@ class StationGate
             );
         }
 
-        $opened = GameLocationUnlock::where('user_id', $userId)->where('game_location_id', $q->game_location_id)
-            ->whereNotNull('granted_at')->whereNull('revoked_at')->exists();
+        if ($this->openPostId($userId, $postIds)) {
+            return null;
+        }
 
-        return $opened ? null : $this->refuse(
+        // Name the post only when there is one to name: a questionnaire shared by ten posts cannot
+        // say which one the team is standing at, and guessing one would send them to the wrong booth.
+        $named = count($postIds) === 1 ? GameLocation::find($postIds[0], ['id', 'name']) : null;
+
+        return $this->refuse(
             'checkin_required',
-            "Tunggu kru membuka pos {$q->gameLocation->name} untuk tim Anda.",
-            ['post' => ['type' => 'indoor', 'id' => $q->game_location_id, 'name' => $q->gameLocation->name]],
+            $named
+                ? "Tunggu kru membuka pos {$named->name} untuk tim Anda."
+                : 'Tunggu kru membuka pos ini untuk tim Anda.',
+            $named ? ['post' => ['type' => 'indoor', 'id' => $named->id, 'name' => $named->name]] : [],
         );
+    }
+
+    /**
+     * The post a team is playing this questionnaire at: the one most recently opened for them among
+     * the questionnaire's posts. Null for outdoor, for an unopened post, and while the gate is off.
+     */
+    public function openPost(int $userId, Questionnaire|int $questionnaire): ?int
+    {
+        $q = $questionnaire instanceof Questionnaire ? $questionnaire : $this->questionnaire($questionnaire);
+
+        return $q ? $this->openPostId($userId, $q->postIds()) : null;
+    }
+
+    /**
+     * The team's run, when its time is up. Null while it still has time, or has no deadline at all.
+     *
+     * It stamps the finish while it is here: a team that only ever scans — never opening a screen that
+     * polls `/race/status` — must still end up with an honest finishing time.
+     */
+    private function overTimeSession(int $userId): ?RaceSession
+    {
+        $session = RaceSession::with('raceStart')
+            ->where('user_id', $userId)
+            ->whereNotNull('started_at')
+            ->orderByDesc('started_at')
+            ->orderByDesc('id')
+            ->first();
+
+        if (! $session || ! $session->isOverTime()) {
+            return null;
+        }
+
+        $session->finishIfOverTime();
+
+        return $session;
+    }
+
+    /** @param list<int> $postIds */
+    private function openPostId(int $userId, array $postIds): ?int
+    {
+        if ($postIds === []) {
+            return null;
+        }
+
+        return GameLocationUnlock::where('user_id', $userId)
+            ->whereIn('game_location_id', $postIds)
+            ->whereNotNull('granted_at')
+            ->whereNull('revoked_at')
+            // Two posts opened in the same second is a tie granted_at cannot break, and the newer
+            // row is the one the crew just granted.
+            ->orderByDesc('granted_at')
+            ->orderByDesc('id')
+            ->value('game_location_id');
+    }
+
+    private function questionnaire(int $id): ?Questionnaire
+    {
+        return Questionnaire::with(['questLocation:id,name', 'extraPosts:id'])
+            ->find($id, ['id', 'title', 'venue_mode', 'quest_location_id', 'game_location_id', 'all_posts']);
     }
 
     private function refuse(string $error, string $message, array $extra = []): JsonResponse

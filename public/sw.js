@@ -1,36 +1,36 @@
 // Enhanced Service Worker for Laravel PWA with Offline Support
-const CACHE_NAME = 'eureka-pwa-v4-enhanced';
+// Bumped to v5 on 2026-09-02: the previous build intercepted navigation POSTs and
+// could cache odd responses. Activating under a new name drops those entries.
+// Bumped to v6 on 2026-09-09: the offline queue only deleted an entry when the server
+// answered ok, so anything it refused — including a 429 — was replayed on every page
+// load, forever. A new name forces every device onto the fixed worker.
+const CACHE_NAME = 'eureka-pwa-v7';
 const OFFLINE_URL = '/offline.html';
 const API_CACHE_NAME = 'eureka-api-cache-v1';
 const LIVEWIRE_CACHE_NAME = 'eureka-livewire-cache-v1';
+const TILE_CACHE_NAME = 'eureka-tiles-v1';
+
+// A weak mobile signal fails slowly rather than cleanly, so every network attempt
+// is bounded. Without this the UI just hangs instead of falling back to cache.
+const NETWORK_TIMEOUT_MS = 8000;
 
 // Essential files to cache (only files that definitely exist)
 const ESSENTIAL_CACHE_URLS = [
     '/',
     '/offline.html',
-    '/manifest.json',
-    '/css/app.css',
-    '/js/app.js'
+    '/manifest.json'
 ];
 
 // Critical routes that should work offline
 const OFFLINE_CAPABLE_ROUTES = [
     '/',
     '/user/dashboard',
-    '/user/quest-locations',
+    '/quest-locations',
+    '/gps-tracking',
+    '/indoor-map',
     '/quiz/',
     '/team-registration',
-    '/kiosk/led',
-    '/team-member-view',
-    '/test-offline'
-];
-
-// API endpoints to cache for offline functionality
-const CACHEABLE_API_ROUTES = [
-    '/api/kiosk/data',
-    '/api/kiosk/leaderboard',
-    '/api/live/positions',
-    '/livewire/update'  // For basic Livewire functionality
+    '/kiosk/led'
 ];
 
 // Install event - cache essential files and setup IndexedDB
@@ -114,6 +114,7 @@ self.addEventListener('activate', event => {
                     cacheNames.map(cacheName => {
                         if (cacheName !== CACHE_NAME && 
                             cacheName !== API_CACHE_NAME && 
+                            cacheName !== TILE_CACHE_NAME && 
                             cacheName !== LIVEWIRE_CACHE_NAME) {
                             return caches.delete(cacheName);
                         }
@@ -136,18 +137,224 @@ self.addEventListener('fetch', event => {
         return;
     }
 
-    // Only handle requests when actually offline
-    if (!navigator.onLine) {
-        // Handle different types of requests only when offline
-        if (request.method === 'GET') {
-            event.respondWith(handleGetRequest(request, url));
-        } else if (request.method === 'POST') {
-            event.respondWith(handlePostRequest(request, url));
+    // Map tiles are cross-origin, so they must be handled before the origin check
+    // below. Cache-first means a precached venue keeps drawing with no network.
+    if (isTileRequest(url)) {
+        event.respondWith(tileCacheFirst(request));
+        return;
+    }
+
+    // Skip other cross-origin requests
+    if (url.origin !== self.location.origin) {
+        return;
+    }
+
+    // Form submissions (login, logout, team registration) must reach the network
+    // untouched. Intercepting a navigation POST breaks the browser's redirect
+    // handling — which surfaced as a bogus 409 on /logout — and queueing one for
+    // later sync is meaningless anyway: you cannot log out retroactively.
+    if (request.mode === 'navigate' && request.method !== 'GET') {
+        return;
+    }
+
+    // Try the network, and fall back only when it ACTUALLY fails.
+    //
+    // This used to be gated on `!navigator.onLine`, which reports "online" whenever
+    // the device is attached to any network at all — including a weak signal that
+    // passes no data, or a captive portal. That is the normal outdoor failure mode,
+    // and it bypassed this worker entirely, so offline support never engaged in the
+    // one situation it exists for.
+    if (request.method === 'GET') {
+        event.respondWith(networkThenOffline(request, url));
+    } else if (request.method === 'POST') {
+        event.respondWith(handlePostRequest(request, url));
+    }
+});
+
+// Bounded fetch: reject rather than hang on a signal that never answers.
+function fetchWithTimeout(request, ms) {
+    return new Promise((resolve, reject) => {
+        const timer = setTimeout(() => reject(new Error('network timeout')), ms || NETWORK_TIMEOUT_MS);
+        fetch(request).then(
+            response => { clearTimeout(timer); resolve(response); },
+            error => { clearTimeout(timer); reject(error); }
+        );
+    });
+}
+
+// Network first; on real failure hand over to the existing offline handlers.
+async function networkThenOffline(request, url) {
+    try {
+        const response = await fetchWithTimeout(request);
+
+        // A navigation that followed a redirect cannot be handed straight back:
+        // respondWith() rejects a redirected response when the request's redirect
+        // mode is not 'follow', and the browser surfaces that as an opaque error
+        // status rather than the login page. Re-issue it as an explicit redirect so
+        // the address bar follows too. This is the session-expiry path: log out in
+        // one tab, refresh another.
+        if (request.mode === 'navigate' && response && response.redirected) {
+            return Response.redirect(response.url, 302);
+        }
+
+        // Keep caches warm while connectivity lasts, so the fallback has something
+        // recent to serve when it stops.
+        if (response && response.ok && request.method === 'GET') {
+            const target = url.pathname.startsWith('/api/') ? API_CACHE_NAME : CACHE_NAME;
+            const copy = response.clone();
+            caches.open(target).then(cache => cache.put(request, copy)).catch(() => {});
+        }
+
+        return response;
+    } catch (error) {
+        return handleGetRequest(request, url);
+    }
+}
+
+// Basemap tiles, wherever they are hosted (see config/maps.php).
+function isTileRequest(url) {
+    if (/\/\d+\/\d+\/\d+(@2x)?\.(png|jpe?g|webp|pbf)$/i.test(url.pathname)) {
+        return true;
+    }
+    return /(^|\.)((tile|tiles|basemaps?)\.|maptiler|stadiamaps|openstreetmap|arcgisonline|cartocdn)/i.test(url.hostname);
+}
+
+async function tileCacheFirst(request) {
+    const cache = await caches.open(TILE_CACHE_NAME);
+    const hit = await cache.match(request, { ignoreVary: true });
+    if (hit) {
+        return hit;
+    }
+
+    try {
+        const response = await fetchWithTimeout(request, 10000);
+        if (response && (response.ok || response.type === 'opaque')) {
+            cache.put(request, response.clone()).catch(() => {});
+        }
+        return response;
+    } catch (error) {
+        return Response.error();
+    }
+}
+
+// Tell every open tab how far the download has got, so the UI can show a real bar
+// rather than a spinner that means nothing.
+async function broadcastProgress(phase, done, total) {
+    const clients = await self.clients.matchAll({ includeUncontrolled: true });
+    clients.forEach(client => client.postMessage({
+        type: 'PRECACHE_PROGRESS', phase: phase, done: done, total: total
+    }));
+}
+
+// Fetch a list into a cache, skipping anything already held, reporting as it goes.
+async function precacheList(cacheName, urls, phase, allowOpaque) {
+    const cache = await caches.open(cacheName);
+    let done = 0;
+    let stored = 0;
+
+    for (const url of urls) {
+        try {
+            if (await cache.match(url, { ignoreVary: true })) {
+                stored++;
+            } else {
+                let response = null;
+                try {
+                    response = await fetch(url, { credentials: 'same-origin' });
+                } catch (error) {
+                    // Third-party tiles may refuse CORS; an opaque copy still renders.
+                    if (allowOpaque) {
+                        response = await fetch(url, { mode: 'no-cors', credentials: 'omit' }).catch(() => null);
+                    }
+                }
+                if (response && (response.ok || response.type === 'opaque')) {
+                    await cache.put(url, response.clone());
+                    stored++;
+                }
+            }
+        } catch (error) {
+        }
+
+        done++;
+        if (done % 10 === 0 || done === urls.length) {
+            await broadcastProgress(phase, done, urls.length);
         }
     }
-    
-    // When online, let all requests pass through normally
-});
+
+    return stored;
+}
+
+// One pass over everything the leader needs: app shell, post photos, venue tiles.
+async function precacheBundle(data) {
+    const shell = data.shell || [];
+    const images = data.images || [];
+    const tiles = data.tiles || [];
+
+    const result = { total: shell.length + images.length + tiles.length };
+    result.shell = await precacheList(CACHE_NAME, shell, 'shell', false);
+    result.images = await precacheList(CACHE_NAME, images, 'images', false);
+    result.tiles = await precacheList(TILE_CACHE_NAME, tiles, 'tiles', true);
+    result.stored = result.shell + result.images + result.tiles;
+
+    await broadcastProgress('done', result.total, result.total);
+
+    return result;
+}
+
+// Cache the app shell — CSS, JS, MapLibre, icons — so the app opens with no network.
+// The page supplies the URLs because only it can resolve Vite's hashed filenames.
+async function precacheShell(urls) {
+    const cache = await caches.open(CACHE_NAME);
+    let stored = 0;
+
+    for (const url of urls) {
+        try {
+            if (await cache.match(url)) { stored++; continue; }
+            const response = await fetch(url, { credentials: 'same-origin' });
+            if (response && response.ok) { await cache.put(url, response.clone()); stored++; }
+        } catch (error) {
+        }
+    }
+
+    return stored;
+}
+
+// Pull the venue's tiles into the cache while the leader still has signal.
+async function precacheTiles(urls) {
+    const cache = await caches.open(TILE_CACHE_NAME);
+    let stored = 0;
+
+    for (const url of urls) {
+        try {
+            if (await cache.match(url, { ignoreVary: true })) { stored++; continue; }
+            const response = await fetch(url, { mode: 'cors', credentials: 'omit' })
+                .catch(() => fetch(url, { mode: 'no-cors', credentials: 'omit' }));
+            if (response && (response.ok || response.type === 'opaque')) {
+                await cache.put(url, response.clone());
+                stored++;
+            }
+        } catch (error) {
+        }
+    }
+
+    return stored;
+}
+
+// How many writes are still waiting to reach the server?
+async function countPendingSubmissions() {
+    try {
+        const db = await openIndexedDB();
+        const transaction = db.transaction(['offlineSubmissions'], 'readonly');
+        const store = transaction.objectStore('offlineSubmissions');
+        const request = store.count();
+
+        return await new Promise(resolve => {
+            request.onsuccess = () => resolve(request.result || 0);
+            request.onerror = () => resolve(0);
+        });
+    } catch (error) {
+        return 0;
+    }
+}
 
 // Handle GET requests with enhanced caching
 async function handleGetRequest(request, url) {
@@ -249,24 +456,22 @@ async function handleApiRequest(request, url) {
 
 // Handle Livewire requests with limited offline support
 async function handleLivewireRequest(request, url) {
-    try {
-        return await fetch(request);
-    } catch (error) {
-        // For critical Livewire routes, try to provide offline fallback
-        if (url.pathname.includes('message') || url.pathname.includes('update')) {
-            // Queue the request for when online
-            await queueOfflineSubmission(request, 'livewire');
-            
-            return new Response(JSON.stringify({
-                effects: { html: '', dirty: [] },
-                serverMemo: { checksum: '', data: {} }
-            }), {
-                headers: { 'Content-Type': 'application/json' }
-            });
-        }
-        
-        throw error;
-    }
+    // Straight to the network, and a failure is reported as a failure.
+    //
+    // This used to queue a failed Livewire POST for replay and hand the page a fake success.
+    // Both were wrong:
+    //
+    //   * A Livewire payload is a snapshot of one component at one instant, carrying a
+    //     checksum tied to server-side state. Replaying it minutes later cannot work — and
+    //     if it did, it would re-run whatever the click was. The queued call that started
+    //     this investigation was $wire.delete(20).
+    //   * The fake body was Livewire 2 shaped (`effects` / `serverMemo`). Livewire 3 expects
+    //     `{ components: [...], assets: [] }`, so the client would have been fed garbage and
+    //     wedged the component rather than showing an error.
+    //
+    // Livewire's own client already handles a failed or rate-limited update: it surfaces the
+    // error and, on a 429 with Retry-After, backs off. Let it.
+    return await fetch(request);
 }
 
 // Handle static assets with cache first strategy
@@ -291,15 +496,21 @@ async function handleAssetRequest(request) {
 // Handle POST requests with offline queuing
 async function handlePostRequest(request, url) {
     try {
-        return await fetch(request);
+        // Clone so the body is still readable if we have to queue it below.
+        return await fetchWithTimeout(request.clone());
     } catch (error) {
         // Queue POST requests for background sync
         await queueOfflineSubmission(request, 'post');
+        await notifyPending();
         
-        // Return success response to prevent UI errors
+        // `success` stays true so the quiz UI does not show a hard error, but the
+        // queued/pending_sync flags say plainly that the server has NOT seen this
+        // yet — the UI must not present it as saved.
         return new Response(JSON.stringify({
             success: true,
-            message: 'Queued for sync when online',
+            queued: true,
+            pending_sync: true,
+            message: 'Saved on this device — will sync when the signal returns',
             offline: true
         }), {
             status: 200,
@@ -451,7 +662,7 @@ async function openIndexedDB() {
 // Background sync event
 self.addEventListener('sync', event => {
     if (event.tag === 'background-sync') {
-        event.waitUntil(syncOfflineSubmissions());
+        event.waitUntil(syncOfflineSubmissions().then(notifyPending));
     }
 });
 
@@ -468,21 +679,57 @@ async function syncOfflineSubmissions() {
                 const submissions = request.result;
                 
                 for (const submission of submissions) {
+                    // A 429 means the server is asking everyone to slow down. Replaying a
+                    // queue into it is precisely what keeps it tripped, so the whole run
+                    // stops at the first one and waits for the next sync.
+                    if (self.__eurekaBackoffUntil && Date.now() < self.__eurekaBackoffUntil) break;
+
                     try {
                         const response = await fetch(submission.url, {
                             method: submission.method,
                             headers: new Headers(submission.headers),
                             body: submission.body
                         });
-                        
+
                         if (response.ok) {
-                            // Remove successful submission
                             store.delete(submission.id);
+                            continue;
                         }
+
+                        if (response.status === 429) {
+                            // Keep it queued, but stop the run and hold off for a minute.
+                            self.__eurekaBackoffUntil = Date.now() + 60000;
+                            break;
+                        }
+
+                        // Any other 4xx is the server's final answer: the request was
+                        // malformed, unauthorised, or its CSRF token expired while it sat
+                        // here. It cannot become valid by being sent again.
+                        //
+                        // This is what turned a rate limit into a loop that fed itself:
+                        // an entry was only ever deleted on `ok`, so anything the server
+                        // refused stayed in the queue and was replayed on every page load,
+                        // by every device holding one, forever.
+                        if (response.status >= 400 && response.status < 500) {
+                            store.delete(submission.id);
+                            continue;
+                        }
+
+                        // 5xx: the server is unwell, not the request. Retry later, but not
+                        // indefinitely — a poisoned entry must eventually stop costing
+                        // requests.
+                        const tries = (submission.attempts || 0) + 1;
+                        if (tries >= 5) store.delete(submission.id);
+                        else store.put({ ...submission, attempts: tries });
                     } catch (error) {
+                        // Genuinely offline. Leave it queued and count the attempt, so a
+                        // request that can never leave this device is not carried forever.
+                        const tries = (submission.attempts || 0) + 1;
+                        if (tries >= 10) store.delete(submission.id);
+                        else store.put({ ...submission, attempts: tries });
                     }
                 }
-                
+
                 resolve();
             };
             request.onerror = () => reject(request.error);
@@ -500,7 +747,38 @@ self.addEventListener('message', event => {
         storeApiResponseInDB('/user/current', event.data.userData);
     } else if (event.data && event.data.type === 'SYNC_NOW') {
         // Trigger immediate sync
-        self.registration.sync.register('background-sync');
+        event.waitUntil(syncOfflineSubmissions().then(notifyPending));
+    } else if (event.data && event.data.type === 'GET_PENDING_COUNT') {
+        event.waitUntil(countPendingSubmissions().then(pending => {
+            if (event.ports && event.ports[0]) {
+                event.ports[0].postMessage({ pending: pending });
+            }
+        }));
+    } else if (event.data && event.data.type === 'PRECACHE_BUNDLE') {
+        event.waitUntil(precacheBundle(event.data).then(result => {
+            if (event.ports && event.ports[0]) {
+                event.ports[0].postMessage(result);
+            }
+        }));
+    } else if (event.data && event.data.type === 'PRECACHE_SHELL') {
+        event.waitUntil(precacheShell(event.data.urls || []).then(stored => {
+            if (event.ports && event.ports[0]) {
+                event.ports[0].postMessage({ stored: stored, requested: (event.data.urls || []).length });
+            }
+        }));
+    } else if (event.data && event.data.type === 'PRECACHE_TILES') {
+        event.waitUntil(precacheTiles(event.data.urls || []).then(stored => {
+            if (event.ports && event.ports[0]) {
+                event.ports[0].postMessage({ stored: stored, requested: (event.data.urls || []).length });
+            }
+        }));
     }
 });
+
+// Push the queue depth to every open tab so the UI can stop claiming things saved.
+async function notifyPending() {
+    const pending = await countPendingSubmissions();
+    const clients = await self.clients.matchAll({ includeUncontrolled: true });
+    clients.forEach(client => client.postMessage({ type: 'PENDING_COUNT', pending: pending }));
+}
 

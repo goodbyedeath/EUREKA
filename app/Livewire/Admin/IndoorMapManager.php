@@ -123,11 +123,14 @@ class IndoorMapManager extends Component
     }
 
     /**
-     * Copy this plan for another team — markers, posts, 3D objects, questionnaires and their
-     * questions (operator, 20 Sep). Each team needs its own of all four, and doing that by hand
-     * across four pages is where the broken links came from.
+     * A second plan for another team.
+     *
+     * Sharing (operator, 23 Sep) is the usual case: the same booths walked in a different order, so
+     * the new plan's markers point at the *same* AR Outposts and the same questionnaires — one 3D
+     * scene and one printed QR per booth. Copying is the old behaviour: posts, 3D objects and
+     * questionnaires of its own, with new QR codes to print.
      */
-    public function duplicateMap(int $id): void
+    public function duplicateMap(int $id, bool $share = true): void
     {
         $source = IndoorMap::find($id);
 
@@ -137,13 +140,17 @@ class IndoorMapManager extends Component
             return;
         }
 
-        $result = app(\App\Services\IndoorMapDuplicator::class)->duplicate($source, null, auth()->id());
+        $result = app(\App\Services\IndoorMapDuplicator::class)->duplicate($source, null, auth()->id(), $share);
 
         $this->mapId = $result['map']->id;
 
-        session()->flash('success', "Denah \"{$result['map']->name}\" dibuat: {$result['spots']} penanda, "
-            ."{$result['posts']} pos, {$result['questionnaires']} kuesioner, {$result['questions']} pertanyaan. "
-            .'QR kuesionernya baru, jadi perlu dicetak ulang. Tetapkan denah ini ke sebuah tim di Team Management.');
+        session()->flash('success', $share
+            ? "Denah \"{$result['map']->name}\" dibuat: {$result['spots']} penanda, menunjuk pos dan kuesioner "
+                .'yang sama. QR kertasnya tidak berubah — tidak perlu dicetak ulang. Ubah nomor/urutan posnya di '
+                .'denah ini, lalu tetapkan ke sebuah tim di Team Management.'
+            : "Denah \"{$result['map']->name}\" dibuat: {$result['spots']} penanda, "
+                ."{$result['posts']} pos, {$result['questionnaires']} kuesioner, {$result['questions']} pertanyaan. "
+                .'QR kuesionernya baru, jadi perlu dicetak ulang. Tetapkan denah ini ke sebuah tim di Team Management.');
     }
 
     public function deleteMap(int $id): void
@@ -391,6 +398,14 @@ class IndoorMapManager extends Component
             'map' => $map,
             'maps' => IndoorMap::orderBy('name')->get(['id', 'name', 'image_path', 'is_active']),
             'gameLocations' => GameLocation::where('is_active', true)->orderBy('name')->get(['id', 'name']),
+            // Which plans each outpost already serves. One booth may carry a marker on every team's
+            // plan; the picker says so, so sharing one is a choice rather than an accident.
+            'outpostUsedBy' => IndoorMapSpot::whereNotNull('game_location_id')
+                ->join('indoor_maps', 'indoor_maps.id', '=', 'indoor_map_spots.indoor_map_id')
+                ->get(['indoor_map_spots.game_location_id', 'indoor_maps.name'])
+                ->groupBy('game_location_id')
+                ->map(fn ($rows) => $rows->pluck('name')->unique()->values()->all())
+                ->all(),
         ]);
     }
 }

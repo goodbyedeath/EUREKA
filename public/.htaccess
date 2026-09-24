@@ -1,3 +1,7 @@
+# This directory is the only web-servable part of the app; the parent
+# EUREKA_APP/.htaccess denies everything, so re-grant access here.
+Require all granted
+
 <IfModule mod_rewrite.c>
     <IfModule mod_negotiation.c>
         Options -MultiViews -Indexes
@@ -8,7 +12,7 @@
     # Hotlink Protection - Prevent unauthorized image access
     # Allow access from own domain, direct access, and empty referrers
     RewriteCond %{HTTP_REFERER} !^$
-    RewriteCond %{HTTP_REFERER} !^https?://(www\.)?eureka-performa\.com [NC]
+    RewriteCond %{HTTP_REFERER} !^https?://(www\.)?questerra-series\.com [NC]
     RewriteCond %{REQUEST_URI} \.(jpg|jpeg|png|gif|bmp|webp|svg|ico)$ [NC]
     RewriteRule \.(jpg|jpeg|png|gif|bmp|webp|svg|ico)$ - [F,L]
 
@@ -29,4 +33,42 @@
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteRule ^ index.php [L]
+</IfModule>
+
+# --- Response headers ---
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+    # Matches what PreventBackHistory sets on authenticated pages; nothing same-origin frames us.
+    Header always set X-Frame-Options "DENY"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+    Header unset X-Powered-By
+
+    # Vite emits content-hashed filenames, so they can be cached indefinitely.
+    SetEnvIf Request_URI "^/build/assets/" EUREKA_IMMUTABLE=1
+    Header set Cache-Control "public, max-age=31536000, immutable" env=EUREKA_IMMUTABLE
+</IfModule>
+
+# Service workers and the PWA manifest must never be long-cached: a stale worker
+# keeps controlling every page until the cache expires. Cloudflare was serving
+# /sw.js with max-age=604800 (7 days), so fixes could not reach devices.
+<FilesMatch "^(sw|sw-enhanced)\.js$">
+    <IfModule mod_headers.c>
+        Header set Cache-Control "no-cache, no-store, must-revalidate"
+        Header set Pragma "no-cache"
+        Header set Expires "0"
+    </IfModule>
+</FilesMatch>
+<FilesMatch "^manifest\.json$">
+    <IfModule mod_headers.c>
+        Header set Cache-Control "no-cache, must-revalidate"
+    </IfModule>
+</FilesMatch>
+
+# 3D model MIME types. Without these the server sends .glb as text/plain, which
+# Android's Scene Viewer refuses — AR silently fails while the 3D fallback works,
+# making it look like a device problem rather than a server one.
+<IfModule mod_mime.c>
+    AddType model/gltf-binary .glb
+    AddType model/gltf+json .gltf
+    AddType application/octet-stream .bin
 </IfModule>

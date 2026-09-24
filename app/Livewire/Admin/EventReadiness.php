@@ -34,7 +34,15 @@ class EventReadiness extends Component
 {
     public function render()
     {
-        $accounts = User::where('role', 'user')->get(['id', 'name', 'team_id']);
+        $accounts = User::where('role', 'user')->get(['id', 'name', 'team_id', 'is_active', 'role', 'session_timeout', 'session_expired_at', 'last_login_at']);
+
+        // Races under way, per account. A team walks one route; a clock running on another one means
+        // somebody scanned the wrong START card (operator, 24 Sep). The server refuses that now, but
+        // a team that started before the rule — or was moved by an admin — still shows up here.
+        $running = \App\Models\RaceSession::whereNotNull('started_at')
+            ->whereNull('finished_at')
+            ->get(['id', 'user_id', 'indoor_map_id', 'started_at'])
+            ->groupBy('user_id');
         $starts = RaceStart::where('is_active', true)->orderByDesc('id')->get(['id', 'name', 'code', 'indoor_map_id']);
         $startMapId = $starts->firstWhere('indoor_map_id', '!=', null)?->indoor_map_id;
         $activePlans = IndoorMap::where('is_active', true)->get(['id', 'name', 'clue_question', 'clue_answer']);
@@ -45,14 +53,22 @@ class EventReadiness extends Component
             ->get(['id', 'name', 'is_active', 'access_mode'])->keyBy('id');
 
         $questionnaireColumns = ['id', 'title', 'game_location_id', 'quest_location_id', 'venue_mode',
-            'is_active', 'start_date', 'end_date', 'qr_code'];
+            'is_active', 'start_date', 'end_date', 'qr_code', 'all_posts'];
 
-        // Indoor questionnaires, by the post they are linked to.
+        // Indoor questionnaires, by the post they are linked to. One may serve several posts — or
+        // every post — so it is listed under each of them rather than under a single id.
         $indoorQuestionnaires = Questionnaire::where('venue_mode', 'indoor')
-            ->whereNotNull('game_location_id')
+            ->where(fn ($q) => $q->whereNotNull('game_location_id')->orWhere('all_posts', true))
             ->withCount('questions')
+            ->with('extraPosts:id')
             ->get($questionnaireColumns)
-            ->groupBy('game_location_id');
+            ->reduce(function (\Illuminate\Support\Collection $byPost, Questionnaire $q) {
+                foreach ($q->postIds() as $postId) {
+                    $byPost->put($postId, ($byPost->get($postId) ?? collect())->push($q));
+                }
+
+                return $byPost;
+            }, collect());
 
         // Outdoor questionnaires, by the quest location they are linked to.
         $outdoorQuestionnaires = Questionnaire::where('venue_mode', 'outdoor')
@@ -78,9 +94,15 @@ class EventReadiness extends Component
         $outdoorInUse = $questLocations->where('is_active', true)->isNotEmpty() || $outdoorQuestionnaires->isNotEmpty();
 
         $rows = Team::orderBy('name')->get(['id', 'name', 'indoor_map_id'])->map(function (Team $team) use (
-            $accounts, $startMapId, $activePlans, $spots, $posts, $indoorQuestionnaires, $indoorInUse
+            $accounts, $startMapId, $activePlans, $spots, $posts, $indoorQuestionnaires, $indoorInUse, $running
         ) {
             $teamAccounts = $accounts->where('team_id', $team->id);
+
+            // An account that is switched off, or whose access window has run out, cannot play —
+            // and the page used to call such a team "siap" anyway (operator, 24 Sep: borokokok was
+            // green with a window that expired at 21:38). Readiness has to read the accounts too.
+            $locked = $teamAccounts->filter(fn (User $u) => ! $u->is_active || $u->accessWindowExpired());
+            $usable = $teamAccounts->reject(fn (User $u) => ! $u->is_active || $u->accessWindowExpired());
             $planId = $team->indoor_map_id ?: $startMapId;
             $plan = $activePlans->firstWhere('id', $planId);
 
@@ -117,20 +139,58 @@ class EventReadiness extends Component
                 $plan && blank($plan->clue_answer) ? 'denah tanpa jawaban clue — di aplikasi tim tidak bisa melewati pertanyaan START' : null,
             ]) : [];
 
+            // The routes this team is actually running on, by the plan each clock belongs to.
+            $liveRoutes = $teamAccounts
+                ->flatMap(fn (User $u) => $running->get($u->id, collect()))
+                ->pluck('indoor_map_id')
+                ->unique()
+                ->values();
+
+            $routeName = fn ($id) => $id
+                ? ($activePlans->firstWhere('id', $id)->name ?? IndoorMap::find($id)?->name ?? '#'.$id)
+                : 'outdoor';
+
+            $routeProblems = array_filter([
+                // Two clocks on two routes: /race/status reports the newer one, so the team's route
+                // changes under them and the older clock keeps running.
+                $liveRoutes->count() > 1
+                    ? 'sedang berjalan di '.$liveRoutes->count().' rute sekaligus ('
+                        .$liveRoutes->map($routeName)->implode(', ').') — hentikan salah satunya lewat Emergency Stop'
+                    : null,
+                // One clock, but not on the plan this team is supposed to walk.
+                $liveRoutes->count() === 1 && $plan && $liveRoutes->first() !== null && $liveRoutes->first() !== $plan->id
+                    ? 'sedang berjalan di rute '.$routeName($liveRoutes->first()).', padahal denahnya '.$plan->name
+                    : null,
+            ]);
+
             $problems = array_values(array_filter(array_merge(
-                [$teamAccounts->isEmpty() ? 'belum ada akun login' : null],
+                [
+                    $teamAccounts->isEmpty() ? 'belum ada akun login' : null,
+                    // Named one by one: with two phones the crew needs to know which is locked.
+                    $teamAccounts->isNotEmpty() && $usable->isEmpty()
+                        ? 'akun tidak bisa dipakai: '.$locked->map(fn (User $u) => $u->name.' ('.mb_strtolower($u->accessWindowStatus()['label']).')')->implode(', ')
+                            .' — perbarui aksesnya di Account Management'
+                        : null,
+                    $usable->isNotEmpty() && $locked->isNotEmpty()
+                        ? $locked->count().' akun terkunci: '.$locked->pluck('name')->implode(', ')
+                        : null,
+                ],
                 $planProblems,
+                $routeProblems,
             )));
 
             return (object) [
                 'team' => $team,
                 'accounts' => $teamAccounts,
+                'usable_accounts' => $usable,
+                'live_routes' => $liveRoutes->map(fn ($id) => ['id' => $id, 'name' => $routeName($id)])->all(),
+                'locked_accounts' => $locked,
                 'plan' => $plan,
                 'assigned' => $team->indoor_map_id !== null,
                 'posts' => $postRows,
                 'problems' => $problems,
                 // Red only for faults that stop a team playing; the rest are worth knowing.
-                'blocked' => $teamAccounts->isEmpty() || ($indoorInUse && (
+                'blocked' => $teamAccounts->isEmpty() || $usable->isEmpty() || $routeProblems !== [] || ($indoorInUse && (
                     ! $plan || $myPosts->isEmpty()
                     || $postRows->contains(fn ($p) => $p->questionnaires->isEmpty())
                     || $postRows->contains(fn ($p) => $p->questionnaires->contains(fn ($q) => ! $q->available))
@@ -216,12 +276,16 @@ class EventReadiness extends Component
         $activeOutdoor = QuestLocation::where('is_active', true)->pluck('id');
 
         return Questionnaire::where('is_active', true)
-            ->get(['id', 'title', 'venue_mode', 'game_location_id', 'quest_location_id'])
+            ->with('extraPosts:id')
+            ->get(['id', 'title', 'venue_mode', 'game_location_id', 'quest_location_id', 'all_posts'])
             ->map(function (Questionnaire $q) use ($reachableIndoor, $activeOutdoor) {
                 $reason = match ($q->venue_mode) {
                     'indoor' => match (true) {
-                        ! $q->game_location_id => 'belum dihubungkan ke pos',
-                        ! $reachableIndoor->contains($q->game_location_id) => 'pos #'.$q->game_location_id.' tidak ada di denah mana pun',
+                        $q->postIds() === [] => 'belum dihubungkan ke pos',
+                        // Reachable through any one of its posts is enough; the team only ever
+                        // stands at one of them.
+                        ! $reachableIndoor->intersect($q->postIds())->isNotEmpty()
+                            => 'posnya tidak ada di denah mana pun',
                         default => null,
                     },
                     'outdoor' => match (true) {

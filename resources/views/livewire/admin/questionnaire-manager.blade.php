@@ -156,16 +156,34 @@
                                     </select>
                                     @error('editQuestLocationId') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                                 </div>
+                                {{-- One questionnaire can serve several posts: the same booth carries a
+                                     different number on each team's plan, and some questionnaires
+                                     belong at every post. --}}
                                 <div x-show="mode === 'indoor'" x-cloak>
-                                    <label for="editGameLocationId" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Pos indoor (Game Location)</label>
-                                    <select id="editGameLocationId" wire:model.defer="editGameLocationId"
-                                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-gray-100">
-                                        <option value="">— Pilih pos —</option>
-                                        @foreach($gameLocations as $location)
-                                            <option value="{{ $location->id }}">{{ $location->name }}</option>
-                                        @endforeach
-                                    </select>
-                                    @error('editGameLocationId') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Pos indoor (Game Location)</label>
+
+                                    <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 mb-2">
+                                        <input type="checkbox" wire:model.live="editAllPosts"
+                                               class="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-indigo-600 focus:ring-indigo-500">
+                                        Berlaku di semua pos
+                                    </label>
+
+                                    <div x-show="!$wire.editAllPosts"
+                                         class="max-h-40 overflow-y-auto rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 p-2 space-y-1">
+                                        @forelse($gameLocations as $location)
+                                            <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
+                                                <input type="checkbox" value="{{ $location->id }}" wire:model="editGameLocationIds"
+                                                       class="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-indigo-600 focus:ring-indigo-500">
+                                                {{ $location->name }}
+                                            </label>
+                                        @empty
+                                            <p class="text-sm text-gray-500 dark:text-gray-400">Belum ada pos indoor.</p>
+                                        @endforelse
+                                    </div>
+                                    <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">
+                                        Dipilih lebih dari satu: tim memainkannya sekali di tiap pos, QR cetaknya tetap satu.
+                                    </p>
+                                    @error('editGameLocationIds') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                                 </div>
                             </div>
                         </div>
@@ -175,7 +193,7 @@
                             <input type="checkbox" 
                                    id="editIsActive"
                                    wire:model.defer="editIsActive" 
-                                   class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                                   class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded">
                             <label for="editIsActive" class="ml-2 block text-sm text-gray-900 dark:text-gray-100">
                                 Active (users can access this questionnaire)
                             </label>
@@ -185,7 +203,7 @@
                             <input type="checkbox"
                                    id="editCountsTowardFinish"
                                    wire:model.defer="editCountsTowardFinish"
-                                   class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                                   class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded">
                             <label for="editCountsTowardFinish" class="ml-2 block text-sm text-gray-900 dark:text-gray-100">
                                 Counts toward finishing
                             </label>
@@ -257,7 +275,7 @@
     <div class="max-w-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm p-5 sm:p-6">
             <div class="mt-3 text-center">
                 <!-- Warning Icon -->
-                <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100">
+                <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 dark:bg-red-900/40">
                     <svg class="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.728-.833-2.498 0L4.316 15.5c-.77.833.192 2.5 1.732 2.5z"></path>
                     </svg>
@@ -295,7 +313,7 @@
                 <!-- Modal Actions -->
                 <div class="flex justify-center space-x-3 mt-4">
                     <button wire:click="closeDeleteModal" 
-                            class="px-4 py-2 bg-gray-300 text-gray-700 dark:text-gray-300 text-base font-medium rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-300 transition-colors duration-200">
+                            class="px-4 py-2 bg-gray-300 dark:bg-gray-700 text-gray-700 dark:text-gray-200 text-base font-medium rounded-md hover:bg-gray-400 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-300 transition-colors duration-200">
                         Cancel
                     </button>
                     
@@ -314,13 +332,13 @@
 
     <!-- Flash Messages -->
     @if (session('message'))
-        <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
+        <div class="bg-green-100 dark:bg-green-900/30 border border-green-400 dark:border-green-800 text-green-700 dark:text-green-300 px-4 py-3 rounded mb-4">
             {{ session('message') }}
         </div>
     @endif
 
     @if (session('error'))
-        <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+        <div class="bg-red-100 dark:bg-red-900/30 border border-red-400 dark:border-red-800 text-red-700 dark:text-red-300 px-4 py-3 rounded mb-4">
             {{ session('error') }}
         </div>
     @endif
@@ -345,9 +363,9 @@
 
     <!-- Questionnaires Table -->
     <div class="bg-white dark:bg-gray-800 shadow overflow-hidden sm:rounded-md">
-        <ul class="divide-y divide-gray-200">
+        <ul class="divide-y divide-gray-200 dark:divide-gray-700">
             @forelse($questionnaires as $questionnaire)
-                <li class="px-4 sm:px-6 py-4 hover:bg-gray-50 dark:bg-gray-700 transition-colors duration-150">
+                <li class="px-4 sm:px-6 py-4 hover:bg-gray-50 dark:hover:bg-gray-700/60 transition-colors duration-150">
                     <div class="flex flex-col space-y-4 lg:flex-row lg:items-center lg:justify-between lg:space-y-0">
                         <!-- Main Content -->
                         <div class="flex-1 min-w-0">
@@ -357,15 +375,15 @@
                                     <h3 class="text-base sm:text-lg font-medium text-gray-900 dark:text-gray-100 truncate">
                                         {{ $questionnaire->title }}
                                     </h3>
-                                    <span class="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $questionnaire->is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800' }}">
+                                    <span class="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $questionnaire->is_active ? 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-200' : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200' }}">
                                         {{ $questionnaire->is_active ? __('common.active') : __('common.inactive') }}
                                     </span>
                                     @if($questionnaire->venue_mode === 'outdoor' && $questionnaire->questLocation)
-                                        <span class="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">Outdoor · {{ $questionnaire->questLocation->name }}</span>
+                                        <span class="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200">Outdoor · {{ $questionnaire->questLocation->name }}</span>
                                     @elseif($questionnaire->venue_mode === 'indoor' && $questionnaire->gameLocation)
-                                        <span class="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">Indoor · {{ $questionnaire->gameLocation->name }}</span>
+                                        <span class="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-200">Indoor · {{ $questionnaire->gameLocation->name }}</span>
                                     @else
-                                        <span class="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800" title="Tim tidak bisa scan kuesioner ini sampai posnya dipilih">Belum ada pos — tidak bisa discan</span>
+                                        <span class="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200" title="Tim tidak bisa scan kuesioner ini sampai posnya dipilih">Belum ada pos — tidak bisa discan</span>
                                     @endif
                                 </div>
                             </div>
@@ -399,7 +417,7 @@
                                         {{ $questionnaire->max_attempts ?? '∞' }} 
                                         {{ ($questionnaire->max_attempts ?? 0) === 1 ? 'attempt' : 'attempts' }}
                                         @if($questionnaire->max_attempts && $questionnaire->users_at_max_attempts > 0)
-                                            <span class="ml-1 inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800" title="{{ $questionnaire->users_at_max_attempts }} teams have reached max attempts">
+                                            <span class="ml-1 inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200" title="{{ $questionnaire->users_at_max_attempts }} teams have reached max attempts">
                                                 {{ $questionnaire->users_at_max_attempts }}
                                             </span>
                                         @endif

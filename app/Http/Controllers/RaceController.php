@@ -37,6 +37,12 @@ class RaceController extends Controller
             ? (\App\Models\IndoorMap::assignedTo($request->user())?->id ?? $start->indoor_map_id)
             : null;
 
+        if ($running = $this->runningOnAnotherRoute($request, $mapId)) {
+            return redirect()->route('user.dashboard')->with('error', $running->indoor_map_id
+                ? __('Tim ini sudah memulai rute :route.', ['route' => $running->indoorMap?->name ?? '#'.$running->indoor_map_id])
+                : __('Tim ini sudah memulai race outdoor.'));
+        }
+
         $session = RaceSession::firstOrCreate(
             ['user_id' => $request->user()->id, 'indoor_map_id' => $mapId],
             ['started_at' => now(), 'race_start_id' => $start->id],
@@ -93,6 +99,27 @@ class RaceController extends Controller
             ? (\App\Models\IndoorMap::assignedTo($request->user())?->id ?? $start->indoor_map_id)
             : null;
 
+        // One route per team: a card for another rotation is a mis-scan, not a move.
+        if ($running = $this->runningOnAnotherRoute($request, $mapId)) {
+            return response()->json([
+                'success' => false,
+                'error' => 'already_on_another_route',
+                'route' => $running->indoor_map_id
+                    ? ['id' => $running->indoor_map_id, 'name' => $running->indoorMap?->name]
+                    : null,
+                'race' => [
+                    'session_id' => $running->id,
+                    'started_at' => $running->started_at?->toIso8601String(),
+                    'elapsed_seconds' => $running->elapsedSeconds(),
+                    'indoor_map_id' => $running->indoor_map_id,
+                ],
+                'message' => $running->indoor_map_id
+                    ? 'Tim ini sudah memulai rute '.($running->indoorMap?->name ?? '#'.$running->indoor_map_id)
+                        .'. Pakai QR START rute itu, atau hubungi panitia.'
+                    : 'Tim ini sudah memulai race outdoor. Hubungi panitia untuk berpindah.',
+            ], 409);
+        }
+
         $session = RaceSession::firstOrCreate(
             ['user_id' => $request->user()->id, 'indoor_map_id' => $mapId],
             ['started_at' => now(), 'race_start_id' => $start->id],
@@ -125,6 +152,8 @@ class RaceController extends Controller
                 'started_at' => $session->started_at?->toIso8601String(),
                 'elapsed_seconds' => $session->elapsedSeconds(),
                 'finished_at' => $session->finished_at?->toIso8601String(),
+                'deadline_at' => $session->deadlineAt()?->toIso8601String(),
+                'time_limit_minutes' => $start->time_limit_minutes !== null ? (int) $start->time_limit_minutes : null,
                 // 'indoor' -> answer the clue, then read the plan; 'outdoor' -> straight
                 // to the GPS map. This is the only difference between the two modes.
                 'mode' => $start->isIndoor() ? 'indoor' : 'outdoor',
@@ -219,11 +248,15 @@ class RaceController extends Controller
         // Sessions are keyed on (user_id, indoor_map_id), so a team that scanned both an
         // outdoor and an indoor start code has two. `id` breaks the tie when both began in
         // the same second, which ordering on started_at alone leaves to the database.
-        $session = RaceSession::with('indoorMap')
+        $session = RaceSession::with(['indoorMap', 'raceStart'])
             ->where('user_id', $request->user()->id)
             ->orderByDesc('started_at')
             ->orderByDesc('id')
             ->first();
+
+        // A deadline that has passed ends the race here and now: the app polls this every 10 s, so it
+        // is the earliest honest moment. The cron closes the runs of phones that are not polling.
+        $session?->finishIfOverTime();
 
         // Always sent, session or not: it is what lets a client know the cached world is void.
         $resetAt = \App\Models\RaceReset::lastAt()?->toIso8601String();
@@ -244,6 +277,15 @@ class RaceController extends Controller
                 'elapsed_seconds' => $session->elapsedSeconds(),
                 'finished_at' => $session->finished_at?->toIso8601String(),
                 'finished' => $session->finished_at !== null,
+                // 'all_posts' | 'time_limit' | null while it runs. Say it on the finish screen: a team
+                // that ran out of time deserves different words from one that cleared every post.
+                'finished_reason' => $session->finished_reason,
+                // The moment this run must stop, or null when its START code sets no limit. Count down
+                // to it; never decide the finish yourself — the server stamps it.
+                'deadline_at' => $session->deadlineAt()?->toIso8601String(),
+                'time_limit_minutes' => $session->raceStart?->time_limit_minutes !== null
+                    ? (int) $session->raceStart->time_limit_minutes
+                    : null,
                 'mode' => $session->indoor_map_id ? 'indoor' : 'outdoor',
                 'indoor_map_id' => $session->indoor_map_id,
                 'clue_solved' => $session->clueSolved(),
@@ -309,6 +351,35 @@ class RaceController extends Controller
             'already_solved' => false,
             'indoor_map_id' => $map->id,
         ]);
+    }
+
+    /**
+     * A team walks one route. The running session on a different one, if there is any.
+     *
+     * Sessions are keyed on (account, plan), so scanning another route's START code quietly opened a
+     * second clock and `/race/status` then reported the newer one — the team's whole route changed
+     * without anyone noticing (operator, 24 Sep, after ten codes went to print). Ten codes in a room
+     * of ten teams makes a mis-scan likely, and a deliberate move between routes is an admin's job:
+     * Emergency Stop, or the team's plan in Team Management.
+     *
+     * Team-wide, because a team may hold two phones and the second one scanning the wrong card is
+     * exactly the mistake being caught.
+     */
+    private function runningOnAnotherRoute(Request $request, ?int $mapId): ?RaceSession
+    {
+        $user = $request->user();
+        $accounts = $user->team_id
+            ? \App\Models\User::where('team_id', $user->team_id)->pluck('id')
+            : collect([$user->id]);
+
+        return RaceSession::with('indoorMap:id,name')
+            ->whereIn('user_id', $accounts)
+            ->whereNotNull('started_at')
+            ->whereNull('finished_at')
+            ->when($mapId === null, fn ($q) => $q->whereNotNull('indoor_map_id'))
+            ->when($mapId !== null, fn ($q) => $q->where(fn ($w) => $w->where('indoor_map_id', '!=', $mapId)->orWhereNull('indoor_map_id')))
+            ->orderByDesc('started_at')
+            ->first();
     }
 
     private function sessionFor(Request $request, IndoorMap $map): ?RaceSession

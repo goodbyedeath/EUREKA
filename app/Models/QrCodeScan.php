@@ -84,18 +84,16 @@ class QrCodeScan extends Model
     /**
      * Check if user can scan this questionnaire based on max attempts and existing scans.
      */
-    public static function canUserScanQuestionnaire(int $userId, Questionnaire $questionnaire): bool
+    public static function canUserScanQuestionnaire(int $userId, Questionnaire $questionnaire, ?int $postId = null): bool
     {
         // If questionnaire has no max attempts limit, user can always scan
         if (!$questionnaire->max_attempts || $questionnaire->max_attempts <= 0) {
             return true;
         }
 
-        // Check actual completed attempts first
-        $completedAttempts = QuizAttempt::where('user_id', $userId)
-            ->where('questionnaire_id', $questionnaire->id)
-            ->where('status', QuizAttempt::STATUS_COMPLETED)
-            ->count();
+        // Check actual completed attempts first. A questionnaire shared by several posts counts
+        // them per post, so finishing it at one booth does not close it at the next.
+        $completedAttempts = $questionnaire->getUserAttemptCount($userId, $postId);
 
         // If user has already reached the max attempts, they cannot scan
         if ($completedAttempts >= $questionnaire->max_attempts) {

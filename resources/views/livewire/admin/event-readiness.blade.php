@@ -65,6 +65,10 @@
                     </h2>
                     <p class="text-sm text-gray-600 dark:text-gray-400">
                         {{ $row->accounts->count() }} akun login
+                        @if ($row->locked_accounts->isNotEmpty())
+                            {{-- Which one is locked, and why: an expired window reads as "siap" nowhere. --}}
+                            <span class="text-red-600 dark:text-red-400">({{ $row->locked_accounts->count() }} terkunci: {{ $row->locked_accounts->map(fn ($u) => $u->name." — ".mb_strtolower($u->accessWindowStatus()["label"]))->implode(", ") }})</span>
+                        @endif
                         @if ($indoorInUse)
                             · denah:
                             @if ($row->plan)

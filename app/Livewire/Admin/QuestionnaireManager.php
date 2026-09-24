@@ -38,7 +38,15 @@ class QuestionnaireManager extends Component
     /** outdoor | indoor | '' — and the post for that mode. Untyped: a select sends '' for "none". */
     public $editVenueMode = '';
     public $editQuestLocationId = null;
-    public $editGameLocationId = null;
+    /**
+     * Indoor posts this questionnaire may be opened at. The first is stored on the row, the rest are
+     * links; $editAllPosts covers every active post, including ones added later.
+     *
+     * @var list<int|string>
+     */
+    public array $editGameLocationIds = [];
+
+    public bool $editAllPosts = false;
 
     protected $listeners = [
         'questionnaire-created' => '$refresh',
@@ -79,7 +87,8 @@ class QuestionnaireManager extends Component
             $this->editCountsTowardFinish = (bool) $this->editQuestionnaire->counts_toward_finish;
             $this->editVenueMode = $this->editQuestionnaire->venue_mode ?? '';
             $this->editQuestLocationId = $this->editQuestionnaire->quest_location_id;
-            $this->editGameLocationId = $this->editQuestionnaire->game_location_id;
+            $this->editGameLocationIds = $this->editQuestionnaire->postIds();
+            $this->editAllPosts = (bool) $this->editQuestionnaire->all_posts;
             
             $this->showEditModal = true;
         } catch (\Exception $e) {
@@ -108,7 +117,8 @@ class QuestionnaireManager extends Component
         $this->editCountsTowardFinish = true;
         $this->editVenueMode = '';
         $this->editQuestLocationId = null;
-        $this->editGameLocationId = null;
+        $this->editGameLocationIds = [];
+        $this->editAllPosts = false;
     }
 
     public function updateQuestionnaire()
@@ -130,10 +140,15 @@ class QuestionnaireManager extends Component
             'editQrCode' => 'nullable|string|max:255',
             'editVenueMode' => 'nullable|in:outdoor,indoor',
             'editQuestLocationId' => 'nullable|required_if:editVenueMode,outdoor|exists:quest_locations,id',
-            'editGameLocationId' => 'nullable|required_if:editVenueMode,indoor|exists:game_locations,id',
+            'editAllPosts' => 'boolean',
+            'editGameLocationIds' => [
+                \Illuminate\Validation\Rule::requiredIf(fn () => $this->editVenueMode === 'indoor' && ! $this->editAllPosts),
+                'array',
+            ],
+            'editGameLocationIds.*' => 'exists:game_locations,id',
         ], [
             'editQuestLocationId.required_if' => 'Pilih pos outdoor untuk kuesioner ini.',
-            'editGameLocationId.required_if' => 'Pilih pos indoor untuk kuesioner ini.',
+            'editGameLocationIds.required' => 'Pilih minimal satu pos indoor, atau centang "Berlaku di semua pos".',
             'editTitle.required' => 'Title is required.',
             'editTitle.max' => 'Title cannot exceed 255 characters.',
             'editDescription.max' => 'Description cannot exceed 1000 characters.',
@@ -146,8 +161,13 @@ class QuestionnaireManager extends Component
             'editEndDate.after_or_equal' => 'Tanggal berakhir tidak boleh sebelum tanggal mulai.',
         ]);
 
+        // The first post chosen is the one stored on the row; the rest become links.
+        $postIds = $this->editVenueMode === 'indoor' && ! $this->editAllPosts
+            ? collect($this->editGameLocationIds)->map(fn ($id) => (int) $id)->filter()->unique()->values()->all()
+            : [];
+
         try {
-            DB::transaction(function () {
+            DB::transaction(function () use ($postIds) {
                 $this->editQuestionnaire->update([
                     'title' => $this->editTitle,
                     'description' => $this->editDescription ?: null,
@@ -161,9 +181,12 @@ class QuestionnaireManager extends Component
                     'counts_toward_finish' => $this->editCountsTowardFinish,
                     'venue_mode' => $this->editVenueMode ?: null,
                     'quest_location_id' => $this->editVenueMode === 'outdoor' ? (int) $this->editQuestLocationId : null,
-                    'game_location_id' => $this->editVenueMode === 'indoor' ? (int) $this->editGameLocationId : null,
+                    'game_location_id' => $postIds[0] ?? null,
+                    'all_posts' => $this->editVenueMode === 'indoor' && $this->editAllPosts,
                     'updated_at' => now()
                 ]);
+
+                $this->editQuestionnaire->extraPosts()->sync(array_slice($postIds, 1));
                 
                 Log::info("Questionnaire updated: ID {$this->editQuestionnaire->id}, Title: {$this->editTitle}");
             });

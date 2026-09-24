@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\GameLocation;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
 class ArExperienceController extends Controller
@@ -37,7 +38,11 @@ class ArExperienceController extends Controller
         // The panorama viewer is gone, so there is nothing to fall back to. A location
         // flagged for AR without a model would render an empty camera view, which is
         // worse than an honest error — send them back to the list instead.
-        if (! $gameLocation->usesAr()) {
+        //
+        // An admin is let in even so: this page is the only place object titles, clues and points are
+        // written, and a post whose camera is switched off still needs them (operator, 24 Sep). Send
+        // a player away — there is nothing here for them to render.
+        if (! $gameLocation->usesAr() && ! $request->user()?->isAdmin()) {
             return redirect()
                 ->route($request->user()?->isAdmin() ? 'admin.games' : 'user.game-dashboard')
                 ->with('error', __('That location has no 3D model yet.'));
@@ -245,10 +250,13 @@ class ArExperienceController extends Controller
     {
         $gameLocation = GameLocation::with(self::sceneRelations())->findOrFail($id);
 
-        if (! $gameLocation->usesAr()) {
+        // A post with the camera switched off needs no model — its objects are read, not rendered.
+        if (! $gameLocation->hasExperience()) {
             return response()->json([
                 'success' => false,
-                'message' => 'This location has no 3D model yet.',
+                'message' => $gameLocation->arEnabled()
+                    ? 'This location has no 3D model yet.'
+                    : 'This location has nothing to show yet.',
             ], 404);
         }
 
@@ -292,7 +300,7 @@ class ArExperienceController extends Controller
             }
         }
 
-        return response()->json(['success' => true] + $this->scenePayload($gameLocation));
+        return response()->json(['success' => true] + $this->scenePayload($gameLocation, $request->user()));
     }
 
     /** What a scene needs loaded: the model, the linked quest location, and the active objects in order. */
@@ -308,7 +316,7 @@ class ArExperienceController extends Controller
      * the offline manifest, so a scene synced before the event is the scene the server would
      * have answered with. Load the location with sceneRelations() first.
      */
-    public function scenePayload(GameLocation $gameLocation): array
+    public function scenePayload(GameLocation $gameLocation, ?\App\Models\User $viewer = null): array
     {
         return [
             'location' => [
@@ -325,9 +333,129 @@ class ArExperienceController extends Controller
                 // 'geofence' -> the radius decides; 'manual' -> an admin does, and the
                 // client should show a waiting state rather than a distance.
                 'access_mode' => $gameLocation->access_mode ?: 'geofence',
+                // False: do not open the camera. Same objects, same text, same points — rendered as
+                // a list, so a phone without ARCore can still play this post (operator, 24 Sep).
+                'ar_enabled' => $gameLocation->arEnabled(),
             ],
-            'objects' => $gameLocation->hotspots->map(fn ($h) => $this->placeHotspot($h))->values()->all(),
+            'objects' => $this->objectsFor($gameLocation, $viewer),
         ];
+    }
+
+    /**
+     * The objects, each told whether this team has already collected its points.
+     *
+     * Without `claimed` the app would offer the same reward every time the scene is reopened, and
+     * the team would tap it again for nothing. Null viewer (the offline manifest built for nobody,
+     * an admin preview) simply reports false.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function objectsFor(GameLocation $gameLocation, ?\App\Models\User $viewer): array
+    {
+        $claimed = \App\Models\HotspotClaim::claimedIdsFor($viewer, $gameLocation->hotspots->pluck('id')->all());
+
+        return $gameLocation->hotspots
+            ->map(fn ($h) => $this->placeHotspot($h) + ['claimed' => in_array($h->id, $claimed, true)])
+            ->values()->all();
+    }
+
+    /**
+     * Pay a team for tapping a 3D object — operator, 23 Sep, a client requirement.
+     *
+     * The AR editor has offered a price per object since the beginning and the app has shown it in
+     * the object sheet, but nothing ever accepted the tap: the number was decoration. The gates are
+     * the ones that already guard the scene, because a team that may not see the object may not be
+     * paid for it: indoor, the crew must have opened the post; outdoor, the team must have checked
+     * in at it. Once per team, not per phone, and the amount is recorded as it stood at that moment.
+     */
+    public function claimObject(Request $request, $hotspotId)
+    {
+        $user = $request->user();
+
+        $hotspot = \App\Models\Hotspot::with('gameLocation')->where('is_active', true)->find($hotspotId);
+
+        if (! $hotspot || ! $hotspot->gameLocation) {
+            return response()->json(['success' => false, 'error' => 'object_not_found',
+                'message' => 'That object is not part of this event.'], 404);
+        }
+
+        if ((int) $hotspot->points_value <= 0) {
+            return response()->json(['success' => false, 'error' => 'object_has_no_points',
+                'message' => 'Objek ini tidak memberi poin.'], 422);
+        }
+
+        $location = $hotspot->gameLocation;
+
+        // The same gate as the scene itself.
+        if ($location->isManualAccess()) {
+            if (! $location->accessGrantedTo($user)) {
+                return response()->json(['success' => false, 'error' => 'awaiting_unlock',
+                    'message' => 'Tunggu kru membuka pos ini untuk tim Anda.'], 403);
+            }
+        } elseif ($location->quest_location_id) {
+            $checkedIn = \App\Models\UserQuestCheckpoint::where('user_id', $user->id)
+                ->where('quest_location_id', $location->quest_location_id)->exists();
+
+            if (! $checkedIn) {
+                return response()->json(['success' => false, 'error' => 'checkin_required',
+                    'message' => 'Check-in di pos ini terlebih dahulu.'], 403);
+            }
+        }
+
+        if (! \App\Models\RaceSession::where('user_id', $user->id)->whereNotNull('started_at')->exists()) {
+            return response()->json(['success' => false, 'error' => 'race_not_started',
+                'message' => 'Scan QR START terlebih dahulu untuk memulai race.'], 403);
+        }
+
+        $points = app(\App\Services\PointsCalculationService::class);
+        // Always an object: the contract promises `score` on both answers, and a card account
+        // that has not registered its team yet has no team score to give — its own will do.
+        $score = fn () => $user->team ? $points->teamScore($user->team) : $points->userScore($user);
+
+        if ($already = \App\Models\HotspotClaim::claimedByTeam($hotspot->id, $user)) {
+            return response()->json([
+                'success' => false,
+                'error' => 'already_claimed',
+                'claimed_at' => $already->claimed_at?->toIso8601String(),
+                'points' => (int) $already->points,
+                'score' => ($score)(),
+                'message' => 'Poin objek ini sudah diambil tim Anda.',
+            ], 409);
+        }
+
+        try {
+            $claim = \App\Models\HotspotClaim::create([
+                'hotspot_id' => $hotspot->id,
+                'user_id' => $user->id,
+                'game_location_id' => $location->id,
+                'points' => (int) $hotspot->points_value,
+                'claimed_at' => now(),
+            ]);
+        } catch (\Illuminate\Database\QueryException $e) {
+            // The unique index caught a doubled request; answer as the check above would have.
+            $already = \App\Models\HotspotClaim::claimedByTeam($hotspot->id, $user);
+
+            return response()->json([
+                'success' => false,
+                'error' => 'already_claimed',
+                'claimed_at' => $already?->claimed_at?->toIso8601String(),
+                'points' => (int) ($already->points ?? 0),
+                'score' => ($score)(),
+                'message' => 'Poin objek ini sudah diambil tim Anda.',
+            ], 409);
+        }
+
+        Log::info('AR object claimed', ['hotspot_id' => $hotspot->id, 'user_id' => $user->id,
+            'game_location_id' => $location->id, 'points' => $claim->points]);
+
+        return response()->json([
+            'success' => true,
+            'points' => (int) $claim->points,
+            'claimed_at' => $claim->claimed_at->toIso8601String(),
+            'object' => ['id' => $hotspot->id, 'title' => $hotspot->title],
+            // The team's new total, so the app never has to add it up itself.
+            'score' => ($score)(),
+        ]);
     }
 
     /**
