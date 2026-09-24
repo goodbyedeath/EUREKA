@@ -1281,12 +1281,16 @@ did wrong.
    posts whose `uses_ar` is true. It is the same gate the server applies, counted once for you.
 2. **Zero means lock the button.** Visibly disabled, with a short reason in the team's own words
    (*"Event ini tidak memakai kamera 3D"*), and not tappable.
-3. **Do not hide it.** A button that vanished reads as a broken install and brings the team to the
+3. **Only zero.** `ar_posts: 1` out of fourteen posts leaves the button live — the operator decided this
+   explicitly on 24 Sep. A team whose route has one AR post still needs that screen, and locking it
+   because the other thirteen are switched off would take away the post that works. Never count a
+   fraction; the test is `== 0`.
+4. **Do not hide it.** A button that vanished reads as a broken install and brings the team to the
    crew; a locked one with a reason answers itself. Same argument as the camera-off post opening as a
    list instead of showing nothing.
-4. **Re-read it at every Sync.** One post switched back on makes `ar_posts` non-zero, and the button
+5. **Re-read it at every Sync.** One post switched back on makes `ar_posts` non-zero, and the button
    must come alive without a reinstall.
-5. Per-post behaviour is unchanged: a camera-off post stays off the 3D list and is reached from the
+6. Per-post behaviour is unchanged: a camera-off post stays off the 3D list and is reached from the
    floor plan, where its objects open as a list and its priced objects are still claimable.
 
 **Done when:** with every post's camera off, the dashboard shows Kamera 3D locked with a reason and a

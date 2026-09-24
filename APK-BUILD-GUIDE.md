@@ -1241,9 +1241,10 @@ the plan, that is a defect worth a report.
 
 **And when no post uses the camera at all, lock the dashboard's Kamera 3D button** — the operator's
 instruction, 24 Sep: *"tinggal kunci aja tombolnya jadi user tidak bisa interaksi"*. The manifest now
-counts it for you: **`counts.ar_posts`**, the number of posts that really open a camera. Zero means an
-event run without AR, and the button must be visibly disabled with a short reason rather than hidden or
-tappable — a missing button reads as a broken app, and a live one that opens an empty screen wastes a
+counts it for you: **`counts.ar_posts`**, the number of posts that really open a camera. Only zero
+locks it: one AR post out of fourteen leaves the button live, because that one post still needs the
+screen (operator, 24 Sep). Zero means an event run without AR, and the button must be visibly disabled
+with a short reason rather than hidden or tappable — a missing button reads as a broken app, and a live one that opens an empty screen wastes a
 team's clock at the worst moment. Read it at Sync and re-read it on the next Sync; one post switched
 back on makes the button live again with no reinstall. Work order §43.
 
