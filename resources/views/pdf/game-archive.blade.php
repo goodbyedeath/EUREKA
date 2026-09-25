@@ -54,6 +54,8 @@
             <th class="num">Awal</th>
             <th class="num">Kuis</th>
             <th class="num">Game</th>
+            <th class="num">Objek</th>
+            <th class="num">Koreksi</th>
             <th class="num">Pos selesai</th>
         </tr>
     </thead>
@@ -66,6 +68,9 @@
                 <td class="num">{{ $num($row['base_points']) }}</td>
                 <td class="num">{{ $num($row['earned_points']) }}</td>
                 <td class="num {{ $row['assessment_points'] < 0 ? 'neg' : '' }}">{{ $signed($row['assessment_points']) }}</td>
+                {{-- Older archives carry neither key: they print 0 rather than breaking the paper. --}}
+                <td class="num">{{ $num($row['object_points'] ?? 0) }}</td>
+                <td class="num {{ ($row['manual_points'] ?? 0) < 0 ? 'neg' : '' }}">{{ $signed($row['manual_points'] ?? 0) }}</td>
                 <td class="num">{{ $row['stations_done'] }}/{{ $row['stations_total'] }}</td>
             </tr>
         @empty
@@ -86,7 +91,7 @@
             <span class="muted">
                 ({{ $num($team['score']['base_points']) }} awal
                 + {{ $num($team['score']['earned_points']) }} kuis
-                {{ $team['score']['assessment_points'] < 0 ? '−' : '+' }} {{ $num(abs($team['score']['assessment_points'])) }} game)
+                {{ $team['score']['assessment_points'] < 0 ? '−' : '+' }} {{ $num(abs($team['score']['assessment_points'])) }} game{{ ($team['score']['object_points'] ?? 0) != 0 ? ' + '.$num($team['score']['object_points']).' objek' : '' }}{{ ($team['score']['manual_points'] ?? 0) != 0 ? ' '.($team['score']['manual_points'] < 0 ? '−' : '+').' '.$num(abs($team['score']['manual_points'])).' koreksi kru' : '' }})
                 · pos selesai {{ $team['stations_done'] }}/{{ $team['stations_total'] }}
                 @if (! empty($team['department'])) · {{ $team['department'] }} @endif
             </span>

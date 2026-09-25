@@ -115,6 +115,26 @@
                                 <span class="text-gray-500 dark:text-gray-400">Total Score:</span>
                                 <span class="ml-2 text-gray-900 dark:text-gray-100">{{ number_format($selectedAttempt->total_score, 1) }}%</span>
                             </div>
+                            @if ($this->teamScore)
+                                {{-- The number the team sees, on the shared formula — including any manual
+                                     correction the crew made, which is part of the total everywhere. --}}
+                                <div class="col-span-2">
+                                    <span class="text-gray-500 dark:text-gray-400">Poin tim sekarang:</span>
+                                    <span class="ml-2 font-semibold text-gray-900 dark:text-gray-100 tabular-nums">
+                                        {{ number_format($this->teamScore['total']) }}
+                                    </span>
+                                    <span class="ml-1 text-xs text-gray-500 dark:text-gray-400">
+                                        ({{ number_format($this->teamScore['base_points']) }} awal
+                                        + {{ number_format($this->teamScore['earned_points']) }} kuis
+                                        {{ $this->teamScore['assessment_points'] < 0 ? '−' : '+' }} {{ number_format(abs($this->teamScore['assessment_points'])) }} game{{ $this->teamScore['object_points'] != 0 ? ' + '.number_format($this->teamScore['object_points']).' objek' : '' }})
+                                    </span>
+                                    @if ($this->teamScore['manual_points'] != 0)
+                                        <span class="ml-1 text-xs text-amber-700 dark:text-amber-400">
+                                            termasuk koreksi kru {{ $this->teamScore['manual_points'] > 0 ? '+' : '' }}{{ number_format($this->teamScore['manual_points']) }}
+                                        </span>
+                                    @endif
+                                </div>
+                            @endif
                         </div>
                     </div>
 

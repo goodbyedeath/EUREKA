@@ -546,6 +546,13 @@
                         <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
                             <div class="text-sm font-medium text-gray-500 dark:text-gray-400">Team Points (Highest)</div>
                             <div class="text-2xl font-bold text-indigo-600">{{ $teamDetailData['team_total_points'] ?? 0 }}</div>
+                            @if (($teamDetailData['team_manual_points'] ?? 0) != 0)
+                                {{-- Inside the number above, so it has to be visible here: a total the crew
+                                     cannot reconcile with the questionnaires is what this page is for. --}}
+                                <div class="mt-1 text-xs text-amber-700 dark:text-amber-400">
+                                    termasuk koreksi kru {{ $teamDetailData['team_manual_points'] > 0 ? '+' : '' }}{{ number_format($teamDetailData['team_manual_points']) }}
+                                </div>
+                            @endif
                         </div>
                         <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
                             <div class="text-sm font-medium text-gray-500 dark:text-gray-400">Average Team Points</div>
@@ -553,6 +560,24 @@
                         </div>
                     </div>
                     
+                    @if (! empty($teamDetailData['team_manual_corrections']) && count($teamDetailData['team_manual_corrections']))
+                        {{-- Why the total moved, in the crew's own words. --}}
+                        <div class="mb-6 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-4">
+                            <p class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">Koreksi manual</p>
+                            <ul class="space-y-1">
+                                @foreach ($teamDetailData['team_manual_corrections'] as $row)
+                                    <li class="text-xs text-gray-700 dark:text-gray-300">
+                                        <span class="tabular-nums font-semibold {{ $row->points > 0 ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400' }}">
+                                            {{ $row->points > 0 ? '+' : '' }}{{ number_format($row->points) }}
+                                        </span>
+                                        {{ $row->reason }}
+                                        <span class="text-gray-500 dark:text-gray-400">· {{ $row->author?->name ?? 'admin' }} · {{ $row->created_at->format('d M H:i') }}</span>
+                                    </li>
+                                @endforeach
+                            </ul>
+                        </div>
+                    @endif
+
                     <!-- Team Questionnaire Completion Summary -->
                     @if(isset($teamDetailData['questionnaire_completion_summary']) && $teamDetailData['questionnaire_completion_summary']->count() > 0)
                         <div class="mb-6">

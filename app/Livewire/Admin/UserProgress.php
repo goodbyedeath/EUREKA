@@ -189,6 +189,9 @@ class UserProgress extends Component
                 'completed_attempts' => $completedAttempts->count(),
                 'completion_rate' => $allAttempts->count() > 0 ? round(($completedAttempts->count() / $allAttempts->count()) * 100, 1) : 0,
                 'total_points' => $this->calculateTeamTotalPoints($team, $completedAttempts),
+                // Part of total_points, shown separately: a total nobody can reconcile with the
+                // questionnaires is the thing this page exists to prevent (operator, 25 Sep).
+                'manual_points' => $this->manualPointsFor($team),
                 'average_score' => $completedAttempts->count() > 0 ? round($this->calculateAverageTeamPointsForAttempts($completedAttempts), 1) : 0,
                 'questionnaire_details' => $this->getTeamQuestionnaireDetails($allAttempts),
                 'questionnaire_completion_summary' => $questionnaireCompletionSummary,
@@ -429,6 +432,9 @@ class UserProgress extends Component
             'completed_attempts' => $completedAttempts->count(),
             'total_time_spent' => 'N/A', // Removed complex time calculation
             'team_total_points' => $this->calculateTeamTotalPoints($team, $completedAttempts),
+            'team_manual_points' => $this->manualPointsFor($team),
+            'team_manual_corrections' => \App\Models\TeamScoreAdjustment::with('author:id,name')
+                ->where('team_id', $team->id)->orderByDesc('created_at')->get(),
             'team_average_points' => $completedAttempts->count() > 0 ? round($this->calculateAverageTeamPointsForAttempts($completedAttempts), 1) : 0,
         ];
     }
@@ -637,6 +643,14 @@ class UserProgress extends Component
         return app(PointsCalculationService::class)->userScore($user, now()->subDays($this->selectedTimeframe))['total'];
     }
     
+    /** What the crew corrected by hand on this team, inside every total above. */
+    private function manualPointsFor($team): int
+    {
+        return (int) \App\Models\TeamScoreAdjustment::where('team_id', $team->id)
+            ->where('created_at', '>=', now()->subDays($this->selectedTimeframe))
+            ->sum('points');
+    }
+
     /** The team score the kiosk and the app show too — PointsCalculationService::teamScore(). */
     private function calculateTeamTotalPoints($team, $completedAttempts)
     {

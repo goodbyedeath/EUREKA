@@ -53,6 +53,8 @@
                         <th class="px-4 py-2 font-medium text-right">Awal</th>
                         <th class="px-4 py-2 font-medium text-right">Kuis</th>
                         <th class="px-4 py-2 font-medium text-right">Game</th>
+                        <th class="px-4 py-2 font-medium text-right">Objek</th>
+                        <th class="px-4 py-2 font-medium text-right" title="Koreksi manual kru">Koreksi</th>
                         <th class="px-4 py-2 font-medium">Pos selesai</th>
                     </tr>
                 </thead>
@@ -65,6 +67,12 @@
                             <td class="px-4 py-2 text-right tabular-nums">{{ number_format($row['base_points']) }}</td>
                             <td class="px-4 py-2 text-right tabular-nums">{{ number_format($row['earned_points']) }}</td>
                             <td class="px-4 py-2 text-right tabular-nums {{ $row['assessment_points'] < 0 ? 'text-red-700 dark:text-red-300' : '' }}">{{ $signed($row['assessment_points']) }}</td>
+                            {{-- Older archives have neither key; they read 0 rather than breaking. --}}
+                            <td class="px-4 py-2 text-right tabular-nums">{{ number_format($row['object_points'] ?? 0) }}</td>
+                            <td class="px-4 py-2 text-right tabular-nums {{ ($row['manual_points'] ?? 0) != 0 ? 'text-amber-700 dark:text-amber-400' : '' }}"
+                                @if (! empty($row['manual_corrections']))
+                                    title="{{ collect($row['manual_corrections'])->map(fn ($c) => ($c['points'] > 0 ? '+' : '').$c['points'].' '.$c['reason'])->implode(' · ') }}"
+                                @endif>{{ $signed($row['manual_points'] ?? 0) }}</td>
                             <td class="px-4 py-2">{{ $row['stations_done'] }}/{{ $row['stations_total'] }}</td>
                         </tr>
                     @empty

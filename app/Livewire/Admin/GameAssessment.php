@@ -133,6 +133,21 @@ class GameAssessment extends Component
         return (int) $this->deposit + (int) $this->additionalPoints - (int) $this->penalty;
     }
 
+    /**
+     * The team's score as every other surface shows it, for the attempt on screen.
+     *
+     * A facilitator scoring a game needs the number the team will see, not the percentage of this one
+     * questionnaire — and since 25 Sep that number can contain a correction the crew made by hand, so
+     * it is read from the shared service rather than rebuilt here (operator: manual points must show
+     * up wherever scoring shows up).
+     */
+    public function getTeamScoreProperty(): ?array
+    {
+        $team = $this->selectedAttempt?->user?->team;
+
+        return $team ? app(\App\Services\PointsCalculationService::class)->teamScore($team) : null;
+    }
+
     public function render()
     {
         return view('livewire.admin.game-assessment', [

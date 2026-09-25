@@ -119,17 +119,17 @@ class Team extends Model
     }
 
     /**
-     * Get total score (team points achievement)
+     * The team's score — the one formula, not a third version of it.
+     *
+     * This used to add the legacy `points` column to Σ `quiz_attempts.total_score`: a column no score
+     * has read for weeks, plus the number the client already reported as wrong (it is what submit
+     * wrote — the old balance plus quiz points, never the facilitator's games). Nothing referenced it,
+     * which is the only reason it did no damage; delegating means a future caller cannot be misled,
+     * and manual corrections and object points are inside it like everywhere else.
      */
     public function getTotalScoreAttribute()
     {
-        $basePoints = $this->points ?? 0;
-        $earnedPoints = $this->users()
-            ->join('quiz_attempts', 'users.id', '=', 'quiz_attempts.user_id')
-            ->where('quiz_attempts.status', 'completed')
-            ->sum('quiz_attempts.total_score') ?? 0;
-        
-        return $basePoints + $earnedPoints;
+        return app(\App\Services\PointsCalculationService::class)->teamScore($this)['total'];
     }
 
     /**
