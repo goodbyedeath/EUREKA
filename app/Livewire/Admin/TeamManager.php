@@ -427,6 +427,12 @@ class TeamManager extends Component
         session()->flash('success', 'Koreksi '.($points > 0 ? '+' : '').$points.' poin dibatalkan.');
     }
 
+    /** The team the correction panel is for, or null when it is closed. */
+    public function getAdjustTeamProperty()
+    {
+        return $this->adjustTeamId ? Team::find($this->adjustTeamId) : null;
+    }
+
     /** The corrections of the open team, newest first. */
     public function getAdjustmentsProperty()
     {
