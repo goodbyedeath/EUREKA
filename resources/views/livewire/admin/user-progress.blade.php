@@ -341,6 +341,15 @@
                                     @elseif($user['total_points'] > 0)
                                         <div class="text-xs text-gray-500 mt-1">{{ $user['total_points'] }} pts total</div>
                                     @endif
+                                    @if ($user['race'] ?? null)
+                                        {{-- The tie-break, so the order can be explained: on equal scores the
+                                             shorter finishing time is ahead, and a run still going is behind
+                                             every finished one (operator, 25 Sep). --}}
+                                        <div class="text-xs tabular-nums mt-1 {{ $user['race']['finished'] ? 'text-green-700 dark:text-green-400' : 'text-gray-500 dark:text-gray-400' }}">
+                                            <i class="fas fa-stopwatch mr-1"></i>{{ $user['race']['elapsed'] }}
+                                            {{ $user['race']['finished'] ? '· waktu akhir' : '· berjalan' }}
+                                        </div>
+                                    @endif
                                     @if(isset($user['assessment_notes']) && $user['assessment_notes']->count() > 0)
                                         <button wire:click="showAssessmentNotes({{ $user['id'] }})" 
                                                 class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800 hover:bg-orange-200 transition-colors mt-1 cursor-pointer"
@@ -465,6 +474,13 @@
                                                 {{ $user['total_points'] }} pts total
                                             </span>
                                         @endif
+                                        @if ($user['race'] ?? null)
+                                            <span class="text-xs tabular-nums {{ $user['race']['finished'] ? 'text-green-700 dark:text-green-400' : 'text-gray-500 dark:text-gray-400' }}"
+                                                  title="Jam race — pemisah kalau skornya seri">
+                                                <i class="fas fa-stopwatch mr-1"></i>{{ $user['race']['elapsed'] }}
+                                                {{ $user['race']['finished'] ? '· waktu akhir' : '· berjalan' }}
+                                            </span>
+                                        @endif
                                         @if($user['average_score'] > 0)
                                             <span class="text-xs text-blue-600 dark:text-blue-400">Avg: {{ $user['average_score'] }} pts</span>
                                         @endif
@@ -546,6 +562,12 @@
                         <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
                             <div class="text-sm font-medium text-gray-500 dark:text-gray-400">Team Points (Highest)</div>
                             <div class="text-2xl font-bold text-indigo-600">{{ $teamDetailData['team_total_points'] ?? 0 }}</div>
+                            @if ($teamDetailData['team_race'] ?? null)
+                                <div class="mt-1 text-xs tabular-nums {{ $teamDetailData['team_race']['finished'] ? 'text-green-700 dark:text-green-400' : 'text-gray-500 dark:text-gray-400' }}">
+                                    <i class="fas fa-stopwatch mr-1"></i>{{ $teamDetailData['team_race']['elapsed'] }}
+                                    {{ $teamDetailData['team_race']['finished'] ? '· waktu akhir' : '· berjalan' }}
+                                </div>
+                            @endif
                             @if (($teamDetailData['team_manual_points'] ?? 0) != 0)
                                 {{-- Inside the number above, so it has to be visible here: a total the crew
                                      cannot reconcile with the questionnaires is what this page is for. --}}

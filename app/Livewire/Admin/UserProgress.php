@@ -157,20 +157,25 @@ class UserProgress extends Component
                 'assessment_notes' => $assessmentNotes,
                 'last_activity' => $attempts->max('created_at'),
                 'created_at' => $user->created_at,
+                // The team's clock: the tie-break between two equal scores, so it is shown here too.
+                'race' => $this->raceFor($user->team_id),
             ];
         });
-        
-        // Apply sorting
-        if ($this->sortDirection === 'asc') {
-            return $users->sortBy($this->sortField);
-        } else {
-            return $users->sortByDesc($this->sortField);
+
+        // Sorting by points means the event's own order — score, then who got there faster. Any other
+        // field sorts plainly, because "by name" that secretly ordered by a clock would be a lie.
+        if ($this->sortField === 'total_points' && $this->sortDirection === 'desc') {
+            return $this->sortByScoreThenClock($users);
         }
+
+        return $this->sortDirection === 'asc'
+            ? $users->sortBy($this->sortField)
+            : $users->sortByDesc($this->sortField);
     }
 
     private function getTeamPerformanceData()
     {
-        return Team::with(['users.quizAttempts' => function($q) {
+        $rows = Team::with(['users.quizAttempts' => function($q) {
             $q->where('created_at', '>=', now()->subDays($this->selectedTimeframe))
               ->with(['questionnaire:id,title', 'userAnswers.question:id,points']);
         }])->get()->map(function ($team) {
@@ -192,11 +197,15 @@ class UserProgress extends Component
                 // Part of total_points, shown separately: a total nobody can reconcile with the
                 // questionnaires is the thing this page exists to prevent (operator, 25 Sep).
                 'manual_points' => $this->manualPointsFor($team),
+                'race' => $this->raceFor($team->id),
                 'average_score' => $completedAttempts->count() > 0 ? round($this->calculateAverageTeamPointsForAttempts($completedAttempts), 1) : 0,
                 'questionnaire_details' => $this->getTeamQuestionnaireDetails($allAttempts),
                 'questionnaire_completion_summary' => $questionnaireCompletionSummary,
             ];
-        })->sortByDesc('total_points');
+        });
+
+        // One winner per event: the LED board, the archive and this page order the same way.
+        return $this->sortByScoreThenClock($rows);
     }
     
     private function getTeamQuestionnaireDetails($attempts)
@@ -433,6 +442,7 @@ class UserProgress extends Component
             'total_time_spent' => 'N/A', // Removed complex time calculation
             'team_total_points' => $this->calculateTeamTotalPoints($team, $completedAttempts),
             'team_manual_points' => $this->manualPointsFor($team),
+            'team_race' => $this->raceFor($team->id),
             'team_manual_corrections' => \App\Models\TeamScoreAdjustment::with('author:id,name')
                 ->where('team_id', $team->id)->orderByDesc('created_at')->get(),
             'team_average_points' => $completedAttempts->count() > 0 ? round($this->calculateAverageTeamPointsForAttempts($completedAttempts), 1) : 0,
@@ -643,6 +653,63 @@ class UserProgress extends Component
         return app(PointsCalculationService::class)->userScore($user, now()->subDays($this->selectedTimeframe))['total'];
     }
     
+    /** @var array<int, array{elapsed:?string, elapsed_seconds:?int, finished:bool, reason:?string}|null> */
+    private array $raceCache = [];
+
+    /**
+     * The team's run — the clock started by scanning the START QR.
+     *
+     * Here because of the rule the operator set on 25 Sep: when two teams have the same score, the one
+     * that finished faster is ahead. A page that orders by that has to show it, or the order looks
+     * arbitrary to the crew reading it.
+     */
+    private function raceFor(?int $teamId): ?array
+    {
+        if (! $teamId) {
+            return null;
+        }
+
+        return $this->raceCache[$teamId] ??= (function () use ($teamId) {
+            $run = \App\Models\RaceSession::with('raceStart')
+                ->whereIn('user_id', User::where('team_id', $teamId)->pluck('id'))
+                ->whereNotNull('started_at')
+                ->orderByDesc('started_at')->orderByDesc('id')
+                ->first();
+
+            if (! $run) {
+                return null;
+            }
+
+            $run->finishIfOverTime();
+
+            return [
+                'elapsed' => $run->elapsedForHumans(),
+                'elapsed_seconds' => $run->elapsedSeconds(),
+                'finished' => $run->finished_at !== null,
+                'reason' => $run->finished_reason,
+            ];
+        })();
+    }
+
+    /**
+     * The order the LED board and the archive use, so one event has one winner.
+     *
+     * Most points; then a finished run ahead of one still going, because an unfinished clock is not a
+     * finishing time; then the shorter clock; then the name so nothing flickers. Only applied when the
+     * crew is sorting by points — sorting by completion rate or name means what it says.
+     *
+     * @param  \Illuminate\Support\Collection<int, array<string, mixed>>  $rows
+     */
+    private function sortByScoreThenClock(\Illuminate\Support\Collection $rows, string $field = 'total_points'): \Illuminate\Support\Collection
+    {
+        return $rows->sortBy([
+            fn ($a, $b) => ($b[$field] ?? 0) <=> ($a[$field] ?? 0),
+            fn ($a, $b) => (int) ! ($a['race']['finished'] ?? false) <=> (int) ! ($b['race']['finished'] ?? false),
+            fn ($a, $b) => ($a['race']['elapsed_seconds'] ?? PHP_INT_MAX) <=> ($b['race']['elapsed_seconds'] ?? PHP_INT_MAX),
+            fn ($a, $b) => strcmp((string) ($a['name'] ?? ''), (string) ($b['name'] ?? '')),
+        ])->values();
+    }
+
     /** What the crew corrected by hand on this team, inside every total above. */
     private function manualPointsFor($team): int
     {
