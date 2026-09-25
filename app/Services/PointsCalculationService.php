@@ -48,10 +48,25 @@ class PointsCalculationService
             ->sum('points');
     }
 
-    /** One account's share of that score, on the same formula and its team's base. */
+    /**
+     * One account's share of that score, on the same formula and its team's base.
+     *
+     * Two terms here are the team's, not the account's: the base balance and the crew's manual
+     * corrections. Both are shown per member on /admin/user-progress, which is why they are counted the
+     * same way — the column there is "Team Points", and a correction the crew has just made has to be
+     * visible in it. Nothing sums these rows into a team total (teamScore does that from the team's
+     * own accounts and one base), so repeating them cannot double-count.
+     */
     public function userScore(User $user, ?\DateTimeInterface $since = null): array
     {
-        return $this->scoreFor([$user->id], (int) ($user->team?->initial_points ?? 0), $since);
+        $team = $user->team;
+
+        return $this->scoreFor(
+            [$user->id],
+            (int) ($team?->initial_points ?? 0),
+            $since,
+            $team ? $this->manualFor($team, $since) : 0,
+        );
     }
 
     private function scoreFor(array $userIds, int $base, ?\DateTimeInterface $since, int $manual = 0): array

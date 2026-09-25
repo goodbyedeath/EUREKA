@@ -256,11 +256,11 @@ class UserProgressExportController extends Controller
                 'base_points' => $score['base_points'],
                 'earned_points' => $score['earned_points'],
                 'assessment_bonus' => $score['assessment_points'],
-                // Team-level, so it repeats for every member of one team: do not sum this column.
-                'team_manual_points' => $user->team_id
-                    ? (int) \App\Models\TeamScoreAdjustment::where('team_id', $user->team_id)
-                        ->where('created_at', '>=', now()->subDays((int) $filters['selectedTimeframe']))->sum('points')
-                    : 0,
+                'object_points' => $score['object_points'] ?? 0,
+                // Team-level, so it repeats for every member of one team: do not sum this column. It is
+                // already inside 'total', exactly as the base balance is.
+                'manual_points' => $score['manual_points'] ?? 0,
+                'team_manual_points' => $score['manual_points'] ?? 0,
                 'questionnaires_completed' => $score['attempts_completed'],
             ];
             

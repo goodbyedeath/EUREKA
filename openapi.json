@@ -1824,25 +1824,25 @@
                                                 "type": "object",
                                                 "properties": {
                                                     "assessment_points": {
-                                                        "nullable": true
+                                                        "type": "integer"
                                                     },
                                                     "by": {
                                                         "type": "string"
                                                     },
                                                     "completed_at": {
-                                                        "nullable": true
+                                                        "type": "string"
                                                     },
                                                     "created_at": {
                                                         "type": "string"
                                                     },
                                                     "earned_points": {
-                                                        "nullable": true
+                                                        "type": "integer"
                                                     },
                                                     "id": {
                                                         "type": "integer"
                                                     },
                                                     "points": {
-                                                        "nullable": true
+                                                        "type": "integer"
                                                     },
                                                     "questionnaire": {
                                                         "type": "object",
@@ -2394,10 +2394,10 @@
                                                     "type": "boolean"
                                                 },
                                                 "finished_at": {
-                                                    "nullable": true
+                                                    "type": "string"
                                                 },
                                                 "finished_reason": {
-                                                    "nullable": true
+                                                    "type": "string"
                                                 },
                                                 "indoor_map_id": {
                                                     "type": "integer"

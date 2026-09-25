@@ -717,12 +717,20 @@ class UserProgress extends Component
         if ($s['assessment_points'] !== 0) {
             $parts[] = $s['assessment_points'] . ' (assessment)';
         }
+        if (($s['object_points'] ?? 0) !== 0) {
+            $parts[] = $s['object_points'] . ' (objek)';
+        }
+        if (($s['manual_points'] ?? 0) !== 0) {
+            $parts[] = $s['manual_points'] . ' (koreksi kru)';
+        }
 
         return [
             'total' => $s['total'],
             'base_points' => $s['base_points'],
             'earned_points' => $s['earned_points'],
             'assessment_bonus' => $s['assessment_points'],
+            'object_points' => $s['object_points'] ?? 0,
+            'manual_points' => $s['manual_points'] ?? 0,
             'breakdown_text' => implode(' + ', $parts) . ' = ' . $s['total'],
         ];
     }
