@@ -58,7 +58,9 @@ class StationGate
         if ($over = $this->overTimeSession($userId)) {
             return $this->refuse(
                 'race_time_up',
-                'Waktu race sudah habis. Kuis yang sedang dibuka masih bisa diselesaikan, tetapi pos baru tidak.',
+                $over->finished_reason === RaceSession::REASON_MANUAL
+                    ? 'Race tim ini sudah dihentikan kru. Kuis yang sedang dibuka masih bisa diselesaikan, tetapi pos baru tidak.'
+                    : 'Waktu race sudah habis. Kuis yang sedang dibuka masih bisa diselesaikan, tetapi pos baru tidak.',
                 [
                     'finished_at' => $over->finished_at?->toIso8601String(),
                     'deadline_at' => $over->deadlineAt()?->toIso8601String(),
@@ -119,7 +121,17 @@ class StationGate
             ->orderByDesc('id')
             ->first();
 
-        if (! $session || ! $session->isOverTime()) {
+        if (! $session) {
+            return null;
+        }
+
+        // Stopped by hand from Team Management: the crew ended this run, so no new post opens. A run
+        // that ended by clearing every post stays open on purpose (bonus posts).
+        if ($session->finished_reason === RaceSession::REASON_MANUAL) {
+            return $session;
+        }
+
+        if (! $session->isOverTime()) {
             return null;
         }
 

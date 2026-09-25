@@ -305,62 +305,13 @@ class OutpostAccessPanel extends Component
             ->flatMap(fn ($id) => $openByAccount[$id] ?? [])
             ->unique()->values()->all()]);
 
-        // How far each team is, and whether its clock has stopped. The desk is where the crew asks
-        // "why has that team not finished?" (operator, 23 Sep), so the count lives here rather than
-        // in a report read after the event. One query for the attempts, one for the sessions.
-        $progress = app(\App\Services\StationProgress::class);
-        $required = $progress->required();
-        $clearedByAccount = $progress->clearedKeysByAccount($accounts->pluck('id'), $required);
-        $neededByPlan = [];
-
-        $sessions = RaceSession::with('raceStart')
-            ->whereIn('user_id', $accounts->pluck('id'))
-            ->whereNotNull('started_at')
-            ->orderBy('started_at')
-            ->get()
-            ->groupBy('user_id');
-
-        $standings = $rows->map(function ($row) use ($clearedByAccount, $required, $progress, &$neededByPlan, $sessions) {
-            $planKey = $row->plan ?? 0;
-            $neededByPlan[$planKey] ??= $progress->requiredCount($row->plan, $required);
-
-            // Two phones may have split the route, so the team's figure is the union of its accounts.
-            $cleared = collect($row->accounts)
-                ->flatMap(fn ($id) => $clearedByAccount[$id] ?? [])
-                ->unique()->count();
-
-            $session = collect($row->accounts)
-                ->flatMap(fn ($id) => $sessions[$id] ?? [])
-                ->sortByDesc('started_at')->first();
-
-            // race:close-expired closes an expired run within the minute, but the desk is read at the
-            // second — and a chip that still says "berjalan" while the bell should be ringing is worse
-            // than a query. Idempotent: a second call sees finished_at and does nothing.
-            $session?->finishIfOverTime();
-
-            // The deadline is sent as an instant, not as "seconds left": the desk counts down in the
-            // browser between polls, and a number computed here would be ten seconds stale on arrival.
-            $deadline = $session?->deadlineAt();
-
-            return (object) [
-                'key' => $row->key,
-                'name' => $row->name,
-                'cleared' => $cleared,
-                'needed' => $neededByPlan[$planKey],
-                'started' => $session !== null,
-                'finished' => $session?->finished_at !== null,
-                'clock' => $session?->elapsedForHumans(),
-                'deadline_at' => $deadline?->toIso8601String(),
-                // True only for a run the clock ended, so the bell rings for that and not for a team
-                // that finished early by clearing every post (operator, 24 Sep).
-                'out_of_time' => $session?->finished_reason === RaceSession::REASON_TIME_LIMIT,
-            ];
-        })->values();
+        // The race clocks, the countdown and the bell moved to Team Progress on 25 Sep (operator):
+        // App\Livewire\Admin\RaceClockStrip owns them now. This desk opens posts; nothing here needs
+        // to know how long a team has been running.
 
         return view('livewire.admin.outpost-access-panel', [
             'locations' => $locations,
             'rows' => $rows,
-            'standings' => $standings,
             'open' => $open,
             'postPlans' => $postPlans,
             'planNames' => $planNames,

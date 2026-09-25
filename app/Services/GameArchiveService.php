@@ -158,6 +158,15 @@ class GameArchiveService
                         'description' => $t->description,
                         'registered_at' => $iso($t->created_at),
                         'score' => $this->points->teamScore($t),
+                        // Every hand correction on this team, so a total can still be explained a week later.
+                        'manual_corrections' => \App\Models\TeamScoreAdjustment::with('author:id,name')
+                            ->where('team_id', $t->id)->orderBy('created_at')->get()
+                            ->map(fn ($a) => [
+                                'points' => (int) $a->points,
+                                'reason' => $a->reason,
+                                'by' => $a->author?->name,
+                                'at' => $a->created_at?->toIso8601String(),
+                            ])->all(),
                         'stations_done' => $this->stations->clearedCount($mine->pluck('id'), $counted),
                         'stations_total' => $this->stations->requiredCount($t->indoor_map_id, $counted),
                         'members' => $t->members->map(fn ($m) => [
@@ -240,6 +249,11 @@ class GameArchiveService
                             'stations_total' => $r['stations_total'],
                         ])->values()->all(),
                         'teams' => $teamRows->all(),
+                        // The event's corrections in one list, newest last, for the recap page and the PDF:
+                        // the crew is asked "which scores did we touch?", not "what was team 7's total".
+                        'manual_corrections' => $teamRows->flatMap(fn ($r) => collect($r['manual_corrections'] ?? [])
+                            ->map(fn ($c) => $c + ['team' => $r['name']]))
+                            ->sortBy('at')->values()->all(),
                         'accounts_without_team' => $loose,
                         'photos' => $photos,
                     ],

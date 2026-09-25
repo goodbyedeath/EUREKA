@@ -195,6 +195,7 @@
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Department</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Members</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Denah Indoor</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Jam race</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Points</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Initial Points</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Created</th>
@@ -244,6 +245,59 @@
                                         <option value="{{ $map->id }}" @selected($team->indoor_map_id === $map->id)>{{ $map->name }}</option>
                                     @endforeach
                                 </select>
+                            </td>
+                            {{-- The clock the team started by scanning its START QR, and the only place it can
+                                 be stopped by hand (operator, 25 Sep). --}}
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                @php $race = $team->race ?? null; @endphp
+                                @if (! $race)
+                                    <span class="text-xs text-gray-400 dark:text-gray-500">belum scan START</span>
+                                @else
+                                    <div class="text-sm tabular-nums font-medium
+                                        {{ $race->finished_at
+                                            ? ($race->finished_reason === \App\Models\RaceSession::REASON_MANUAL
+                                                ? 'text-amber-700 dark:text-amber-400'
+                                                : 'text-gray-700 dark:text-gray-300')
+                                            : 'text-green-700 dark:text-green-400' }}">
+                                        {{ $race->elapsedForHumans() }}
+                                    </div>
+                                    <div class="text-xs text-gray-500 dark:text-gray-400">
+                                        @if (! $race->finished_at)
+                                            berjalan
+                                            @if ($race->deadlineAt()) · batas {{ $race->deadlineAt()->format('H:i') }} @endif
+                                        @elseif ($race->finished_reason === \App\Models\RaceSession::REASON_MANUAL)
+                                            dihentikan kru
+                                        @elseif ($race->finished_reason === \App\Models\RaceSession::REASON_TIME_LIMIT)
+                                            waktu habis
+                                        @else
+                                            semua pos selesai
+                                        @endif
+                                    </div>
+
+                                    @if (! $race->finished_at)
+                                        @if ($confirmStopTeamId === $team->id)
+                                            {{-- Two clicks, not a browser dialog: a suppressed confirm once made a
+                                                 control look broken on this operator's browser. --}}
+                                            <div class="mt-1 text-xs text-red-800 dark:text-red-300">
+                                                Hentikan jam sekarang?
+                                                <button type="button" wire:click="stopTimer({{ $team->id }})"
+                                                        class="ml-1 px-2 py-0.5 rounded bg-red-600 text-white">Ya</button>
+                                                <button type="button" wire:click="cancelStopTimer"
+                                                        class="ml-1 px-2 py-0.5 rounded border border-gray-300 dark:border-gray-600">Batal</button>
+                                            </div>
+                                        @else
+                                            <button type="button" wire:click="askStopTimer({{ $team->id }})"
+                                                    class="mt-1 text-xs text-red-700 dark:text-red-400 hover:underline">
+                                                Stop jam
+                                            </button>
+                                        @endif
+                                    @elseif ($race->finished_reason === \App\Models\RaceSession::REASON_MANUAL)
+                                        <button type="button" wire:click="resumeTimer({{ $team->id }})"
+                                                class="mt-1 text-xs text-blue-700 dark:text-blue-400 hover:underline">
+                                            Jalankan lagi
+                                        </button>
+                                    @endif
+                                @endif
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <div class="flex items-center justify-between">
@@ -317,7 +371,7 @@
                         @endif
                     @empty
                         <tr>
-                            <td colspan="7" class="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
+                            <td colspan="8" class="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
                                 <i class="fas fa-users text-4xl mb-4"></i>
                                 <p class="text-lg">No teams found</p>
                                 <p class="text-sm">Create your first team to get started</p>

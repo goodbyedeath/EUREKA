@@ -1054,8 +1054,15 @@ whichever comes first: every counting post cleared, or the time running out.
   deadline can be shown from the first second.
 - **`elapsed_seconds` never exceeds the limit.** A phone that polls ten minutes late still reads the
   official time.
-- **`finished_reason`** is `all_posts` or `time_limit`. Say which on the finish screen: a team that ran
-  out of time deserves different words from one that cleared every post.
+- **`finished_reason`** is `all_posts`, `time_limit` or **`manual`** (new 25 Sep: the crew stopped this
+  team's clock from the admin — a team that gave up, one pulled out of the venue, a phone that died with
+  the race still running). Say which on the finish screen: three endings, three sets of words, and for
+  `manual` the honest one is that the crew ended the run — never "waktu habis", which the team would
+  argue with. A `manual` stop can also be **undone** by the crew, so a later poll may show the run
+  running again with `finished_at: null`: follow the server rather than latching the finish screen.
+- **A crew-stopped run closes new posts too**, with the same `403 race_time_up` and its own message
+  ("Race tim ini sudah dihentikan kru…"). Show the server's message, not your own wording for the
+  deadline. A run finished by clearing every post stays open, as it always has.
 - **After the deadline, new posts are closed.** `qr/lookup` and a new `quiz/start` answer
   **`403 race_time_up`** with `deadline_at` and `finished_at`; show the message. A questionnaire the
   team already had open is **not** blocked — `quiz/start` returns the same attempt, answers still save

@@ -83,6 +83,49 @@
         </div>
     </section>
 
+    @php $koreksi = $s['manual_corrections'] ?? []; @endphp
+    @if (count($koreksi))
+        {{-- Which scores the crew touched, and why. The rows themselves are deleted with their teams
+             when a session is archived, so this list is the only record that outlives the event. --}}
+        <section class="bg-amber-50 dark:bg-amber-900/20 rounded-lg border-2 border-amber-300 dark:border-amber-800">
+            <h2 class="p-4 border-b border-amber-200 dark:border-amber-800 text-lg font-semibold text-gray-900 dark:text-gray-100">
+                Koreksi poin manual
+                <span class="ml-1 text-sm font-normal text-gray-600 dark:text-gray-400">
+                    {{ count($koreksi) }} koreksi ·
+                    total {{ collect($koreksi)->sum('points') > 0 ? '+' : '' }}{{ number_format(collect($koreksi)->sum('points')) }} poin
+                </span>
+            </h2>
+            <div class="overflow-x-auto">
+                <table class="min-w-full text-sm">
+                    <thead class="bg-amber-100/60 dark:bg-amber-900/40 text-left text-gray-700 dark:text-gray-300">
+                        <tr>
+                            <th class="px-4 py-2 font-medium">Waktu</th>
+                            <th class="px-4 py-2 font-medium">Tim</th>
+                            <th class="px-4 py-2 font-medium text-right">Poin</th>
+                            <th class="px-4 py-2 font-medium">Alasan</th>
+                            <th class="px-4 py-2 font-medium">Oleh</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-amber-200 dark:divide-amber-800">
+                        @foreach ($koreksi as $k)
+                            <tr>
+                                <td class="px-4 py-2 whitespace-nowrap text-gray-600 dark:text-gray-400">
+                                    {{ $k['at'] ? \Illuminate\Support\Carbon::parse($k['at'])->format('d M H:i') : '—' }}
+                                </td>
+                                <td class="px-4 py-2">{{ $k['team'] ?? '—' }}</td>
+                                <td class="px-4 py-2 text-right tabular-nums font-semibold {{ $k['points'] < 0 ? 'text-red-700 dark:text-red-300' : 'text-green-700 dark:text-green-300' }}">
+                                    {{ $k['points'] > 0 ? '+' : '' }}{{ number_format($k['points']) }}
+                                </td>
+                                <td class="px-4 py-2 text-gray-700 dark:text-gray-300">{{ $k['reason'] }}</td>
+                                <td class="px-4 py-2 text-gray-600 dark:text-gray-400">{{ $k['by'] ?? 'admin' }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    @endif
+
     <section class="space-y-3">
         <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Rincian tim</h2>
         @foreach ($s['teams'] ?? [] as $team)

@@ -45,6 +45,8 @@ class TeamManager extends Component
     public ?int $adjustTeamId = null;
     /** Set while "clear every correction" is waiting for a second click. */
     public ?int $confirmClearTeamId = null;
+    /** Set while "stop the clock" is waiting for a second click. */
+    public ?int $confirmStopTeamId = null;
     public $adjustAmount = 0;
     public string $adjustReason = '';
 
@@ -427,6 +429,81 @@ class TeamManager extends Component
         session()->flash('success', 'Koreksi '.($points > 0 ? '+' : '').$points.' poin dibatalkan.');
     }
 
+    /**
+     * The race clock, stopped by hand for one team.
+     *
+     * The clock is the one the team started by scanning its START QR, and until now only two things
+     * could stop it: clearing every counting post, or the code's time limit running out. The crew asked
+     * for a third (25 Sep) — a team that gave up, one pulled out of the venue, a phone that died with
+     * the race still running. `finished_at` is the moment the crew said stop, and that becomes the
+     * team's official time; new posts are then refused like any finished run, while a quiz already open
+     * can still be handed in.
+     */
+    public function askStopTimer(int $teamId): void
+    {
+        $this->confirmStopTeamId = $teamId;
+    }
+
+    public function cancelStopTimer(): void
+    {
+        $this->confirmStopTeamId = null;
+    }
+
+    public function stopTimer(int $teamId): void
+    {
+        $this->confirmStopTeamId = null;
+        $team = Team::findOrFail($teamId);
+        $session = $this->runningSessionFor($team);
+
+        if (! $session) {
+            session()->flash('error', "{$team->name} tidak punya jam race yang sedang berjalan.");
+
+            return;
+        }
+
+        $stopped = $session->stopByCrew(Auth::id());
+        session()->flash('success', "Jam race {$team->name} dihentikan pada {$session->elapsedForHumans()}"
+            .($stopped > 1 ? " ({$stopped} sesi)" : '').'.');
+    }
+
+    /** Undo a stop the crew made; a clock that ran out or a finished route is not reopened here. */
+    public function resumeTimer(int $teamId): void
+    {
+        $team = Team::findOrFail($teamId);
+        $session = RaceSession::whereIn('user_id', User::where('team_id', $team->id)->pluck('id'))
+            ->where('finished_reason', RaceSession::REASON_MANUAL)
+            ->orderByDesc('started_at')->orderByDesc('id')->first();
+
+        if (! $session) {
+            session()->flash('error', "{$team->name} tidak punya jam yang dihentikan kru.");
+
+            return;
+        }
+
+        $session->resumeAfterCrewStop(Auth::id());
+        session()->flash('success', "Jam race {$team->name} berjalan lagi.");
+    }
+
+    /** The team's live run, whichever phone holds it. */
+    private function runningSessionFor(Team $team): ?RaceSession
+    {
+        return RaceSession::whereIn('user_id', User::where('team_id', $team->id)->pluck('id'))
+            ->whereNotNull('started_at')
+            ->whereNull('finished_at')
+            ->orderByDesc('started_at')->orderByDesc('id')
+            ->first();
+    }
+
+    /** What to draw in the team's clock cell: the run itself, whichever phone holds it. */
+    private function clockFor(Team $team): ?RaceSession
+    {
+        return RaceSession::with('raceStart')
+            ->whereIn('user_id', User::where('team_id', $team->id)->pluck('id'))
+            ->whereNotNull('started_at')
+            ->orderByDesc('started_at')->orderByDesc('id')
+            ->first();
+    }
+
     /** The team the correction panel is for, or null when it is closed. */
     public function getAdjustTeamProperty()
     {
@@ -555,6 +632,7 @@ class TeamManager extends Component
                 try {
                     $team->calculated_total_score = $this->calculateTeamTotalScore($team);
                     $team->manual_score = (int) TeamScoreAdjustment::where('team_id', $team->id)->sum('points');
+                    $team->race = $this->clockFor($team);
                     $team->users_count = User::where('team_id', $team->id)->count();
                 } catch (\Exception $e) {
                     Log::warning('Error calculating team data for team ' . $team->id . ': ' . $e->getMessage());

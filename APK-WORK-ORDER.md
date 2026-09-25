@@ -1325,6 +1325,36 @@ total from its parts.
 
 ---
 
+## 45 — A clock the crew stopped by hand  ·  operator 25 Sep
+
+Until now a run ended two ways: every counting post cleared, or the START code's time limit running out.
+There is a third, and it is a button in Team Management: the crew stops one team's clock. A team that
+gave up, one pulled out of the venue, a phone that died with the race still running.
+
+```json
+"race": { "finished": true, "finished_at": "…T08:12:00+00:00", "elapsed_seconds": 720,
+          "finished_reason": "manual", "deadline_at": "…T09:16:00+00:00" }
+```
+
+1. **Handle `finished_reason: "manual"`** wherever you already handle `all_posts` and `time_limit`. The
+   finish screen should say the crew ended the run — not "waktu habis", which the team would argue with,
+   and not "semua pos selesai", which is false.
+2. **`elapsed_seconds` is frozen at the moment of the stop**, which is the team's official time. Note
+   that `deadline_at` may still be in the future: the clock stopped early, so do not keep counting down
+   to it.
+3. **New posts are closed.** `qr/lookup` and a new `quiz/start` answer `403 race_time_up` with a message
+   of its own — *"Race tim ini sudah dihentikan kru…"*. Show the server's message rather than your
+   wording for the deadline. A questionnaire already open still resumes, saves and submits.
+4. **It can be undone.** The crew can start the clock again, and then `/race/status` reports
+   `finished: false`, `finished_at: null`, `finished_reason: null` and a clock that is running. Do not
+   latch the finish screen or wipe local state on a finish — follow the server on every poll.
+
+**Done when:** a crew-stopped team sees a finish screen that names the right ending and a frozen time, a
+scan afterwards shows the server's refusal message, an open quiz can still be handed in, and starting the
+clock again puts the team back into the race without a reinstall.
+
+---
+
 ## Talking back — the channel runs both ways now
 
 Until today this was one-way: the server published, you consumed, and anything you had to say

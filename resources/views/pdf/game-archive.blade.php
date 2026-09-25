@@ -79,9 +79,43 @@
     </tbody>
 </table>
 <p class="small muted">
-    Total = poin awal + poin kuis (jawaban benar) + poin game (nilai fasilitator dikurangi penalti).
-    Hanya kuesioner yang sudah diserahkan yang dihitung.
+    Total = poin awal + poin kuis (jawaban benar) + poin game (nilai fasilitator dikurangi penalti)
+    + poin objek 3D + koreksi manual kru. Hanya kuesioner yang sudah diserahkan yang dihitung.
 </p>
+
+@php $koreksi = $s['manual_corrections'] ?? []; @endphp
+@if (count($koreksi))
+    {{-- The recap the crew is asked for afterwards: which scores were touched by hand, and why. The
+         rows are deleted with their teams when a session is archived, so this page is the record. --}}
+    <h2>Koreksi poin manual</h2>
+    <p class="small muted">
+        {{ count($koreksi) }} koreksi · total {{ collect($koreksi)->sum('points') > 0 ? '+' : '' }}{{ $num(collect($koreksi)->sum('points')) }} poin.
+        Dipakai saat sistem tidak bisa menghitung sendiri — nilai fasilitator yang gagal terkirim, QR pos
+        yang tidak tercetak, kuesioner yang terhitung dua kali.
+    </p>
+    <table>
+        <thead>
+            <tr>
+                <th style="width:64pt">Waktu</th>
+                <th>Tim</th>
+                <th class="num" style="width:48pt">Poin</th>
+                <th>Alasan</th>
+                <th style="width:80pt">Oleh</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach ($koreksi as $k)
+                <tr>
+                    <td>{{ $k['at'] ? \Illuminate\Support\Carbon::parse($k['at'])->format('d M H:i') : '—' }}</td>
+                    <td>{{ $k['team'] ?? '—' }}</td>
+                    <td class="num {{ $k['points'] < 0 ? 'neg' : '' }}">{{ $signed($k['points']) }}</td>
+                    <td>{{ $k['reason'] }}</td>
+                    <td>{{ $k['by'] ?? 'admin' }}</td>
+                </tr>
+            @endforeach
+        </tbody>
+    </table>
+@endif
 
 @foreach ($s['teams'] ?? [] as $team)
     <div class="team">

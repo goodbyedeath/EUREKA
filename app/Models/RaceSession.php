@@ -120,6 +120,8 @@ class RaceSession extends Model
     /** The two ways a race ends. */
     public const REASON_ALL_POSTS = 'all_posts';
     public const REASON_TIME_LIMIT = 'time_limit';
+    /** Stopped by the crew from Team Management — a clock that has to be stopped by hand (operator, 25 Sep). */
+    public const REASON_MANUAL = 'manual';
 
     /**
      * When this run must stop, or null when its START code sets no limit.
@@ -177,6 +179,69 @@ class RaceSession extends Model
         ]);
 
         return true;
+    }
+
+    /**
+     * Stop this team's clock now, by hand.
+     *
+     * The crew needs it when the app cannot judge the end itself: a team that gave up, one pulled out of
+     * the venue, a phone that died with the race still running. Stamped for every running session of
+     * the team, like the deadline finish, so two phones agree — and `finished_at` is `now()` rather than
+     * a deadline, because the moment the crew said stop is the team's official time.
+     *
+     * @return int the number of sessions stopped
+     */
+    public function stopByCrew(?int $adminId = null): int
+    {
+        $accountIds = $this->teamAccountIds();
+
+        $stopped = static::whereIn('user_id', $accountIds)
+            ->where('indoor_map_id', $this->indoor_map_id)
+            ->whereNotNull('started_at')
+            ->whereNull('finished_at')
+            ->update(['finished_at' => now(), 'finished_reason' => self::REASON_MANUAL]);
+
+        $this->forceFill(['finished_at' => now(), 'finished_reason' => self::REASON_MANUAL]);
+
+        \Illuminate\Support\Facades\Log::info('Race clock stopped by hand', [
+            'race_session_id' => $this->id, 'user_id' => $this->user_id,
+            'sessions' => $stopped, 'by' => $adminId,
+        ]);
+
+        return $stopped;
+    }
+
+    /**
+     * Undo a stop the crew made by hand. Only a manual stop: a run the clock ended or the last post
+     * ended is not the crew's to reopen from a button.
+     *
+     * @return int the number of sessions restarted
+     */
+    public function resumeAfterCrewStop(?int $adminId = null): int
+    {
+        $accountIds = $this->teamAccountIds();
+
+        $resumed = static::whereIn('user_id', $accountIds)
+            ->where('indoor_map_id', $this->indoor_map_id)
+            ->where('finished_reason', self::REASON_MANUAL)
+            ->update(['finished_at' => null, 'finished_reason' => null]);
+
+        $this->forceFill(['finished_at' => null, 'finished_reason' => null]);
+
+        \Illuminate\Support\Facades\Log::info('Race clock restarted after a manual stop', [
+            'race_session_id' => $this->id, 'user_id' => $this->user_id,
+            'sessions' => $resumed, 'by' => $adminId,
+        ]);
+
+        return $resumed;
+    }
+
+    /** Every account of this session's team, or just its own when it has no team. */
+    private function teamAccountIds(): \Illuminate\Support\Collection
+    {
+        $teamId = User::where('id', $this->user_id)->value('team_id');
+
+        return $teamId ? User::where('team_id', $teamId)->pluck('id') : collect([$this->user_id]);
     }
 
     public function hasStarted(): bool

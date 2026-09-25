@@ -15,6 +15,15 @@ again when the 3D camera first opens), distinguish *needs Google Play Services f
 block login or the rest of the game** over it. Nothing in this API changes. Build guide §9; work order
 §39.
 
+**Latest (25 Sep, second change): `finished_reason` can be `manual`.** The crew can now stop one team's
+race clock from the admin, for a team that gave up or was pulled out of the venue. `GET /race/status`
+then reports `finished: true`, `finished_at` = the moment the crew stopped it, `elapsed_seconds` frozen
+there, and **`finished_reason: "manual"`**. The station gate refuses a **new** post with the usual
+`403 race_time_up` but its own message — show the server's text, since "waktu habis" would be wrong. A
+quiz already open can still be finished and handed in. The stop is reversible: a later poll may show the
+run going again with `finished_at: null`, so do not latch the finish screen. Build guide §8; work order
+§45.
+
 **Latest (25 Sep): `score.manual_points` — the crew can correct a total by hand.** `GET /team` →
 `team.score` gains **`manual_points`** (signed, 0 when nothing was corrected) and `total` includes it.
 The crew uses it when the app cannot score something itself: a facilitator's phone died mid-scoring, a
