@@ -58,10 +58,18 @@ class GameArchiveService
             ];
         })->sortByDesc('score')->values();
 
+        $untouched = $this->neverPlayed(User::where('role', 'user')->pluck('id'));
+
         return [
             'teams' => $teams,
             'unfinished' => $teams->filter(fn ($t) => $t['stations_done'] < $t['stations_total'])->values(),
             'accounts' => User::where('role', 'user')->count(),
+            // Printed cards nobody used: kept, with their accounts, so they still work next time
+            // (operator, 25 Sep). Counted here so the page can say so before the button is pressed.
+            'kept_accounts' => $untouched->count(),
+            'kept_cards' => \App\Models\LoginCard::whereIn('user_id', $untouched)->whereNull('revoked_at')->count(),
+            'kept_teams' => Team::whereDoesntHave('users', fn ($q) => $q->whereNotIn('id', $untouched))
+                ->whereHas('users')->count(),
             'accounts_without_team' => User::where('role', 'user')->whereNull('team_id')->count(),
             'live_sessions' => QuizAttempt::where('status', QuizAttempt::STATUS_STARTED)->whereNull('completed_at')->count(),
             'stations_total' => $this->stations->requiredCount(null, $counted),
@@ -81,7 +89,22 @@ class GameArchiveService
                 $teams = Team::with(['members' => fn ($q) => $q->orderByDesc('is_leader')->orderBy('name')])
                     ->orderBy('id')->lockForUpdate()->get();
                 $accounts = User::where('role', 'user')->orderBy('id')->lockForUpdate()->get();
+
+                // Printed cards that were never used survive the archive (operator, 25 Sep): the crew
+                // prints twenty login cards for ten teams and the spares should still work at the next
+                // event. "Never used" is strict — no login, no attempt, no race clock, no scan, no
+                // check-in, no tapped object — so nothing that belongs to the event's results is kept.
+                $untouched = $this->neverPlayed($accounts->pluck('id'));
+                $keptAccounts = $accounts->whereIn('id', $untouched);
+                $accounts = $accounts->whereNotIn('id', $untouched)->values();
                 $accountIds = $accounts->pluck('id');
+
+                // A team is only kept when every one of its accounts is: a team that played belongs in
+                // the archive, and its spare card is detached and kept on its own.
+                $keptTeamIds = $teams->filter(fn (Team $t) => $keptAccounts->contains('team_id', $t->id)
+                        && ! $accounts->contains('team_id', $t->id))
+                    ->pluck('id');
+                $teams = $teams->whereNotIn('id', $keptTeamIds)->values();
                 $stations = Questionnaire::orderBy('id')->get(['id', 'title']);
                 $counted = $this->countedStationIds();
 
@@ -286,6 +309,17 @@ class GameArchiveService
                             ->map(fn ($c) => $c + ['team' => $r['name']]))
                             ->sortBy('at')->values()->all(),
                         'accounts_without_team' => $loose,
+                        // Not archived, still live: the spare cards and the teams that never started.
+                        'kept_unused' => [
+                            'accounts' => $keptAccounts->map(fn (User $u) => [
+                                'name' => $u->name,
+                                'email' => $u->email,
+                                'team' => $teams->firstWhere('id', $u->team_id)?->name
+                                    ?? \App\Models\Team::where('id', $u->team_id)->value('name'),
+                                'has_login_card' => \App\Models\LoginCard::where('user_id', $u->id)->whereNull('revoked_at')->exists(),
+                            ])->values()->all(),
+                            'teams' => \App\Models\Team::whereIn('id', $keptTeamIds)->orderBy('name')->pluck('name')->all(),
+                        ],
                         'photos' => $photos,
                     ],
                     'team_count' => $teams->count(),
@@ -321,6 +355,13 @@ class GameArchiveService
                 DB::table('personal_access_tokens')->where('tokenable_type', $morph)->whereIn('tokenable_id', $accountIds)->delete();
                 DB::table('sessions')->whereIn('user_id', $accountIds)->delete();
                 User::whereIn('id', $accountIds)->delete();            // cascades the player's history
+
+                // users.team_id cascades on a team delete, so a kept account inside an archived team has
+                // to let go of it first — otherwise the spare card would be deleted with the team it was
+                // printed for.
+                User::whereIn('id', $keptAccounts->pluck('id'))->whereIn('team_id', $teams->pluck('id'))
+                    ->update(['team_id' => null]);
+
                 Team::whereIn('id', $teams->pluck('id'))->delete();    // cascades team_members
 
                 // The copies live in the archive now; drop the originals once the rows are gone for good.
@@ -382,6 +423,35 @@ class GameArchiveService
         $id = GameArchiveCredential::where('kind', $kind)->where('value', $value)->latest('id')->value('game_archive_id');
 
         return $id ? GameArchive::select(['id', 'name', 'archived_at'])->find($id) : null;
+    }
+
+    /**
+     * Accounts with no trace of having played: their printed cards are still good.
+     *
+     * Strict on purpose. Anything that would appear in a result — an attempt, a race clock, a scanned
+     * QR, a check-in, a tapped object — disqualifies an account, and so does a single login, because a
+     * card that has been handed out and used is not a spare.
+     *
+     * @param  \Illuminate\Support\Collection<int, int>  $ids
+     * @return \Illuminate\Support\Collection<int, int>
+     */
+    private function neverPlayed(\Illuminate\Support\Collection $ids): \Illuminate\Support\Collection
+    {
+        if ($ids->isEmpty()) {
+            return collect();
+        }
+
+        $touched = collect()
+            ->merge(QuizAttempt::whereIn('user_id', $ids)->distinct()->pluck('user_id'))
+            ->merge(\App\Models\RaceSession::whereIn('user_id', $ids)->distinct()->pluck('user_id'))
+            ->merge(\App\Models\QrCodeScan::whereIn('user_id', $ids)->distinct()->pluck('user_id'))
+            ->merge(\App\Models\UserQuestCheckpoint::whereIn('user_id', $ids)->distinct()->pluck('user_id'))
+            ->merge(\App\Models\HotspotClaim::whereIn('user_id', $ids)->distinct()->pluck('user_id'))
+            ->merge(\App\Models\GameLocationUnlock::whereIn('user_id', $ids)->distinct()->pluck('user_id'))
+            ->merge(User::whereIn('id', $ids)->whereNotNull('last_login_at')->pluck('id'))
+            ->unique();
+
+        return $ids->diff($touched)->values();
     }
 
     /** The questionnaires an event is finished by, with their posts loaded. */

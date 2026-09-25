@@ -14,6 +14,15 @@
             <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Sesi yang sedang berjalan</h2>
             <p class="text-sm text-gray-600 dark:text-gray-400">
                 {{ $preview['teams']->count() }} tim · {{ $preview['accounts'] }} akun pemain · {{ $preview['stations_total'] }} pos dihitung
+                @if (($preview['kept_accounts'] ?? 0) > 0)
+                    <span class="block mt-1 text-green-700 dark:text-green-400">
+                        {{-- The question the crew asks at this point: do the spare cards survive? --}}
+                        Tidak diarsipkan: {{ $preview['kept_accounts'] }} akun yang belum pernah dipakai
+                        @if (($preview['kept_cards'] ?? 0) > 0) ({{ $preview['kept_cards'] }} kartu login masih berlaku) @endif
+                        @if (($preview['kept_teams'] ?? 0) > 0) · {{ $preview['kept_teams'] }} tim belum mulai @endif.
+                        QR START tidak pernah dihapus arsip.
+                    </span>
+                @endif
             </p>
         </div>
 
