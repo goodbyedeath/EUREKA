@@ -319,6 +319,83 @@ class IndoorMapManager extends Component
         }
     }
 
+    /**
+     * The order of the spot table is the order of the route, set by dragging a row.
+     *
+     * Two things are written: `sort_order`, which every reader of a plan sorts by, and the number in
+     * the name — `Pos 01` … `Pos 15`. The name is what the crew says on the radio and what the team
+     * reads on the plan, so a route that has been reordered has to renumber itself; leaving a "Pos 03"
+     * sitting fifth is how a team gets sent to the wrong booth.
+     *
+     * Only names that already look like a numbered post are rewritten, so START & FINISH — and any
+     * marker the crew named by hand — keeps its name and simply holds its new place in the order.
+     */
+    public function reorderSpots(array $ids): void
+    {
+        if (! $this->mapId) {
+            return;
+        }
+
+        $spots = IndoorMapSpot::where('indoor_map_id', $this->mapId)->get()->keyBy('id');
+
+        // Take the browser's order, keep only rows of this plan, then append anything it did not
+        // mention: a stale row id must not silently drop a marker out of the route.
+        $order = collect($ids)->map(fn ($id) => (int) $id)->filter(fn ($id) => $spots->has($id))->unique();
+        $order = $order->concat($spots->keys()->diff($order))->values();
+
+        $number = 0;
+
+        foreach ($order as $position => $id) {
+            $spot = $spots[$id];
+            $set = [];
+
+            if ((int) $spot->sort_order !== $position + 1) {
+                $set['sort_order'] = $position + 1;
+            }
+
+            if (preg_match('/^\s*pos\b/i', (string) $spot->name)) {
+                $name = 'Pos '.str_pad((string) ++$number, 2, '0', STR_PAD_LEFT);
+                if ($name !== $spot->name) {
+                    $set['name'] = $name;
+                }
+            }
+
+            if ($set) {
+                $spot->update($set);
+            }
+        }
+
+        session()->flash('indoor_msg', __('Route order saved.'));
+    }
+
+    /**
+     * The same move by one step, for a keyboard and for a hand that cannot hold a drag. Dragging is
+     * the fast path, not the only one.
+     */
+    public function nudgeSpot(int $id, int $delta): void
+    {
+        if (! $this->mapId) {
+            return;
+        }
+
+        $ids = IndoorMapSpot::where('indoor_map_id', $this->mapId)
+            ->orderBy('sort_order')->orderBy('id')->pluck('id')->all();
+
+        $from = array_search($id, $ids, true);
+        if ($from === false) {
+            return;
+        }
+
+        $to = $from + $delta;
+        if ($to < 0 || $to >= count($ids)) {
+            return;
+        }
+
+        [$ids[$from], $ids[$to]] = [$ids[$to], $ids[$from]];
+
+        $this->reorderSpots($ids);
+    }
+
     /** Dragging a marker only moves it; everything else about the spot is left alone. */
     public function moveSpot(int $id, float $x, float $y): void
     {

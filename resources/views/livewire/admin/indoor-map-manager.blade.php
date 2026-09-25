@@ -456,19 +456,97 @@
                                 Kalau memang hanya penanda informasi, abaikan pesan ini.
                             </div>
                         @endif
-                        <div class="mt-4 overflow-x-auto border border-gray-200 dark:border-gray-700 rounded-lg">
+                        {{-- The order of this table IS the order of the route: drop a row somewhere
+                             else and the posts renumber themselves, Pos 01 … Pos NN (operator,
+                             25 Sep). The drag is done with pointer events, like the plan above, so it
+                             works with a finger on the tablet the crew actually carries; the arrows do
+                             the same move one step at a time for a keyboard.
+
+                             Rows are moved in the DOM while dragging and the whole new order is sent
+                             once, on release — one request per drag, not one per row crossed. --}}
+                        <p class="mt-4 mb-1 text-xs text-gray-500 dark:text-gray-400">
+                            Seret baris pada pegangan <span class="font-mono">⠿</span> untuk mengubah urutan rute.
+                            Nomor pos ditulis ulang otomatis; START &amp; FINISH tidak ikut dinomori.
+                        </p>
+                        <div class="overflow-x-auto border border-gray-200 dark:border-gray-700 rounded-lg"
+                             x-data="{
+                                 dragging: null,
+
+                                 start(ev, row) {
+                                     this.dragging = row;
+                                     row.classList.add('opacity-60', 'ring-2', 'ring-blue-400');
+                                     try { ev.currentTarget.setPointerCapture(ev.pointerId); } catch (err) {}
+
+                                     const handle = ev.currentTarget;
+                                     const move = (e) => {
+                                         const body = this.$refs.rows;
+                                         if (! body) return;
+                                         // The row whose middle the pointer has passed: insert before
+                                         // or after it, whichever side the pointer is on.
+                                         for (const other of body.querySelectorAll('tr[data-spot]')) {
+                                             if (other === row) continue;
+                                             const r = other.getBoundingClientRect();
+                                             if (e.clientY >= r.top && e.clientY <= r.bottom) {
+                                                 const after = e.clientY > r.top + r.height / 2;
+                                                 body.insertBefore(row, after ? other.nextSibling : other);
+                                                 break;
+                                             }
+                                         }
+                                     };
+
+                                     const up = () => {
+                                         handle.removeEventListener('pointermove', move);
+                                         handle.removeEventListener('pointerup', up);
+                                         handle.removeEventListener('pointercancel', up);
+                                         row.classList.remove('opacity-60', 'ring-2', 'ring-blue-400');
+                                         this.dragging = null;
+
+                                         const ids = [...this.$refs.rows.querySelectorAll('tr[data-spot]')]
+                                             .map((tr) => parseInt(tr.dataset.spot, 10));
+                                         this.$wire.reorderSpots(ids);
+                                     };
+
+                                     handle.addEventListener('pointermove', move);
+                                     handle.addEventListener('pointerup', up);
+                                     handle.addEventListener('pointercancel', up);
+                                 },
+                             }">
                             <table class="min-w-full text-sm">
                                 <thead class="bg-gray-50 dark:bg-gray-800">
                                     <tr>
+                                        <th class="text-left px-2 py-2 font-semibold text-gray-600 dark:text-gray-300 w-24">Urutan</th>
                                         <th class="text-left px-4 py-2 font-semibold text-gray-600 dark:text-gray-300">Spot</th>
                                         <th class="text-left px-4 py-2 font-semibold text-gray-600 dark:text-gray-300">Shows on tap</th>
                                         <th class="text-left px-4 py-2 font-semibold text-gray-600 dark:text-gray-300">Outpost</th>
                                         <th class="text-right px-4 py-2 font-semibold text-gray-600 dark:text-gray-300">Action</th>
                                     </tr>
                                 </thead>
-                                <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
-                                    @foreach ($map->spots as $spot)
-                                        <tr wire:key="row-{{ $spot->id }}" class="{{ $spot->is_active ? '' : 'opacity-50' }}">
+                                <tbody class="divide-y divide-gray-200 dark:divide-gray-700" x-ref="rows">
+                                    @foreach ($map->spots as $i => $spot)
+                                        <tr wire:key="row-{{ $spot->id }}" data-spot="{{ $spot->id }}"
+                                            class="{{ $spot->is_active ? '' : 'opacity-50' }}">
+                                            <td class="px-2 py-2 whitespace-nowrap">
+                                                {{-- touch-action:none so a finger on the handle drags the row
+                                                     instead of scrolling the page. --}}
+                                                <span class="inline-flex items-center gap-1">
+                                                    <span @pointerdown.prevent="start($event, $event.target.closest('tr'))"
+                                                          class="cursor-grab select-none px-1 text-gray-400 dark:text-gray-500
+                                                                 hover:text-gray-700 dark:hover:text-gray-300"
+                                                          style="touch-action:none;"
+                                                          title="Seret untuk mengubah urutan">⠿</span>
+                                                    <span class="tabular-nums text-gray-500 dark:text-gray-400">{{ $i + 1 }}</span>
+                                                    <span class="inline-flex flex-col leading-none">
+                                                        <button type="button" wire:click="nudgeSpot({{ $spot->id }}, -1)"
+                                                                @disabled($i === 0)
+                                                                class="text-[10px] px-1 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 disabled:opacity-30"
+                                                                title="Naikkan">▲</button>
+                                                        <button type="button" wire:click="nudgeSpot({{ $spot->id }}, 1)"
+                                                                @disabled($i === $map->spots->count() - 1)
+                                                                class="text-[10px] px-1 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 disabled:opacity-30"
+                                                                title="Turunkan">▼</button>
+                                                    </span>
+                                                </span>
+                                            </td>
                                             <td class="px-4 py-2">
                                                 <span class="inline-block w-3 h-3 rounded-full align-middle mr-2" style="background:{{ $spot->color }}"></span>
                                                 <span class="font-medium text-gray-900 dark:text-gray-100">{{ $spot->name }}</span>
