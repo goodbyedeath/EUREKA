@@ -185,7 +185,9 @@
             }
             
             const html = leaderboardData.teams.map((team, index) => {
-                const rank = index + 1;
+                // The server's rank: equal score is broken by who finished faster, and two teams equal
+                // in both share a number. index + 1 would have renumbered a shared rank.
+                const rank = team.rank ?? (index + 1);
                 let trophyIcon = '';
                 let trophyClass = '';
                 
@@ -220,6 +222,12 @@
                         <div class="text-right">
                             <div class="text-3xl font-bold text-indigo-600">${team.points.toLocaleString()}</div>
                             <div class="text-sm text-gray-500">points</div>
+                            ${team.race ? `
+                                <div class="mt-1 text-xl font-semibold tabular-nums ${team.race.finished ? 'text-green-600' : 'text-gray-700'}">
+                                    ${team.race.elapsed}
+                                </div>
+                                <div class="text-xs text-gray-500">${team.race.finished ? 'waktu akhir' : 'berjalan'}</div>
+                            ` : ''}
                         </div>
                     </div>
                 `;

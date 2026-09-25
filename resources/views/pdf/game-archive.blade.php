@@ -57,6 +57,7 @@
             <th class="num">Objek</th>
             <th class="num">Koreksi</th>
             <th class="num">Pos selesai</th>
+            <th class="num">Waktu</th>
         </tr>
     </thead>
     <tbody>
@@ -72,6 +73,7 @@
                 <td class="num">{{ $num($row['object_points'] ?? 0) }}</td>
                 <td class="num {{ ($row['manual_points'] ?? 0) < 0 ? 'neg' : '' }}">{{ $signed($row['manual_points'] ?? 0) }}</td>
                 <td class="num">{{ $row['stations_done'] }}/{{ $row['stations_total'] }}</td>
+                <td class="num">{{ $row['elapsed'] ?? '—' }}</td>
             </tr>
         @empty
             <tr><td colspan="7" class="muted">Tidak ada tim dalam sesi ini.</td></tr>
@@ -81,6 +83,8 @@
 <p class="small muted">
     Total = poin awal + poin kuis (jawaban benar) + poin game (nilai fasilitator dikurangi penalti)
     + poin objek 3D + koreksi manual kru. Hanya kuesioner yang sudah diserahkan yang dihitung.
+    Kalau dua tim skornya sama, yang lebih cepat menyelesaikan semuanya menang; tim yang belum selesai
+    ada di bawah tim yang sudah, seberapa pun cepat jamnya.
 </p>
 
 @php $koreksi = $s['manual_corrections'] ?? []; @endphp

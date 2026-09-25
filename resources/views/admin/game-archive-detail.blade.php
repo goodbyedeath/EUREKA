@@ -56,6 +56,7 @@
                         <th class="px-4 py-2 font-medium text-right">Objek</th>
                         <th class="px-4 py-2 font-medium text-right" title="Koreksi manual kru">Koreksi</th>
                         <th class="px-4 py-2 font-medium">Pos selesai</th>
+                        <th class="px-4 py-2 font-medium" title="Waktu akhir — pemisah kalau skornya seri">Waktu</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
@@ -74,6 +75,9 @@
                                     title="{{ collect($row['manual_corrections'])->map(fn ($c) => ($c['points'] > 0 ? '+' : '').$c['points'].' '.$c['reason'])->implode(' · ') }}"
                                 @endif>{{ $signed($row['manual_points'] ?? 0) }}</td>
                             <td class="px-4 py-2">{{ $row['stations_done'] }}/{{ $row['stations_total'] }}</td>
+                            <td class="px-4 py-2 tabular-nums {{ ($row['race_finished'] ?? false) ? 'text-green-700 dark:text-green-400' : 'text-gray-500 dark:text-gray-400' }}">
+                                {{ $row['elapsed'] ?? '—' }}{{ ($row['elapsed'] ?? null) && ! ($row['race_finished'] ?? false) ? ' (tidak selesai)' : '' }}
+                            </td>
                         </tr>
                     @empty
                         <tr><td colspan="7" class="px-4 py-3 text-gray-500 dark:text-gray-400">Tidak ada tim dalam sesi ini.</td></tr>

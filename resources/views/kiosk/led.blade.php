@@ -1014,7 +1014,9 @@
             container.innerHTML = '';
             
             teams.forEach((team, index) => {
-                const rank = index + 1;
+                // The server's rank: equal score is separated by who finished faster, and two teams equal
+                // in both share a number, which index + 1 would have hidden (operator, 25 Sep).
+                const rank = team.rank ?? (index + 1);
                 const item = document.createElement('div');
                 item.className = 'leaderboard-item';
                 
@@ -1057,8 +1059,13 @@
         // as one that has been up for an hour.
         function raceClock(team) {
             if (!team.race) return '<div class="team-clock">&mdash;</div>';
+            // A finished run's clock is the team's official time and the tie-break between two equal
+            // scores, so it is marked: the board is where the crew reads who won.
+            const done = team.race.finished;
             return `<div class="team-clock" data-elapsed="${team.race.elapsed_seconds}"
-                         data-running="${team.race.finished ? 0 : 1}">${team.race.elapsed}</div>`;
+                         data-running="${done ? 0 : 1}"
+                         style="${done ? 'color:#34d399' : ''}"
+                         title="${done ? 'waktu akhir' : 'berjalan'}">${team.race.elapsed}</div>`;
         }
 
         function tickClocks() {

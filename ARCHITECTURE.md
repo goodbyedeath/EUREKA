@@ -296,7 +296,24 @@ validation rules, defaults, and whether the type is scored.
 
 ## 6. Scoring
 
-`App\Services\PointsCalculationService` is the authority. Two rules matter:
+`App\Services\PointsCalculationService` is the authority. A team's total is
+
+```
+initial_points (once, per team)
+  + Σ user_answers.points_earned          of completed attempts by the team's accounts
+  + Σ (total_deposit − initial_points)    of assessed games on those attempts   (may be negative)
+  + Σ hotspot_claims.points               3D objects the team tapped at the posts
+  + Σ team_score_adjustments.points        the crew's manual corrections, signed
+```
+
+**Who wins a tie.** Equal totals are separated by the clock — the run started by scanning the START QR
+(operator, 25 Sep): the team that finished faster is ahead, a team that finished is ahead of one that
+never did however short its clock reads, and the name decides the rest so an order never flickers. The
+rule is written once per surface it is read on: `KioskController::leaderboard()` for the LED board and
+the leaderboard screen, `GameArchiveService` for the archived final record. Both also emit `rank`, and
+two teams equal in score *and* time share it.
+
+Two more rules matter:
 
 1. **Earned points come from `user_answers.points_earned`, never `questions.points`.** This is
    deliberate — `fun_game` answers store 0 and are scored later by a facilitator, so reading

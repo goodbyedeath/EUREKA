@@ -41,6 +41,9 @@ class KioskController extends Controller
                 ->get()
                 ->groupBy('user_id');
 
+            $rank = 0;
+            $previous = null;
+
             $teams = Team::select([
                 'id', 
                 'name', 
@@ -80,6 +83,10 @@ class KioskController extends Controller
                                     'elapsed_seconds' => $r->elapsedSeconds(),
                                     'elapsed' => $r->elapsedForHumans(),
                                     'finished' => $r->finished_at !== null,
+                                    'finished_at' => $r->finished_at?->toIso8601String(),
+                                    // 'all_posts' | 'time_limit' | 'manual' | null while it runs. The board
+                                    // shows the time; this says whether it is a finishing time.
+                                    'finished_reason' => $r->finished_reason,
                                 ];
                             }
                         }
@@ -100,7 +107,29 @@ class KioskController extends Controller
                     })(),
                 ];
             })
-            ->sortByDesc('points')
+            // The winner, when two teams have the same score, is the one that got there faster
+            // (operator, 25 Sep). In order: more points; then a team that has finished ahead of one still
+            // running, because an unfinished clock is not a finishing time; then the shorter clock; then
+            // the name, so the board never flickers between two rows that are equal in every way.
+            ->sortBy([
+                fn ($a, $b) => $b['points'] <=> $a['points'],
+                fn ($a, $b) => (int) ! ($a['race']['finished'] ?? false) <=> (int) ! ($b['race']['finished'] ?? false),
+                fn ($a, $b) => ($a['race']['elapsed_seconds'] ?? PHP_INT_MAX) <=> ($b['race']['elapsed_seconds'] ?? PHP_INT_MAX),
+                fn ($a, $b) => strcmp($a['name'], $b['name']),
+            ])
+            ->values()
+            // Competition ranking, worked out once here so the LED board and the leaderboard screen
+            // cannot disagree: equal score AND equal time share a rank.
+            ->map(function ($team, $i) use (&$rank, &$previous) {
+                $key = [$team['points'], $team['race']['finished'] ?? false, $team['race']['elapsed_seconds'] ?? null];
+                if ($key !== $previous) {
+                    $rank = $i + 1;
+                    $previous = $key;
+                }
+                $team['rank'] = $rank;
+
+                return $team;
+            })
             ->values();
 
             return response()->json([

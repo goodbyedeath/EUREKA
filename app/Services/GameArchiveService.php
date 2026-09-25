@@ -158,6 +158,22 @@ class GameArchiveService
                         'description' => $t->description,
                         'registered_at' => $iso($t->created_at),
                         'score' => $this->points->teamScore($t),
+                        // The team's clock: with equal scores this is what separates them, so the archive
+                        // has to keep it or the final record cannot explain its own order.
+                        'race' => (function () use ($mine) {
+                            $run = \App\Models\RaceSession::whereIn('user_id', $mine->pluck('id'))
+                                ->whereNotNull('started_at')
+                                ->orderByDesc('started_at')->orderByDesc('id')->first();
+
+                            return $run ? [
+                                'started_at' => $run->started_at?->toIso8601String(),
+                                'finished_at' => $run->finished_at?->toIso8601String(),
+                                'finished_reason' => $run->finished_reason,
+                                'elapsed_seconds' => $run->elapsedSeconds(),
+                                'elapsed' => $run->elapsedForHumans(),
+                                'finished' => $run->finished_at !== null,
+                            ] : null;
+                        })(),
                         // Every hand correction on this team, so a total can still be explained a week later.
                         'manual_corrections' => \App\Models\TeamScoreAdjustment::with('author:id,name')
                             ->where('team_id', $t->id)->orderBy('created_at')->get()
@@ -189,15 +205,26 @@ class GameArchiveService
                             'attempts' => $group->map(fn ($a) => $attemptRow($a, $base))->values()->all(),
                         ])->values()->all(),
                     ];
-                })->sortByDesc(fn ($r) => $r['score']['total'])->values();
+                })
+                // Same rule as the LED board (operator, 25 Sep): most points, then — on a tie — the team
+                // that got there faster, a finished run ahead of one that never finished, and the name
+                // last so the order is stable.
+                ->sortBy([
+                    fn ($a, $b) => $b['score']['total'] <=> $a['score']['total'],
+                    fn ($a, $b) => (int) ! ($a['race']['finished'] ?? false) <=> (int) ! ($b['race']['finished'] ?? false),
+                    fn ($a, $b) => ($a['race']['elapsed_seconds'] ?? PHP_INT_MAX) <=> ($b['race']['elapsed_seconds'] ?? PHP_INT_MAX),
+                    fn ($a, $b) => strcmp($a['name'], $b['name']),
+                ])
+                ->values();
 
-                // Competition ranking: equal totals share a rank.
+                // Competition ranking: only teams equal in score AND in time share a rank.
                 $rank = 0;
                 $previous = null;
                 $teamRows = $teamRows->map(function ($r, $i) use (&$rank, &$previous) {
-                    if ($r['score']['total'] !== $previous) {
+                    $key = [$r['score']['total'], $r['race']['finished'] ?? false, $r['race']['elapsed_seconds'] ?? null];
+                    if ($key !== $previous) {
                         $rank = $i + 1;
-                        $previous = $r['score']['total'];
+                        $previous = $key;
                     }
                     $r['rank'] = $rank;
 
@@ -247,6 +274,10 @@ class GameArchiveService
                                 ])->all(),
                             'stations_done' => $r['stations_done'],
                             'stations_total' => $r['stations_total'],
+                            // What separated two equal scores.
+                            'elapsed' => $r['race']['elapsed'] ?? null,
+                            'elapsed_seconds' => $r['race']['elapsed_seconds'] ?? null,
+                            'race_finished' => $r['race']['finished'] ?? false,
                         ])->values()->all(),
                         'teams' => $teamRows->all(),
                         // The event's corrections in one list, newest last, for the recap page and the PDF:
