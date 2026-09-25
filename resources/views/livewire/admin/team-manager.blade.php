@@ -146,6 +146,13 @@
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <div class="flex items-center justify-between">
                                     <div class="flex items-center">
+                                        @if (($team->manual_score ?? 0) != 0)
+                                            {{-- A total that was corrected by hand should say so where it is read. --}}
+                                            <span class="block text-xs text-amber-700 dark:text-amber-400"
+                                                  title="Termasuk koreksi manual">
+                                                termasuk {{ $team->manual_score > 0 ? '+' : '' }}{{ number_format($team->manual_score) }} manual
+                                            </span>
+                                        @endif
                                         <span class="text-sm font-bold {{ $team->calculated_total_score >= $team->initial_points ? 'text-green-600' : 'text-red-600' }}">
                                             {{ number_format($team->calculated_total_score, 0) }}
                                         </span>
@@ -171,6 +178,13 @@
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                 <div class="flex items-center justify-end space-x-2">
+                                    {{-- Correct the score by hand when the app could not: a facilitator's
+                                         phone died, a QR never printed, something was counted twice. --}}
+                                    <button wire:click="openAdjust({{ $team->id }})"
+                                            class="{{ ($team->manual_score ?? 0) != 0 ? 'text-amber-600 hover:text-amber-800' : 'text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200' }}"
+                                            title="Koreksi poin manual">
+                                        <i class="fas fa-sliders-h"></i>
+                                    </button>
                                     <button wire:click="viewGameAssessments({{ $team->id }})" 
                                             class="text-green-600 hover:text-green-900"
                                             title="View Game Assessment Photos">
@@ -197,6 +211,105 @@
                                 </div>
                             </td>
                         </tr>
+
+                        @if ($adjustTeamId === $team->id)
+                            {{-- In the table rather than a modal: the crew reads the team's own row while
+                                 typing, and the corrections already made are the context that stops the
+                                 same fix being applied twice (UI policy: pages for forms, modals for
+                                 confirmations — this is a two-field repair, not a form). --}}
+                            <tr wire:key="adjust-{{ $team->id }}" class="bg-amber-50 dark:bg-amber-900/20">
+                                <td colspan="7" class="px-6 py-4">
+                                    <div class="flex items-start justify-between gap-4 flex-wrap">
+                                        <div>
+                                            <p class="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                                                Koreksi poin manual — {{ $team->name }}
+                                            </p>
+                                            <p class="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
+                                                Dipakai kalau sistem tidak bisa menghitung sendiri: HP fasilitator mati sebelum menilai,
+                                                QR pos tidak tercetak, satu kuesioner terhitung dua kali. Poin hasil race tidak diubah —
+                                                koreksi ditambahkan di atasnya, tercatat siapa dan kenapa, dan bisa dibatalkan.
+                                            </p>
+                                        </div>
+                                        <button type="button" wire:click="closeAdjust"
+                                                class="text-xs text-gray-500 dark:text-gray-400 hover:underline">Tutup</button>
+                                    </div>
+
+                                    <div class="mt-3 flex flex-wrap items-end gap-2">
+                                        <label class="block">
+                                            <span class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Jumlah poin</span>
+                                            <input type="number" min="1" step="1" wire:model="adjustAmount"
+                                                   class="w-32 text-sm rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+                                            <span class="mt-1 flex gap-1">
+                                                @foreach ($quickAmounts as $amount)
+                                                    {{-- Fills the box only; the reason is still typed. --}}
+                                                    <button type="button" wire:click="$set('adjustAmount', {{ $amount }})"
+                                                            class="px-1.5 py-0.5 text-[11px] rounded border border-gray-300 dark:border-gray-600
+                                                                   text-gray-600 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-800">
+                                                        {{ $amount }}
+                                                    </button>
+                                                @endforeach
+                                            </span>
+                                        </label>
+                                        <label class="block flex-1 min-w-[16rem]">
+                                            <span class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Alasan (wajib)</span>
+                                            <input type="text" maxlength="255" wire:model="adjustReason"
+                                                   placeholder="mis. Pos 07 dinilai ulang, HP fasilitator mati"
+                                                   class="w-full text-sm rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+                                        </label>
+                                        <button type="button" wire:click="saveAdjust(1)"
+                                                class="px-3 py-2 rounded-lg bg-green-600 hover:bg-green-700 text-white text-sm font-medium">
+                                            Tambah poin
+                                        </button>
+                                        <button type="button" wire:click="saveAdjust(-1)"
+                                                class="px-3 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white text-sm font-medium">
+                                            Kurangi poin
+                                        </button>
+                                    </div>
+                                    @error('adjustAmount') <p class="mt-1 text-xs text-red-600 dark:text-red-400">{{ $message }}</p> @enderror
+                                    @error('adjustReason') <p class="mt-1 text-xs text-red-600 dark:text-red-400">{{ $message }}</p> @enderror
+
+                                    @if ($this->adjustments->isNotEmpty())
+                                        <div class="mt-4 border-t border-amber-200 dark:border-amber-800 pt-3">
+                                            <p class="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                                                Koreksi yang sudah ada
+                                                <span class="font-normal text-gray-500 dark:text-gray-400">
+                                                    (total {{ $this->adjustments->sum('points') > 0 ? '+' : '' }}{{ number_format($this->adjustments->sum('points')) }} poin)
+                                                </span>
+                                            </p>
+                                            <ul class="space-y-1">
+                                                @foreach ($this->adjustments as $row)
+                                                    <li wire:key="adj-{{ $row->id }}" class="flex items-center gap-2 text-xs">
+                                                        <span class="tabular-nums font-semibold {{ $row->points > 0 ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400' }}">
+                                                            {{ $row->points > 0 ? '+' : '' }}{{ number_format($row->points) }}
+                                                        </span>
+                                                        <span class="text-gray-700 dark:text-gray-300">{{ $row->reason }}</span>
+                                                        <span class="text-gray-500 dark:text-gray-400">
+                                                            · {{ $row->author?->name ?? 'admin' }} · {{ $row->created_at->format('d M H:i') }}
+                                                        </span>
+                                                        <button type="button" wire:click="undoAdjust({{ $row->id }})"
+                                                                class="text-blue-600 dark:text-blue-400 hover:underline">batalkan</button>
+                                                    </li>
+                                                @endforeach
+                                            </ul>
+                                            @if ($confirmClearTeamId === $team->id)
+                                                <p class="mt-2 text-xs text-red-800 dark:text-red-300">
+                                                    Hapus <strong>semua</strong> koreksi manual tim ini? Poin hasil race tidak disentuh.
+                                                    <button type="button" wire:click="resetTeamPoints({{ $team->id }})"
+                                                            class="ml-1 px-2 py-0.5 rounded bg-red-600 text-white">Ya, hapus</button>
+                                                    <button type="button" wire:click="cancelClear"
+                                                            class="ml-1 px-2 py-0.5 rounded border border-gray-300 dark:border-gray-600">Batal</button>
+                                                </p>
+                                            @else
+                                                <button type="button" wire:click="askClear({{ $team->id }})"
+                                                        class="mt-2 text-xs text-red-700 dark:text-red-400 hover:underline">
+                                                    Hapus semua koreksi tim ini
+                                                </button>
+                                            @endif
+                                        </div>
+                                    @endif
+                                </td>
+                            </tr>
+                        @endif
                         @endif
                     @empty
                         <tr>

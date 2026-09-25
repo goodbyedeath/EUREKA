@@ -15,6 +15,15 @@ again when the 3D camera first opens), distinguish *needs Google Play Services f
 block login or the rest of the game** over it. Nothing in this API changes. Build guide §9; work order
 §39.
 
+**Latest (25 Sep): `score.manual_points` — the crew can correct a total by hand.** `GET /team` →
+`team.score` gains **`manual_points`** (signed, 0 when nothing was corrected) and `total` includes it.
+The crew uses it when the app cannot score something itself: a facilitator's phone died mid-scoring, a
+booth's QR never printed, a questionnaire was counted twice. Show it as its own line only when it is not
+0, with its sign, and keep showing `total` from the server — **never sum the parts yourself**. A total
+can therefore move while the team is doing nothing, so an unexplained jump is not a bug and the total is
+never "final" until the race is over. The reason for each correction is audited in the admin, not in
+this response. Build guide §2a; work order §44.
+
 **Latest (24 Sep, sixth change): `counts.ar_posts`, so the Kamera 3D button can be locked.**
 `GET /offline/manifest` `counts` gains **`ar_posts`** — how many active posts really open a camera
 (`uses_ar` true). Zero means the crew ran this event with the 3D switched off everywhere: lock the

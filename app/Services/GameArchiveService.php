@@ -224,6 +224,18 @@ class GameArchiveService
                             'base_points' => $r['score']['base_points'],
                             'earned_points' => $r['score']['earned_points'],
                             'assessment_points' => $r['score']['assessment_points'],
+                            // What the crew put right by hand, and why — the rows themselves go with the
+                            // team, so the snapshot is the only place this survives.
+                            'object_points' => $r['score']['object_points'] ?? 0,
+                            'manual_points' => $r['score']['manual_points'] ?? 0,
+                            'manual_corrections' => \App\Models\TeamScoreAdjustment::where('team_id', $r['team_id'] ?? 0)
+                                ->orderBy('created_at')
+                                ->get(['points', 'reason', 'created_at'])
+                                ->map(fn ($a) => [
+                                    'points' => (int) $a->points,
+                                    'reason' => $a->reason,
+                                    'at' => $a->created_at?->toIso8601String(),
+                                ])->all(),
                             'stations_done' => $r['stations_done'],
                             'stations_total' => $r['stations_total'],
                         ])->values()->all(),

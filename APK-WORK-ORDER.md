@@ -1299,6 +1299,32 @@ floor plan still claims its points either way.
 
 ---
 
+## 44 — A score the crew corrected by hand  ·  operator 25 Sep
+
+The crew now has a way to put a team's score right from the admin when the app could not: a facilitator's
+phone died before a game was scored, a booth's QR never printed, a questionnaire was handed in twice.
+Each correction is a signed, audited row on our side; for you it is one more line in the breakdown.
+
+```json
+"score": { "total": 1150, "base_points": 1000, "earned_points": 0,
+           "assessment_points": 0, "object_points": 0, "manual_points": 150 }
+```
+
+1. **`manual_points` is signed and may be absent on an older server.** Default it to 0.
+2. **Show it only when it is not 0**, as its own line with the sign — "Koreksi kru +150". Do not invent
+   an explanation: the reason is recorded in the admin, not in this response, and a team that wants it
+   asks the crew.
+3. **`total` already contains it.** Keep showing the server's `total` and never sum the lines yourself —
+   the same rule as every other part of this score.
+4. **A total can move while the team does nothing.** Re-read `GET /team` when the dashboard opens, do
+   not cache a total as final before the race ends, and do not report a jump as a defect.
+
+**Done when:** a team whose score the crew corrected sees the corrected `total` and a "Koreksi kru" line
+with the right sign, a team with no correction sees no such line, and nothing in the app computes the
+total from its parts.
+
+---
+
 ## Talking back — the channel runs both ways now
 
 Until today this was one-way: the server published, you consumed, and anything you had to say

@@ -127,7 +127,8 @@ The team has a right to see what it has achieved. `GET /team` → `team.score`:
 
 ```json
 "score": { "total": 95, "base_points": 0, "earned_points": 100,
-           "assessment_points": -20, "object_points": 15, "attempts_completed": 1 }
+           "assessment_points": -20, "object_points": 15, "manual_points": 0,
+           "attempts_completed": 1 }
 ```
 
 Show **`total`** large, and under it the breakdown:
@@ -138,6 +139,7 @@ Show **`total`** large, and under it the breakdown:
 | Poin kuis | `earned_points` | correct answers |
 | Poin game | `assessment_points` | facilitator scores minus penalties — **can be negative**, show the sign |
 | Poin objek | `object_points` | 3D objects the team has collected at the posts (§9). 0 when the crew priced none |
+| Koreksi kru | `manual_points` | what the crew corrected by hand — **can be negative**, show the sign. **Render the row only when it is not 0**, and never invent wording for it beyond "koreksi kru": the reason lives in the admin, not in this response (new 25 Sep) |
 
 **No rank, no other teams** — operator decision. `rank` and `total_teams` are gone from the response.
 
@@ -149,6 +151,7 @@ total = base_points
       + Σ points_earned of correct answers   in SUBMITTED questionnaires of this team
       + Σ (additional − penalty) of scored games in SUBMITTED questionnaires of this team
       + Σ points of 3D objects this team has claimed                    (§9, new 23 Sep)
+      + Σ points of the crew's manual corrections, signed               (new 25 Sep)
 ```
 
 It is the same function (`PointsCalculationService::teamScore`) behind `/admin/user-progress` and the
@@ -160,6 +163,11 @@ Two consequences worth designing for:
   facilitator saves the score. On the scoring screen show `team_gain` as immediate feedback; the
   card moves after submit.
 - `points` (= `score.total`) and `earned` (= total − base) are still in the response for older builds.
+- **A score can move without the team doing anything.** The crew can correct a total from the admin when
+  the app could not do it itself — a facilitator's phone died before scoring, a booth's QR never
+  printed, something was counted twice — and that correction is inside `total` on the next read. So do
+  not treat an unexplained jump as a bug, never cache the total as "final", and re-read `GET /team`
+  when the dashboard is opened. It is audited on our side (who, when, why); the app only shows it.
   Prefer `score`. Ignore `team_points` on the scoring response — it is a raw ledger value.
 
 Refresh the card when the dashboard opens or resumes, and after Results. **Do not poll it** (§6).

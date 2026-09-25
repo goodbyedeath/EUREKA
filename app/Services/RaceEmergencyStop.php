@@ -84,6 +84,9 @@ class RaceEmergencyStop
             \App\Models\HotspotClaim::whereIn('user_id', $ids)->delete();
             DB::table('gps_footprints')->whereIn('user_id', $ids)->delete();
             DB::table('gps_tracking_sessions')->whereIn('user_id', $ids)->delete();
+            // The crew's manual corrections belong to the run that was stopped: leaving them would
+            // start the new race with points nobody can point at a booth for (operator, 25 Sep).
+            \App\Models\TeamScoreAdjustment::query()->delete();
             Team::query()->update(['points' => DB::raw('COALESCE(initial_points, 0)')]);
 
             // Files and cache are not transactional: touch them only once the rows are gone for good.

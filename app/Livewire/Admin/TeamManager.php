@@ -16,6 +16,9 @@ use App\Models\GameAssessment;
 use Livewire\WithPagination;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
+use App\Models\TeamScoreAdjustment;
+use App\Services\PointsCalculationService;
 
 class TeamManager extends Component
 {
@@ -31,22 +34,19 @@ class TeamManager extends Component
     public $points = 0;
     public $initial_points = 0;
     
-    // Points management (for quick actions only)
-    public $pointsAction = 'set'; // set, add, deduct
-    public $pointsAmount = 0;
-    public $pointsReason = '';
-    
-    // Quick actions
-    public $quickActions = [
-        ['label' => '+50 Points', 'action' => 'add', 'amount' => 50, 'reason' => 'Quick bonus'],
-        ['label' => '+100 Points', 'action' => 'add', 'amount' => 100, 'reason' => 'Achievement bonus'],
-        ['label' => '+200 Points', 'action' => 'add', 'amount' => 200, 'reason' => 'Major achievement'],
-        ['label' => '-25 Points', 'action' => 'deduct', 'amount' => 25, 'reason' => 'Minor penalty'],
-        ['label' => '-50 Points', 'action' => 'deduct', 'amount' => 50, 'reason' => 'Standard penalty'],
-    ];
-    
-    // Bulk operations
-    public $selectedTeams = [];
+    /**
+     * Amounts the crew reaches for most often, as buttons that only fill the box — the reason is
+     * still typed, because a correction whose reason reads "Quick bonus" explains nothing three hours
+     * later when a team asks why its score moved.
+     */
+    public array $quickAmounts = [25, 50, 100, 200, 500];
+
+    /** The team whose manual corrections are open, and the row being typed. */
+    public ?int $adjustTeamId = null;
+    /** Set while "clear every correction" is waiting for a second click. */
+    public ?int $confirmClearTeamId = null;
+    public $adjustAmount = 0;
+    public string $adjustReason = '';
 
     protected $rules = [
         'name' => 'required|string|max:255',
@@ -344,91 +344,116 @@ class TeamManager extends Component
         }
     }
 
-    public function managePoints($teamId)
+    /**
+     * Correct a team's score by hand.
+     *
+     * The crew asked for this on 25 Sep for the case the app cannot cover by itself: a facilitator's
+     * phone dies before a game is scored, a booth's QR never printed, a questionnaire was handed in
+     * twice. Nothing is overwritten — a signed row is added to team_score_adjustments with a reason
+     * and a name, PointsCalculationService sums it, and the kiosk, /admin/user-progress and the team
+     * card in the app all move together.
+     */
+    public function openAdjust(int $teamId): void
     {
-        try {
-            $team = Team::findOrFail($teamId);
-            
-            $this->dispatch('open-points-modal', [
-                'id' => $team->id,
-                'name' => $team->name,
-                'points' => number_format($team->points, 2),
-                'pointsAction' => 'set',
-                'pointsAmount' => 0,
-                'pointsReason' => ''
-            ]);
-        } catch (\Exception $e) {
-            session()->flash('error', 'Team not found or could not be loaded.');
-        }
+        $this->adjustTeamId = $teamId;
+        $this->adjustAmount = 0;
+        $this->adjustReason = '';
+        $this->resetValidation();
     }
 
+    public function closeAdjust(): void
+    {
+        $this->adjustTeamId = null;
+        $this->confirmClearTeamId = null;
+    }
 
-    public function updatePointsFromModal($teamData)
+    public function askClear(int $teamId): void
+    {
+        $this->confirmClearTeamId = $teamId;
+    }
+
+    public function cancelClear(): void
+    {
+        $this->confirmClearTeamId = null;
+    }
+
+    /** $sign is +1 to award, −1 to take away. */
+    public function saveAdjust(int $sign): void
     {
         $this->validate([
-            'teamData.pointsAmount' => 'required|integer|min:0|max:999999',
-            'teamData.pointsReason' => 'nullable|string|max:255',
-        ], [], [
-            'teamData.pointsAmount' => 'points amount',
-            'teamData.pointsReason' => 'reason'
+            // Zero would be a row that says nothing; the reason is the whole point of the row.
+            'adjustAmount' => 'required|integer|min:1|max:999999',
+            'adjustReason' => 'required|string|min:3|max:255',
+        ], [
+            'adjustAmount.required' => 'Isi jumlah poinnya.',
+            'adjustAmount.min' => 'Jumlahnya minimal 1.',
+            'adjustReason.required' => 'Tulis alasannya — baris ini yang akan dibaca saat hasil dipertanyakan.',
+            'adjustReason.min' => 'Alasannya terlalu pendek.',
         ]);
 
-        $team = Team::findOrFail($teamData['id']);
+        $team = Team::findOrFail($this->adjustTeamId);
+        $points = ($sign < 0 ? -1 : 1) * (int) $this->adjustAmount;
 
-        switch ($teamData['pointsAction']) {
-            case 'set':
-                $team->update(['points' => $teamData['pointsAmount']]);
-                $message = "Team points set to {$teamData['pointsAmount']}";
-                break;
-                
-            case 'add':
-                $team->addPoints($teamData['pointsAmount'], $teamData['pointsReason']);
-                $message = "Added {$teamData['pointsAmount']} points to team";
-                break;
-                
-            case 'deduct':
-                $team->deductPoints($teamData['pointsAmount'], $teamData['pointsReason']);
-                $message = "Deducted {$teamData['pointsAmount']} points from team";
-                break;
-        }
+        TeamScoreAdjustment::create([
+            'team_id' => $team->id,
+            'points' => $points,
+            'reason' => trim($this->adjustReason),
+            'created_by' => Auth::id(),
+        ]);
 
-        session()->flash('success', $message . ($teamData['pointsReason'] ? " - {$teamData['pointsReason']}" : ''));
-        $this->dispatch('close-points-modal');
+        Log::info('Team score corrected by hand', [
+            'team_id' => $team->id, 'points' => $points,
+            'reason' => trim($this->adjustReason), 'by' => Auth::id(),
+        ]);
+
+        $this->adjustAmount = 0;
+        $this->adjustReason = '';
+
+        session()->flash('success', ($points > 0 ? '+' : '').$points." poin untuk {$team->name}.");
     }
 
-    public function quickPointsAction($teamId, $action, $amount, $reason)
+    /** Undo one correction. The row is removed, so the score goes back to what it was. */
+    public function undoAdjust(int $id): void
     {
-        try {
-            $team = Team::findOrFail($teamId);
-            
-            switch ($action) {
-                case 'add':
-                    $team->addPoints($amount, $reason);
-                    $message = "Added {$amount} points to {$team->name}";
-                    break;
-                    
-                case 'deduct':
-                    $team->deductPoints($amount, $reason);
-                    $message = "Deducted {$amount} points from {$team->name}";
-                    break;
-                    
-                default:
-                    session()->flash('error', 'Invalid action specified.');
-                    return;
-            }
-
-            session()->flash('success', $message . " - {$reason}");
-        } catch (\Exception $e) {
-            session()->flash('error', 'Failed to update team points. Please try again.');
+        $row = TeamScoreAdjustment::find($id);
+        if (! $row) {
+            return;
         }
+
+        $points = $row->points;
+        $row->delete();
+
+        Log::info('Manual score correction removed', ['adjustment_id' => $id, 'points' => $points, 'by' => Auth::id()]);
+        session()->flash('success', 'Koreksi '.($points > 0 ? '+' : '').$points.' poin dibatalkan.');
+    }
+
+    /** The corrections of the open team, newest first. */
+    public function getAdjustmentsProperty()
+    {
+        if (! $this->adjustTeamId) {
+            return collect();
+        }
+
+        return TeamScoreAdjustment::with('author:id,name')
+            ->where('team_id', $this->adjustTeamId)
+            ->orderByDesc('created_at')->orderByDesc('id')
+            ->get();
     }
 
     public function resetTeamPoints($teamId)
     {
         $team = Team::findOrFail($teamId);
-        $team->resetPoints();
-        
-        session()->flash('success', "Team points reset to initial amount ({$team->initial_points})");
+
+        // Only the manual corrections: what the team earned in the race is the race's to give and the
+        // emergency stop's to take, not this button's.
+        $removed = TeamScoreAdjustment::where('team_id', $team->id)->count();
+        TeamScoreAdjustment::where('team_id', $team->id)->delete();
+
+        $this->confirmClearTeamId = null;
+
+        session()->flash('success', $removed
+            ? "{$removed} koreksi manual dihapus dari {$team->name}; poin hasil race tidak disentuh."
+            : "{$team->name} tidak punya koreksi manual.");
     }
 
 
@@ -494,58 +519,6 @@ class TeamManager extends Component
         $this->dispatch('open-users-modal', $modalData);
     }
 
-    public function bulkPointsOperation()
-    {
-        if (empty($this->selectedTeams)) {
-            session()->flash('error', 'Please select at least one team.');
-            return;
-        }
-        
-        $this->dispatch('open-bulk-modal', [
-            'selectedCount' => count($this->selectedTeams),
-            'bulkAction' => 'add',
-            'bulkAmount' => 0,
-            'bulkReason' => ''
-        ]);
-    }
-    
-
-    public function executeBulkPointsFromModal($bulkData)
-    {
-        $this->validate([
-            'bulkData.bulkAmount' => 'required|integer|min:0|max:999999',
-            'bulkData.bulkReason' => 'required|string|max:255',
-        ], [], [
-            'bulkData.bulkAmount' => 'points amount',
-            'bulkData.bulkReason' => 'reason'
-        ]);
-        
-        $teams = Team::whereIn('id', $this->selectedTeams)->get();
-        $processedCount = 0;
-        
-        foreach ($teams as $team) {
-            switch ($bulkData['bulkAction']) {
-                case 'add':
-                    $team->addPoints($bulkData['bulkAmount'], $bulkData['bulkReason']);
-                    break;
-                case 'deduct':
-                    $team->deductPoints($bulkData['bulkAmount'], $bulkData['bulkReason']);
-                    break;
-                case 'set':
-                    $team->update(['points' => $bulkData['bulkAmount']]);
-                    break;
-            }
-            $processedCount++;
-        }
-        
-        $actionText = $bulkData['bulkAction'] === 'add' ? 'Added' : ($bulkData['bulkAction'] === 'deduct' ? 'Deducted' : 'Set');
-        session()->flash('success', "{$actionText} points for {$processedCount} teams - {$bulkData['bulkReason']}");
-        
-        $this->selectedTeams = [];
-        $this->dispatch('close-bulk-modal');
-    }
-
-
     public function resetForm()
     {
         $this->teamId = null;
@@ -554,9 +527,6 @@ class TeamManager extends Component
         $this->department = '';
         $this->points = 0;
         $this->initial_points = 0;
-        $this->pointsAction = 'set';
-        $this->pointsAmount = 0;
-        $this->pointsReason = '';
     }
 
     public function getTeamsProperty()
@@ -578,6 +548,7 @@ class TeamManager extends Component
             foreach ($teams as $team) {
                 try {
                     $team->calculated_total_score = $this->calculateTeamTotalScore($team);
+                    $team->manual_score = (int) TeamScoreAdjustment::where('team_id', $team->id)->sum('points');
                     $team->users_count = User::where('team_id', $team->id)->count();
                 } catch (\Exception $e) {
                     Log::warning('Error calculating team data for team ' . $team->id . ': ' . $e->getMessage());
@@ -599,21 +570,10 @@ class TeamManager extends Component
      */
     private function calculateTeamTotalScore($team)
     {
-        // Single base points for the team (not multiplied by member count)
-        $basePoints = $team->initial_points ?? 0;
-        $totalBonusPoints = 0;
-
-        // Get ALL team members directly from database
-        $teamMembers = User::where('team_id', $team->id)->get();
-        
-        foreach ($teamMembers as $user) {
-            // Get bonus points from this user's completed questionnaires
-            $userBonusPoints = $this->calculateUserBonusPoints($user);
-            $totalBonusPoints += $userBonusPoints;
-        }
-        
-        // Team Total = Base Points + All Bonus Points from team members
-        return $basePoints + $totalBonusPoints;
+        // The shared formula, not a copy of it: base + answers + facilitator games + tapped objects +
+        // the crew's manual corrections. The copy that used to live here counted neither the objects
+        // nor the corrections, so this page showed a lower number than the kiosk beside it.
+        return app(PointsCalculationService::class)->teamScore($team)['total'];
     }
     
     /**

@@ -20,19 +20,32 @@ class PointsCalculationService
      *           (not only is_correct ones: a Tebak Gambar answer earns partial credit without being
      *           wholly right; every other type stores 0 when wrong, so for them nothing changes)
      *         + Σ (total_deposit − initial_points)  of assessed games on those attempts
+     *         + Σ points of a tapped 3D object's claims
+     *         + Σ points of the crew's manual corrections   (team_score_adjustments, signed)
      *
      * The game term = additional − penalty and may be negative: a penalty larger than the award
      * lowers the score (operator, 14 Sep; user-progress used to clamp it to 0 while the kiosk did
      * not). Every completed attempt counts, as it always has on user-progress. $since narrows to
      * attempts created from then on — the admin page's timeframe filter.
      *
-     * @return array{total:int, base_points:int, earned_points:int, assessment_points:int, attempts_completed:int}
+     * @return array{total:int, base_points:int, earned_points:int, assessment_points:int, object_points:int, manual_points:int, attempts_completed:int}
      */
     public function teamScore(Team $team, ?\DateTimeInterface $since = null): array
     {
         $accounts = User::where('team_id', $team->id)->pluck('id')->all();
 
-        return $this->scoreFor($accounts, (int) ($team->initial_points ?? 0), $since);
+        return $this->scoreFor($accounts, (int) ($team->initial_points ?? 0), $since, $this->manualFor($team, $since));
+    }
+
+    /**
+     * What the crew corrected by hand. Signed, so a row may take points away, and counted on the
+     * team rather than on an account: a correction is made for the team, not for one phone.
+     */
+    private function manualFor(Team $team, ?\DateTimeInterface $since): int
+    {
+        return (int) \App\Models\TeamScoreAdjustment::where('team_id', $team->id)
+            ->when($since, fn ($q) => $q->where('created_at', '>=', $since))
+            ->sum('points');
     }
 
     /** One account's share of that score, on the same formula and its team's base. */
@@ -41,7 +54,7 @@ class PointsCalculationService
         return $this->scoreFor([$user->id], (int) ($user->team?->initial_points ?? 0), $since);
     }
 
-    private function scoreFor(array $userIds, int $base, ?\DateTimeInterface $since): array
+    private function scoreFor(array $userIds, int $base, ?\DateTimeInterface $since, int $manual = 0): array
     {
         $attemptIds = QuizAttempt::whereIn('user_id', $userIds ?: [0])
             ->where('status', QuizAttempt::STATUS_COMPLETED)
@@ -67,11 +80,14 @@ class PointsCalculationService
             ->sum('points');
 
         return [
-            'total' => $base + $earned + $assessment + $objects,
+            'total' => $base + $earned + $assessment + $objects + $manual,
             'base_points' => $base,
             'earned_points' => $earned,
             'assessment_points' => $assessment,
             'object_points' => $objects,
+            // The crew's own corrections (operator, 25 Sep). Kept as its own line rather than folded
+            // into another: a score that was put right by hand should say so wherever it is read.
+            'manual_points' => $manual,
             'attempts_completed' => $attemptIds->count(),
         ];
     }
