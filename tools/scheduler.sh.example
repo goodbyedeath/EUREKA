@@ -1,0 +1,15 @@
+#!/bin/bash
+#
+# Laravel scheduler for EUREKA, pinned to PHP 8.3.
+#
+# hPanel rewrites a cron command that looks like PHP: the entry typed as
+# "/opt/alt/php83/usr/bin/php … artisan schedule:run" reached the server as
+#   timeout -s 9 1800 /usr/bin/php …/artisan schedule:run
+# and /usr/bin/php is 8.2.33. A bash script is not rewritten, so the version stays where this file puts
+# it. Point the hPanel cron entry at this file, every minute:
+#
+#   /bin/bash /home/u840623113/scheduler.sh
+#
+# Check it worked on /admin/fekdi: the scheduler heartbeat records the PHP version and the parent command.
+exec /opt/alt/php83/usr/bin/php \
+    /home/u840623113/domains/questerra-series.com/public_html/EUREKA_APP/artisan schedule:run >/dev/null 2>&1

@@ -22,6 +22,17 @@ or the test finish.
 **Always use PHP 8.3.** The web server runs 8.3.30; the SSH default `php` is 8.2.30 and cannot
 install this lockfile.
 
+**The scheduler runs on 8.2, and hPanel is why.** A cron entry that looks like a PHP job is rewritten by
+the panel: an entry typed as `/opt/alt/php83/usr/bin/php … artisan schedule:run` reaches the server as
+`timeout -s 9 1800 /usr/bin/php …/artisan schedule:run`, and `/usr/bin/php` is 8.2.33 (measured 26 Sep
+after three failed attempts to change it). Nothing scheduled breaks under 8.2 — all four commands boot
+and the heartbeat writes every minute — but never run `composer` from cron, because the lockfile needs
+8.3. Two ways to pin it if it ever matters: point the entry at `~/scheduler.sh` (already written and
+tested: `/bin/bash /home/u840623113/scheduler.sh`), which the panel does not rewrite, or change the
+account's default PHP so `/usr/bin/php` itself becomes 8.3. The scheduler heartbeat records
+`scheduler_php` and `scheduler_parent` (the real parent command line) in `app_settings`, so the question
+"which PHP is cron using?" is answered by reading, not guessing.
+
 ```bash
 PHP=/opt/alt/php83/usr/bin/php
 
