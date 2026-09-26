@@ -18,9 +18,18 @@ class GameArchiveManager extends Component
 
     public string $confirmText = '';
 
-    public function archive()
+    /**
+     * $confirm is the word as typed in the browser.
+     *
+     * Passed as an argument rather than read from a `wire:model` property: the box used to carry both
+     * `x-model` and `wire:model`, and the submit button was disabled until Alpine's copy matched — so a
+     * copy that drifted left a grey button and no explanation (operator, 26 Sep). The word arrives with
+     * the call now, and the server decides.
+     */
+    public function archive(?string $confirm = null)
     {
         $word = GameArchiveService::CONFIRM_WORD;
+        $this->confirmText = trim((string) ($confirm ?? $this->confirmText));
 
         $this->validate([
             'name' => 'required|string|min:3|max:150',
@@ -28,7 +37,7 @@ class GameArchiveManager extends Component
             'confirmText' => 'required|in:'.$word,
         ], [
             'confirmText.required' => "Ketik {$word} untuk mengonfirmasi.",
-            'confirmText.in' => "Ketik {$word} untuk mengonfirmasi.",
+            'confirmText.in' => "Ketik {$word} persis begitu (huruf besar) untuk mengonfirmasi.",
         ]);
 
         $service = app(GameArchiveService::class);

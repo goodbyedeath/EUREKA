@@ -87,7 +87,9 @@
                 </ul>
             </div>
 
-            <form wire:submit="archive" x-data="{ typed: '' }" class="space-y-3 max-w-xl">
+            {{-- The typed word travels with the call; nothing here is disabled, so a mistyped word is an
+                 error you can read rather than a button that does nothing. --}}
+            <form x-data="{ typed: '' }" @submit.prevent="$wire.archive(typed)" class="space-y-3 max-w-xl">
                 <div>
                     <label for="archiveName" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Nama sesi</label>
                     <input id="archiveName" type="text" wire:model="name" maxlength="150" placeholder="mis. Questerra Batch 3 — 20 Sep 2026"
@@ -102,11 +104,11 @@
                 </div>
                 <div>
                     <label for="archiveConfirm" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Ketik <span class="font-mono font-semibold">{{ $confirmWord }}</span> untuk mengonfirmasi</label>
-                    <input id="archiveConfirm" type="text" autocomplete="off" x-model="typed" wire:model="confirmText"
+                    <input id="archiveConfirm" type="text" autocomplete="off" x-model="typed"
                            class="mt-1 block w-48 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm font-mono focus:outline-none focus:ring-red-500 focus:border-red-500">
                     @error('confirmText') <span class="text-red-600 dark:text-red-400 text-xs block">{{ $message }}</span> @enderror
                 </div>
-                <button type="submit" x-bind:disabled="typed !== '{{ $confirmWord }}'" wire:loading.attr="disabled"
+                <button type="submit" wire:loading.attr="disabled" wire:target="archive"
                         class="px-4 py-2 rounded-md text-white bg-red-600 hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed">
                     <span wire:loading.remove wire:target="archive">Arsipkan &amp; tutup sesi</span>
                     <span wire:loading wire:target="archive">Mengarsipkan…</span>
