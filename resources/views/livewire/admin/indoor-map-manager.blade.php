@@ -62,13 +62,32 @@
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
                     Plan image {{ $editingMapId ? '(leave empty to keep the current one)' : '' }}
                 </label>
-                <input type="file" wire:model="imageUpload" accept="image/*"
-                       class="mt-1 w-full text-sm text-gray-600 dark:text-gray-300">
-                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    A top-view drawing or photo of the venue. JPEG, PNG or WebP, up to 8 MB.
-                </p>
+                {{-- Same shape as the pin photo below: shrunk in the browser, uploaded with callbacks,
+                     and locked while it runs so a second pick cannot orphan the first upload. --}}
+                <div x-data="{ busy: false, error: '' }">
+                    <input type="file" accept="image/jpeg,image/png,image/webp"
+                           :disabled="busy"
+                           x-on:change="
+                               error = '';
+                               const f = $event.target.files[0];
+                               if (! f) return;
+                               busy = true;
+                               window.eurekaShrinkImage(f, 8192 * 1024, 2600)
+                                   .then(out => $wire.upload('imageUpload', out,
+                                       () => { busy = false },
+                                       () => { busy = false; error = 'Upload gagal. Pilih file lagi.' },
+                                   ))
+                                   .catch(err => { busy = false; error = err.message; $event.target.value = '' });
+                           "
+                           class="mt-1 w-full text-sm text-gray-600 dark:text-gray-300 disabled:opacity-50">
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        A top-view drawing or photo of the venue. JPEG, PNG or WebP, up to 8 MB —
+                        dikecilkan otomatis di browser.
+                    </p>
+                    <p x-show="busy" class="text-xs text-blue-600 mt-1">Uploading…</p>
+                    <p x-show="error" x-text="error" class="text-xs text-red-600 dark:text-red-400 mt-1"></p>
+                </div>
                 @error('imageUpload') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
-                <div wire:loading wire:target="imageUpload" class="text-xs text-blue-600 mt-1">Uploading…</div>
             </div>
 
             <div class="pt-4 border-t border-gray-200 dark:border-gray-700">
@@ -222,11 +241,30 @@
                         </div>
                     @endif
 
-                    <input type="file" wire:model="spotImageUpload" accept="image/jpeg,image/png,image/webp"
-                           class="mt-2 w-full text-sm text-gray-600 dark:text-gray-300">
-                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">JPG, PNG atau WebP, maksimal 5 MB.</p>
+                    {{-- Shrunk in the browser, then uploaded with callbacks: a bare wire:model gave no way
+                         to hear about a failure, and a second file picked mid-upload lost the first one
+                         with an uncaught TypeError (operator, 26 Sep). --}}
+                    <div x-data="{ busy: false, error: '' }">
+                        <input type="file" accept="image/jpeg,image/png,image/webp"
+                               :disabled="busy"
+                               x-on:change="
+                                   error = '';
+                                   const f = $event.target.files[0];
+                                   if (! f) return;
+                                   busy = true;
+                                   window.eurekaShrinkImage(f, 5120 * 1024, 2000)
+                                       .then(out => $wire.upload('spotImageUpload', out,
+                                           () => { busy = false },
+                                           () => { busy = false; error = 'Upload gagal. Pilih file lagi.' },
+                                       ))
+                                       .catch(err => { busy = false; error = err.message; $event.target.value = '' });
+                               "
+                               class="mt-2 w-full text-sm text-gray-600 dark:text-gray-300 disabled:opacity-50">
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">JPG, PNG atau WebP, maksimal 5 MB — dikecilkan otomatis di browser.</p>
+                        <p x-show="busy" class="text-xs text-blue-600 mt-1">Mengunggah…</p>
+                        <p x-show="error" x-text="error" class="text-xs text-red-600 dark:text-red-400 mt-1"></p>
+                    </div>
                     @error('spotImageUpload') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
-                    <div wire:loading wire:target="spotImageUpload" class="text-xs text-blue-600 mt-1">Mengunggah…</div>
                 </div>
 
                 <div>

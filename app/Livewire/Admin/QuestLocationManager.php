@@ -10,7 +10,9 @@ use Illuminate\Support\Facades\Storage;
 
 class QuestLocationManager extends Component
 {
-    use WithPagination, WithFileUploads;
+    // GuardsFileUploads, not WithFileUploads: an upload that finishes with no paths is an error on the
+    // field rather than a 500 and a stuck queue in the browser. See the concern for the whole story.
+    use WithPagination, \App\Livewire\Concerns\GuardsFileUploads;
 
     public $showModal = false;
     public $editMode = false;
