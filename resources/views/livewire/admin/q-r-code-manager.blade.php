@@ -1,4 +1,81 @@
-<div class="text-center space-y-6">
+<div class="text-center space-y-6"
+     {{-- Copy, print and share live here rather than in a <script>: this panel is rendered by a Livewire
+          update, and a script tag in that payload is never evaluated, so the three buttons pointed at
+          functions that did not exist. Inline x-data has no such ordering problem. --}}
+     x-data="{
+         note: '',
+         noteKind: 'info',
+
+         say(message, kind = 'info') {
+             this.note = message;
+             this.noteKind = kind;
+             setTimeout(() => { this.note = ''; }, 3000);
+         },
+
+         copy(text) {
+             const done = () => this.say('{{ __('Kode disalin.') }}', 'success');
+             if (navigator.clipboard && window.isSecureContext) {
+                 navigator.clipboard.writeText(text).then(done).catch(() => this.fallbackCopy(text, done));
+
+                 return;
+             }
+             this.fallbackCopy(text, done);
+         },
+
+         fallbackCopy(text, done) {
+             const box = document.createElement('textarea');
+             box.value = text;
+             box.style.position = 'fixed';
+             box.style.left = '-9999px';
+             document.body.appendChild(box);
+             box.select();
+             try { document.execCommand('copy'); done(); }
+             catch (e) { this.say('{{ __('Tidak bisa menyalin otomatis — salin manual.') }}', 'error'); }
+             document.body.removeChild(box);
+         },
+
+         printQr(title, code) {
+             const qr = this.$el.querySelector('#qr-code-display');
+             const win = window.open('', '_blank');
+             // A blocked pop-up is the one failure a print button cannot recover from by itself, so it
+             // says so instead of looking broken again.
+             if (! win || ! qr) {
+                 this.say('{{ __('Izinkan pop-up untuk mencetak, lalu coba lagi.') }}', 'error');
+
+                 return;
+             }
+
+             win.document.write(`<!doctype html><html><head><title>QR ${title}</title><style>
+                 body { font-family: Arial, sans-serif; text-align: center; padding: 24px; }
+                 h1 { font-size: 18pt; margin: 0 0 4pt; }
+                 .code { font-family: monospace; font-size: 11pt; color: #444; margin-top: 8pt; }
+                 .hint { font-size: 9pt; color: #666; margin-top: 12pt; }
+                 svg, img { width: 320px; height: 320px; }
+                 @media print { .hint { display: none; } }
+             </style></head><body>
+                 <h1>${title}</h1>
+                 ${qr.innerHTML}
+                 <div class=&quot;code&quot;>${code}</div>
+                 <div class=&quot;hint&quot;>Tempel di pos, lalu peserta memindainya dari aplikasi.</div>
+             </body></html>`);
+             win.document.close();
+             win.focus();
+             // onload does not always fire for a document written this way; print on the next tick.
+             setTimeout(() => { win.print(); }, 250);
+         },
+
+         share(title, code) {
+             const text = `Kuis &quot;${title}&quot; — kode: ${code}`;
+             if (navigator.share) {
+                 navigator.share({ title: title, text: text })
+                     .then(() => this.say('{{ __('Dibagikan.') }}', 'success'))
+                     .catch((err) => { if (err.name !== 'AbortError') { this.copy(text); } });
+
+                 return;
+             }
+             this.copy(text);
+         },
+     }">
     <!-- QR Code Display with Enhanced Styling -->
     <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border-2 border-gray-100 dark:border-gray-700 inline-block">
         <div id="qr-code-display" class="mb-2">
@@ -46,7 +123,7 @@
             <p class="text-xs text-blue-600 dark:text-blue-400 leading-relaxed">
                 {{ __('quiz.qr_code_instructions', ['code' => $questionnaire->qr_code]) }}
             </p>
-            <button onclick="copyToClipboard('{{ $questionnaire->qr_code }}')" 
+            <button @click="copy('{{ $questionnaire->qr_code }}')" 
                     class="mt-2 inline-flex items-center px-3 py-1 text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/40 border border-blue-200 dark:border-blue-800 rounded-md hover:bg-blue-200 transition-colors duration-200">
                 <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
@@ -79,6 +156,14 @@
         </div>
     @endif
     
+    {{-- What the old showToast() drew, as markup: a panel inside a Livewire update cannot ship JS. --}}
+    <div x-show="note" x-transition x-cloak
+         class="text-sm px-3 py-2 rounded-lg"
+         :class="noteKind === 'success' ? 'bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-200'
+                 : (noteKind === 'error' ? 'bg-red-100 dark:bg-red-900/40 text-red-800 dark:text-red-200'
+                 : 'bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-200')"
+         x-text="note"></div>
+
     <!-- Action Buttons Grid -->
     <div class="grid grid-cols-2 gap-3">
         <!-- Download Options -->
@@ -101,14 +186,14 @@
         
         <!-- Utility Actions -->
         <div class="space-y-2">
-            <button onclick="printQrCode()" 
+            <button @click="printQr(@js($questionnaire->title), @js($questionnaire->qr_code))" 
                     class="inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 w-full transition-colors duration-200">
                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path>
                 </svg>
                 {{ __('quiz.print') }}
             </button>
-            <button onclick="shareQrCode('{{ $questionnaire->title }}', '{{ $questionnaire->qr_code }}')" 
+            <button @click="share(@js($questionnaire->title), @js($questionnaire->qr_code))" 
                     class="inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 w-full transition-colors duration-200">
                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z"></path>
@@ -131,147 +216,4 @@
     </div> --}}
 </div>
 
-<!-- JavaScript for Enhanced Functionality -->
-<script>
-function copyToClipboard(text) {
-    if (navigator.clipboard && window.isSecureContext) {
-        navigator.clipboard.writeText(text).then(() => {
-            showToast('Copied to clipboard!', 'success');
-        }).catch(() => {
-            fallbackCopy(text);
-        });
-    } else {
-        fallbackCopy(text);
-    }
-}
 
-function fallbackCopy(text) {
-    const textArea = document.createElement('textarea');
-    textArea.value = text;
-    textArea.style.position = 'fixed';
-    textArea.style.left = '-999999px';
-    textArea.style.top = '-999999px';
-    document.body.appendChild(textArea);
-    textArea.focus();
-    textArea.select();
-    try {
-        document.execCommand('copy');
-        showToast('Copied to clipboard!', 'success');
-    } catch (err) {
-        showToast('Failed to copy. Please copy manually.', 'error');
-    }
-    document.body.removeChild(textArea);
-}
-
-function printQrCode() {
-    const printWindow = window.open('', '_blank');
-    const qrCodeHtml = document.getElementById('qr-code-display').innerHTML;
-    const title = '{{ $questionnaire->title }}';
-    const code = '{{ $questionnaire->qr_code }}';
-    
-    printWindow.document.write(`
-        <html>
-            <head>
-                <title>QR Code - ${title}</title>
-                <style>
-                    body { 
-                        font-family: Arial, sans-serif; 
-                        text-align: center; 
-                        padding: 20px;
-                        margin: 0;
-                    }
-                    .qr-container { 
-                        margin: 20px auto;
-                        display: inline-block;
-                        padding: 20px;
-                        border: 2px solid #e5e7eb;
-                        border-radius: 8px;
-                    }
-                    .title { 
-                        font-size: 24px; 
-                        font-weight: bold; 
-                        margin-bottom: 10px;
-                        color: #1f2937;
-                    }
-                    .code { 
-                        font-family: monospace; 
-                        font-size: 18px; 
-                        color: #1f2937;
-                        margin: 15px 0;
-                        font-weight: bold;
-                    }
-                    .instructions { 
-                        font-size: 14px; 
-                        color: #6b7280;
-                        margin-top: 15px;
-                        line-height: 1.4;
-                    }
-                    @media print {
-                        body { margin: 0; }
-                    }
-                </style>
-            </head>
-            <body>
-                <div class="title">${title}</div>
-                <div class="qr-container">
-                    ${qrCodeHtml}
-                </div>
-                <div class="code">Code: ${code}</div>
-                <div class="instructions">
-                    Scan this QR code or enter the code above to access the quiz
-                </div>
-            </body>
-        </html>
-    `);
-    
-    printWindow.document.close();
-    printWindow.onload = function() {
-        printWindow.print();
-        printWindow.close();
-    };
-}
-
-function shareQrCode(title, code) {
-    const shareText = `Join the quiz "${title}" using code: ${code}`;
-    
-    if (navigator.share) {
-        navigator.share({
-            title: `Quiz: ${title}`,
-            text: shareText
-        }).then(() => {
-            showToast('Shared successfully!', 'success');
-        }).catch((err) => {
-            if (err.name !== 'AbortError') {
-                copyToClipboard(shareText);
-            }
-        });
-    } else {
-        copyToClipboard(shareText);
-    }
-}
-
-function showToast(message, type = 'info') {
-    // Create toast element
-    const toast = document.createElement('div');
-    toast.className = `fixed top-4 right-4 px-4 py-2 rounded-lg text-white text-sm z-50 transform transition-all duration-300 translate-x-full ${
-        type === 'success' ? 'bg-green-500' : 
-        type === 'error' ? 'bg-red-500' : 'bg-blue-500'
-    }`;
-    toast.textContent = message;
-    
-    document.body.appendChild(toast);
-    
-    // Animate in
-    setTimeout(() => {
-        toast.classList.remove('translate-x-full');
-    }, 100);
-    
-    // Animate out and remove
-    setTimeout(() => {
-        toast.classList.add('translate-x-full');
-        setTimeout(() => {
-            document.body.removeChild(toast);
-        }, 300);
-    }, 3000);
-}
-</script>
