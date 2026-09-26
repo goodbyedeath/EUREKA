@@ -5,15 +5,15 @@
     @endphp
 
     <div>
-        <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-1">Integrasi FEKDI x IFSE</h1>
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-1">Konektor API Partner</h1>
         <p class="text-gray-600 dark:text-gray-400">Peserta dari website klien untuk setup tim di APK, dan kiriman poin tim ke leaderboard klien. Dipakai 24–27 September 2026.</p>
     </div>
 
-    @if (session('fekdi_msg'))
-        <div class="rounded-md bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 p-3 text-sm text-green-800 dark:text-green-200">{{ session('fekdi_msg') }}</div>
+    @if (session('partner_msg'))
+        <div class="rounded-md bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 p-3 text-sm text-green-800 dark:text-green-200">{{ session('partner_msg') }}</div>
     @endif
-    @if (session('fekdi_error'))
-        <div class="rounded-md bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 p-3 text-sm text-red-800 dark:text-red-200">{{ session('fekdi_error') }}</div>
+    @if (session('partner_error'))
+        <div class="rounded-md bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 p-3 text-sm text-red-800 dark:text-red-200">{{ session('partner_error') }}</div>
     @endif
 
     <section class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4">
@@ -104,7 +104,7 @@
                 </thead>
                 <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
                     @forelse ($rows as $p)
-                        <tr wire:key="fekdi-{{ $p->id }}">
+                        <tr wire:key="partner-{{ $p->id }}">
                             <td class="px-4 py-2">
                                 <div class="font-medium text-gray-900 dark:text-gray-100">{{ $p->name ?? '—' }}</div>
                                 <div class="text-xs text-gray-500 dark:text-gray-400">{{ $p->email }}</div>

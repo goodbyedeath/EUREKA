@@ -332,7 +332,7 @@ class GameArchiveService
                 ]);
 
                 // Participants keep their team's final total; the sender delivers it after the teams are gone.
-                app(FekdiIntegration::class)->refreshPoints();
+                app(PartnerConnector::class)->refreshPoints();
 
                 // Tombstones, taken before the rows they describe are deleted.
                 $morph = (new User)->getMorphClass();

@@ -6,8 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\Team;
 use App\Models\TeamMember;
 use App\Services\PointsCalculationService;
-use App\Services\FekdiIntegration;
-use App\Models\FekdiParticipant;
+use App\Services\PartnerConnector;
+use App\Models\PartnerParticipant;
 use App\Exceptions\TeamSetupException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -40,7 +40,7 @@ class TeamController extends Controller
                 'error' => 'no_team',
                 'message' => 'You are not on a team yet.',
                 // Team setup offers "already registered" members only while this is true.
-                'participant_directory' => app(FekdiIntegration::class)->active(),
+                'participant_directory' => app(PartnerConnector::class)->active(),
             ], 404);
         }
 
@@ -77,10 +77,10 @@ class TeamController extends Controller
     }
 
     /**
-     * Name a team and fill it in one call. Each member is typed in, or picked from the FEKDI x IFSE
+     * Name a team and fill it in one call. Each member is typed in, or picked from the connected partner's
      * participant list with `participant_id` (operator, 15 Sep: both ways stay available).
      */
-    public function store(Request $request, FekdiIntegration $fekdi)
+    public function store(Request $request, PartnerConnector $partner)
     {
         $user = Auth::user();
 
@@ -109,7 +109,7 @@ class TeamController extends Controller
         $picked = collect($data['members'])->pluck('participant_id')->filter()->map(fn ($v) => (int) $v)->values();
 
         try {
-            if ($picked->isNotEmpty() && ! $fekdi->active()) {
+            if ($picked->isNotEmpty() && ! $partner->active()) {
                 throw new TeamSetupException('directory_disabled', 'Daftar peserta sedang tidak aktif. Tambahkan anggota secara manual.', 409);
             }
             if ($picked->count() !== $picked->unique()->count()) {
@@ -120,7 +120,7 @@ class TeamController extends Controller
             }
 
             DB::transaction(function () use ($data, $user, $picked) {
-                $participants = FekdiParticipant::whereIn('id', $picked)->lockForUpdate()->get()->keyBy('id');
+                $participants = PartnerParticipant::whereIn('id', $picked)->lockForUpdate()->get()->keyBy('id');
 
                 if ($missing = $picked->first(fn ($id) => ! $participants->has($id))) {
                     throw new TeamSetupException('participant_not_found', 'That participant is not in the list.', 404, ['participant_id' => $missing]);
@@ -136,7 +136,7 @@ class TeamController extends Controller
                         'participant' => $p,
                         'name' => $p ? ($p->name ?: 'Peserta') : $m['name'],
                         // A participant without an e-mail still needs a unique one per team.
-                        'email' => strtolower(trim($p ? ($p->email ?: 'gid-'.$p->google_id.'@fekdi.invalid') : $m['email'])),
+                        'email' => strtolower(trim($p ? ($p->email ?: 'peserta-'.$p->external_id.'@partner.invalid') : $m['email'])),
                         'phone' => $m['phone'] ?? null,
                         'position' => $m['position'] ?? null,
                         'is_leader' => ! empty($m['is_leader']),
@@ -168,7 +168,7 @@ class TeamController extends Controller
 
                     TeamMember::create([
                         'team_id' => $team->id,
-                        'fekdi_participant_id' => $m['participant']?->id,
+                        'partner_participant_id' => $m['participant']?->id,
                         'name' => $m['name'],
                         'email' => $m['email'],
                         'phone' => $m['phone'],

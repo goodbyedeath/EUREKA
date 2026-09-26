@@ -215,7 +215,7 @@ repeat → `409 already_checked_in` (+ `last_checked_at`), fault → `500 checki
 `quest_locations`, `gps_tracking` flags affect the app. Build guide §4, §5, §7; work order §13.
 
 **Latest (15 Sep): team setup can pick registered participants.** `GET /api/v1/participants?q=` searches
-the FEKDI x IFSE list (name or e-mail, ≥ 2 chars; e-mails masked). `POST /team` members accept
+the connected partner's member list (name or e-mail, ≥ 2 chars; e-mails masked). `POST /team` members accept
 `participant_id` (instead of name/email) and `is_leader`. `GET /team` 404 carries
 `participant_directory`. New errors: `participant_taken` 409, `directory_disabled` 409,
 `participant_not_found` 404, `duplicate_participants` 422, `one_leader_only` 422. Build guide §2a.

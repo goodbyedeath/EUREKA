@@ -25,7 +25,7 @@ differ; the names here are suggestions, not requirements.
 000. **Team setup once + score card** — operator 14 Sep. See §9.
 0000. **Game ended screen** — the admin can now archive a finished session; its APKs must go silent. See §10.
 00000. **Race reset handling** — the admin can emergency-stop the race for all teams. See §11.
-000000. **Team setup: registered participants** — search the FEKDI x IFSE list or type manually. See §12.
+000000. **Team setup: registered participants** — search the connected partner's list or type manually. See §12.
 0000000. **Answers to #13 and #14, outposts and flags** — see §13.
 00000000. **Station gate: START and check-in before a questionnaire** — see §14.
 000000000. **Login cards (#16)** — the server side exists. See §15.
@@ -346,10 +346,15 @@ Spec: `APK-BUILD-GUIDE.md` §2c.
 
 ## 12 — Team setup: pick registered participants, or type them  ·  operator 15 Sep
 
-For the FEKDI x IFSE event (24–27 Sep) the server holds the client's participant list. On the Team
-setup screen each member is added either from that list (search by name or e-mail) or manually, as
-now. Each member can be made Ketua. The list can be switched off by the admin at any time; manual
-entry always works.
+When an event is run with a partner, the server holds that partner's participant list. On the Team setup
+screen each member is added either from that list (search by name or e-mail) or manually, as now. Each
+member can be made Ketua.
+
+**Between events there is no partner, and that is the normal state** — `GET /participants` then answers
+`409 directory_disabled` and `POST /team` refuses a `participant_id` the same way. FEKDI x IFSE was the
+first partner (24–27 Sep) and its keys were removed on 26 Sep, so the directory is off today. Nothing in
+the API changed with it: **manual entry is the path that always works**, and the app must treat the
+directory as a feature that may be absent rather than one that was lost.
 
 Server: `GET /team` 404 carries `participant_directory`; `GET /participants?q=`; `POST /team` members
 accept `participant_id` and `is_leader`. The points each registered participant earns are sent to the

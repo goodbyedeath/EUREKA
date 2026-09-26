@@ -16,7 +16,7 @@ class TeamMember extends Model
         'phone',
         'position',
         'is_leader',
-        'fekdi_participant_id',
+        'partner_participant_id',
     ];
 
     public function user()

@@ -175,8 +175,10 @@ Route::middleware(['auth', 'preventbackhistory'])->group(function () {
             ->name('game-archives.zip-all');
         Route::get('/game-archives/{archive}/zip', App\Http\Controllers\Admin\GameArchiveZipController::class)
             ->whereNumber('archive')->name('game-archives.zip');
-        // FEKDI x IFSE integration, 24–27 Sep 2026.
-        Route::get('/fekdi', fn () => view('admin.fekdi'))->name('fekdi');
+        // The partner API connector: import a member list, mirror team totals, push the increases.
+        Route::get('/partner-api', fn () => view('admin.partner-api'))->name('partner-api');
+        // The old address, kept so a bookmark from the FEKDI event still lands somewhere.
+        Route::get('/fekdi', fn () => redirect()->route('admin.partner-api'));
         // Generated team accounts and their printed QR login cards.
         // Routes recorded in the tracker app: pick which one the event uses, promote its pins to posts.
         Route::get('/map-routes', fn () => view('admin.map-routes'))->name('map-routes');

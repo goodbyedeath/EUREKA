@@ -5,11 +5,16 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-/** A participant from the FEKDI x IFSE website — see App\Services\FekdiIntegration. */
-class FekdiParticipant extends Model
+/**
+ * One participant of a connected partner's member list — see App\Services\PartnerConnector.
+ *
+ * `external_id` is whatever the partner calls its member (FEKDI used a Google id). Rows arrive by import
+ * and are emptied when a connector is retired: a partner's member list is theirs, not ours to keep.
+ */
+class PartnerParticipant extends Model
 {
     protected $fillable = [
-        'google_id', 'name', 'email', 'avatar', 'joined_at', 'imported_at',
+        'external_id', 'name', 'email', 'avatar', 'joined_at', 'imported_at',
         'team_id', 'team_name', 'is_leader',
         'points', 'points_synced', 'lifetime_sent', 'sync_state', 'sync_error', 'last_synced_at',
     ];

@@ -2,25 +2,25 @@
 
 namespace App\Console\Commands;
 
-use App\Services\FekdiIntegration;
+use App\Services\PartnerConnector;
 use Illuminate\Console\Command;
 
 /** Hourly: pull the client's member list, so people who sign up during the event can be found. */
-class FekdiImport extends Command
+class PartnerImport extends Command
 {
-    protected $signature = 'fekdi:import';
+    protected $signature = 'partner:import';
 
-    protected $description = 'Import the FEKDI x IFSE member list into fekdi_participants';
+    protected $description = 'Import the partner\'s member list into partner_participants';
 
-    public function handle(FekdiIntegration $fekdi): int
+    public function handle(PartnerConnector $partner): int
     {
-        if (! $fekdi->active()) {
+        if (! $partner->active()) {
             $this->line('skipped: integration switched off or not configured');
 
             return self::SUCCESS;
         }
 
-        $result = $fekdi->import();
+        $result = $partner->import();
         $this->line(json_encode($result));
 
         return self::SUCCESS;

@@ -94,7 +94,7 @@ const PAGES = [
     '/admin/quest-locations', '/admin/gps-tracking', '/admin/map-routes',
     '/admin/indoor-maps', '/admin/outpost-access',
     '/admin/user-progress', '/admin/game-assessments', '/admin/game-archives',
-    '/admin/hero-slides', '/admin/feature-management', '/admin/fekdi',
+    '/admin/hero-slides', '/admin/feature-management', '/admin/partner-api',
     '/admin/panduan', '/admin/panduan/user',
 ];
 

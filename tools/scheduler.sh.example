@@ -10,6 +10,6 @@
 #
 #   /bin/bash /home/u840623113/scheduler.sh
 #
-# Check it worked on /admin/fekdi: the scheduler heartbeat records the PHP version and the parent command.
+# Check it worked on /admin/partner-api: the scheduler heartbeat records the PHP version and the parent command.
 exec /opt/alt/php83/usr/bin/php \
     /home/u840623113/domains/questerra-series.com/public_html/EUREKA_APP/artisan schedule:run >/dev/null 2>&1
