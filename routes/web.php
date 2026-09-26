@@ -169,6 +169,12 @@ Route::middleware(['auth', 'preventbackhistory'])->group(function () {
         // The archive as a PDF report; ?photos=1 embeds thumbnails of the archived photos.
         Route::get('/game-archives/{archive}/pdf', App\Http\Controllers\Admin\GameArchivePdfController::class)
             ->whereNumber('archive')->name('game-archives.pdf');
+        // Every batch in one ZIP — snapshots, spreadsheets, reports and photos — so the whole event can be
+        // handed over as a single file (operator, 26 Sep). ?no-photos=1 for the small version.
+        Route::get('/game-archives-zip', App\Http\Controllers\Admin\GameArchiveZipController::class)
+            ->name('game-archives.zip-all');
+        Route::get('/game-archives/{archive}/zip', App\Http\Controllers\Admin\GameArchiveZipController::class)
+            ->whereNumber('archive')->name('game-archives.zip');
         // FEKDI x IFSE integration, 24–27 Sep 2026.
         Route::get('/fekdi', fn () => view('admin.fekdi'))->name('fekdi');
         // Generated team accounts and their printed QR login cards.

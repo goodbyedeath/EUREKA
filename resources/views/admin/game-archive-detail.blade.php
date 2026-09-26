@@ -23,6 +23,11 @@
                class="inline-flex items-center gap-2 px-3 py-2 rounded-md text-sm text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 hover:bg-blue-100">
                 <i class="fas fa-images"></i> Unduh PDF + foto
             </a>
+            {{-- Everything about this batch in one file: snapshot, tabel-tabel CSV, laporan, semua foto. --}}
+            <a href="{{ route('admin.game-archives.zip', $archive->id) }}"
+               class="inline-flex items-center gap-2 px-3 py-2 rounded-md text-sm text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 hover:bg-gray-200">
+                <i class="fas fa-file-archive"></i> Unduh batch ini (ZIP)
+            </a>
         </div>
     </div>
 

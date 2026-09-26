@@ -119,8 +119,26 @@
 
     {{-- Past sessions --}}
     <section class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-        <div class="p-4 border-b border-gray-200 dark:border-gray-700">
+        <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex flex-wrap items-center justify-between gap-3">
             <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Arsip</h2>
+            @if ($archives->isNotEmpty())
+                {{-- The whole event as one file, so a client gets a handover instead of a tour of seven
+                     pages (operator, 26 Sep). The light version leaves out the photographs, which are
+                     nearly all of the weight. --}}
+                <div class="flex flex-wrap items-center gap-2">
+                    <a href="{{ route('admin.game-archives.zip-all') }}"
+                       class="inline-flex items-center gap-2 px-3 py-2 rounded-md text-sm text-white bg-gray-800 dark:bg-gray-200 dark:text-gray-900 hover:bg-gray-900">
+                        <i class="fas fa-file-archive"></i> Unduh semua batch (ZIP)
+                    </a>
+                    <a href="{{ route('admin.game-archives.zip-all', ['no-photos' => 1]) }}"
+                       class="inline-flex items-center gap-2 px-3 py-2 rounded-md text-sm text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 hover:bg-gray-200">
+                        tanpa foto
+                    </a>
+                    <span class="text-xs text-gray-500 dark:text-gray-400">
+                        {{ $archives->count() }} batch · snapshot, CSV, laporan, foto
+                    </span>
+                </div>
+            @endif
         </div>
         @if ($archives->isEmpty())
             <p class="p-4 text-sm text-gray-500 dark:text-gray-400">Belum ada sesi yang diarsipkan.</p>
@@ -145,7 +163,9 @@
                                 <td class="px-4 py-2 text-gray-700 dark:text-gray-300">{{ $a->winner_name ?? '—' }}@if (! is_null($a->winner_score)) <span class="text-gray-500 dark:text-gray-400 tabular-nums">({{ number_format($a->winner_score) }})</span>@endif</td>
                                 <td class="px-4 py-2 text-right"><a href="{{ route('admin.game-archives.show', $a->id) }}" class="text-blue-600 dark:text-blue-400 hover:underline">Lihat</a>
                                     <span class="text-gray-300 mx-1">|</span>
-                                    <a href="{{ route('admin.game-archives.pdf', $a->id) }}" class="text-blue-600 dark:text-blue-400 hover:underline">PDF</a></td>
+                                    <a href="{{ route('admin.game-archives.pdf', $a->id) }}" class="text-blue-600 dark:text-blue-400 hover:underline">PDF</a>
+                                    <span class="text-gray-300 mx-1">|</span>
+                                    <a href="{{ route('admin.game-archives.zip', $a->id) }}" class="text-blue-600 dark:text-blue-400 hover:underline">ZIP</a></td>
                             </tr>
                         @endforeach
                     </tbody>
