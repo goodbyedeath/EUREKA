@@ -1376,22 +1376,21 @@ Hardware, decided by the operator: **ESP32 + PN532 (I²C) + Ebyte E22-900T22D (L
 two identical gateway boards read over USB from the workstation. Assembly, bill of materials and the bench
 tests are in `TAP-NODE-BUILD.md`; this section is the authoritative pin map and wire protocol.
 
-### Start with the half that cannot change
+### Build order
 
-**The transport is not final.** Every booth turns out to have mains power *and* a network drop (operator,
-28 Sep). If that includes a usable **Ethernet port**, an ESP32 + W5500 posting straight to the server is
-simpler than LoRa and the radio layer disappears — no gateway, no channel plan, no ack/retry protocol. If it
-is WiFi coverage only, LoRa stays, because many participant phones are 2.4 GHz-only and that band belongs to
-them.
+**The transport is LoRa and that is settled** (operator, 28 Sep): the booths have neither mains nor a network
+drop — both are at the server station — so there is no cable to hang an Ethernet port on, and 2.4 GHz belongs
+to the players' phones, many of which are 2.4-only.
 
-So build in this order, and nothing is wasted either way:
+Build in this order anyway; each layer is testable before the one above it exists:
 
 1. **Reader** — PN532 over I²C, UID out, buzzer and LEDs, local feedback under a second.
 2. **Store** — NVS for `node_id`, `node_key`, `post_id`, `seq`, and the 200-tap queue.
 3. **Frame** — the 26-byte structure and its HMAC below. It is the payload whether it travels by radio or in
    an HTTP body.
-4. **Transport** — LoRa (as specified here) or HTTP, decided once the operator confirms the port. Keep it
-   behind one interface: `bool send(const Frame&)` and a callback for the ack.
+4. **Transport** — the E22 over UART2 as specified below. Keep it behind one interface anyway —
+   `bool send(const Frame&)` plus an ack callback — so the bench harness can fake it and a future venue with
+   cabling can drop in HTTP without touching the three layers underneath.
 
 ### Deliverables
 
@@ -1467,11 +1466,17 @@ should be able to see, not something the gateway silently eats.
    time.
 5. **Never reuse a `seq`.** It is the server's only defence against a replayed frame, and the only way two
    gateways hearing the same tap collapse into one arrival.
-6. **Sleep between taps.** Light sleep with periodic polling is enough; deep sleep woken by the PN532 IRQ
-   is better if you can make it reliable — measure idle current either way and put the number in the README,
-   because it decides whether fifteen powerbanks survive a day.
+6. **Sleep between taps, but do not overdo it.** ~125 mA awake gives about 45 hours on a 10,000 mAh
+   powerbank, so an event day needs no sleep mode at all. Light sleep is welcome; **deep sleep can be
+   actively harmful**, because most consumer powerbanks cut their output below ~50–100 mA and a node that
+   sleeps well switches its own supply off. Measure the idle current, write it in the README, and test the
+   specific powerbank model that will be used.
 7. **Never transmit without the antenna.** Refuse to start the radio if the board was flashed without one
    being connected, if you can detect it.
+8. **Heartbeat with the battery voltage**, type `0x02`, every five minutes: `node_id`, `seq`, `ts`, and
+   `vbat` in millivolts. The booths run on powerbanks with no mains, so this is how the admin sees a post
+   about to go dark instead of hearing about it from a queue of teams. Put `vbat` in the gateway's JSON line
+   too.
 
 ### Done when
 

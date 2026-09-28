@@ -25,7 +25,7 @@ Per node (×15 booths, plus 2 spares):
 | LED green + LED red + 2 × 220 Ω | arrived / rejected |
 | 5 V → 3.3 V regulator, **≥ 1 A** | the E22 draws ~120 mA peaks on transmit; a 300 mA AMS1117 browns out |
 | 100 µF + 10 µF capacitors | across the E22's 3.3 V, as close to the module as possible |
-| Powerbank 10,000 mAh + short USB cable | a day's event with room to spare |
+| Powerbank 10,000 mAh + short USB cable | ~125 mA awake ⇒ **~45 h**, an event day with the setup morning in front of it. **Check the auto-off**: most powerbanks cut output below ~50–100 mA, so a node that sleeps deeply switches its own supply off |
 | Enclosure, non-metal, with a flat face for the card | the reader coil must sit < 1 cm behind that face |
 
 Tags: **MIFARE Classic 1K cards, one per team** (≈ 500, not one per player — the domain is per team).
@@ -101,8 +101,10 @@ against (`APK-WORK-ORDER.md` §46), but here with a multimeter in hand:
    original timestamps**, in order, exactly once.
 4. **Replay.** Repeat a captured frame: the server must record one arrival, not two.
 5. **Wrong key.** A frame signed with the wrong key is dropped and logged, never recorded.
-6. **Battery.** Eight hours of realistic use (a tap every few minutes) on the powerbank, and measure the
-   average current while idle — that number decides whether the fleet needs charging mid-event.
+6. **Battery, and the powerbank's own cutoff.** Eight hours of realistic use on the exact powerbank model
+   that will be deployed, plus the idle current measured with a meter. Then the counter-intuitive one: put the
+   node into its lowest-power state and confirm the powerbank **does not switch itself off**. The booths have
+   no mains — mains and network are at the server station only — so this supply is the whole story.
 7. **Brown-out.** Watch the 3.3 V rail on a scope or a cheap USB meter during transmit. A dip that resets
    the ESP32 means the regulator or the capacitors are wrong — this is the most common failure on a first
    build.

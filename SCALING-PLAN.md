@@ -221,16 +221,32 @@ transmission to gateway address `0x0001`, and transmit power as low as passes th
 6. **Two gateways**, deduplicated server-side by sequence number. One gateway is one device that can
    silence fifteen booths.
 
-**Power at the booth exists after all** (operator, 28 Sep: mains and network are both available). So deep
-sleep and powerbanks become *tidiness*, not a requirement — a mains adapter per booth is simpler and removes
-the battery from the list of things that can end a post's evening. Keep the low-power work as an option for
-venues that are not this one.
+**The booth has neither mains nor a network drop** (operator, 28 Sep, correcting an earlier misreading on my
+part: both exist at the *server station*, not at the posts). So the battery is mandatory, and LoRa is settled
+— there is no cable at the booth to put an Ethernet port on.
 
-**And it opens a question that could remove the radio entirely — see §8.7.** If each booth has a usable
-**Ethernet port**, an ESP32 with a W5500 talking plain HTTP to the server is markedly simpler than LoRa: no
-gateway, no channel plan, no walk test, no ack/retry protocol beyond an offline queue. If "network at the
-booth" means **WiFi coverage only**, LoRa stays the answer, because §5 has just established that 2.4 GHz
-belongs to the phones.
+The battery budget is comfortable, which is the useful part:
+
+| Draw, node awake, WiFi off | |
+|---|---|
+| ESP32 at 80 MHz | ~35 mA |
+| PN532 polling | ~80 mA average (its RF field is the expensive part) |
+| E22 listening | ~8 mA |
+| **Total** | **~125 mA** |
+
+A 10,000 mAh powerbank is ≈ 31 Wh after conversion losses, so **~45 hours at that draw** — a full event day
+with the setup morning in front of it, without any sleep mode at all. Light sleep is a refinement, not a
+prerequisite.
+
+**And a trap that runs the other way: most consumer powerbanks switch themselves off below ~50–100 mA.** A
+node that sleeps well can therefore kill its own supply. Either stay above the cutoff (which ~125 mA does),
+or use a Li-ion cell with its own regulator rather than a powerbank, or buy powerbanks with a documented
+low-current/"always on" mode. Test this on the first unit — it is the kind of failure that looks like
+firmware.
+
+Practical fleet rule: charge every node the night before, carry **three or four spare powerbanks**, and have
+the node report its battery voltage in the heartbeat so the admin sees a dying booth before the crew does
+(`APK-WORK-ORDER.md` §46).
 
 ### Hardware chosen (operator, 28 Sep)
 
@@ -293,11 +309,9 @@ changes shape for the app.
    question below.
 7. ~~RFID: replace the QR?~~ **No — unlock only** (28 Sep). Recorded in §6.
 
-**New, and the one that changes real work: is there a usable Ethernet port at each booth, or only WiFi
-coverage?** Ethernet would let an ESP32 + W5500 post straight to the server and delete the LoRa layer —
-gateway, channel plan, walk test and the ack/retry protocol with it. WiFi-only keeps LoRa, because 2.4 GHz
-now belongs to the phones. The reader, the queue and the frame format are identical either way, so firmware
-work can start before this is answered (`APK-WORK-ORDER.md` §46).
+~~New: Ethernet port at each booth?~~ **No — and there is no mains either** (28 Sep). Mains and network are
+at the server station; the posts have nothing. LoRa on battery is the design, full stop. **No open questions
+remain in this plan**; what is left is building it, in the order of §7.
 
 ## 9. Explicitly rejected, and why
 
