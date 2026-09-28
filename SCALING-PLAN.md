@@ -99,9 +99,27 @@ is operated today:
 4. A health endpoint (`/up`).
 5. Migrations as their own step before the app starts, never in an entrypoint that has replicas.
 
-**Capacity estimate** once §3 is done and `/race/status` is ~2 ms / 5 queries: 8–12 cores for the app, 4
-for MySQL, 32 GB RAM (16 GB buffer pool, 4 GB Redis), NVMe. A 16-core / 64 GB workstation should hold
-5,000 phones. Without §3, no core count helps — it stalls on the `cache` table.
+**The box is known (operator, 28 Sep): 16 cores, 64 GB RAM, 2 TB NVMe.** That is comfortable for 5,000
+phones *provided §3 is done* — without it no core count helps, because it stalls on the `cache` table.
+
+Allocation to start from, and to correct with the harness rather than by feel:
+
+| | Setting | Why |
+|---|---|---|
+| php-fpm | 2 containers × 100 children (~12 GB) | Little's law: 1,000 req/s × 20 ms p95 ≈ 20 busy workers. 200 is burst headroom, and two containers allow a rolling restart |
+| MySQL | `innodb_buffer_pool_size = 16G` | The whole event's rows are a few GB once photos are out of the DB (§3d); 16 GB holds it all in memory |
+| Redis | `maxmemory 4gb`, cache LRU — **queue in a separate instance or DB with no eviction** | Rate-limit and cache keys are small; a queued job must never be evicted to make room for a cache entry |
+| OS, nginx, workers | ~4 GB | |
+| **Total** | **~40 GB of 64 GB** | leaves room for a second MySQL for a restore rehearsal, and for being wrong |
+
+CPU at peak: ~3 cores for the app (1,000 req/s × 3 ms after §3), ~4 for MySQL, ~1 for thumbnailing in the
+queue (75,000 photos over two hours ≈ 10/s). **Roughly 8 of 16 cores** — about 2× headroom, which is the
+right amount for an event that cannot be paused.
+
+Disk is not a constraint: photos are ~3.7 GB per 5,000-player event, archives ~80 MB each, MySQL a few GB.
+2 TB is dozens of events. Plan retention and backups for tidiness, not for space.
+
+The real ceiling on this machine is MySQL write concurrency and the venue WiFi — not cores or RAM.
 
 ## 5. LAN specifics
 
@@ -110,9 +128,20 @@ for MySQL, 32 GB RAM (16 GB buffer pool, 4 GB Redis), NVMe. A 16-core / 64 GB wo
   while online). **The APK then needs no change** — it already points at that host. The alternatives cost
   more: a configurable base URL (new APK release + contract change), a private CA (installing it on 5,000
   phones), or plain HTTP (Android blocks cleartext by default and Sanctum tokens would travel in clear).
-- **What still needs the internet**, and must be treated as absent at the venue: the GPS Tracker app
-  (`tracker:sync-map` — mirror before the event), the partner connector (off by default since 26 Sep), and
-  APK distribution (install before the day).
+- **The venue has an uplink (operator, 28 Sep).** That makes certificate renewal automatic, lets
+  `tracker:sync-map`, the partner connector and APK distribution work live, gives NTP (which the two race
+  clocks and the LoRa nodes both need), and — most valuable — allows **offsite backup while the event is
+  running**, so a dead box does not take the event's data with it. Treat all of it as convenience, never as
+  dependency: gameplay must still stand with the uplink cut.
+- **The hazard the uplink introduces: split-brain data.** `questerra-series.com` resolves publicly to the
+  shared host. A phone that bypasses the venue resolver — Android *Private DNS* (DoT) and DoH do exactly
+  that — would reach the **old production server** and play there: some teams' attempts on the workstation,
+  some on Hostinger, and no way to merge them afterwards. This is worse than an outage. The answer is not
+  DNS trickery but routing: **the player VLAN gets no route to the internet at all.** Then the public
+  address is unreachable, DoT/DoH fail and Android falls back to the DHCP resolver, and the only server a
+  phone can reach is the local one. The crew and server VLANs keep the uplink.
+  A cleaner long-term fix is a configurable server address in the APK (a contract and release item), which
+  would remove the reliance on resolver behaviour entirely.
 - **Network shape:** 5,000 clients cannot sit in one broadcast domain. VLAN per zone (300–500 clients
   each), L3 to the server, client isolation on, short DHCP leases. And **70–100 access points** — 5,000
   phones is an AP capacity problem before it is a server problem.
@@ -196,9 +225,10 @@ supporting 5 GHz (some low-end handsets do not) and on the WiFi operator agreein
 
 ## 8. Open questions that change the design
 
-1. **Workstation spec** — cores, RAM, disk. The §4 estimate can be confirmed or corrected.
-2. **Does the venue have any internet uplink?** Decides how the certificate is obtained and whether the
-   tracker must be mirrored.
+1. ~~Workstation spec~~ — **answered 28 Sep: 16 cores, 64 GB, 2 TB NVMe.** Allocation in §4.
+2. ~~Venue internet uplink~~ — **answered 28 Sep: yes.** Certificates, NTP, tracker sync and offsite
+   backup all become straightforward; §5 now carries the split-brain hazard it introduces and the routing
+   rule that closes it (player VLAN without internet).
 3. **One venue of 5,000, or several venues at once?** Several favours one instance per venue over
    multi-tenancy.
 4. **Is HA required?** If a five-minute outage ends the event, the spare box stops being optional.
