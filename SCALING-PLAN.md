@@ -145,6 +145,15 @@ The real ceiling on this machine is MySQL write concurrency and the venue WiFi �
 - **Network shape:** 5,000 clients cannot sit in one broadcast domain. VLAN per zone (300–500 clients
   each), L3 to the server, client isolation on, short DHCP leases. And **70–100 access points** — 5,000
   phones is an AP capacity problem before it is a server problem.
+- **Not every participant phone has 5 GHz** (operator, 28 Sep — his own does not). Two consequences, and the
+  second is the harder one:
+  1. The player SSID must serve 2.4 GHz, so **2.4 GHz will be crowded**. Nothing of ours belongs there —
+     which settles the radio question in §6.
+  2. 2.4 GHz has **three non-overlapping channels**. Seventy APs all shouting on 1/6/11 interfere with each
+     other, and a 2.4-only client holds airtime longer than a 5 GHz one. The plan is therefore: steer every
+     capable phone to 5 GHz (per-SSID band steering), keep 2.4 GHz for the handsets that have no choice at
+     **reduced transmit power and smaller cells**, and budget 2.4 GHz capacity at ~30–50 clients per AP
+     rather than 50–80. Ask the WiFi vendor for the 2.4 GHz plan specifically; it is where this will fail.
 - **One box is one point of failure for the whole event.** What softens it: the offline-first design
   already caches the manifest, scenes, tiles and sealed questionnaires on the phones, so a server outage
   stops the *gates* (START, clue, `qr/lookup`, `quiz/start`), not the whole game. Still required: UPS, a
@@ -212,8 +221,16 @@ transmission to gateway address `0x0001`, and transmit power as low as passes th
 6. **Two gateways**, deduplicated server-side by sequence number. One gateway is one device that can
    silence fifteen booths.
 
-**Power and aesthetics:** LoRa plus deep sleep (wake on the reader's interrupt) runs a day on a powerbank,
-so a booth has a small box and **no cable at all** — which was the reason cabling was rejected.
+**Power at the booth exists after all** (operator, 28 Sep: mains and network are both available). So deep
+sleep and powerbanks become *tidiness*, not a requirement — a mains adapter per booth is simpler and removes
+the battery from the list of things that can end a post's evening. Keep the low-power work as an option for
+venues that are not this one.
+
+**And it opens a question that could remove the radio entirely — see §8.7.** If each booth has a usable
+**Ethernet port**, an ESP32 with a W5500 talking plain HTTP to the server is markedly simpler than LoRa: no
+gateway, no channel plan, no walk test, no ack/retry protocol beyond an offline queue. If "network at the
+booth" means **WiFi coverage only**, LoRa stays the answer, because §5 has just established that 2.4 GHz
+belongs to the phones.
 
 ### Hardware chosen (operator, 28 Sep)
 
@@ -234,17 +251,15 @@ per-node provisioning and the bench tests; **`APK-WORK-ORDER.md` §46** commissi
 client agent — it has PlatformIO already — and holds the authoritative pin map and the 26-byte wire protocol
 (sequence numbers, truncated HMAC, ACK, NVS queue, time sync).
 
-**The cheaper alternative, if the WiFi is ours to configure:** put the player SSID on **5 GHz only** and
-give the IoT SSID the 2.4 GHz band alone. No new hardware. It depends on every participant phone
-supporting 5 GHz (some low-end handsets do not) and on the WiFi operator agreeing to that split.
+~~**The cheaper alternative:** player SSID on 5 GHz only, IoT alone on 2.4 GHz.~~ **Ruled out 28 Sep:** not
+every participant phone has 5 GHz, so the player SSID must occupy 2.4 GHz and the band cannot be handed to
+the readers. This is the measurement that settles the radio choice — anything of ours on 2.4 GHz would be
+competing with the phones it exists to serve.
 
-**Open product decision:** does RFID *replace* the paper QR, or only the unlock?
-- Only the unlock (recommended): tap → outpost opens → 3D object gives the clue → paper QR → quiz. The
-  hunt, which is the product, survives.
-- Replacing the QR: faster and fewer failure points, but the hunt disappears, and at posts whose camera is
-  off it becomes very flat.
-- Middle path: RFID unlocks everywhere; at camera-off posts the tap also opens the quiz, because there is
-  no 3D object to carry a clue.
+**Settled 28 Sep: RFID opens the post, nothing more.** The paper QR stays the way into the questionnaire, so
+the hunt — which is the product — is untouched. Concretely: a tap writes `game_location_unlocks` and that is
+all; `StationGate` is not modified, `qr/lookup` still wants the printed code, and nothing in `/api/v1`
+changes shape for the app.
 
 ## 7. Phasing, with acceptance criteria
 
@@ -265,12 +280,24 @@ supporting 5 GHz (some low-end handsets do not) and on the WiFi operator agreein
 2. ~~Venue internet uplink~~ — **answered 28 Sep: yes.** Certificates, NTP, tracker sync and offsite
    backup all become straightforward; §5 now carries the split-brain hazard it introduces and the routing
    rule that closes it (player VLAN without internet).
-3. **One venue of 5,000, or several venues at once?** Several favours one instance per venue over
-   multi-tenancy.
-4. **Is HA required?** If a five-minute outage ends the event, the spare box stops being optional.
-5. **Do all participant phones support 5 GHz?** Decides whether the spectrum split in §6 is available.
-6. **Mains power at each booth?** Decides whether deep sleep on a powerbank is required or merely tidy.
-7. **RFID: replace the QR or not?** The product decision in §6.
+3. ~~One venue or several?~~ **One venue of 5,000** (28 Sep). Single instance; no multi-tenancy, and no
+   argument left for orchestration.
+4. ~~Is HA required?~~ **No** (28 Sep). Accepted deliberately, and it is defensible *because* the phones
+   hold the manifest, the scenes, the tiles and the sealed questionnaires: an outage stops the gates, not
+   the game. What it makes non-optional is the other half — **offsite backup while the event runs** (the
+   uplink in §5 makes this easy) and a **restore that has been rehearsed**, not written down. Without a hot
+   spare, the recovery time is however long the crew needs to remember the procedure.
+5. ~~Do all phones support 5 GHz?~~ **No** (28 Sep). See §5: the 2.4 GHz plan is now the hardest part of the
+   venue network, and §6's spectrum-split alternative is dead.
+6. ~~Mains at each booth?~~ **Yes, mains and network both** (28 Sep). Batteries become optional; see the new
+   question below.
+7. ~~RFID: replace the QR?~~ **No — unlock only** (28 Sep). Recorded in §6.
+
+**New, and the one that changes real work: is there a usable Ethernet port at each booth, or only WiFi
+coverage?** Ethernet would let an ESP32 + W5500 post straight to the server and delete the LoRa layer —
+gateway, channel plan, walk test and the ack/retry protocol with it. WiFi-only keeps LoRa, because 2.4 GHz
+now belongs to the phones. The reader, the queue and the frame format are identical either way, so firmware
+work can start before this is answered (`APK-WORK-ORDER.md` §46).
 
 ## 9. Explicitly rejected, and why
 
@@ -284,11 +311,11 @@ supporting 5 GHz (some low-end handsets do not) and on the WiFi operator agreein
 
 - opcache was **not** loaded in the CLI binary checked; the web SAPI was not verified. Confirm on the new
   stack, where it is ours to set.
-- Kominfo limits for 920–923 MHz (power, duty) were not checked. The chosen E22-900T22D covers
-  850.125–930.125 MHz, so the band is a **configuration** choice (channel 73 = 923.125 MHz) rather than a
-  purchase mistake waiting to happen — but confirm the allocation and the power limit before the walk test,
-  and confirm the channel arithmetic against the datasheet revision that arrives. Order the **900** variant,
-  not the 400.
+- **Radio regulation: the operator has decided not to pursue it** (28 Sep), judging it a matter for
+  national-scale operators rather than a micro business. Recorded here as his call, not as an open item. The
+  engineering side is unaffected either way: the E22-900T22D covers 850.125–930.125 MHz, so the band is a
+  configuration choice (channel 73 = 923.125 MHz), and the only thing still worth confirming is the channel
+  arithmetic against the datasheet revision that arrives. Order the **900** variant, not the 400.
 - The AP count (70–100) is an industry rule of thumb at 50–80 active clients per AP, not a measurement of
   this venue.
 - Every timing in §2 came from an **empty** database on shared hosting. They are a floor, not a forecast:

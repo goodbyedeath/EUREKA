@@ -1376,6 +1376,23 @@ Hardware, decided by the operator: **ESP32 + PN532 (I²C) + Ebyte E22-900T22D (L
 two identical gateway boards read over USB from the workstation. Assembly, bill of materials and the bench
 tests are in `TAP-NODE-BUILD.md`; this section is the authoritative pin map and wire protocol.
 
+### Start with the half that cannot change
+
+**The transport is not final.** Every booth turns out to have mains power *and* a network drop (operator,
+28 Sep). If that includes a usable **Ethernet port**, an ESP32 + W5500 posting straight to the server is
+simpler than LoRa and the radio layer disappears — no gateway, no channel plan, no ack/retry protocol. If it
+is WiFi coverage only, LoRa stays, because many participant phones are 2.4 GHz-only and that band belongs to
+them.
+
+So build in this order, and nothing is wasted either way:
+
+1. **Reader** — PN532 over I²C, UID out, buzzer and LEDs, local feedback under a second.
+2. **Store** — NVS for `node_id`, `node_key`, `post_id`, `seq`, and the 200-tap queue.
+3. **Frame** — the 26-byte structure and its HMAC below. It is the payload whether it travels by radio or in
+   an HTTP body.
+4. **Transport** — LoRa (as specified here) or HTTP, decided once the operator confirms the port. Keep it
+   behind one interface: `bool send(const Frame&)` and a callback for the ack.
+
 ### Deliverables
 
 One PlatformIO project, two environments:
