@@ -7,7 +7,7 @@
         "x-behaviour-guides": {
             "API-V1-CONTRACT.md": "cf42a53f30fd1ef7",
             "APK-BUILD-GUIDE.md": "daeca3a5c1c9263c",
-            "APK-WORK-ORDER.md": "568d2f21fc444cda"
+            "APK-WORK-ORDER.md": "3c6e0be3048ffe7f"
         }
     },
     "servers": [
@@ -300,35 +300,30 @@
                     }
                 ],
                 "responses": {
-                    "200": {
+                    "403": {
                         "description": "Observed on a live probe",
                         "content": {
                             "application/json": {
                                 "schema": {
                                     "type": "object",
                                     "properties": {
-                                        "access_window_ends_at": {
+                                        "access_window_expired": {
+                                            "type": "boolean"
+                                        },
+                                        "error": {
+                                            "type": "string"
+                                        },
+                                        "expired": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "redirect": {
                                             "type": "string"
                                         },
                                         "success": {
                                             "type": "boolean"
-                                        },
-                                        "user": {
-                                            "type": "object",
-                                            "properties": {
-                                                "id": {
-                                                    "type": "integer"
-                                                },
-                                                "name": {
-                                                    "type": "string"
-                                                },
-                                                "role": {
-                                                    "type": "string"
-                                                },
-                                                "team_id": {
-                                                    "nullable": true
-                                                }
-                                            }
                                         }
                                     }
                                 }
@@ -514,58 +509,27 @@
                     }
                 ],
                 "responses": {
-                    "200": {
+                    "403": {
                         "description": "Observed on a live probe",
                         "content": {
                             "application/json": {
                                 "schema": {
                                     "type": "object",
                                     "properties": {
-                                        "features": {
-                                            "type": "array",
-                                            "items": {
-                                                "type": "object",
-                                                "properties": {
-                                                    "description": {
-                                                        "type": "string"
-                                                    },
-                                                    "enabled": {
-                                                        "type": "boolean"
-                                                    },
-                                                    "key": {
-                                                        "type": "string"
-                                                    },
-                                                    "name": {
-                                                        "type": "string"
-                                                    },
-                                                    "sort_order": {
-                                                        "type": "integer"
-                                                    }
-                                                }
-                                            }
+                                        "access_window_expired": {
+                                            "type": "boolean"
                                         },
-                                        "flags": {
-                                            "type": "object",
-                                            "properties": {
-                                                "gps_tracking": {
-                                                    "type": "boolean"
-                                                },
-                                                "kiosk_map": {
-                                                    "type": "boolean"
-                                                },
-                                                "leaderboard": {
-                                                    "type": "boolean"
-                                                },
-                                                "quest_locations": {
-                                                    "type": "boolean"
-                                                },
-                                                "quiz_system": {
-                                                    "type": "boolean"
-                                                },
-                                                "workflow_timers": {
-                                                    "type": "boolean"
-                                                }
-                                            }
+                                        "error": {
+                                            "type": "string"
+                                        },
+                                        "expired": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "redirect": {
+                                            "type": "string"
                                         },
                                         "success": {
                                             "type": "boolean"
@@ -591,47 +555,30 @@
                     }
                 ],
                 "responses": {
-                    "200": {
+                    "403": {
                         "description": "Observed on a live probe",
                         "content": {
                             "application/json": {
                                 "schema": {
                                     "type": "object",
                                     "properties": {
-                                        "sections": {
-                                            "type": "array",
-                                            "items": {
-                                                "type": "object",
-                                                "properties": {
-                                                    "icon": {
-                                                        "type": "string"
-                                                    },
-                                                    "id": {
-                                                        "type": "integer"
-                                                    },
-                                                    "lines": {
-                                                        "type": "array",
-                                                        "items": {
-                                                            "description": "nested"
-                                                        }
-                                                    },
-                                                    "sort_order": {
-                                                        "type": "integer"
-                                                    },
-                                                    "title": {
-                                                        "type": "string"
-                                                    },
-                                                    "updated_at": {
-                                                        "type": "string"
-                                                    }
-                                                }
-                                            }
+                                        "access_window_expired": {
+                                            "type": "boolean"
+                                        },
+                                        "error": {
+                                            "type": "string"
+                                        },
+                                        "expired": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "redirect": {
+                                            "type": "string"
                                         },
                                         "success": {
                                             "type": "boolean"
-                                        },
-                                        "updated_at": {
-                                            "type": "string"
                                         }
                                     }
                                 }
@@ -762,50 +709,27 @@
                     }
                 ],
                 "responses": {
-                    "200": {
+                    "403": {
                         "description": "Observed on a live probe",
                         "content": {
                             "application/json": {
                                 "schema": {
                                     "type": "object",
                                     "properties": {
-                                        "routes": {
-                                            "type": "array",
-                                            "items": {
-                                                "type": "object",
-                                                "properties": {
-                                                    "color": {
-                                                        "type": "string"
-                                                    },
-                                                    "distance_m": {
-                                                        "type": "integer"
-                                                    },
-                                                    "id": {
-                                                        "type": "integer"
-                                                    },
-                                                    "markers": {
-                                                        "type": "array",
-                                                        "items": {
-                                                            "description": "unknown: the live response was empty"
-                                                        }
-                                                    },
-                                                    "name": {
-                                                        "type": "string"
-                                                    },
-                                                    "points": {
-                                                        "type": "array",
-                                                        "items": {
-                                                            "description": "nested"
-                                                        }
-                                                    },
-                                                    "quest_location_ids": {
-                                                        "type": "array",
-                                                        "items": {
-                                                            "description": "nested"
-                                                        }
-                                                    }
-                                                }
-                                            }
+                                        "access_window_expired": {
+                                            "type": "boolean"
+                                        },
+                                        "error": {
+                                            "type": "string"
+                                        },
+                                        "expired": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "redirect": {
+                                            "type": "string"
                                         },
                                         "success": {
                                             "type": "boolean"
@@ -831,414 +755,30 @@
                     }
                 ],
                 "responses": {
-                    "200": {
+                    "403": {
                         "description": "Observed on a live probe",
                         "content": {
                             "application/json": {
                                 "schema": {
                                     "type": "object",
                                     "properties": {
-                                        "bell": {
-                                            "type": "object",
-                                            "properties": {
-                                                "repeat": {
-                                                    "type": "integer"
-                                                },
-                                                "sound_url": {
-                                                    "nullable": true
-                                                },
-                                                "tone": {
-                                                    "type": "string"
-                                                },
-                                                "volume": {
-                                                    "type": "integer"
-                                                }
-                                            }
+                                        "access_window_expired": {
+                                            "type": "boolean"
                                         },
-                                        "bounds": {
-                                            "type": "object",
-                                            "properties": {
-                                                "east": {
-                                                    "type": "number"
-                                                },
-                                                "north": {
-                                                    "type": "number"
-                                                },
-                                                "south": {
-                                                    "type": "number"
-                                                },
-                                                "west": {
-                                                    "type": "number"
-                                                }
-                                            }
-                                        },
-                                        "content_updated_at": {
+                                        "error": {
                                             "type": "string"
                                         },
-                                        "counts": {
-                                            "type": "object",
-                                            "properties": {
-                                                "ar_posts": {
-                                                    "type": "integer"
-                                                },
-                                                "game_locations": {
-                                                    "type": "integer"
-                                                },
-                                                "images": {
-                                                    "type": "integer"
-                                                },
-                                                "models": {
-                                                    "type": "integer"
-                                                },
-                                                "pages": {
-                                                    "type": "integer"
-                                                },
-                                                "quest_locations": {
-                                                    "type": "integer"
-                                                },
-                                                "routes": {
-                                                    "type": "integer"
-                                                }
-                                            }
+                                        "expired": {
+                                            "type": "boolean"
                                         },
-                                        "game_locations": {
-                                            "type": "array",
-                                            "items": {
-                                                "type": "object",
-                                                "properties": {
-                                                    "access_mode": {
-                                                        "type": "string"
-                                                    },
-                                                    "coordinate_source": {
-                                                        "type": "string"
-                                                    },
-                                                    "experience_type": {
-                                                        "type": "string"
-                                                    },
-                                                    "id": {
-                                                        "type": "integer"
-                                                    },
-                                                    "latitude": {
-                                                        "nullable": true
-                                                    },
-                                                    "longitude": {
-                                                        "nullable": true
-                                                    },
-                                                    "model": {
-                                                        "type": "string"
-                                                    },
-                                                    "name": {
-                                                        "type": "string"
-                                                    },
-                                                    "quest_location_id": {
-                                                        "nullable": true
-                                                    },
-                                                    "radius": {
-                                                        "type": "integer"
-                                                    },
-                                                    "scene": {
-                                                        "type": "object",
-                                                        "properties": {
-                                                            "location": {
-                                                                "description": "nested"
-                                                            },
-                                                            "objects": {
-                                                                "description": "nested"
-                                                            }
-                                                        }
-                                                    },
-                                                    "uses_ar": {
-                                                        "type": "boolean"
-                                                    }
-                                                }
-                                            }
-                                        },
-                                        "images": {
-                                            "type": "array",
-                                            "items": {
-                                                "type": "string"
-                                            }
-                                        },
-                                        "indoor_map": {
-                                            "type": "object",
-                                            "properties": {
-                                                "map": {
-                                                    "type": "object",
-                                                    "properties": {
-                                                        "description": {
-                                                            "type": "string"
-                                                        },
-                                                        "id": {
-                                                            "type": "integer"
-                                                        },
-                                                        "image": {
-                                                            "type": "string"
-                                                        },
-                                                        "name": {
-                                                            "type": "string"
-                                                        }
-                                                    }
-                                                },
-                                                "spots": {
-                                                    "type": "array",
-                                                    "items": {
-                                                        "type": "object",
-                                                        "properties": {
-                                                            "color": {
-                                                                "description": "nested"
-                                                            },
-                                                            "content": {
-                                                                "description": "nested"
-                                                            },
-                                                            "game_location_id": {
-                                                                "description": "nested"
-                                                            },
-                                                            "id": {
-                                                                "description": "nested"
-                                                            },
-                                                            "image": {
-                                                                "description": "nested"
-                                                            },
-                                                            "is_done": {
-                                                                "description": "nested"
-                                                            },
-                                                            "is_open": {
-                                                                "description": "nested"
-                                                            },
-                                                            "is_post": {
-                                                                "description": "nested"
-                                                            },
-                                                            "name": {
-                                                                "description": "nested"
-                                                            },
-                                                            "shape": {
-                                                                "description": "nested"
-                                                            },
-                                                            "size": {
-                                                                "description": "nested"
-                                                            },
-                                                            "x": {
-                                                                "description": "nested"
-                                                            },
-                                                            "y": {
-                                                                "description": "nested"
-                                                            }
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        },
-                                        "map": {
-                                            "type": "object",
-                                            "properties": {
-                                                "attribution": {
-                                                    "type": "string"
-                                                },
-                                                "max_zoom": {
-                                                    "type": "integer"
-                                                },
-                                                "tiles": {
-                                                    "type": "array",
-                                                    "items": {
-                                                        "type": "string"
-                                                    }
-                                                }
-                                            }
-                                        },
-                                        "models": {
-                                            "type": "array",
-                                            "items": {
-                                                "type": "string"
-                                            }
-                                        },
-                                        "offline_crypto": {
-                                            "type": "object",
-                                            "properties": {
-                                                "cipher": {
-                                                    "type": "string"
-                                                },
-                                                "iterations": {
-                                                    "type": "integer"
-                                                },
-                                                "kdf": {
-                                                    "type": "string"
-                                                },
-                                                "salt": {
-                                                    "type": "string"
-                                                },
-                                                "version": {
-                                                    "type": "integer"
-                                                }
-                                            }
-                                        },
-                                        "pages": {
-                                            "type": "array",
-                                            "items": {
-                                                "type": "string"
-                                            }
-                                        },
-                                        "quest_locations": {
-                                            "type": "array",
-                                            "items": {
-                                                "type": "object",
-                                                "properties": {
-                                                    "id": {
-                                                        "type": "integer"
-                                                    },
-                                                    "latitude": {
-                                                        "type": "number"
-                                                    },
-                                                    "longitude": {
-                                                        "type": "number"
-                                                    },
-                                                    "marker_color": {
-                                                        "type": "string"
-                                                    },
-                                                    "name": {
-                                                        "type": "string"
-                                                    },
-                                                    "radius": {
-                                                        "type": "integer"
-                                                    }
-                                                }
-                                            }
-                                        },
-                                        "questionnaires": {
-                                            "type": "array",
-                                            "items": {
-                                                "type": "object",
-                                                "properties": {
-                                                    "all_posts": {
-                                                        "type": "boolean"
-                                                    },
-                                                    "assets": {
-                                                        "type": "array",
-                                                        "items": {
-                                                            "description": "unknown: the live response was empty"
-                                                        }
-                                                    },
-                                                    "counts_toward_finish": {
-                                                        "type": "boolean"
-                                                    },
-                                                    "end_date": {
-                                                        "type": "string"
-                                                    },
-                                                    "game_location_id": {
-                                                        "type": "integer"
-                                                    },
-                                                    "game_location_ids": {
-                                                        "type": "array",
-                                                        "items": {
-                                                            "description": "nested"
-                                                        }
-                                                    },
-                                                    "id": {
-                                                        "type": "integer"
-                                                    },
-                                                    "qr_hash": {
-                                                        "type": "string"
-                                                    },
-                                                    "quest_location_id": {
-                                                        "nullable": true
-                                                    },
-                                                    "question_count": {
-                                                        "type": "integer"
-                                                    },
-                                                    "sealed": {
-                                                        "type": "object",
-                                                        "properties": {
-                                                            "ciphertext": {
-                                                                "description": "nested"
-                                                            },
-                                                            "nonce": {
-                                                                "description": "nested"
-                                                            }
-                                                        }
-                                                    },
-                                                    "start_date": {
-                                                        "type": "string"
-                                                    },
-                                                    "time_limit": {
-                                                        "type": "integer"
-                                                    },
-                                                    "venue_mode": {
-                                                        "type": "string"
-                                                    }
-                                                }
-                                            }
-                                        },
-                                        "race_reset_at": {
+                                        "message": {
                                             "type": "string"
                                         },
-                                        "routes": {
-                                            "type": "array",
-                                            "items": {
-                                                "type": "object",
-                                                "properties": {
-                                                    "color": {
-                                                        "type": "string"
-                                                    },
-                                                    "distance_m": {
-                                                        "type": "integer"
-                                                    },
-                                                    "id": {
-                                                        "type": "integer"
-                                                    },
-                                                    "markers": {
-                                                        "type": "array",
-                                                        "items": {
-                                                            "description": "unknown: the live response was empty"
-                                                        }
-                                                    },
-                                                    "name": {
-                                                        "type": "string"
-                                                    },
-                                                    "points": {
-                                                        "type": "array",
-                                                        "items": {
-                                                            "description": "nested"
-                                                        }
-                                                    },
-                                                    "quest_location_ids": {
-                                                        "type": "array",
-                                                        "items": {
-                                                            "description": "nested"
-                                                        }
-                                                    }
-                                                }
-                                            }
+                                        "redirect": {
+                                            "type": "string"
                                         },
                                         "success": {
                                             "type": "boolean"
-                                        },
-                                        "user_guide": {
-                                            "type": "array",
-                                            "items": {
-                                                "type": "object",
-                                                "properties": {
-                                                    "icon": {
-                                                        "type": "string"
-                                                    },
-                                                    "id": {
-                                                        "type": "integer"
-                                                    },
-                                                    "lines": {
-                                                        "type": "array",
-                                                        "items": {
-                                                            "description": "nested"
-                                                        }
-                                                    },
-                                                    "sort_order": {
-                                                        "type": "integer"
-                                                    },
-                                                    "title": {
-                                                        "type": "string"
-                                                    },
-                                                    "updated_at": {
-                                                        "type": "string"
-                                                    }
-                                                }
-                                            }
                                         }
                                     }
                                 }
@@ -1311,26 +851,30 @@
                     }
                 ],
                 "responses": {
-                    "422": {
+                    "403": {
                         "description": "Observed on a live probe",
                         "content": {
                             "application/json": {
                                 "schema": {
                                     "type": "object",
                                     "properties": {
-                                        "errors": {
-                                            "type": "object",
-                                            "properties": {
-                                                "q": {
-                                                    "type": "array",
-                                                    "items": {
-                                                        "type": "string"
-                                                    }
-                                                }
-                                            }
+                                        "access_window_expired": {
+                                            "type": "boolean"
+                                        },
+                                        "error": {
+                                            "type": "string"
+                                        },
+                                        "expired": {
+                                            "type": "boolean"
                                         },
                                         "message": {
                                             "type": "string"
+                                        },
+                                        "redirect": {
+                                            "type": "string"
+                                        },
+                                        "success": {
+                                            "type": "boolean"
                                         }
                                     }
                                 }
@@ -1392,118 +936,30 @@
                     }
                 ],
                 "responses": {
-                    "200": {
+                    "403": {
                         "description": "Observed on a live probe",
                         "content": {
                             "application/json": {
                                 "schema": {
                                     "type": "object",
                                     "properties": {
-                                        "locations": {
-                                            "type": "array",
-                                            "items": {
-                                                "type": "object",
-                                                "properties": {
-                                                    "check_ins_count": {
-                                                        "type": "integer"
-                                                    },
-                                                    "checked_in": {
-                                                        "type": "boolean"
-                                                    },
-                                                    "created_at": {
-                                                        "type": "string"
-                                                    },
-                                                    "created_by": {
-                                                        "type": "integer"
-                                                    },
-                                                    "description": {
-                                                        "type": "string"
-                                                    },
-                                                    "distance": {
-                                                        "nullable": true
-                                                    },
-                                                    "google_map_embed_url": {
-                                                        "nullable": true
-                                                    },
-                                                    "icon": {
-                                                        "type": "string"
-                                                    },
-                                                    "id": {
-                                                        "type": "integer"
-                                                    },
-                                                    "image_path": {
-                                                        "nullable": true
-                                                    },
-                                                    "image_url": {
-                                                        "nullable": true
-                                                    },
-                                                    "is_active": {
-                                                        "type": "boolean"
-                                                    },
-                                                    "last_checked_at": {
-                                                        "nullable": true
-                                                    },
-                                                    "latitude": {
-                                                        "type": "string"
-                                                    },
-                                                    "longitude": {
-                                                        "type": "string"
-                                                    },
-                                                    "map_image_path": {
-                                                        "nullable": true
-                                                    },
-                                                    "map_image_url": {
-                                                        "nullable": true
-                                                    },
-                                                    "marker_color": {
-                                                        "type": "string"
-                                                    },
-                                                    "max_check_ins_per_user": {
-                                                        "nullable": true
-                                                    },
-                                                    "name": {
-                                                        "type": "string"
-                                                    },
-                                                    "quest_points": {
-                                                        "type": "integer"
-                                                    },
-                                                    "radius": {
-                                                        "type": "integer"
-                                                    },
-                                                    "updated_at": {
-                                                        "type": "string"
-                                                    },
-                                                    "what_to_do": {
-                                                        "type": "string"
-                                                    },
-                                                    "within_radius": {
-                                                        "type": "boolean"
-                                                    }
-                                                }
-                                            }
+                                        "access_window_expired": {
+                                            "type": "boolean"
                                         },
-                                        "pagination": {
-                                            "type": "object",
-                                            "properties": {
-                                                "current_page": {
-                                                    "type": "integer"
-                                                },
-                                                "last_page": {
-                                                    "type": "integer"
-                                                },
-                                                "per_page": {
-                                                    "type": "integer"
-                                                },
-                                                "total": {
-                                                    "type": "integer"
-                                                }
-                                            }
+                                        "error": {
+                                            "type": "string"
+                                        },
+                                        "expired": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "redirect": {
+                                            "type": "string"
                                         },
                                         "success": {
                                             "type": "boolean"
-                                        },
-                                        "total_points": {
-                                            "type": "integer"
                                         }
                                     }
                                 }
@@ -1811,24 +1267,30 @@
                     }
                 ],
                 "responses": {
-                    "200": {
+                    "403": {
                         "description": "Observed on a live probe",
                         "content": {
                             "application/json": {
                                 "schema": {
                                     "type": "object",
                                     "properties": {
-                                        "attempts": {
-                                            "type": "array",
-                                            "items": {
-                                                "description": "unknown: the live response was empty"
-                                            }
+                                        "access_window_expired": {
+                                            "type": "boolean"
+                                        },
+                                        "error": {
+                                            "type": "string"
+                                        },
+                                        "expired": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "redirect": {
+                                            "type": "string"
                                         },
                                         "success": {
                                             "type": "boolean"
-                                        },
-                                        "total_attempts": {
-                                            "type": "integer"
                                         }
                                     }
                                 }
@@ -2302,20 +1764,26 @@
                     }
                 ],
                 "responses": {
-                    "200": {
+                    "403": {
                         "description": "Observed on a live probe",
                         "content": {
                             "application/json": {
                                 "schema": {
                                     "type": "object",
                                     "properties": {
-                                        "content_updated_at": {
+                                        "access_window_expired": {
+                                            "type": "boolean"
+                                        },
+                                        "error": {
                                             "type": "string"
                                         },
-                                        "race": {
-                                            "nullable": true
+                                        "expired": {
+                                            "type": "boolean"
                                         },
-                                        "race_reset_at": {
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "redirect": {
                                             "type": "string"
                                         },
                                         "success": {
@@ -2342,21 +1810,27 @@
                     }
                 ],
                 "responses": {
-                    "404": {
+                    "403": {
                         "description": "Observed on a live probe",
                         "content": {
                             "application/json": {
                                 "schema": {
                                     "type": "object",
                                     "properties": {
+                                        "access_window_expired": {
+                                            "type": "boolean"
+                                        },
                                         "error": {
                                             "type": "string"
+                                        },
+                                        "expired": {
+                                            "type": "boolean"
                                         },
                                         "message": {
                                             "type": "string"
                                         },
-                                        "participant_directory": {
-                                            "type": "boolean"
+                                        "redirect": {
+                                            "type": "string"
                                         },
                                         "success": {
                                             "type": "boolean"

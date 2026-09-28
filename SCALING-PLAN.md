@@ -198,6 +198,25 @@ total airtime stays under ~10%.
 **Power and aesthetics:** LoRa plus deep sleep (wake on the reader's interrupt) runs a day on a powerbank,
 so a booth has a small box and **no cable at all** — which was the reason cabling was rejected.
 
+### Hardware chosen (operator, 28 Sep)
+
+| Part | Chosen | Why this one |
+|---|---|---|
+| Radio | **Ebyte E22-900T22D** | SX1262 over UART — no SPI driver to get wrong — 850.125–930.125 MHz covers the 920–923 plan, 22 dBm is more than 50 m needs. SX1262 rather than SX1276/RFM95 for receive current and sensitivity, which is what decides whether a powerbank lasts the day |
+| Reader | **PN532** (I²C) | ~5–7 cm read range against RC522's 2–4 cm: a team in a hurry taps once instead of three times |
+| Tags | MIFARE Classic 1K, **one per team** | UID-only is enough — the server maps UID → team and a tap only opens a post *for that team*, so cloning buys nothing worth having. 500 cards, not 5,000 |
+| Controller | ESP32-WROOM | |
+| Gateway | Same radio on an ESP32, **read over USB serial** at the server | No IP, no WiFi, no TLS, nothing to knock off the air. Two of them on two ports, deduplicated server-side by sequence number |
+
+Radio settings: channel **73** (923.125 MHz — still to be confirmed against Kominfo), **9.6 kbps** air rate
+(range is not our problem at 50 m; shorter airtime means fewer collisions between fifteen booths), fixed
+transmission to gateway address `0x0001`.
+
+Two documents carry the rest: **`TAP-NODE-BUILD.md`** for the bill of materials, wiring, radio configuration,
+per-node provisioning and the bench tests; **`APK-WORK-ORDER.md` §46** commissions the firmware from the
+client agent — it has PlatformIO already — and holds the authoritative pin map and the 26-byte wire protocol
+(sequence numbers, truncated HMAC, ACK, NVS queue, time sync).
+
 **The cheaper alternative, if the WiFi is ours to configure:** put the player SSID on **5 GHz only** and
 give the IoT SSID the 2.4 GHz band alone. No new hardware. It depends on every participant phone
 supporting 5 GHz (some low-end handsets do not) and on the WiFi operator agreeing to that split.
