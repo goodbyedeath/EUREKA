@@ -1360,96 +1360,118 @@ clock again puts the team back into the race without a reinstall.
 
 ---
 
-## 46 — Firmware for the tap node (ESP32 + PN532 + LoRa)  ·  operator 28 Sep
+## 46 — Firmware for the tap node (ESP32, not Android)  ·  operator 28 Sep
 
-**This one is not Android.** The operator picked the hardware for proving a team has arrived at a booth, and
-you have the PlatformIO toolchain in VS Code, so the firmware is commissioned here. Two targets in one
-project; the Android app is untouched by this item.
+**This is not the app.** It is two small firmwares for an ESP32, commissioned from you because you already
+have PlatformIO in VS Code and nobody else on this project does. The Android work is unaffected; treat this
+as a separate PlatformIO project in its own repository or folder.
 
-Why it exists: a post opens today because a facilitator radios the admin, who clicks in Outpost Access. At
-5,000 players that is ~7,500 manual unlocks, and it also keeps up to 333 req/s of `awaiting_unlock` polling
-alive. A tap replaces both. Background and the rejected alternatives are in `SCALING-PLAN.md` §6;
-assembly, wiring and provisioning are in `TAP-NODE-BUILD.md`.
+**What it is for.** A post opens today when a facilitator radios the admin, who clicks in Outpost Access.
+At 5,000 players that is ~7,500 manual clicks, so a booth gets a reader: a team taps its RFID card, the tap
+travels by LoRa to a gateway at the server rack, and the server opens that post for that team. It also
+removes up to 333 req/s of `awaiting_unlock` polling from your app — **and it changes nothing you call**:
+the unlock appears in `/race/status` and `/ar/locations/{id}` exactly as a crew-opened one does.
 
-### Hardware, fixed
+Hardware, decided by the operator: **ESP32 + PN532 (I²C) + Ebyte E22-900T22D (LoRa, UART)** per booth, and
+two identical gateway boards read over USB from the workstation. Assembly, bill of materials and the bench
+tests are in `TAP-NODE-BUILD.md`; this section is the authoritative pin map and wire protocol.
 
-ESP32-WROOM · **PN532** over I²C · **Ebyte E22-900T22D** (SX1262, UART, 22 dBm) · active buzzer · green and
-red LED · powerbank. Gateways: the same radio on an ESP32 **read over USB serial** by the server — no WiFi,
-no IP.
+### Deliverables
 
-Pin map (authoritative; `TAP-NODE-BUILD.md` repeats it for whoever solders):
+One PlatformIO project, two environments:
+
+```
+questerra-tap/
+  platformio.ini        env:node  and  env:gateway  (board = esp32dev, framework = arduino)
+  src/main.cpp          shared entry; role from the build flag -D ROLE_NODE / -D ROLE_GATEWAY
+  src/radio.{h,cpp}     E22 driver over UART2, M0/M1/AUX, fixed-address transmission
+  src/frame.{h,cpp}     pack/unpack + HMAC-SHA256 (mbedtls, already in the ESP32 SDK)
+  src/store.{h,cpp}     NVS: node_id, node_key, post_id, seq; and the flash queue
+  src/reader.{h,cpp}    PN532 over I²C (Adafruit_PN532 or Seeed_Arduino_NFC — your call)
+  tools/provision/      a one-off sketch or script that writes node_id, node_key, post_id into NVS
+  README.md             how to build, flash, provision, and read the gateway's serial output
+```
+
+No LoRaWAN stack: raw point-to-point, one channel, fifteen nodes, one building. A network server, OTAA and
+key management would be more moving parts than the whole rest of the design.
+
+### Pin map (authoritative)
 
 | Signal | GPIO | Signal | GPIO |
 |---|---|---|---|
-| UART2 TX → E22 RXD | 17 | I²C SDA | 21 |
-| UART2 RX ← E22 TXD | 16 | I²C SCL | 22 |
+| E22 RXD ← ESP TX2 | 17 | PN532 SDA | 21 |
+| E22 TXD → ESP RX2 | 16 | PN532 SCL | 22 |
 | E22 M0 | 25 | PN532 IRQ | 32 |
 | E22 M1 | 26 | PN532 RSTO | 33 |
-| E22 AUX | 27 | Buzzer | 14 |
+| E22 AUX (input, pull-up) | 27 | Buzzer | 14 |
 | LED green | 13 | LED red | 4 |
 
-Radio: channel **73** (923.125 MHz — confirm against Kominfo and your datasheet revision), air rate
-**9.6 kbps**, fixed transmission to gateway address `0x0001`, transmit power as low as passes the walk test.
+Radio: channel **73** (923.125 MHz), air rate **9.6 kbps**, fixed transmission to gateway address
+`0x0001`. Confirm the channel against the datasheet revision you receive; the operator is verifying the
+Indonesian allocation separately.
 
 ### Wire protocol, node → gateway (26 bytes, little-endian)
 
 ```
 0      ver        = 0x01
 1      type       0x01 tap · 0x02 heartbeat · 0x03 time request
-2-3    node_id    1–15 nodes, 101/102 gateways
-4-7    seq        monotonic per node, persisted in NVS, never reused
+2-3    node_id
+4-7    seq        monotonic, persisted in NVS, never reused
 8-11   ts         unix seconds, node clock
 12-18  tag_uid    4 or 7 bytes, zero padded
 19     uid_len
-20-25  hmac       first 6 bytes of HMAC-SHA256(bytes 0..19, node_key)
+20-25  hmac       HMAC-SHA256(node_key, bytes 0..19) truncated to 6 bytes
 ```
 
-ACK, gateway → node (12 bytes): `ver`, `type` 0x81, `node_id`, the **echoed seq**, `server_ts` (4), 4-byte
-HMAC. A time request is answered with `type` 0x83 carrying `server_ts`.
+Gateway → node, 12 bytes: `ver`, `type` (`0x81` ack · `0x83` time reply), `node_id`, the echoed `seq`,
+`server_ts` (4 bytes), `hmac` (4 bytes). An ack for a `seq` the node is not waiting on is ignored.
 
-### What the firmware must do
+Gateway → server, **one JSON line per frame on USB serial at 115200**:
 
-1. **Feedback first, radio second.** Buzzer and green LED fire the moment the UID is read — never after the
-   ACK. A team standing at a booth must not wait on a radio to know the tap landed. No ACK within the retry
-   window: red LED pattern, and the tap stays queued.
-2. **Queue in NVS, at least 200 taps, ring buffer.** Retries at roughly 0.5 s, 1.5 s, 4 s, 10 s, then every
-   30 s, each with random jitter so two booths that tap together do not collide forever. Send **the original
-   `ts`**, never the time the queue happened to drain.
-3. **Monotonic `seq` that survives a reset.** The server deduplicates on `(node_id, seq)`; a reset that
-   restarts the counter would make old taps look new.
-4. **Time.** Request the time at boot and hourly; hold it in RAM with drift correction. This race has two
-   official clocks — a 40-second error is a defect, not a detail.
-5. **Provisioning from NVS, not from source:** `node_id`, `node_key` (16 bytes, unique), `post_id` (the
-   `game_locations.id` this booth serves). Include a serial command to write all three, and one to print
-   them for the runbook.
-6. **Duplicate-tap window.** The same UID within ~5 s is one arrival: buzz, but do not queue a second frame.
-7. **Gateway firmware:** receive, verify nothing (the server holds the keys and verifies), and print one JSON
-   line per frame to USB serial:
-   `{"node":3,"seq":149,"ts":1790500000,"uid":"04A2B3C4","rssi":-71,"snr":9.5,"gw":1,"hmac":"a1b2c3d4e5f6"}`
-   Send the ACK the moment the frame is received — do **not** wait for the server, or a busy workstation
-   turns into a booth full of red LEDs. Two gateways will both ACK and both print; the server dedupes.
-8. **Deep sleep is an optimisation, not a requirement.** Light sleep with a poll every ~300 ms is the
-   baseline; if PN532 card-detect can wake the ESP32 through the IRQ line reliably, take it, and report the
-   measured idle current either way.
+```json
+{"node":3,"seq":149,"ts":1790500000,"uid":"04A2B3C4","post":117,"rssi":-71,"snr":9.5,"gw":1,"hmac_ok":true}
+```
 
-### Deliverables
+Print frames whose HMAC fails too, with `"hmac_ok":false` — a spoofing attempt is something the crew
+should be able to see, not something the gateway silently eats.
 
-A PlatformIO project (name it `questerra-tap`) with two environments, `node` and `gateway`, sharing the
-protocol code; `platformio.ini` pinning library versions; a README with the flash and provisioning steps; and
-the measured idle current in it. Report through `POST /api/v1/contract/feedback` as usual.
+### Behaviour the firmware must get right
 
-**Done when:** a tap buzzes in under a second and reaches the server's serial line in under a second at 50 m
-through a wall; twenty taps made with the gateway unplugged all arrive afterwards, once each, in order, with
-their original timestamps; a replayed frame is still one arrival; a frame signed with the wrong key is
-dropped; `seq` survives a power cut; and the node runs eight hours on a powerbank with the idle current
-written down.
+1. **Local feedback first.** Buzzer and green LED the moment the card is read, before the radio has said
+   anything. A tap that waits on a radio feels broken even when it works.
+2. **Retry until acked**, with jitter so two booths that tap together do not collide repeatedly: ~0.5 s,
+   1.5 s, 4 s, 10 s, then every 30 s. Distinct LED pattern while unacked, so the crew can see a booth that
+   has lost its gateway.
+3. **Queue in NVS, at least 200 taps**, flushed in order when the gateway returns — **each with the
+   timestamp it was taken at**, never the time it was finally sent. The race has two official clocks; a
+   40-second drift is a defect.
+4. **Time sync.** Type `0x03` at boot and hourly; the gateway answers with the server's clock. Until the
+   first reply, mark taps with `ts = 0` and let the server stamp them — better an honest gap than a wrong
+   time.
+5. **Never reuse a `seq`.** It is the server's only defence against a replayed frame, and the only way two
+   gateways hearing the same tap collapse into one arrival.
+6. **Sleep between taps.** Light sleep with periodic polling is enough; deep sleep woken by the PN532 IRQ
+   is better if you can make it reliable — measure idle current either way and put the number in the README,
+   because it decides whether fifteen powerbanks survive a day.
+7. **Never transmit without the antenna.** Refuse to start the radio if the board was flashed without one
+   being connected, if you can detect it.
 
-### Not yours
+### Done when
 
-The server side — `rfid_tags`, `post_arrivals`, the serial listener that writes the same
-`game_location_unlocks` row Outpost Access writes, deduplication across both gateways, and
-`POST /api/v1/device/tap` for a future networked gateway — is this side's work and is not built yet
-(`SCALING-PLAN.md` phase 6). Nothing in `/api/v1` changes for the Android app because of this item.
+- A tap at 50 m through a wall lights the green LED immediately and is acked in under a second.
+- The gateway is unplugged, twenty taps are made, it is plugged back in: all twenty arrive once each, in
+  order, with their original timestamps.
+- A replayed frame produces no second line with a new `seq`; a frame signed with the wrong key is printed
+  with `hmac_ok:false` and nothing else.
+- Two gateways receive the same tap and the server can tell it is one arrival (same `node_id` and `seq`).
+- `seq` survives a power cut: pull the power mid-event, and the next tap does not reuse a number.
+- The README states the measured idle current and the battery hours behind it.
+- One node, one gateway and fifteen tags run an hour-long rehearsal without a manual reset.
+
+Server side is ours and does not exist yet: `rfid_tags`, `post_arrivals`, a serial listener that writes the
+same `game_location_unlocks` row Outpost Access writes, and `POST /api/v1/device/tap` for a future
+network-connected gateway. You do not need any of it to build and test the firmware — the gateway's serial
+output is the contract between us.
 ---
 
 ## Talking back — the channel runs both ways now

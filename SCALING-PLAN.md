@@ -181,6 +181,23 @@ LoRaWAN: a network server, join procedures and key management are overkill for 1
 Numbers: a tap is 40–60 bytes; airtime at SF7/BW125 ≈ 60–80 ms; the whole venue averages ~1 message/s, so
 total airtime stays under ~10%.
 
+**Hardware, chosen by the operator 28 Sep:**
+
+| | Part | Why this one |
+|---|---|---|
+| Radio | **Ebyte E22-900T22D** (SX1262, UART, 22 dBm, 850–930 MHz) | UART and AT-style configuration instead of an SPI driver and a radio stack — the least RF work for a team without RF experience. SX1262 rather than SX1276/RFM95 for the lower receive current, which is what decides whether a powerbank lasts the day |
+| Reader | **PN532** over I²C | ~5–7 cm read range against RC522's 2–4 cm. A team in a hurry taps once instead of three times, and that difference is the whole point of removing the crew |
+| Tags | MIFARE Classic 1K, **one per team** (~500) | UID-only is enough: the server maps UID → team, and a tap only opens a post *for that team*, so a cloned card buys nothing worth having |
+| Gateway | Same board ×2, **read over USB serial** at the rack | No IP, no WiFi, no TLS, nothing to knock off the air; two of them dedupe by `(node_id, seq)` |
+
+Assembly, bill of materials, provisioning and the bench tests: **`TAP-NODE-BUILD.md`**. The firmware and the
+byte-level protocol are commissioned from the client agent (it has PlatformIO) in **`APK-WORK-ORDER.md`
+§46**, which is authoritative for the pin map.
+
+Radio settings to start from: channel **73** (923.125 MHz), air rate **9.6 kbps** — range is not the problem
+at 50 m, so the faster rate is chosen to shorten airtime and cut collisions between fifteen booths — fixed
+transmission to gateway address `0x0001`, and transmit power as low as passes the walk test.
+
 **Protocol requirements** (LoRa does not guarantee delivery):
 
 1. Gateway ACK; the node retries with random jitter so two simultaneous booths do not collide repeatedly.
@@ -267,8 +284,11 @@ supporting 5 GHz (some low-end handsets do not) and on the WiFi operator agreein
 
 - opcache was **not** loaded in the CLI binary checked; the web SAPI was not verified. Confirm on the new
   stack, where it is ours to set.
-- Kominfo limits for 920–923 MHz (power, duty) were not checked. Confirm before ordering modules, and buy
-  the AS923 variant rather than 868 (EU) or 915 (US).
+- Kominfo limits for 920–923 MHz (power, duty) were not checked. The chosen E22-900T22D covers
+  850.125–930.125 MHz, so the band is a **configuration** choice (channel 73 = 923.125 MHz) rather than a
+  purchase mistake waiting to happen — but confirm the allocation and the power limit before the walk test,
+  and confirm the channel arithmetic against the datasheet revision that arrives. Order the **900** variant,
+  not the 400.
 - The AP count (70–100) is an industry rule of thumb at 50–80 active clients per AP, not a measurement of
   this venue.
 - Every timing in §2 came from an **empty** database on shared hosting. They are a floor, not a forecast:
