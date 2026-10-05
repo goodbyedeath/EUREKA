@@ -76,6 +76,23 @@ Configured over UART with M0 = M1 = 1 (configuration mode):
 A 26-byte tap frame at 9.6 kbps is ≈ 25 ms of air plus preamble. Fifteen booths average about one message
 per second for the whole venue, so total airtime stays a few percent.
 
+## 3b. The first board, confirmed (5 Oct 2026)
+
+Read off the bench by the firmware team, so the choices above are no longer assumptions:
+
+| | |
+|---|---|
+| Bridge | Silicon Labs **CP210x** on COM5 (install the CP210x driver on the build machine, not the FTDI one) |
+| Chip | **ESP32-D0WD-V3 rev 3.1**, dual core, 240 MHz, 40 MHz crystal |
+| Flash | **4 MB** |
+| MAC | `a4:f0:0f:5f:40:a8` |
+
+`board = esp32dev` is correct and nothing in `platformio.ini` changes. The 200-tap queue fits the default
+NVS partition with room to spare: 200 × 26 bytes = 5.2 KB against 20 KB.
+
+**Record the MAC of every board against its node number** in the runbook as you provision (§4). Fifteen
+identical boxes look identical in a crate, and the MAC is the only label that cannot fall off.
+
 ## 4. Provisioning, per node
 
 Each node needs three things written to NVS at flash time — **node 1 through 15, never duplicated**:

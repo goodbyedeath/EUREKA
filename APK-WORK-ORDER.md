@@ -1473,6 +1473,13 @@ should be able to see, not something the gateway silently eats.
 3. **Queue in NVS, at least 200 taps**, flushed in order when the gateway returns — **each with the
    timestamp it was taken at**, never the time it was finally sent. The race has two official clocks; a
    40-second drift is a defect.
+   *On the 5.2 KB-of-20 KB fit you measured: it holds, but mind the writes rather than the size.* Rewriting
+   one 5.2 KB blob on every tap and every ack is a few thousand rewrites of the same sectors per event day,
+   and NVS has only the spare room in that partition to level across. A ring of fixed small entries
+   (`q000`…`q199` plus a head/tail pair) rewrites a few dozen bytes instead of the whole queue. If you would
+   rather keep the single blob, a custom partition table on this 4 MB flash can give NVS 64–128 KB — the
+   firmware is nowhere near the default app slot. Your call; both are fine, and the second is cheaper to
+   write.
 4. **Time sync.** Type `0x03` at boot and hourly; the gateway answers with the server's clock. Until the
    first reply, mark taps with `ts = 0` and let the server stamp them — better an honest gap than a wrong
    time.
