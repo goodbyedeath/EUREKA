@@ -1,0 +1,122 @@
+# EUREKA on one workstation. Not Kubernetes, and SCALING-PLAN.md §4 says why.
+#
+#   ./deploy.sh up          build, start, migrate, cache
+#   ./deploy.sh logs        follow everything
+#   ./deploy.sh down        stop, keep the data
+#
+# Everything that survives a rebuild is in a named volume: MySQL data, the queue's append-only file, and
+# storage/ (uploaded photos, archive ZIPs, the sealed questionnaires). The application itself does not
+# survive — that is deliberate.
+
+name: eureka
+
+x-app: &app
+  build:
+    context: ..
+    dockerfile: docker/Dockerfile
+  image: eureka-app:${TAG:-latest}
+  env_file: .env
+  restart: unless-stopped
+  depends_on:
+    mysql:
+      condition: service_healthy
+    redis-cache:
+      condition: service_started
+    redis-queue:
+      condition: service_started
+  volumes:
+    - storage:/var/www/html/storage
+
+services:
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    ports:
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./nginx/certs:/etc/nginx/certs:ro
+      - storage:/var/www/html/storage:ro
+      - public:/var/www/html/public:ro
+    depends_on:
+      - app
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost/up"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # Two app containers so a deploy can restart one at a time. 100 php-fpm children each (docker/php/www.conf).
+  app:
+    <<: *app
+    environment:
+      CONTAINER_ROLE: app
+    # public/ is shared with nginx so it serves the built assets without a second copy of the image.
+    volumes:
+      - storage:/var/www/html/storage
+      - public:/var/www/html/public
+
+  app2:
+    <<: *app
+    environment:
+      CONTAINER_ROLE: app
+    volumes:
+      - storage:/var/www/html/storage
+      - public:/var/www/html/public
+
+  worker:
+    <<: *app
+    environment:
+      CONTAINER_ROLE: worker
+      QUEUE_NAMES: default
+    deploy:
+      replicas: 2
+
+  # This is what ended the cron argument: the PHP version is the image's, and no panel rewrites the command.
+  scheduler:
+    <<: *app
+    environment:
+      CONTAINER_ROLE: scheduler
+
+  mysql:
+    image: mysql:8.4
+    restart: unless-stopped
+    command: --mysql-native-password=ON
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE:-eureka}
+      MYSQL_USER: ${DB_USERNAME:-eureka}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+    volumes:
+      - mysql:/var/lib/mysql
+      - ./mysql/my.cnf:/etc/mysql/conf.d/eureka.cnf:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
+    # Only the containers talk to it. Open this port only to run the harness seeder from the host.
+    # ports: ["127.0.0.1:3306:3306"]
+
+  redis-cache:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
+    volumes:
+      - ./redis/cache.conf:/usr/local/etc/redis/redis.conf:ro
+
+  redis-queue:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
+    volumes:
+      - ./redis/queue.conf:/usr/local/etc/redis/redis.conf:ro
+      - redis_queue:/data
+
+volumes:
+  mysql:
+  storage:
+  public:
+  redis_queue:

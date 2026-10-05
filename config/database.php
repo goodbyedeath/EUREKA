@@ -179,6 +179,20 @@ return [
             'database' => env('REDIS_CACHE_DB', '1'),
         ],
 
+        /*
+        | Queued jobs, deliberately on their own host. The cache instance evicts under pressure
+        | (allkeys-lru) and a job that is thrown away to make room for a cache entry is a job nobody
+        | knows is missing. Falls back to REDIS_HOST, so a single-Redis setup keeps working.
+        */
+        'queue' => [
+            'url' => env('REDIS_QUEUE_URL'),
+            'host' => env('REDIS_QUEUE_HOST', env('REDIS_HOST', '127.0.0.1')),
+            'username' => env('REDIS_QUEUE_USERNAME', env('REDIS_USERNAME')),
+            'password' => env('REDIS_QUEUE_PASSWORD', env('REDIS_PASSWORD')),
+            'port' => env('REDIS_QUEUE_PORT', env('REDIS_PORT', '6379')),
+            'database' => env('REDIS_QUEUE_DB', '0'),
+        ],
+
     ],
 
 ];
