@@ -43,6 +43,12 @@ PHP=/opt/alt/php83/usr/bin/php
 
 $PHP artisan optimize          # config + events + routes + views
 $PHP artisan optimize:clear    # required after any .env or config/ change
+$PHP artisan eureka:warm       # ALWAYS after optimize:clear — see below
+#   optimize:clear also runs cache:clear, which throws away the sealed questionnaires' PBKDF2
+#   master keys (100,000 iterations per QR code, measured 114 ms each, 1.7 s for fifteen posts),
+#   the shared offline manifest and the kiosk board. Without this the first team to press Sync
+#   after a deploy pays all of it, in front of the crew. eureka:warm takes ~2 s cold, nothing warm.
+$PHP artisan eureka:doctor     # what the app is actually wired to: drivers, Redis, opcache, MySQL
 $PHP /usr/local/bin/composer2.phar install --no-dev --optimize-autoloader
 #   ^ safe only because laravel/breeze, pail, sail and collision are in composer.json's
 #     extra.laravel.dont-discover. All four are require-dev packages that register a service

@@ -126,11 +126,52 @@ function requestRules(string $class, string $method): array
 
 $paths = [];
 $sampleToken = null;
+$probeAccount = null;
+$gated = [];
 
+/**
+ * Pick an account whose samples are payloads rather than gate errors.
+ *
+ * This file is the interface, and the client agent diffs it — so it must not change because of
+ * something unrelated an operator did. It used to: the probe took the first `role = user` account
+ * and, if that team's access window had expired, every v1 GET answered
+ * `403 {"error": "access_window_expired"}` and *that* was recorded as the response shape for a
+ * dozen endpoints. Granting windows later flipped 656 lines of this document back, with no code
+ * change behind it.
+ *
+ * So candidates are tried against one cheap authenticated GET and the first that gets through is
+ * used. If none does, generation continues with the gate errors and says so loudly, because a
+ * document full of 403s is a fact about this server's state that the reader needs to know.
+ */
 if ($sample) {
-    $user = App\Models\User::where('role', 'user')->first();
-    if ($user) $sampleToken = $user->createToken('openapi-probe')->plainTextToken;
+    $kernelForProbe = $app->make(Illuminate\Contracts\Http\Kernel::class);
+
+    foreach (App\Models\User::where('role', 'user')->orderBy('id')->take(25)->get() as $candidate) {
+        $token = $candidate->createToken('openapi-probe')->plainTextToken;
+        // auth/me is the cheapest token-authed GET in v1: no parameters, no game state, and it
+        // goes through the same access-window middleware as everything else.
+        $res = $kernelForProbe->handle(Illuminate\Http\Request::create('/api/v1/auth/me', 'GET', [], [], [], [
+            'HTTP_ACCEPT' => 'application/json',
+            'HTTP_AUTHORIZATION' => 'Bearer ' . $token,
+        ]));
+
+        if ($res->getStatusCode() < 300) {
+            $sampleToken = $token;
+            $probeAccount = $candidate;
+            break;
+        }
+
+        $candidate->tokens()->where('name', 'openapi-probe')->delete();
+        $gated[] = sprintf('#%d → %d', $candidate->id, $res->getStatusCode());
+    }
+
+    if (! $sampleToken && $gated) {
+        // Fall back to the first one so the shapes are at least recorded, gate error and all.
+        $probeAccount = App\Models\User::where('role', 'user')->orderBy('id')->first();
+        $sampleToken = $probeAccount?->createToken('openapi-probe')->plainTextToken;
+    }
 }
+
 $kernel = $app->make(Illuminate\Contracts\Http\Kernel::class);
 
 /** Reduce a decoded response to a schema, without inventing depth we cannot verify. */
@@ -263,7 +304,7 @@ foreach (app('router')->getRoutes() as $route) {
 ksort($paths);
 
 if ($sampleToken) {
-    App\Models\User::where('role', 'user')->first()?->tokens()->where('name', 'openapi-probe')->delete();
+    $probeAccount?->tokens()->where('name', 'openapi-probe')->delete();
 }
 
 // ---------------------------------------------------------------- emit
@@ -322,3 +363,41 @@ if ($stdout) {
 file_put_contents(__DIR__ . '/../openapi.json', $json);
 printf("openapi.json written: %d paths, %.1f KB%s\n", count($paths), strlen($json) / 1024,
     $sample ? ', GET responses probed live' : ' (run with --sample to probe responses)');
+
+if ($sample) {
+    printf("  probed as: %s\n", $probeAccount ? sprintf('#%d %s', $probeAccount->id, $probeAccount->name) : 'nobody — no role=user account');
+
+    if ($gated) {
+        printf("  skipped %d account(s) behind a gate: %s\n", count($gated), implode(', ', array_slice($gated, 0, 5)));
+    }
+
+    // Two kinds of error sample, and only one of them means the document is wrong.
+    //
+    // 401/403: the probe account was turned away, so what is recorded is the gate rather than the
+    // endpoint — and a client generated from it builds against the refusal. 404/422: the endpoint
+    // answered, but this account has no team or the call needs a parameter the probe cannot guess.
+    // That is a fact about the event's data, not a defect, and the shape is still informative.
+    $gateSamples = [];
+    $stateSamples = [];
+
+    foreach ($paths as $uri => $verbs) {
+        foreach ($verbs as $verb => $op) {
+            foreach (array_keys($op['responses'] ?? []) as $status) {
+                $where = strtoupper($verb) . ' ' . $uri . ' → ' . $status;
+                if (in_array((int) $status, [401, 403, 419], true)) { $gateSamples[] = $where; }
+                elseif ((int) $status >= 400) { $stateSamples[] = $where; }
+            }
+        }
+    }
+
+    if ($stateSamples) {
+        printf("  samples that need data the probe has not got: %s\n", implode(', ', $stateSamples));
+    }
+
+    if ($gateSamples) {
+        printf("\n  WARNING: %d sample(s) are gate refusals, not payloads:\n    %s\n", count($gateSamples), implode("\n    ", $gateSamples));
+        echo "  A client generated from those builds against the refusal. This is almost always an\n";
+        echo "  expired access window on every probe account: grant one in /admin and run this again,\n";
+        echo "  and do not commit the document until the warning is gone.\n";
+    }
+}

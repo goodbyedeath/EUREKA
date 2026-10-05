@@ -1732,8 +1732,23 @@ The scene is on the phone; **the gate is not**, and still decides:
 4. **The clock offline:** count down from the `time_remaining` the server last gave you with a
    monotonic clock (`SystemClock.elapsedRealtime()`), never the wall clock.
 5. **Stale copy:** `content_updated_at` is on the manifest and on every `/race/status`. Newer than the
-   one stored with your Sync means the crew edited a questionnaire, a question or a floor plan — Sync
+   one stored with your Sync means the crew edited something the phone keeps a copy of — Sync
    again when you have signal. Do not wipe anything on a failed poll.
+
+   Two corrections, 5 Oct. It used to move only for a **questionnaire, a question or a floor plan**;
+   it now also moves for a 3D object, an outpost, a map route, the Panduan and the bell, all of which
+   travel in the manifest and none of which used to tell you to re-sync. And **store the manifest's
+   ETag** next to that stamp: send it back as `If-None-Match` on the next Sync and an unchanged
+   manifest arrives as a bodyless **304**, which is a successful Sync — keep your copy, stamp the
+   time, change nothing. Only a 200 replaces anything. The manifest is ~59 KB and a room of teams
+   re-syncing on every bar of signal is most of what the venue WiFi carries, so this is the single
+   cheapest thing the client can do for the network.
+
+   **Store the header value verbatim and send it back byte for byte.** Measured against the live
+   host, the tag arrives *weak* — `If-None-Match: W/"ce0dfe84…"` — because the server weakens it
+   when it compresses the body. Keep the `W/` and the quotes; stripping either turns every Sync back
+   into a 60 KB download. Verified end to end on questerra-series.com: 60,326 bytes for a 200,
+   **0 bytes for the 304**.
 
 ### Offline, phase 2 — starting with no signal  ·  23 Sep
 

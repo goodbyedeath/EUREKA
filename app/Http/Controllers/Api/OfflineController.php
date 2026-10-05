@@ -3,24 +3,51 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\GameLocation;
-use App\Models\QuestLocation;
-use Illuminate\Support\Facades\Storage;
 
 class OfflineController extends Controller
 {
     /**
-     * The latest edit to anything the offline copy is built from. Cheap enough for every
-     * /race/status poll: four MAX() lookups on indexed timestamps.
+     * The latest edit to anything the offline copy is built from.
+     *
+     * Two jobs, and they have to be the same answer. The client polls it on /race/status and syncs
+     * again when it moves; the manifest is cached under it (SCALING-PLAN.md §3c). A table missing
+     * from this list is therefore a table whose edits never reach a phone *and* never invalidate the
+     * cache — which is why it now covers everything `OfflineManifest::shared()` reads, not just
+     * questionnaires and floor plans. Before this, retouching a 3D object, a map route or the
+     * Panduan left every synced phone showing the old one until some unrelated questionnaire was
+     * saved.
+     *
+     * Cached for a couple of seconds because /race/status is the most frequent call in the event and
+     * this is eleven MAX() lookups. The delay is bounded by `offline.version_ttl` and costs a crew
+     * edit nothing worth noticing.
      */
     public static function contentUpdatedAt(): ?string
     {
-        $latest = collect([
+        $ttl = (int) config('offline.version_ttl', 2);
+
+        $read = fn () => collect([
+            // Quiz content and the sealed copies built from it.
             \App\Models\Questionnaire::max('updated_at'),
             \App\Models\Question::max('updated_at'),
+            // The floor plans and their markers.
             \App\Models\IndoorMap::max('updated_at'),
             \App\Models\IndoorMapSpot::max('updated_at'),
+            // The outposts, their 3D objects and the models those point at.
+            \App\Models\GameLocation::max('updated_at'),
+            \App\Models\Hotspot::max('updated_at'),
+            \App\Models\ArModel::max('updated_at'),
+            // Outdoor posts, routes and their markers.
+            \App\Models\QuestLocation::max('updated_at'),
+            \App\Models\MapRoute::max('updated_at'),
+            \App\Models\MapRouteMarker::max('updated_at'),
+            // Panduan, and the crew's bell choice — both travel in the manifest.
+            \App\Models\UserGuideSection::max('updated_at'),
+            \App\Models\AppSetting::whereIn('key', \App\Support\BellChoice::SETTING_KEYS)->max('updated_at'),
         ])->filter()->max();
+
+        $latest = $ttl > 0
+            ? \Illuminate\Support\Facades\Cache::remember('offline:content-version', $ttl, $read)
+            : $read();
 
         return $latest ? \Illuminate\Support\Carbon::parse($latest)->toIso8601String() : null;
     }
@@ -47,198 +74,28 @@ class OfflineController extends Controller
     /**
      * Everything a team leader's device needs cached before they walk out of signal.
      *
-     * Quiz content is here now, but sealed. It used to be left out because questionnaires are
-     * QR-gated and shipping them ahead of time would hand the team the whole hunt — true, and
-     * still the rule. The operator also needs the game to survive a dead network (22 Sep), so
-     * each questionnaire travels encrypted under the QR code printed at its post: readable
-     * there, with no signal, and nowhere else. See OfflineQuestionnaireSeal. Answers are still
-     * graded server-side; an offline device only queues them.
+     * The payload is built in App\Services\OfflineManifest, where the part that is identical for
+     * every team — which is nearly all of it, sealed quiz content included — is computed once per
+     * content version instead of once per sync (SCALING-PLAN.md §3c). This method is the HTTP side
+     * of it: who is asking, and whether they already have it.
+     *
+     * **The ETag is the second half of the saving.** A manifest is ~59 KB and a team re-syncs
+     * whenever it has signal, so the usual answer to a sync is "nothing has changed since yours".
+     * A client that sends back `If-None-Match` gets a 304 with no body at all. It is per-team
+     * because the floor plan and the claimed objects are, hence `private` — a shared cache must not
+     * hand one team's plan to another.
      */
-    public function manifest()
+    public function manifest(\Illuminate\Http\Request $request)
     {
-        $questLocations = QuestLocation::where('is_active', true)
-            ->get(['id', 'name', 'latitude', 'longitude', 'radius', 'marker_color', 'image_path', 'map_image_path']);
+        $response = response()->json(
+            app(\App\Services\OfflineManifest::class)->forUser($request->user())
+        );
 
-        // Ordered to match the web dashboard, so a native client rebuilding that
-        // screen from this manifest lists the outposts in the same order.
-        $gameLocations = GameLocation::where('is_active', true)
-            ->orderBy('created_at', 'desc')
-            ->with(\App\Http\Controllers\ArExperienceController::sceneRelations())
-            ->get(['id', 'name', 'ar_model_path', 'ar_model_id', 'ar_sky_path', 'experience_type', 'ar_enabled',
-                'latitude', 'longitude', 'radius', 'quest_location_id', 'access_mode']);
+        $response->setEtag(md5($response->getContent()));
+        $response->setPrivate();
+        // Turns this into a bodyless 304 when the client already holds this exact manifest.
+        $response->isNotModified($request);
 
-        // Every model a team could see: the location default plus any object that
-        // overrides it. Resolved through modelUrl() so library-backed and legacy
-        // path-backed models both appear — reading ar_model_path alone silently
-        // dropped library models and left those outposts blank offline.
-        $models = $gameLocations
-            ->flatMap(fn ($g) => array_merge(
-                [$g->modelUrl()],
-                $g->ar_sky_path ? [Storage::disk('public')->url($g->ar_sky_path)] : [],
-                $g->hotspots->map(fn ($h) => $h->modelUrl())->all()
-            ))
-            ->filter()
-            ->unique()
-            ->values();
-
-        // Quest-location photos only. Game locations carry no imagery now — they are
-        // purely the 3D experience.
-        // ...plus every "foto bersama" frame. The app draws the frame over the camera to compose
-        // the photo, so a post reached without signal needs it already on the phone.
-        $frames = \App\Models\Question::where('type', \App\Enums\QuestionType::GROUP_PHOTO->value)
-            ->whereNotNull('frame_path')
-            ->pluck('frame_path');
-
-        $images = collect()
-            ->merge($questLocations->pluck('image_path'))
-            ->merge($questLocations->pluck('map_image_path'))
-            ->merge($frames)
-            ->filter()
-            ->unique()
-            ->map(fn ($path) => Storage::disk('public')->url($path))
-            ->values();
-
-        // The pages themselves, not just their assets. Caching three.js and the .glb
-        // is not enough: without the HTML that mounts them, an AR outpost opened out
-        // of signal has an engine and a model and nothing to run them.
-        $pages = collect([route('user.game-dashboard')])
-            ->merge($gameLocations->filter->usesAr()->map(fn ($g) => route('user.ar.view', $g->id)))
-            ->values();
-
-        $routes = \App\Models\MapRoute::active()->with('markers')->orderBy('id')->get();
-
-        // The team's own floor plan, exactly as /indoor-map answers — so the plan screen opens with
-        // no signal. is_open is as of this sync; a crew opening a post needs the venue WiFi.
-        // Every AR Outpost's scene — which objects, where, and what a tap shows — exactly as
-        // /ar/locations answers once the post is open, so the 3D Camera renders with no signal
-        // (operator, 22 Sep: the app is installed for the event and removed after it, so the
-        // clues travel in the clear). The gate is not in here: indoor still waits for the crew.
-        $ar = app(\App\Http\Controllers\ArExperienceController::class);
-        $scenes = $gameLocations->filter->hasExperience()
-            ->mapWithKeys(fn ($g) => [$g->id => $ar->scenePayload($g, request()->user())]);
-        $images = $images
-            ->merge($scenes->flatMap(fn ($scene) => collect($scene['objects'])->pluck('image')))
-            ->filter()->unique()->values();
-
-        $indoorMap = app(\App\Http\Controllers\IndoorMapController::class)->offlinePayloadFor(request()->user());
-        if ($indoorMap) {
-            $images = $images
-                ->merge([$indoorMap['map']['image'] ?? null])
-                ->merge(collect($indoorMap['spots'])->pluck('image'))
-                ->filter()->unique()->values();
-        }
-
-        $seal = app(\App\Services\OfflineQuestionnaireSeal::class);
-        $questionnaires = \App\Models\Questionnaire::where('is_active', true)
-            ->orderBy('id')
-            ->get()
-            ->load('extraPosts:id')
-            ->map(fn (\App\Models\Questionnaire $q) => $seal->manifestEntry($q))
-            ->filter()
-            ->values();
-
-        return response()->json([
-            'success' => true,
-            // Stamped on every sync so a client can tell, on its next /race/status, whether the
-            // world it cached has been wiped by an emergency stop since.
-            'race_reset_at' => \App\Models\RaceReset::lastAt()?->toIso8601String(),
-            // When the crew last changed anything the phone keeps a copy of — questionnaires,
-            // questions, the floor plans. Newer on /race/status than at sync means: sync again.
-            'content_updated_at' => self::contentUpdatedAt(),
-            // How to open a sealed questionnaire; build guide §10 has the whole scheme.
-            'offline_crypto' => $seal->parameters(),
-            'questionnaires' => $questionnaires,
-            'indoor_map' => $indoorMap,
-            'bounds' => $this->boundsFor($questLocations),
-            // Basemap for a native map (APK #20): the same config/maps.php every web map reads, so
-            // switching provider is one .env change for both. Raster XYZ; show the attribution.
-            'map' => [
-                'tiles' => array_values((array) config('maps.tiles', [])),
-                'attribution' => html_entity_decode(strip_tags((string) config('maps.attribution', '')), ENT_QUOTES | ENT_HTML5),
-                'max_zoom' => (int) config('maps.maxZoom', 19),
-            ],
-            // What to sound when the race clock runs out — the crew's choice, so the desk and
-            // every phone ring the same thing. A built-in tone is a name the client draws itself;
-            // 'custom' also carries sound_url, which is cached like any other asset.
-            'bell' => \App\Support\BellChoice::payload(),
-            'images' => $images,
-            'models' => $models,
-            'pages' => $pages,
-            'quest_locations' => $questLocations->map(fn ($l) => [
-                'id' => $l->id,
-                'name' => $l->name,
-                'latitude' => (float) $l->latitude,
-                'longitude' => (float) $l->longitude,
-                'radius' => (int) $l->radius,
-                'marker_color' => $l->marker_color,
-            ]),
-            // The dashboard's own rows. 'pages' caches the rendered Livewire HTML,
-            // which only a browser can use; a native client needs the records the
-            // screen is built from. uses_ar mirrors the gate in ArExperienceController
-            // so an offline client never offers an outpost the server would 404.
-            'game_locations' => $gameLocations->map(fn ($g) => [
-                'id' => $g->id,
-                'name' => $g->name,
-                'experience_type' => $g->experience_type,
-                'model' => $g->modelUrl(),
-                // "Open the camera here", not "has a model": false for a post whose camera the crew
-                // switched off, so a client that has not learned `ar_enabled` yet still does the right
-                // thing — it simply offers no 3D at that post (operator, 24 Sep).
-                'uses_ar' => $g->usesAr() && $g->arEnabled(),
-                // Lets an offline client show distance and refuse to open the scene away
-                // from the outpost without needing the network. Null until an admin binds it.
-                'latitude' => $g->resolvedLatitude(),
-                'longitude' => $g->resolvedLongitude(),
-                'radius' => $g->resolvedRadius(),
-                'coordinate_source' => $g->coordinateSource(),
-                'quest_location_id' => $g->quest_location_id,
-                'access_mode' => $g->access_mode ?: 'geofence',
-                // The /ar/locations body minus `success`, or null for an outpost with no 3D model.
-                'scene' => $scenes[$g->id] ?? null,
-            ])->values(),
-            // The same lines /map/routes serves, so a team that synced can draw the route with
-            // no signal at all. Empty until the crew switches a route on.
-            'routes' => $routes->map(fn (\App\Models\MapRoute $r) => $r->toMapPayload())->values(),
-            // The how-to, so Panduan still opens with no signal.
-            'user_guide' => \App\Models\UserGuideSection::active()->ordered()->get()
-                ->map(fn (\App\Models\UserGuideSection $g) => $g->toApiPayload())->values(),
-            'counts' => [
-                'quest_locations' => $questLocations->count(),
-                'game_locations' => $gameLocations->count(),
-                // How many posts actually open a camera. Zero means every post on this event has its
-                // 3D switched off, and the dashboard's Kamera 3D button should be locked rather than
-                // opening a screen with nothing in it (operator, 24 Sep).
-                'ar_posts' => $gameLocations->filter(fn ($g) => $g->usesAr() && $g->arEnabled())->count(),
-                'images' => $images->count(),
-                'models' => $models->count(),
-                'pages' => $pages->count(),
-                'routes' => $routes->count(),
-            ],
-        ]);
-    }
-
-    /**
-     * Bounding box around every active post, padded so the map still has context
-     * when a team walks slightly outside the course.
-     */
-    private function boundsFor($locations): ?array
-    {
-        $lats = $locations->pluck('latitude')->filter()->map(fn ($v) => (float) $v);
-        $lngs = $locations->pluck('longitude')->filter()->map(fn ($v) => (float) $v);
-
-        if ($lats->isEmpty() || $lngs->isEmpty()) {
-            return null;
-        }
-
-        // ~350m of padding; enough to cover approach routes without exploding the
-        // tile count at high zoom.
-        $pad = 0.003;
-
-        return [
-            'north' => $lats->max() + $pad,
-            'south' => $lats->min() - $pad,
-            'east' => $lngs->max() + $pad,
-            'west' => $lngs->min() - $pad,
-        ];
+        return $response;
     }
 }

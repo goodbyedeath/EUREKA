@@ -129,6 +129,67 @@ What this phase does **not** fix, so do not expect it to move: the per-request l
 100-query manifest (§3c) or submit latency (§3d). Redis makes each request cheaper to serve; it does not
 make an expensive query cheap.
 
+## Proving phase 3 (leaderboard + manifest), not asserting it
+
+Phase 3 removed work rather than adding hardware, so the harness is the only honest judge. What was
+measured on the shared host while building it, for comparison:
+
+| | before | after |
+|---|---|---|
+| kiosk board, 12 teams | 11 queries + 6 per team | **11 queries, any team count** |
+| kiosk board, warm read | — | **no scoring queries at all** |
+| `kiosk/locations`, 12 teams | a checkpoint query + 6 score queries per team | **9 queries** |
+| `/offline/manifest` | 91 queries, 45 ms | **15 queries, 26 ms** |
+| `/offline/manifest`, unchanged | 59 KB | **304, no body** |
+| first sync after `optimize:clear` | 1,876 ms (PBKDF2 ×15) | **27 ms**, paid by `eureka:warm` |
+
+Those are single-request numbers on an almost empty database. The point of the harness is what they do
+under 5,000 phones.
+
+**1. Warm the caches first, or you are measuring the deploy.**
+
+```bash
+./deploy.sh warm          # or: php artisan eureka:warm
+```
+
+Skip this and the first VU of every run pays 1.9 s of key derivation, which lands in p99 and looks like
+a server problem.
+
+**2. `kiosk.js` is the §3b scenario.** Ten screens polling one board. Watch two things that matter more
+than the mean: `kiosk/data` p95 should barely move as `PHONES` rises, because the board no longer costs
+anything per team, and MySQL's row-read counters should stay flat while the polls continue.
+
+```bash
+TARGET=http://<workstation-ip> PHONES=200 k6 run kiosk.js
+TARGET=http://<workstation-ip> PHONES=2000 k6 run kiosk.js    # p95 should look much the same
+```
+
+If p95 climbs with `PHONES`, the cache is not being shared — check `./deploy.sh doctor` for a cache
+store that says `database` (on the workstation it must say `redis`), because a per-container cache
+means a per-container board.
+
+**3. `sync-burst.js` is the §3c scenario**, and it needs a second run to be worth anything. The first
+sync of a given team is a 200 with a body; what phase 3 changed is the second. The harness does not send
+`If-None-Match` yet — the APK is the client that will — so to see the 304 path:
+
+```bash
+curl -s -D- -o/dev/null -H "Authorization: Bearer $TOKEN" \
+  http://<workstation-ip>/api/v1/offline/manifest | grep -i etag
+curl -s -o/dev/null -w '%{http_code} %{size_download}\n' -H "Authorization: Bearer $TOKEN" \
+  -H 'If-None-Match: "<that etag>"' http://<workstation-ip>/api/v1/offline/manifest
+# → 304 0
+```
+
+**4. The number to write down.** Run `all.js` at the baseline `PHONES` and paste the row next to the
+phase-0 baseline, so §3b and §3c are an argument with a measurement rather than with this table.
+
+| Date | PHONES | race/status p95 | manifest p95 | leaderboard p95 | 429s | failures |
+|---|---|---|---|---|---|---|
+| | | | | | | |
+
+What phase 3 does **not** fix, so do not expect it to move: submit latency (§3d — photos are still
+base64 inside `quiz_attempts`) and the login storm (§3e).
+
 ## Honest limits of this harness
 
 - It drives the **API**, not the Android app: no ARCore, no camera, no real GPS, no APK caching behaviour.

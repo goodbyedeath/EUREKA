@@ -112,5 +112,30 @@ class AppServiceProvider extends ServiceProvider
                 Limit::perMinute(60)->by('ip:' . $request->ip()),
             ];
         });
+
+        // The kiosk board is computed once for the whole venue and cached (SCALING-PLAN.md §3b), so
+        // something has to say when it is out of date. Every model here can move a number on the big
+        // screen: an answer graded, a facilitator's assessment, a tapped 3D object, a correction made
+        // by hand, a clock started or stopped, an attempt completed, a team's starting balance
+        // changed. A TTL alone would be wrong — the crew fixes a score and then stands in front of
+        // the screen waiting for it.
+        //
+        // `User` is deliberately absent. Moving an account between teams would change the board, but
+        // a user row is also saved on every login, and bumping there would empty the cache 5,000
+        // times during exactly the minute it is most needed. A membership change is picked up when
+        // the TTL expires.
+        foreach ([
+            \App\Models\UserAnswer::class,
+            \App\Models\GameAssessment::class,
+            \App\Models\HotspotClaim::class,
+            \App\Models\TeamScoreAdjustment::class,
+            \App\Models\RaceSession::class,
+            \App\Models\QuizAttempt::class,
+            \App\Models\GameLocationUnlock::class,
+            \App\Models\Team::class,
+        ] as $model) {
+            $model::saved(fn () => \App\Services\Leaderboard::bump());
+            $model::deleted(fn () => \App\Services\Leaderboard::bump());
+        }
     }
 }

@@ -263,26 +263,43 @@ class RaceSession extends Model
             return 0;
         }
 
-        // Carbon 3 returns a SIGNED FLOAT. The direction here is right — past to future,
-        // so positive — but it still has to be cast, and clamped in case a finish time
-        // ever lands before a start. See the Carbon 3 note: now()->diffInSeconds($past)
-        // is the natural phrasing and the wrong one.
-        // Stops at the finish, and never runs past the deadline: a phone that polls late must not
-        // report more time than the race allowed.
-        $end = $this->finished_at;
+        return self::elapsedBetween($this->started_at, $this->finished_at, $this->deadlineAt());
+    }
+
+    /**
+     * The clock, from instants alone — no model, no query.
+     *
+     * The kiosk board is cached (SCALING-PLAN.md §3b) and a cached clock would tick in 10-second
+     * jumps on the big screen, so the board stores these three instants and re-reads the clock from
+     * them on every request. That is only safe if it is the same arithmetic, which is why this is
+     * the one copy of it and elapsedSeconds() calls it too.
+     *
+     * Stops at the finish; never runs past the deadline, because a phone that polls late must not
+     * report more time than the race allowed. Carbon 3 diffs are signed floats, so the direction
+     * here is past → future, cast, and clamped in case a finish ever lands before a start.
+     */
+    public static function elapsedBetween(
+        \Carbon\CarbonInterface $startedAt,
+        ?\Carbon\CarbonInterface $finishedAt,
+        ?\Carbon\CarbonInterface $deadline,
+    ): int {
+        $end = $finishedAt;
 
         if ($end === null) {
-            $deadline = $this->deadlineAt();
             $end = $deadline !== null && $deadline->isPast() ? $deadline : now();
         }
 
-        return (int) max(0, $this->started_at->diffInSeconds($end));
+        return (int) max(0, $startedAt->diffInSeconds($end));
     }
 
     public function elapsedForHumans(): string
     {
-        $s = $this->elapsedSeconds();
+        return self::clock($this->elapsedSeconds());
+    }
 
-        return sprintf('%02d:%02d:%02d', intdiv($s, 3600), intdiv($s % 3600, 60), $s % 60);
+    /** hh:mm:ss, as every screen shows it. Static so a cached board can reformat a ticking clock. */
+    public static function clock(int $seconds): string
+    {
+        return sprintf('%02d:%02d:%02d', intdiv($seconds, 3600), intdiv($seconds % 3600, 60), $seconds % 60);
     }
 }

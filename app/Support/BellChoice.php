@@ -25,6 +25,13 @@ class BellChoice
         'bip' => 'Bip — lima nada pendek, paling menusuk',
     ];
 
+    /**
+     * The settings rows this choice is made of. Named here so the offline content version can watch
+     * them: a crew that changes the tone has changed the manifest, and every synced phone has to
+     * learn about it (SCALING-PLAN.md §3c).
+     */
+    public const SETTING_KEYS = ['bell_tone', 'bell_volume', 'bell_repeat', 'bell_custom_path'];
+
     public static function tone(): string
     {
         $tone = AppSetting::row('bell_tone')?->value;

@@ -8,6 +8,7 @@ use App\Models\UserAnswer;
 use App\Models\GameAssessment;
 use App\Models\Team;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 class PointsCalculationService
 {
@@ -32,9 +33,111 @@ class PointsCalculationService
      */
     public function teamScore(Team $team, ?\DateTimeInterface $since = null): array
     {
-        $accounts = User::where('team_id', $team->id)->pluck('id')->all();
+        // One team is the bulk path with one team in it — see teamScores(), which is where the
+        // formula now lives. Six queries became five, and there is only one of them to keep right.
+        return $this->teamScores([$team], $since)[$team->id];
+    }
 
-        return $this->scoreFor($accounts, (int) ($team->initial_points ?? 0), $since, $this->manualFor($team, $since));
+    /**
+     * The same formula as teamScore(), for any number of teams in five queries rather than six per
+     * team.
+     *
+     * The kiosk board called teamScore() once per team, and each call is six queries of its own: at
+     * 500 teams that is ~3,000 queries per poll, multiplied by every screen in the venue
+     * (SCALING-PLAN.md §3b). None of the arithmetic ever needed to be per-team — every term is a SUM
+     * that MySQL can group by `users.team_id` — so this groups instead, and teamScore() is now this
+     * method with one team in it. That is deliberate: one formula, so the board and the admin pages
+     * cannot drift apart again, and the single-team path keeps exercising the same SQL.
+     *
+     * A team with nothing to its name still gets a row — its base balance and zeros — so a caller
+     * walking its own team list never has to guess which keys exist.
+     *
+     * @param  iterable<\App\Models\Team>  $teams
+     * @return array<int, array{total:int, base_points:int, earned_points:int, assessment_points:int, object_points:int, manual_points:int, attempts_completed:int}>
+     */
+    public function teamScores(iterable $teams, ?\DateTimeInterface $since = null): array
+    {
+        $teams = collect($teams)->keyBy('id');
+        $ids = $teams->keys()->all();
+
+        if (! $ids) {
+            return [];
+        }
+
+        // Anything hanging off an attempt joins quiz_attempts → users, so the grouping key is the
+        // team and the `completed` and `$since` filters are the ones scoreFor() applies.
+        $perAttempt = fn (string $table, string $alias) => DB::table("$table as $alias")
+            ->join('quiz_attempts as qa', 'qa.id', '=', "$alias.quiz_attempt_id")
+            ->join('users as u', 'u.id', '=', 'qa.user_id')
+            ->where('qa.status', QuizAttempt::STATUS_COMPLETED)
+            ->whereIn('u.team_id', $ids)
+            ->when($since, fn ($q) => $q->where('qa.created_at', '>=', $since))
+            ->groupBy('u.team_id');
+
+        // Unfiltered on is_correct, as ever: a Tebak Gambar answer earns partial credit without
+        // being wholly right, and every other type stores 0 when wrong.
+        $earned = $perAttempt('user_answers', 'ua')
+            ->selectRaw('u.team_id as team_id, COALESCE(SUM(ua.points_earned), 0) as v')
+            ->pluck('v', 'team_id');
+
+        // total_deposit is a balance, not a gain, so the starting points come back out of it once
+        // per assessed row. A null deposit sums as 0 and still pays the base back, which is exactly
+        // what `(int) $a->total_deposit - $base` did row by row.
+        $assessed = $perAttempt('game_assessments', 'ga')
+            ->where('ga.is_assessed', true)
+            ->selectRaw('u.team_id as team_id, COUNT(*) as n, COALESCE(SUM(ga.total_deposit), 0) as deposit')
+            ->get()
+            ->keyBy('team_id');
+
+        $attempts = DB::table('quiz_attempts as qa')
+            ->join('users as u', 'u.id', '=', 'qa.user_id')
+            ->where('qa.status', QuizAttempt::STATUS_COMPLETED)
+            ->whereIn('u.team_id', $ids)
+            ->when($since, fn ($q) => $q->where('qa.created_at', '>=', $since))
+            ->groupBy('u.team_id')
+            ->selectRaw('u.team_id as team_id, COUNT(*) as v')
+            ->pluck('v', 'team_id');
+
+        // A tapped 3D object belongs to no attempt — a team may take the points and never open the
+        // questionnaire — so this term is filtered on its own timestamp, as scoreFor() does.
+        $objects = DB::table('hotspot_claims as hc')
+            ->join('users as u', 'u.id', '=', 'hc.user_id')
+            ->whereIn('u.team_id', $ids)
+            ->when($since, fn ($q) => $q->where('hc.claimed_at', '>=', $since))
+            ->groupBy('u.team_id')
+            ->selectRaw('u.team_id as team_id, COALESCE(SUM(hc.points), 0) as v')
+            ->pluck('v', 'team_id');
+
+        $manual = DB::table('team_score_adjustments')
+            ->whereIn('team_id', $ids)
+            ->when($since, fn ($q) => $q->where('created_at', '>=', $since))
+            ->groupBy('team_id')
+            ->selectRaw('team_id, COALESCE(SUM(points), 0) as v')
+            ->pluck('v', 'team_id');
+
+        $out = [];
+
+        foreach ($teams as $id => $team) {
+            $base = (int) ($team->initial_points ?? 0);
+            $row = $assessed->get($id);
+
+            $e = (int) ($earned[$id] ?? 0);
+            $a = $row ? (int) $row->deposit - ((int) $row->n * $base) : 0;
+            $o = (int) ($objects[$id] ?? 0);
+            $m = (int) ($manual[$id] ?? 0);
+
+            $out[$id] = [
+                'total' => $base + $e + $a + $o + $m,
+                'base_points' => $base,
+                'earned_points' => $e,
+                'assessment_points' => $a,
+                'object_points' => $o,
+                'manual_points' => $m,
+                'attempts_completed' => (int) ($attempts[$id] ?? 0),
+            ];
+        }
+
+        return $out;
     }
 
     /**

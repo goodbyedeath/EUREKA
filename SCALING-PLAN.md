@@ -64,9 +64,52 @@ one InnoDB table. → Redis for all four. The `redis` extension is already prese
 teams that is thousands of queries per poll, multiplied by every screen. → compute once per 10 s, cache,
 serve every screen from the same value.
 
+> **Done 5 Oct (phase 3).** Two changes, and the first matters more than the cache.
+> `PointsCalculationService::teamScores()` groups every term by `users.team_id` instead of looping, so
+> the whole board is **five queries whatever the number of teams** — and `teamScore()` is now that
+> method with one team in it, so there is still one formula. `App\Services\Leaderboard` then computes
+> the board once for the venue and caches it (`config/kiosk.php`, 10 s). **Measured: 11 queries for the
+> entire board, 12 teams or 18, and a warm read does no scoring queries at all.**
+>
+> Two things the cache must not break, and does not. The clock keeps ticking: the cached row carries
+> `started_at`/`finished_at`/`deadline_at` and the elapsed time is re-read per request through
+> `RaceSession::elapsedBetween()`, so the big screen counts in seconds rather than in 10-second jumps.
+> And a correction appears at once: every write that can move a score bumps the cache version from
+> `AppServiceProvider`, because the crew fixes a number and then stands in front of the screen.
+> `locations()` had the same two N+1s (a checkpoint query per team as well) and is now nine queries.
+
 **c. `/offline/manifest` is 100 queries and 60 KB, identical for every team on a plan.** 5,000 Syncs
 would be 500,000 queries. → cache per `(indoor_map_id, content_updated_at)` with an ETag; on a LAN, serve
 the heavy assets (`.glb`, tiles, images) as static files through nginx, never through PHP.
+
+> **Done 5 Oct (phase 3).** `App\Services\OfflineManifest` splits the payload in two. Nearly all of it
+> is identical for everyone and is cached under the content version; three things are not, and are added
+> per request: `race_reset_at`, the team's rotated floor plan, and whether this team has already claimed
+> each 3D object. **Measured: 91 queries → 15, and 26 ms instead of 45.** The per-outpost claim lookup
+> was its own N+1 and is now one query.
+>
+> **`content_updated_at` was watching four tables out of twelve.** It is the client's "sync again"
+> signal *and* now the cache key, so a table missing from it is a table whose edits reach nobody.
+> Retouching a 3D object, an outpost, a map route, the Panduan or the bell left every synced phone on
+> the old copy until some unrelated questionnaire was saved. It now covers everything the shared payload
+> is built from, and is itself cached for two seconds because `/race/status` reads it on every poll.
+>
+> **The ETag is the other half.** A manifest is 59 KB and a team re-syncs whenever it has signal, so the
+> usual honest answer is "nothing has changed since yours": `If-None-Match` now gets a bodyless **304**.
+> At 5,000 phones that is 295 MB of venue WiFi per sync round that no longer moves.
+>
+> **A trap found while measuring this, and it is not small.** `artisan optimize:clear` runs
+> `cache:clear`, which throws away the sealed questionnaires' PBKDF2 master keys — 100,000 iterations
+> per QR code, **114 ms each, 1.7 s for fifteen posts** — so the first sync after every deploy pays for
+> all of them. Unprotected, 5,000 phones syncing at the start of an event would each do that same 1.7 s.
+> `shared()` is therefore built behind a lock, and **`php artisan eureka:warm`** (in `deploy.sh up` and
+> the container entrypoint) makes the deploy the one that pays: measured 1,876 ms cold, 27 ms warm.
+> The entrypoint also no longer runs `optimize:clear` on container start — with Redis that would empty
+> the whole shared cache every time one container restarted.
+>
+> Static assets were already nginx's job from phase 1. One correction: `/storage/` is no longer served
+> `immutable`, because an admin replacing a `.glb` reuses the path and this host cannot cache-bust
+> through the query string. One hour with revalidation, and nginx answers that from its own ETag.
 
 **d. Verification photos are base64 inside `quiz_attempts`.** Measured earlier at ~48 KB per attempt:
 5,000 players × 15 posts ≈ **3.6 GB of BLOBs inside MySQL rows**, written and read through PHP. → files on
@@ -294,7 +337,7 @@ changes shape for the app.
 | 0 | ~~Load-test harness~~ **built 5 Oct** — `tools/loadtest/` (k6 scenarios + `loadtest:seed`/`loadtest:purge`) | Writes `summary.md` and per-endpoint p95 per run. **Still to do: one baseline run against the workstation**, pasted into `tools/loadtest/README.md`, before §3 is touched |
 | 1 | Compose stack on the workstation (nginx, app, redis, mysql, worker, scheduler) | The app serves the harness at all, from images built out of git |
 | 2 | ~~§3a Redis for cache/session/queue/limiter~~ **configured 5 Oct** — two instances, sessions on the non-evicting one, `eureka:doctor` to prove it | Harness: `cache` table writes gone; p95 of `/race/status` down. **Still to measure**, procedure in `tools/loadtest/README.md` |
-| 3 | §3b leaderboard cache, §3c manifest cache + ETag + static assets | 5,000-Sync burst costs one computation per plan |
+| 3 | ~~§3b leaderboard cache, §3c manifest cache + ETag + static assets~~ **done 5 Oct** — grouped scoring, shared board, split manifest, 304s, `eureka:warm` | Board: 11 queries at any team count. Manifest: 91 → 15 queries, 26 ms, 304 when unchanged. **Still to measure under load** |
 | 4 | §3d photos out of MySQL, thumbnails in a queue job | `quiz_attempts` holds no base64; submit latency independent of photo size |
 | 5 | §3e login-storm limits | 5,000 logins in ten minutes from one NAT address, zero 429s |
 | 6 | RFID presence: device endpoint, tags, one booth end to end on LoRa | A tap opens the post, a replayed tap does not double, a dead gateway loses nothing |

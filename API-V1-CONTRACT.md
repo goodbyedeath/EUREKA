@@ -6,6 +6,30 @@ Generated from the live router on questerra-series.com. Base URL `https://queste
 
 Act on these — several change responses your app already handles.
 
+**Latest (5 Oct, second change): Sync can be a 304, and `content_updated_at` now moves on more kinds of
+edit. Both are server-side; one is worth a client change.**
+
+`GET /offline/manifest` now answers with an **ETag**, and honours `If-None-Match`. Send the ETag you
+stored with your last Sync and an unchanged manifest comes back as a bodyless **304 Not Modified** —
+keep what you have, and treat it exactly like a successful Sync (including stamping the sync time). A
+full 200 means something changed: replace your copy. **Send the tag back exactly as it arrived** —
+measured on the live host it comes weakened, `W/"ce0dfe84…"`, because the server compresses the body, and
+dropping the `W/` or the quotes turns every Sync back into a full download. This is worth doing: the
+manifest is ~59 KB, teams
+re-sync whenever they find signal, and at a 5,000-player event that is nearly 300 MB of venue WiFi per
+sync round. The response is `Cache-Control: private` because the floor plan and the claimed 3D objects
+in it are yours alone — do not put it in a shared cache.
+
+`content_updated_at` is unchanged in meaning and in format, and the rule in build guide §28.5 still
+holds: newer than the stamp you stored means Sync again. What changed is that it now actually moves when
+it should. It was computed from four tables — questionnaires, questions, floor plans and their markers —
+so **retouching a 3D object, an outpost, a map route, the Panduan or the crew's bell choice never told
+you to re-sync**, and a phone could hold an out-of-date scene indefinitely. It now covers everything the
+manifest is built from. If you have been working around this by re-syncing on a timer, you can stop.
+
+Nothing else about the payload changed: same keys, same order, same shapes. Build guide §28; no work
+order item — this was server-side performance work (SCALING-PLAN.md §3c).
+
 **Latest (24 Sep, second change): check ARCore at install, not at a post — client-side, no API
 change.** Two of four trial teams were told "ARCore tidak support" **at their first booth**, with the
 paper-QR clue locked inside the 3D scene; both phones were otherwise fine and the server answered 200
