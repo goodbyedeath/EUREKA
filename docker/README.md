@@ -17,7 +17,7 @@ as the test of this file.
 ```bash
 cd docker
 cp .env.docker.example .env
-./deploy.sh key          # prints an APP_KEY; paste it into .env
+./deploy.sh key          # a FRESH key — for a new install only, NOT a migration (MIGRATION.md)
 nano .env                # APP_KEY, DB_PASSWORD, MYSQL_ROOT_PASSWORD
 ./deploy.sh up           # build, start, migrate, cache, storage:link
 ```
@@ -46,21 +46,30 @@ Day to day:
 
 ## Moving the live data onto it
 
-The event data lives on the shared host today. Export there, import here:
+**`docker/MIGRATION.md` is the procedure — follow that, not this section.** It carries the two steps
+that cannot be undone, the measured sizes, the row-count comparison and the five things to click
+before a phone sees the box.
+
+The one rule worth repeating here, because `./deploy.sh key` above invites the mistake: on a
+migration, **`APP_KEY` is copied from the old server, never generated**. Login cards are
+`Crypt`-encrypted with it and the offline seal's salt is derived from it, so a fresh key means cards
+that can never be reprinted and phones whose sealed questionnaires will not open. `./deploy.sh doctor`
+decrypts a real card and tells you in one row whether the key matches.
+
+The shape of it, for orientation:
 
 ```bash
 # on the shared host
 /opt/alt/php83/usr/bin/php artisan down
-mysqldump -u USER -p DATABASE | gzip > eureka.sql.gz
-tar czf storage.tgz storage/app
+mysqldump -u USER -p DATABASE --single-transaction | gzip > eureka.sql.gz
+tar czf storage.tgz --exclude='storage/app/ui-sweep*' storage/app      # ~370 MB
 
-# on the workstation, with the stack up
+# on the workstation, with the stack up and APP_KEY already in .env
 gunzip -c eureka.sql.gz | docker compose exec -T mysql mysql -u root -p"$MYSQL_ROOT_PASSWORD" eureka
 docker compose cp storage.tgz app:/tmp/ && docker compose exec app tar xzf /tmp/storage.tgz -C /var/www/html
-./deploy.sh optimize
+./deploy.sh migrate && ./deploy.sh optimize && ./deploy.sh warm
+./deploy.sh doctor        # APP_KEY vs encrypted data must say "matches"
 ```
-
-Check the row counts on both sides before pointing a single phone at it.
 
 ## The discipline this stack asks for
 

@@ -185,9 +185,51 @@ class Doctor extends Command
 
         $row('scheduler heartbeat', $this->heartbeat());
 
+        // Does APP_KEY still match the data? The one check worth having on a day the app is moved.
+        //
+        // Login cards keep the team's code and password `Crypt`-encrypted, and the offline seal derives
+        // its salt from the key, so a server brought up with a *fresh* APP_KEY cannot reprint a single
+        // card ("The MAC is invalid", permanently) and hands every phone a different salt, making the
+        // sealed questionnaires they already cached unopenable. Both failures are silent until someone
+        // tries. Decrypting one card takes a millisecond and turns that into a row on this table.
+        [$keyValue, $keyOk, $keyFault] = $this->appKeyMatchesData();
+        $row('APP_KEY vs encrypted data', $keyValue, $keyOk, $keyFault);
+
         $healthy = collect($rows)->every(fn ($r) => ! $r['fault']);
 
         return ['rows' => $rows, 'notes' => $notes, 'healthy' => $healthy];
+    }
+
+    /**
+     * Try the key against something it actually encrypted.
+     *
+     * @return array{0:string, 1:?bool, 2:bool}  value, ok, fault
+     */
+    private function appKeyMatchesData(): array
+    {
+        try {
+            $row = \App\Models\LoginCard::whereNotNull('code_encrypted')->first();
+        } catch (\Throwable $e) {
+            return [$this->short($e), null, false];
+        }
+
+        if (! $row) {
+            // Nothing encrypted yet. Not a pass and not a failure — there is simply no evidence.
+            return ['no login cards to check against', null, false];
+        }
+
+        try {
+            $row->plainCode();
+
+            return ['matches — login cards decrypt', true, false];
+        } catch (\Throwable $e) {
+            return [
+                'WRONG KEY — login cards will not decrypt ('.class_basename($e).'). Restore the '
+                    .'APP_KEY this data was written with; a new one cannot be undone.',
+                false,
+                true,
+            ];
+        }
     }
 
     private function opcache(): string

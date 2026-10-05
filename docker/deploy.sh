@@ -40,7 +40,9 @@ case "${1:-help}" in
   nuke)     compose down -v ;;       # data does not
 
   key)
-    # Generate an APP_KEY without needing a running stack.
+    # Generate an APP_KEY without needing a running stack. For a NEW install only: on a
+    # migration the key is copied from the old server, or login cards and the offline seal break
+    # for good (docker/MIGRATION.md).
     docker run --rm eureka-app:${TAG:-latest} php artisan key:generate --show
     ;;
 
