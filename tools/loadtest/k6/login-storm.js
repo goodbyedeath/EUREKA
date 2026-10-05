@@ -1,9 +1,12 @@
 /**
  * The first ten minutes: 5,000 printed cards scanned at the door.
  *
- * This is the scenario that exists to **fail** today. `login-code` is 60/min per IP and `auth` 60/min per
- * IP (SCALING-PLAN §3e), and at a venue every phone is behind one NAT address — so the 429 count here is
- * the measurement, not a defect in the harness. Phase 5 is done when this run is clean.
+ * This used to be the scenario that existed to **fail**: `login-code` was 60/min per address and `auth`
+ * 60/min per address, and at a venue every phone may be behind one of them. Phase 5 changed that (5 Oct)
+ * — the ceilings are sized from `config/venue.php`, the password cap is keyed per account, and a separate
+ * counter watches failures per address — so **a clean run is now the gate**. A 429 here is a finding:
+ * read its `error` key, because `too_many_attempts` is the harness reusing one account too fast and
+ * `too_many_failed_logins` means the seeded credentials do not match the target.
  *
  * TARGET=http://10.0.0.10 PHONES=5000 OVER=600 k6 run login-storm.js
  */

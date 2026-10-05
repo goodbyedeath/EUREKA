@@ -238,6 +238,20 @@ class EventReadiness extends Component
             'starts' => $starts,
             'startMap' => $startMapId ? $activePlans->firstWhere('id', $startMapId) : null,
             'orphanQuestionnaires' => $this->orphans($spots),
+            // Will the venue network let 5,000 people log in? SCALING-PLAN §3e rests on a claim about
+            // the network — that every phone arrives from one address — and nothing in this app could
+            // check it. LoginGuard counts the addresses logins actually came from, so this is
+            // measured here, before the event, rather than discovered during it.
+            'network' => app(\App\Services\LoginGuard::class)->verdict(180),
+            'venue' => [
+                'players' => (int) config('venue.players'),
+                'doors' => (int) config('venue.doors_minutes'),
+                'needed' => (int) ceil((int) config('venue.players') / max(1, (int) config('venue.doors_minutes'))),
+                'ceiling' => (int) config('venue.logins.per_minute_per_address'),
+                'failure_ceiling' => (int) config('venue.logins.failures_per_minute_per_address'),
+                'per_account' => (int) config('venue.logins.per_minute_per_account'),
+            ],
+            'busiestAddresses' => app(\App\Services\LoginGuard::class)->busiest(5, 180),
         ]);
     }
 

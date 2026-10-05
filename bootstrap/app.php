@@ -16,8 +16,14 @@ return Application::configure(basePath: dirname(__DIR__))
         // Register global middleware
         $middleware->web(append: [
             \App\Http\Middleware\SetLocale::class,
-            \App\Http\Middleware\TrustCloudflareProxies::class, // Trust Cloudflare proxy IPs
         ]);
+
+        // Whose forwarded address to believe. Global, not web-only: as a web-group middleware this
+        // never ran for /api/v1, so every API rate limit was keyed on the address the connection came
+        // from — a Cloudflare edge node on the shared host — rather than on the phone's. A per-IP
+        // login ceiling that is really per-edge-node is shared by the whole event (SCALING-PLAN §3e).
+        // The list is in config/venue.php and is empty by default on a LAN, where it should be.
+        $middleware->prepend(\App\Http\Middleware\TrustProxies::class);
         
         // Register middleware aliases
         $middleware->alias([

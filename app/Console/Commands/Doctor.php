@@ -183,6 +183,31 @@ class Doctor extends Command
             $row('queue size (default)', $this->short($e), false, true);
         }
 
+        // Can the venue log in at all? The limiters are sized from config/venue.php, and a ceiling
+        // below the arrival rate means our own code turns the event away in its first minute
+        // (SCALING-PLAN.md §3e). Cheap to state, expensive to discover at the door.
+        $players = (int) config('venue.players', 0);
+        $doors = max(1, (int) config('venue.doors_minutes', 10));
+        $needed = (int) ceil($players / $doors);
+        $ceiling = (int) config('venue.logins.per_minute_per_address', 0);
+        $row('venue logins',
+            sprintf('%s players / %d min → %d per min needed, ceiling %d', number_format($players), $doors, $needed, $ceiling),
+            $ceiling >= $needed * 2,
+            $ceiling < $needed,
+        );
+
+        // Whose forwarded address is believed. Empty is correct on a LAN and wrong behind Cloudflare.
+        $proxies = app(\App\Http\Middleware\TrustProxies::class)->proxies();
+        $row('trusted proxies', $proxies === []
+            ? 'none — the address a connection comes from is used as-is'
+            : count($proxies).' range(s) from config/venue.php');
+
+        // How many addresses logins have actually arrived from — the §3e premise, measured.
+        $sources = app(\App\Services\LoginGuard::class)->sources(180);
+        $row('login addresses (3h)', $sources['logins'] === 0
+            ? 'no logins yet — /admin/kesiapan explains how to measure'
+            : sprintf('%d login(s) from %d address(es), %d failed', $sources['logins'], $sources['addresses'], $sources['failures']));
+
         $row('scheduler heartbeat', $this->heartbeat());
 
         // Does APP_KEY still match the data? The one check worth having on a day the app is moved.

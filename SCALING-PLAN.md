@@ -139,6 +139,44 @@ from one address in the opening ten minutes. → key on IP+device, or allow-list
 the login-code ceiling for the event. **This will happen in the first minute of the first 5,000-player
 event if it is not changed.**
 
+> **Done 5 Oct (phase 5), and the premise turned out to be only half the story.**
+>
+> The numbers were the easy half. `config/venue.php` now holds the one figure everything is sized from
+> — how many players, over how many minutes — and the ceilings derive from it: 5,000 over ten minutes
+> needs ~500 logins/min, so the per-address ceiling is 1,500 rather than 60. The password limit moved
+> from account **+** address to the **account alone**, which is the fix that matters: keyed on the pair,
+> a venue where every phone shares one address let five teams in and refused the rest. Keyed on the
+> account, 5,000 people are 5,000 buckets and the size of the event never relaxes the brute-force cap.
+>
+> **What replaced the per-address protection.** A ceiling on an address cannot tell a room of teams from
+> a script, because at a venue they may be the same address. What separates them is not how many
+> attempts they make but how many *fail*: a room produces almost none, a stolen list produces nothing
+> else. `App\Services\LoginGuard` counts failures per address and answers `429 too_many_failed_logins`
+> with `retry_after`. Verified: twelve cards and twelve passwords all logged in from one shared address,
+> a spray of wrong codes from another was stopped after exactly the configured 60 failures, and the
+> spray never touched the venue's address.
+>
+> **The other half, and it was a live defect.** `TrustCloudflareProxies` was registered on the `web`
+> group only, so it never ran for `/api/v1`. Every API rate limit was therefore keyed on the address the
+> connection came from — a Cloudflare edge node — rather than on the phone's. A per-address login
+> ceiling that is really per-edge-node is shared by every client at once, which means the 60/min figure
+> was not even 60 per phone. It is now `App\Http\Middleware\TrustProxies`, global, reading its list
+> from `config/venue.php`, and empty by default because on the venue LAN nginx reaches php-fpm directly
+> and no forwarded header exists.
+>
+> **And the premise itself is now measurable.** "5,000 phones behind one NAT address" was an assumption
+> about the venue network that nothing in this app could check, and it decides whether every per-address
+> limit is per-phone or shared by the whole event. `login_sources` keeps one row per address logins
+> arrive from — not one per login — and `/admin/kesiapan` reads it: *"5,000 logins from 1 address — every
+> per-address limit is shared by the whole event"* or *"from 4,812 addresses — they are per-phone"*.
+> Have a few phones log in on the venue WiFi and the question is answered before the day rather than
+> during it. It also names the Docker cause when it sees one address: with the daemon's userland proxy
+> enabled, nginx is handed the bridge gateway for every request and no trusted-proxy setting can repair
+> it, because no forwarded header is involved.
+>
+> **Still owed: the harness run.** `login-storm.js` exists and is the gate — 5,000 logins in ten minutes
+> against the workstation, zero 429s.
+
 ## 4. Infrastructure: Docker Compose on one workstation. Not Kubernetes.
 
 ### The end state, in one picture (operator, 5 Oct)
@@ -409,7 +447,7 @@ changes shape for the app.
 | 2 | ~~§3a Redis for cache/session/queue/limiter~~ **configured 5 Oct** — two instances, sessions on the non-evicting one, `eureka:doctor` to prove it | Harness: `cache` table writes gone; p95 of `/race/status` down. **Still to measure**, procedure in `tools/loadtest/README.md` |
 | 3 | ~~§3b leaderboard cache, §3c manifest cache + ETag + static assets~~ **done 5 Oct** — grouped scoring, shared board, split manifest, 304s, `eureka:warm` | Board: 11 queries at any team count. Manifest: 91 → 15 queries, 26 ms, 304 when unchanged. **Still to measure under load** |
 | 4 | §3d photos out of MySQL, thumbnails in a queue job — **built, then parked by the operator 5 Oct**; on branch `phase-4-photos-on-disk` | ~~`quiz_attempts` holds no base64; submit latency independent of photo size~~ **met on that branch** (45 bytes in the row for a 187 KB photo). Not on `main`: see §3d for what running without it costs |
-| 5 | §3e login-storm limits | 5,000 logins in ten minutes from one NAT address, zero 429s |
+| 5 | ~~§3e login-storm limits~~ **done 5 Oct** — venue-sized ceilings from `config/venue.php`, the password cap keyed per account, failure-counting per address, `TrustProxies` fixed for the API, and `login_sources` so the premise is measured | 5,000 logins in ten minutes from one NAT address, zero 429s. **Still to run** (`login-storm.js`); the discrimination itself is verified |
 | 6 | RFID presence: device endpoint, tags, one booth end to end on LoRa | A tap opens the post, a replayed tap does not double, a dead gateway loses nothing |
 | 7 | Rehearsal at the venue: walk test, gateway pulled mid-run, restore from backup | The crew has run the failure, not read about it |
 

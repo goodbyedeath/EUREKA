@@ -46,6 +46,80 @@
         @endif
     </div>
 
+    {{-- Jaringan venue: apakah 5.000 orang bisa login? SCALING-PLAN §3e. --}}
+    @php
+        $netTone = match ($network['state']) {
+            'per_device' => 'border-green-300 dark:border-green-800 bg-green-50 dark:bg-green-900/30 text-green-800 dark:text-green-200',
+            'shared' => 'border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200',
+            'few' => 'border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200',
+            default => 'border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 text-gray-700 dark:text-gray-300',
+        };
+    @endphp
+
+    <div>
+        <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 pt-2">Jaringan venue &amp; batas login</h2>
+        <p class="text-gray-600 dark:text-gray-400 max-w-3xl mb-3 text-sm">
+            Acara besar gagal di menit pertama bukan karena server, tapi karena batas kami sendiri.
+            Yang menentukan: apakah server melihat tiap HP dengan alamatnya sendiri, atau semuanya
+            sebagai satu alamat. Angka di bawah ini dihitung dari login yang <em>benar-benar terjadi</em>
+            dalam 3 jam terakhir — jadi suruh beberapa HP login dari WiFi venue, lalu buka halaman ini.
+        </p>
+
+        <div class="rounded-lg border p-4 {{ $netTone }}">
+            <strong>{{ $network['headline'] }}</strong>
+            <p class="mt-1 text-sm">{!! nl2br(e($network['detail'])) !!}</p>
+        </div>
+
+        <div class="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div class="rounded-lg border border-gray-200 dark:border-gray-700 p-3">
+                <div class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Dihitung untuk</div>
+                <div class="text-xl font-semibold text-gray-900 dark:text-gray-100">{{ number_format($venue['players']) }} pemain</div>
+                <div class="text-xs text-gray-500 dark:text-gray-400">dalam {{ $venue['doors'] }} menit · ~{{ number_format($venue['needed']) }} login/menit</div>
+            </div>
+            <div class="rounded-lg border border-gray-200 dark:border-gray-700 p-3">
+                <div class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Batas per alamat</div>
+                <div class="text-xl font-semibold text-gray-900 dark:text-gray-100">{{ number_format($venue['ceiling']) }}<span class="text-sm font-normal">/menit</span></div>
+                <div class="text-xs {{ $venue['ceiling'] >= $venue['needed'] * 2 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400' }}">
+                    {{ $venue['ceiling'] >= $venue['needed'] * 2 ? 'cukup, dengan ruang lebih' : 'TERLALU KETAT untuk jumlah pemain ini' }}
+                </div>
+            </div>
+            <div class="rounded-lg border border-gray-200 dark:border-gray-700 p-3">
+                <div class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Login gagal per alamat</div>
+                <div class="text-xl font-semibold text-gray-900 dark:text-gray-100">{{ number_format($venue['failure_ceiling']) }}<span class="text-sm font-normal">/menit</span></div>
+                <div class="text-xs text-gray-500 dark:text-gray-400">yang menangkap percobaan massal</div>
+            </div>
+            <div class="rounded-lg border border-gray-200 dark:border-gray-700 p-3">
+                <div class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Per akun</div>
+                <div class="text-xl font-semibold text-gray-900 dark:text-gray-100">{{ $venue['per_account'] }}<span class="text-sm font-normal">/menit</span></div>
+                <div class="text-xs text-gray-500 dark:text-gray-400">batas tebak password — sengaja ketat</div>
+            </div>
+        </div>
+
+        @if ($busiestAddresses->isNotEmpty())
+            <div class="mt-3 overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700">
+                <table class="min-w-full text-sm">
+                    <thead class="bg-gray-50 dark:bg-gray-800/60 text-left text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                        <tr>
+                            <th class="px-3 py-2">Alamat</th>
+                            <th class="px-3 py-2">Login</th>
+                            <th class="px-3 py-2">Gagal</th>
+                            <th class="px-3 py-2">Terakhir</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                        @foreach ($busiestAddresses as $src)
+                            <tr>
+                                <td class="px-3 py-2 font-mono text-xs text-gray-900 dark:text-gray-100">{{ $src->ip }}</td>
+                                <td class="px-3 py-2 text-gray-700 dark:text-gray-300">{{ number_format($src->hits) }}</td>
+                                <td class="px-3 py-2 {{ $src->failures > 0 ? 'text-amber-700 dark:text-amber-300' : 'text-gray-500 dark:text-gray-400' }}">{{ number_format($src->failures) }}</td>
+                                <td class="px-3 py-2 text-gray-500 dark:text-gray-400">{{ $src->last_seen_at }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        @endif
+    </div>
     <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 pt-2">
         <i class="fas fa-users text-indigo-500 mr-1"></i>
         Tim{{ $indoorInUse ? ' & rantai indoor' : '' }}

@@ -292,7 +292,7 @@ The admin generates team accounts in bulk and prints one card each. The card's Q
 it is even though the app is called Questerra now (20 Sep).
 
 ```
-POST /api/v1/auth/login-code        (public, throttle: 60/min per address)
+POST /api/v1/auth/login-code        (public, throttle: sized for the venue — see §6)
 { "code": "EUREKA-LOGIN:Qm9…", "device_name": "pixel-8-a1b2" }
 ```
 
@@ -302,6 +302,10 @@ POST /api/v1/auth/login-code        (public, throttle: 60/min per address)
 - `401 invalid_login_code` — unknown, replaced ("Ganti kartu") or revoked card. The server does not say
   which. Show the message; offer e-mail + password.
 - `403 access_window_expired`, `403 account_inactive`, `403 game_ended` — as for login.
+- `429 too_many_failed_logins` — too many **wrong** cards from this address lately. Carries
+  `retry_after` and a `Retry-After` header; wait that long, do not retry in a loop, and do not show
+  it as a bad card. A team scanning its own card will not see this: it counts failures, and 500 teams
+  scanning correctly produce none (5 Oct).
 - Reusable: a team whose phone is replaced logs in again with the same card.
 
 Login screen: a **Scan kartu login** button using the scanner you already ship. Accept only strings starting
@@ -836,9 +840,23 @@ still counts every request from that one address, so restraint matters.
 
 | Limiter | Budget | Applies to |
 |---|---|---|
-| `api` | 120/min per user | everything below except the two named |
+| `api` | 120/min per user | everything below except the three named |
 | `tracking` | **30/min per user** | `POST /tracking/position` |
-| `auth` | 5/min per account, 60/min per IP | `POST /auth/login` |
+| `auth` | 5/min **per account** + a venue-sized ceiling per address | `POST /auth/login` |
+| `login-code` | a venue-sized ceiling per address | `POST /auth/login-code` |
+
+**Changed 5 Oct, and it matters for an event of any size.** The per-address ceilings used to be
+60/min, and the password limit was keyed on account **and** address — so at a venue where every phone
+shares one address, five teams got in and the rest were refused by us. The password limit is now keyed
+on the account alone (so 5,000 people are 5,000 separate budgets) and the address ceiling is derived
+from how many players the event expects: 5,000 arriving over ten minutes needs ~500/min and the
+ceiling is set well above it. Guessing one password is still capped at five a minute however many
+addresses are used.
+
+A separate counter watches **failed** logins per address and answers `429 too_many_failed_logins`.
+Scanning your own card never trips it; replaying a list of codes does. Both login 429s carry a stable
+`error` key and `retry_after` — back off for that many seconds and keep the credentials on screen,
+because this is not a wrong password.
 
 ```
 POST /api/v1/tracking/position
@@ -1994,6 +2012,8 @@ human-facing prose and is translated.
 | `game_already_assessed` | 409 | A facilitator already scored it |
 | `not_a_game_question` | 422 | `complete-game` on a normal question |
 | `invalid_login_code` | 401 | Login card unknown, replaced or revoked — offer e-mail + password (§2d) |
+| `too_many_attempts` | 429 | This account tried too often. Carries `retry_after`; back off, keep the form (§6) |
+| `too_many_failed_logins` | 429 | Too many wrong credentials from this address. Carries `retry_after` (§6) |
 | `account_inactive` | 403 | Login: the account is switched off |
 | `game_ended` | 403 | Session archived — Game ended screen, wipe, stop every request for good (§2b) |
 | `race_reset` | 409 | The admin stopped the race — show the message, drop session state, dashboard, stay logged in (§2c) |

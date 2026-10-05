@@ -6,6 +6,39 @@ Generated from the live router on questerra-series.com. Base URL `https://queste
 
 Act on these — several change responses your app already handles.
 
+**Latest (5 Oct, third change): the login limits are sized for a venue, and a 429 from login now
+carries a key and `retry_after`.**
+
+Two endpoints change their refusal shape, nothing else: `POST /auth/login` and
+`POST /auth/login-code`. A 429 from either is now
+
+```json
+{ "success": false, "error": "too_many_attempts" | "too_many_failed_logins",
+  "retry_after": 42, "message": "…" }
+```
+
+with a `Retry-After` header carrying the same seconds. **Back off for `retry_after` and show the
+message; do not retry immediately and do not treat it as wrong credentials** — that is the whole
+point of the key. `too_many_attempts` means this *account* has been tried too often (five a minute);
+`too_many_failed_logins` means too many *wrong* credentials have come from this address lately, which
+a team scanning its own card will never see.
+
+Why it changed, because it affects what you should expect at a real event. The ceilings were 60 a
+minute per address, and a venue is 5,000 phones arriving in ten minutes — about 500 logins a minute,
+often from one address. Our own code would have turned the event away in its first minute
+(SCALING-PLAN.md §3e). The password limit is now keyed on the **account** rather than on
+account+address, so teams no longer queue behind each other, and the per-address ceiling is derived
+from how many players are expected. A separate counter watches *failed* logins per address, which is
+what separates a room of teams from someone working through a stolen list.
+
+There is also a fix that was invisible from your side but changed the numbers you were hitting:
+`TrustProxies` ran for web routes only, so every `/api/v1` request was rate-limited by the address
+the connection came from — a Cloudflare edge node — instead of the phone's. A per-address limit that
+is really per-edge-node was shared by every client at once.
+
+Nothing else moves: same request bodies, same success payloads, same 401 for a wrong password or an
+unknown card. Build guide §7 has the back-off rule; no work order item — this was server-side.
+
 **Latest (5 Oct, second change): Sync can be a 304, and `content_updated_at` now moves on more kinds of
 edit. Both are server-side; one is worth a client change.**
 

@@ -86,30 +86,36 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute(20)->by($request->ip());
         });
 
-        // Login attempts, keyed on the account being tried **and** the address.
+        // Login cards. The code carries 192 bits, so guessing is not the risk — a room of teams on
+        // one venue WiFi scanning at the briefing is (SCALING-PLAN.md §3e).
         //
-        // Keyed on the address alone this was five attempts a minute for a whole venue:
-        // every team is on the same WiFi, so at the moment an event starts and twenty
-        // teams log in together, five get through and fifteen are turned away — from our
-        // own code, not the host's.
+        // Sized from config/venue.php rather than from a number typed here: at 5,000 players over ten
+        // minutes the venue needs ~500 logins a minute and this used to allow 60, so our own code
+        // would have turned the event away in its first minute. The ceiling now derives from how many
+        // people are expected, with headroom.
         //
-        // The pair keeps what the limit is actually for. Guessing one account's password
-        // is still capped at five tries a minute however many addresses are used, and one
-        // address still cannot grind through accounts; what it no longer does is make
-        // twenty different teams queue behind each other.
-        // Login cards: the code carries 192 bits, so guessing is not the risk — a room of teams on one
-        // venue WiFi scanning at the briefing is. Per address only, and generous.
-        RateLimiter::for('login-code', fn (Request $request) => Limit::perMinute(60)->by('ip:' . $request->ip()));
+        // A ceiling per address is all this can be — a card login names no account until the code is
+        // matched — so the spray protection is in the controller, where a *wrong* code can be counted
+        // separately from a right one.
+        RateLimiter::for('login-code', fn (Request $request) => Limit::perMinute(
+            (int) config('venue.logins.per_minute_per_address', 1500)
+        )->by('ip:'.$request->ip()));
 
+        // Password login, and the two limits do different jobs.
+        //
+        // Guessing one account's password is capped per *account*, not per address. That is the limit
+        // that matters and it is deliberately strict: keyed on the account, 5,000 people logging in
+        // are 5,000 separate buckets, so the size of the event never relaxes it. Keyed on the address
+        // as well — as it was — it would have meant that at a venue where every phone shares one
+        // address, five teams got in and the rest were turned away by us.
+        //
+        // The per-address ceiling stays, for bulk scraping, and comes from the same venue figure.
         RateLimiter::for('auth', function (Request $request) {
             $account = strtolower((string) $request->input('email'));
 
             return [
-                Limit::perMinute(5)->by('acct:' . $account . '|' . $request->ip()),
-                // A generous ceiling per address, so a single connection cannot be used
-                // to spray attempts across many accounts. Sized for a room of teams
-                // logging in at once, not for one person typing.
-                Limit::perMinute(60)->by('ip:' . $request->ip()),
+                Limit::perMinute((int) config('venue.logins.per_minute_per_account', 5))->by('acct:'.$account),
+                Limit::perMinute((int) config('venue.logins.per_minute_per_address', 1500))->by('ip:'.$request->ip()),
             ];
         });
 

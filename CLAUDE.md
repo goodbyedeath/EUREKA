@@ -148,6 +148,14 @@ rule is removed. Posts open only through Outpost Access (indoor) or the GPS radi
   `user_answers.points_earned`, never `questions.points` — `fun_game` answers store 0 and are
   scored later by a facilitator.
 - Feature flags gate UI visibility only, never authorization. Guard access with middleware.
+- **Rate limits are sized from `config/venue.php`**, not from numbers typed into
+  `AppServiceProvider`: how many players and over how many minutes, with the ceilings derived. A limit
+  keyed on an *address* is worthless at a venue — every phone may share one — so the password cap is
+  keyed on the **account** and the spray protection counts **failures** per address
+  (`App\Services\LoginGuard`). `App\Http\Middleware\TrustProxies` is global; it used to be
+  web-only, which meant every `/api/v1` limit was keyed on a Cloudflare edge address instead of the
+  client's. Whether this server sees one address or thousands is measured, not assumed:
+  `login_sources` plus the Jaringan venue panel on `/admin/kesiapan`.
 - Feature flags: **six rows, three ON** (`leaderboard`, `quest_locations`, `quiz_system`; off:
   `gps_tracking`, `kiosk_map`, `workflow_timers`) — checked 5 Oct. It used to say 21, all off; a
   migration (`drop_retired_dashboard_features`) removed the retired ones. Migrations create some rows

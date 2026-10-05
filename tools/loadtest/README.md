@@ -190,6 +190,68 @@ phase-0 baseline, so §3b and §3c are an argument with a measurement rather tha
 What phase 3 does **not** fix, so do not expect it to move: submit latency (§3d — photos are still
 base64 inside `quiz_attempts`) and the login storm (§3e).
 
+## Proving phase 5 (the login storm), not asserting it
+
+`login-storm.js` is the gate and it was written to fail. Now it should not.
+
+**1. Size the event first.** The ceilings derive from one figure, so set it before measuring:
+
+```bash
+# docker/.env
+VENUE_PLAYERS=5000
+VENUE_DOORS_MINUTES=10
+```
+
+`./deploy.sh doctor` prints the arithmetic — `5,000 players / 10 min → 500 per min needed, ceiling
+1500` — and marks it a fault if the ceiling is below what the event needs.
+
+**2. Find out what the network actually looks like**, because it decides whether per-address limits
+mean anything. Have a handful of phones (or the harness) log in, then open `/admin/kesiapan` and read
+the **Jaringan venue** panel. Three possible answers:
+
+| It says | Meaning |
+|---|---|
+| *N logins from N addresses* (green) | Every phone has its own address. Per-address limits are per-phone and the ceiling will never be approached. |
+| *N logins from 1–2 addresses* (amber) | One NAT, or a proxy whose address is being read as the client's. Every per-address limit is shared by the whole event. Not fatal — the ceiling is sized for it — but there is no per-phone protection left. |
+| *Belum ada login untuk diukur* | Nothing has logged in yet. Measure before judging. |
+
+On the workstation, one address when you expected many is usually Docker: with the daemon's userland
+proxy enabled, nginx is handed the bridge gateway for every request. Set `"userland-proxy": false` in
+`/etc/docker/daemon.json` and restart the daemon. No trusted-proxy setting can fix it — no forwarded
+header is involved.
+
+**3. Run the storm.**
+
+```bash
+./deploy.sh seed-loadtest 500 5000
+TARGET=http://<workstation-ip> PHONES=5000 OVER=600 k6 run login-storm.js
+```
+
+The gate is **zero `eureka_throttled`**, not merely zero failures. Fill in the row:
+
+| Date | PHONES | OVER | addresses seen | 429s | failures | login p95 |
+|---|---|---|---|---|---|---|
+| | | | | | | |
+
+If 429s appear, read the body before changing a number — the two keys mean different things.
+`too_many_attempts` means the harness is reusing one account faster than five a minute, which is the
+harness's fault and not the server's. `too_many_failed_logins` means credentials are being rejected:
+the seeded accounts and the target are out of step, so re-seed rather than raise a ceiling.
+
+**4. Check the spray protection still works**, because a limit that lets everything through is not a
+limit. From a machine that is *not* the generator:
+
+```bash
+for i in $(seq 1 70); do
+  curl -s -o /dev/null -w '%{http_code} ' -X POST http://<workstation-ip>/api/v1/auth/login-code \
+    -H 'Content-Type: application/json' -H 'Accept: application/json' \
+    -d '{"code":"EUREKA-LOGIN:not-a-real-code"}'
+done; echo
+```
+
+Expect 401s turning into 429s at about the configured failure ceiling (60/min by default), and the
+venue's own logins unaffected while that happens.
+
 ## Honest limits of this harness
 
 - It drives the **API**, not the Android app: no ARCore, no camera, no real GPS, no APK caching behaviour.

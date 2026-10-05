@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Services\LoginGuard;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
@@ -17,7 +18,7 @@ use Illuminate\Validation\ValidationException;
  */
 class TokenController extends Controller
 {
-    public function login(Request $request)
+    public function login(Request $request, LoginGuard $guard)
     {
         $credentials = $request->validate([
             'email' => 'required|email',
@@ -25,16 +26,20 @@ class TokenController extends Controller
             'device_name' => 'nullable|string|max:120',
         ]);
 
-        // Same throttle shape as the web login, keyed per email+IP.
-        $key = 'api-login:' . strtolower($credentials['email']) . '|' . $request->ip();
+        // Keyed per account, not per account+address. At a venue every phone may share one address,
+        // and the pair meant five teams got in and the rest were turned away by us (SCALING-PLAN
+        // §3e). Guessing one password is still capped however many addresses are used, because that
+        // is what the account key is for.
+        $key = 'api-login:'.strtolower($credentials['email']);
 
-        if (RateLimiter::tooManyAttempts($key, 5)) {
-            return response()->json([
-                'success' => false,
-                'message' => __('Too many attempts. Try again in :seconds seconds.', [
-                    'seconds' => RateLimiter::availableIn($key),
-                ]),
-            ], 429);
+        if (RateLimiter::tooManyAttempts($key, (int) config('venue.logins.per_minute_per_account', 5))) {
+            return $this->tooMany('too_many_attempts', RateLimiter::availableIn($key));
+        }
+
+        // And the other half: someone working through a list of accounts from one place. Counted on
+        // failures only, which is what tells a room of teams apart from a script.
+        if ($spraying = $guard->sprayingFrom($request->ip())) {
+            return $this->tooMany('too_many_failed_logins', $spraying['retry_after']);
         }
 
         $user = User::where('email', $credentials['email'])->first();
@@ -48,11 +53,14 @@ class TokenController extends Controller
 
         if (! $user || ! Hash::check($credentials['password'], $user->password)) {
             RateLimiter::hit($key, 300);
+            $guard->failed($request->ip());
 
             throw ValidationException::withMessages([
                 'email' => __('auth.failed'),
             ]);
         }
+
+        $guard->succeeded($request->ip());
 
         return $this->issueToken($user, $credentials['device_name'] ?? 'android-client', fn () => RateLimiter::clear($key));
     }
@@ -61,12 +69,20 @@ class TokenController extends Controller
      * A team logs in by scanning its printed login card (APK report #16, operator-approved 15 Sep).
      * Accepts the QR payload ("EUREKA-LOGIN:<code>") or the bare code; answers exactly like login.
      */
-    public function loginCode(Request $request, \App\Services\LoginCardService $cards)
+    public function loginCode(Request $request, \App\Services\LoginCardService $cards, LoginGuard $guard)
     {
         $data = $request->validate([
             'code' => 'required|string|max:200',
             'device_name' => 'nullable|string|max:120',
         ]);
+
+        // A card login names no account until the code is matched, so there is no per-account bucket
+        // to key on and the route's ceiling can only be per address. The spray protection is here
+        // instead, counting wrong codes: 500 teams scanning their own cards produce none of those,
+        // and somebody feeding a list produces nothing else (SCALING-PLAN §3e).
+        if ($spraying = $guard->sprayingFrom($request->ip())) {
+            return $this->tooMany('too_many_failed_logins', $spraying['retry_after']);
+        }
 
         $hash = $cards->hashFor($data['code']);
         $card = \App\Models\LoginCard::with('user')->where('code_hash', $hash)->first();
@@ -75,6 +91,8 @@ class TokenController extends Controller
             if (! $card && ($archive = \App\Services\GameArchiveService::archiveForLoginCode($hash))) {
                 return \App\Services\GameArchiveService::gameEndedResponse($archive);
             }
+
+            $guard->failed($request->ip());
 
             // One answer for unknown, rotated and revoked: no hint whether the account exists.
             return response()->json([
@@ -87,9 +105,27 @@ class TokenController extends Controller
         $response = $this->issueToken($card->user, $data['device_name'] ?? 'android-client');
         if ($response->getStatusCode() === 200) {
             $card->forceFill(['last_used_at' => now()])->save();
+            $guard->succeeded($request->ip());
         }
 
         return $response;
+    }
+
+    /**
+     * The one shape a 429 takes from this controller.
+     *
+     * `error` is a stable key and `retry_after` is seconds, both as the rest of the v1 contract does
+     * it. The APK needs to tell "wait and try again" apart from "wrong password", and a 429 with no
+     * key left it guessing from prose.
+     */
+    private function tooMany(string $error, int $retryAfter): \Illuminate\Http\JsonResponse
+    {
+        return response()->json([
+            'success' => false,
+            'error' => $error,
+            'retry_after' => $retryAfter,
+            'message' => __('Too many attempts. Try again in :seconds seconds.', ['seconds' => $retryAfter]),
+        ], 429, ['Retry-After' => (string) $retryAfter]);
     }
 
     /** The one place a login becomes a token: account state, access window, one token per device. */
