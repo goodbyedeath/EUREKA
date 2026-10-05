@@ -21,10 +21,14 @@ case "${1:-help}" in
     compose exec -T app php artisan optimize
     compose exec -T app php artisan storage:link || true
     echo
+    # Say what the stack is actually wired to. "I set REDIS_HOST in .env" and "the app is using Redis"
+    # are different claims, and only one of them is checkable.
+    compose exec -T app php artisan eureka:doctor
     echo "Up. Check http://localhost:${HTTP_PORT:-80}/up"
     ;;
 
   migrate)  need_env; compose exec -T app php artisan migrate --force ;;
+  doctor)   need_env; shift; compose exec -T app php artisan eureka:doctor "$@" ;;
   optimize) need_env; compose exec -T app php artisan optimize:clear && compose exec -T app php artisan optimize ;;
   logs)     compose logs -f --tail=100 ;;
   ps)       compose ps ;;
@@ -55,6 +59,7 @@ case "${1:-help}" in
     cat <<'EOF'
 ./deploy.sh up                     build, start, migrate, cache
 ./deploy.sh migrate | optimize     after a rebuild or an .env change
+./deploy.sh doctor [--json]        what the stack is wired to; non-zero only on a real fault
 ./deploy.sh logs | ps | down       day to day
 ./deploy.sh nuke                   stop AND delete the data volumes
 ./deploy.sh key                    print a fresh APP_KEY

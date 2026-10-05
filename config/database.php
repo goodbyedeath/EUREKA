@@ -193,6 +193,21 @@ return [
             'database' => env('REDIS_QUEUE_DB', '0'),
         ],
 
+        /*
+        | The same non-evicting instance as the queue, under a name that says why it is used: admin
+        | sessions must not be thrown away to make room for a cache entry. `allkeys-lru` would evict a
+        | session key as happily as a cached leaderboard, and `volatile-lru` is no protection either —
+        | sessions carry a TTL by design. Players are unaffected either way; they hold API tokens.
+        */
+        'persistent' => [
+            'url' => env('REDIS_QUEUE_URL'),
+            'host' => env('REDIS_QUEUE_HOST', env('REDIS_HOST', '127.0.0.1')),
+            'username' => env('REDIS_QUEUE_USERNAME', env('REDIS_USERNAME')),
+            'password' => env('REDIS_QUEUE_PASSWORD', env('REDIS_PASSWORD')),
+            'port' => env('REDIS_QUEUE_PORT', env('REDIS_PORT', '6379')),
+            'database' => env('REDIS_SESSION_DB', '2'),
+        ],
+
     ],
 
 ];

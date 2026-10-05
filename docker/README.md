@@ -1,7 +1,7 @@
 # Deploying EUREKA on the workstation — phase 1
 
-One machine, Docker Compose, no Kubernetes (`SCALING-PLAN.md` §4 says why). Six services: nginx, two app
-containers, two queue workers, a scheduler, MySQL, and two Redis instances.
+One machine, Docker Compose, no Kubernetes (`SCALING-PLAN.md` §4 says why). Nine containers: nginx, two
+app containers, two queue workers, a scheduler, MySQL, and two Redis instances.
 
 Nothing here has been run yet — there is no Docker on the shared host, by design. Treat the first bring-up
 as the test of this file.
@@ -22,14 +22,23 @@ nano .env                # APP_KEY, DB_PASSWORD, MYSQL_ROOT_PASSWORD
 ./deploy.sh up           # build, start, migrate, cache, storage:link
 ```
 
-`./deploy.sh up` ends by telling you to open `/up` — Laravel's own health endpoint. If that answers, the
-chain nginx → php-fpm → MySQL → Redis is intact.
+`./deploy.sh up` ends by printing the wiring table and telling you to open `/up` — Laravel's own health
+endpoint. If that answers, the chain nginx → php-fpm → MySQL → Redis is intact.
+
+```bash
+./deploy.sh doctor       # what the app is ACTUALLY using: drivers, both Redis instances, opcache, MySQL
+```
+
+Read that table rather than trusting `.env`: the two are different claims whenever a config cache is stale,
+which is the most common thing to go wrong here. It exits non-zero only on a real fault, so it can go in a
+health check or a cron.
 
 Day to day:
 
 ```bash
 ./deploy.sh logs         # everything, following
 ./deploy.sh ps
+./deploy.sh doctor       # drivers, Redis, opcache, what still writes to MySQL
 ./deploy.sh optimize     # after any .env change — required, see CLAUDE.md
 ./deploy.sh down         # stop; data survives in named volumes
 ./deploy.sh nuke         # stop AND delete the data. There is no undo
@@ -93,9 +102,26 @@ The harness refuses to point at the live host, and the seeder refuses to run wit
 ## What phase 1 does and does not change
 
 This stack **is** phase 2 as far as configuration goes: `.env.docker.example` already sets
-`CACHE_STORE=redis`, `SESSION_DRIVER=redis` and `QUEUE_CONNECTION=redis`, with the queue on its own Redis
-that is forbidden to evict. That removes the first blocker — every player request writing the `cache` table
-— without an application change, because the application already reads those keys.
+`CACHE_STORE=redis`, `SESSION_DRIVER=redis` and `QUEUE_CONNECTION=redis`. That removes the first blocker —
+every player request writing the `cache` table — with no application change, because the rate limiter
+follows the cache store by itself.
+
+Two Redis instances, and which data goes where is not arbitrary:
+
+| | `redis-cache` | `redis-queue` |
+|---|---|---|
+| policy | `allkeys-lru`, 4 GB, no persistence | `noeviction`, 1 GB, AOF on |
+| holds | cached leaderboards, manifests, rate-limit counters | queued jobs (db 0) **and sessions** (db 2) |
+| if it is lost | the next request recomputes | work and logins are gone |
+
+Sessions sit on the non-evicting instance (`SESSION_CONNECTION=persistent`) because `allkeys-lru` would
+drop an admin session as readily as a cached leaderboard, and `volatile-lru` is no protection when the
+thing worth keeping is exactly the thing with a TTL. `./deploy.sh doctor` fails if either instance is
+reachable but evicting.
+
+Phase 2 is only *configured*, not yet *measured*. `tools/loadtest/README.md` has the three-step procedure —
+doctor, the `cache` row count, then the same k6 scenario on both sets of drivers — and the empty table to
+fill in.
 
 Still untouched, and still in the plan: the per-request kiosk leaderboard (§3b), the 100-query manifest
 (§3c), base64 photos inside the attempt row (§3d), and the per-IP login limits that will block the venue's
@@ -111,3 +137,5 @@ asserted.
 | 500 on every page | `./deploy.sh optimize`; a config cache from a previous `.env` is the trap in CLAUDE.md |
 | Assets 404 | the `public` volume kept an old build: `docker compose down && ./deploy.sh up` |
 | Queue does nothing | `./deploy.sh logs worker`; check `REDIS_QUEUE_HOST=redis-queue` |
+| Admins logged out at random | `./deploy.sh doctor` — sessions on an evicting Redis; `SESSION_CONNECTION=persistent` |
+| `doctor` says `database` | the config cache predates the `.env`: `./deploy.sh optimize` |

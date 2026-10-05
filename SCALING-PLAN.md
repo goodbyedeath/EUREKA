@@ -49,6 +49,16 @@ read *and* a write on the `cache` table**.
 **a. Cache, session, queue and rate limiter all live in MySQL.** At 500 req/s that is ~1,000 writes/s on
 one InnoDB table. → Redis for all four. The `redis` extension is already present.
 
+> **Configured 5 Oct (phase 2).** The stack ships with `CACHE_STORE=redis`, `SESSION_DRIVER=redis`,
+> `QUEUE_CONNECTION=redis` and no application change, because the rate limiter follows the cache store on
+> its own. Two instances, not one: `redis-cache` evicts (`allkeys-lru`), `redis-queue` must not
+> (`noeviction` + AOF), and **sessions live on the non-evicting one** — `SESSION_CONNECTION=persistent`,
+> db 2 — because `allkeys-lru` would drop an admin session as readily as a cached leaderboard, and
+> `volatile-lru` is no protection when the thing you want kept carries a TTL. `php artisan eureka:doctor`
+> reports which of these the running app is actually using. Shared hosting stays on MySQL; the doctor says
+> so without calling it broken. **Still owed: the measurement** — a harness run showing the `cache` table
+> idle and `/race/status` p95 down (see the phase-2 procedure in `tools/loadtest/README.md`).
+
 **b. The kiosk leaderboard is recomputed per request.** `KioskController::leaderboard()` calls
 `PointsCalculationService::teamScore()` for every team, and each of those is several queries; with 500
 teams that is thousands of queries per poll, multiplied by every screen. → compute once per 10 s, cache,
@@ -283,7 +293,7 @@ changes shape for the app.
 |---|---|---|
 | 0 | ~~Load-test harness~~ **built 5 Oct** — `tools/loadtest/` (k6 scenarios + `loadtest:seed`/`loadtest:purge`) | Writes `summary.md` and per-endpoint p95 per run. **Still to do: one baseline run against the workstation**, pasted into `tools/loadtest/README.md`, before §3 is touched |
 | 1 | Compose stack on the workstation (nginx, app, redis, mysql, worker, scheduler) | The app serves the harness at all, from images built out of git |
-| 2 | §3a Redis for cache/session/queue/limiter | Harness: `cache` table writes gone; p95 of `/race/status` down |
+| 2 | ~~§3a Redis for cache/session/queue/limiter~~ **configured 5 Oct** — two instances, sessions on the non-evicting one, `eureka:doctor` to prove it | Harness: `cache` table writes gone; p95 of `/race/status` down. **Still to measure**, procedure in `tools/loadtest/README.md` |
 | 3 | §3b leaderboard cache, §3c manifest cache + ETag + static assets | 5,000-Sync burst costs one computation per plan |
 | 4 | §3d photos out of MySQL, thumbnails in a queue job | `quiz_attempts` holds no base64; submit latency independent of photo size |
 | 5 | §3e login-storm limits | 5,000 logins in ten minutes from one NAT address, zero 429s |

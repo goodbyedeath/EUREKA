@@ -76,6 +76,59 @@ For reference, the single-request measurements taken on the shared host with an 
 (`SCALING-PLAN.md` §2) were: `race/status` 7.0 ms / 21 queries, `/offline/manifest` 54.3 ms / 100 queries,
 `kiosk/leaderboard` 6.6 ms. Those are a floor with one user, not a forecast under load.
 
+## Proving phase 2 (Redis), not asserting it
+
+Phase 2 changes nothing but configuration, so it is invisible unless it is measured. Three checks, in this
+order — the first two take a minute and catch the usual mistake, which is an `.env` edit that `config:cache`
+never picked up.
+
+**1. Ask the app what it is wired to.**
+
+```bash
+./deploy.sh doctor
+```
+
+Every row that matters should read `ok`: `cache store: redis`, `session driver: redis (persistent)`,
+`queue connection: redis`, `rate limiter: follows the cache store → redis`, and each `redis:*` row
+reachable, with `redis:queue` and `redis:persistent` showing `[noeviction]`. The command exits non-zero
+only on a real fault — an unreachable Redis the app depends on, an evicting queue or session instance, a
+dead database — so it is safe in a health check. A row still saying `database` means the config cache is
+stale: `./deploy.sh optimize`.
+
+**2. Watch the `cache` table go quiet.** This is the blocker from `SCALING-PLAN.md` §3a, and it is a row
+count, not an opinion:
+
+```bash
+./deploy.sh shell
+php artisan eureka:doctor --json | grep -A2 '"mysql cache rows"'
+```
+
+Run a scenario, then look again. On MySQL drivers the number climbs with traffic — the rate limiter writes
+a key per user per minute, and every throttled route touches it. On Redis it stays where it was, and
+`mysql session rows` and `mysql queued jobs` stay flat with it.
+
+**3. Compare p95 — same scenario, same `PHONES`, drivers flipped.**
+
+```bash
+TARGET=http://<workstation-ip> PHONES=200 k6 run race-steady.js   # before
+# set CACHE_STORE/SESSION_DRIVER/QUEUE_CONNECTION in docker/.env, then ./deploy.sh optimize
+TARGET=http://<workstation-ip> PHONES=200 k6 run race-steady.js   # after
+```
+
+`race/status` is the endpoint to judge on: it is the most frequent call in an event and does little work of
+its own, so most of what it spends is the per-request overhead this phase removes. Fill in both rows. If
+`after` is not lower, write that here rather than quietly moving to phase 3 — it would mean the bottleneck
+is somewhere phase 2 does not reach.
+
+| Date | PHONES | drivers | race/status p95 | `cache` rows after run | 429s | failures |
+|---|---|---|---|---|---|---|
+| | | database | | | | |
+| | | redis | | | | |
+
+What this phase does **not** fix, so do not expect it to move: the per-request leaderboard (§3b), the
+100-query manifest (§3c) or submit latency (§3d). Redis makes each request cheaper to serve; it does not
+make an expensive query cheap.
+
 ## Honest limits of this harness
 
 - It drives the **API**, not the Android app: no ARCore, no camera, no real GPS, no APK caching behaviour.
