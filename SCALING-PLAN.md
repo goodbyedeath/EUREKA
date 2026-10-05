@@ -115,6 +115,24 @@ the heavy assets (`.glb`, tiles, images) as static files through nginx, never th
 5,000 players × 15 posts ≈ **3.6 GB of BLOBs inside MySQL rows**, written and read through PHP. → files on
 disk (or object storage), thumbnailing in a queue job, not in the request.
 
+> **Built and then parked, 5 Oct — the operator's call.** The work is complete and verified on branch
+> `phase-4-photos-on-disk`; its migration was rolled back off the live database, so picking it up is
+> `git merge phase-4-photos-on-disk` and `migrate`, with nothing to undo first. Measured there: **45
+> bytes in the row for a 187 KB photo**, the resize off the request, and no base64 left in
+> `quiz_attempts`.
+>
+> It was deferred alongside the decision to start the workstation with an empty database, on the
+> reasoning that there is no photo data to carry across. That part is true and the two are unrelated:
+> **this 3.6 GB is not history, it is what one event writes.** A clean database starts at zero and
+> arrives there the same day — 5,000 players × 15 posts × ~48 KB, into MySQL rows, while the event is
+> running. So the blocker stands exactly as measured and this phase remains the fix for it.
+>
+> What running without it costs, stated once so nobody has to re-derive it: MySQL carries the photos
+> during the event, every read of an attempt row carries its picture, submit latency tracks photo size
+> (the harness's `post-flow.js` measures precisely this, via `PHOTO_KB`), and the nightly dump grows by
+> the same 3.6 GB — which is also the offsite backup that §5 calls the most valuable thing the venue
+> uplink buys.
+
 **e. Per-IP rate limits will block the venue itself.** `api` and `tracking` key on the user (fine), but
 `login-code` is 60/min per IP and `auth` 60/min per IP. 5,000 phones behind one NAT means ~500 logins/min
 from one address in the opening ten minutes. → key on IP+device, or allow-list the venue ranges, or raise
@@ -390,7 +408,7 @@ changes shape for the app.
 | 1 | Compose stack on the workstation (nginx, app, redis, mysql, worker, scheduler) | The app serves the harness at all, from images built out of git |
 | 2 | ~~§3a Redis for cache/session/queue/limiter~~ **configured 5 Oct** — two instances, sessions on the non-evicting one, `eureka:doctor` to prove it | Harness: `cache` table writes gone; p95 of `/race/status` down. **Still to measure**, procedure in `tools/loadtest/README.md` |
 | 3 | ~~§3b leaderboard cache, §3c manifest cache + ETag + static assets~~ **done 5 Oct** — grouped scoring, shared board, split manifest, 304s, `eureka:warm` | Board: 11 queries at any team count. Manifest: 91 → 15 queries, 26 ms, 304 when unchanged. **Still to measure under load** |
-| 4 | §3d photos out of MySQL, thumbnails in a queue job | `quiz_attempts` holds no base64; submit latency independent of photo size |
+| 4 | §3d photos out of MySQL, thumbnails in a queue job — **built, then parked by the operator 5 Oct**; on branch `phase-4-photos-on-disk` | ~~`quiz_attempts` holds no base64; submit latency independent of photo size~~ **met on that branch** (45 bytes in the row for a 187 KB photo). Not on `main`: see §3d for what running without it costs |
 | 5 | §3e login-storm limits | 5,000 logins in ten minutes from one NAT address, zero 429s |
 | 6 | RFID presence: device endpoint, tags, one booth end to end on LoRa | A tap opens the post, a replayed tap does not double, a dead gateway loses nothing |
 | 7 | Rehearsal at the venue: walk test, gateway pulled mid-run, restore from backup | The crew has run the failure, not read about it |
