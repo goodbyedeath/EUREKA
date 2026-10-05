@@ -148,7 +148,12 @@ rule is removed. Posts open only through Outpost Access (indoor) or the GPS radi
   `user_answers.points_earned`, never `questions.points` — `fun_game` answers store 0 and are
   scored later by a facilitator.
 - Feature flags gate UI visibility only, never authorization. Guard access with middleware.
-- All 21 feature flags are currently OFF, so an empty user dashboard is expected, not a bug.
+- Feature flags: **six rows, three ON** (`leaderboard`, `quest_locations`, `quiz_system`; off:
+  `gps_tracking`, `kiosk_map`, `workflow_timers`) — checked 5 Oct. It used to say 21, all off; a
+  migration (`drop_retired_dashboard_features`) removed the retired ones. Migrations create some rows
+  and `FeatureSettingsSeeder` knows five, so a clean database lands in roughly this state without
+  anyone rebuilding the list by hand. Note the seeder uses `updateOrInsert` **including**
+  `is_enabled`, so running `db:seed` against a live event flips those three back ON.
 
 ## Housekeeping
 

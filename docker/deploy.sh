@@ -33,6 +33,13 @@ case "${1:-help}" in
   migrate)  need_env; compose exec -T app php artisan migrate --force ;;
   doctor)   need_env; shift; compose exec -T app php artisan eureka:doctor "$@" ;;
   warm)     need_env; compose exec -T app php artisan eureka:warm ;;
+
+  install)
+    # A clean start: defaults, one admin with a real password, the facilitator PIN. Interactive on
+    # purpose (no -T), so the password is typed rather than left in shell history. Refuses to run
+    # against a database that already holds an event.
+    need_env; compose exec app php artisan eureka:install
+    ;;
   optimize) need_env; compose exec -T app php artisan optimize:clear && compose exec -T app php artisan optimize ;;
   logs)     compose logs -f --tail=100 ;;
   ps)       compose ps ;;
@@ -67,6 +74,7 @@ case "${1:-help}" in
 ./deploy.sh migrate | optimize     after a rebuild or an .env change
 ./deploy.sh doctor [--json]        what the stack is wired to; non-zero only on a real fault
 ./deploy.sh warm                   rebuild the caches a clear emptied (seal keys, manifest, board)
+./deploy.sh install                clean start: admin account + facilitator PIN + defaults
 ./deploy.sh logs | ps | down       day to day
 ./deploy.sh nuke                   stop AND delete the data volumes
 ./deploy.sh key                    print a fresh APP_KEY

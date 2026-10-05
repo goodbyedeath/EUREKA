@@ -44,9 +44,14 @@ Day to day:
 ./deploy.sh nuke         # stop AND delete the data. There is no undo
 ```
 
-## Moving the live data onto it
+## Starting on it, or moving onto it
 
-**`docker/MIGRATION.md` is the procedure — follow that, not this section.** It carries the two steps
+**`docker/MIGRATION.md` is the procedure — follow that, not this section.** It covers both paths,
+and the operator chose the first: **start clean** (5 Oct), carrying nothing over. That path is short —
+`./deploy.sh up`, then `./deploy.sh install` for an admin with a real password and the facilitator PIN —
+and a freshly generated `APP_KEY` is correct for it, because nothing encrypted exists yet.
+
+The rest of this section is about the other path, carrying the data across. It carries the two steps
 that cannot be undone, the measured sizes, the row-count comparison and the five things to click
 before a phone sees the box.
 

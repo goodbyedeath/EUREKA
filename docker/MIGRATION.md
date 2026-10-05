@@ -1,15 +1,117 @@
-# Moving EUREKA from Hostinger to the workstation
+# Moving EUREKA to the workstation
 
-A one-time procedure, written to be followed in order. It is not long — the data is small — but two
-steps are irreversible if done wrong, and they are both near the beginning.
+Two paths, and **the operator chose the first (5 Oct): start clean.** Nothing is carried over from
+Hostinger — no database, no images, no login cards, no indoor maps.
 
-Do this **well before an event**, not the morning of one. Then run it a second time, closer to the
-day, to pick up the data the crew added in between: the procedure is repeatable on purpose, and the
-second run is much faster because you already know it works.
+| | [Clean start](#clean-start-the-chosen-path) | [Migration](#migration-carrying-the-data-across) |
+|---|---|---|
+| What moves | nothing | ~5 MB of MySQL + 370 MB of `storage` |
+| `APP_KEY` | **generate a new one** — correct and safe | **copy it**, or lose login cards for good |
+| Takes | minutes | an hour, plus the checks |
+| Costs | re-authoring the whole event | nothing |
+| Risk | none that cannot be redone | two irreversible steps |
+
+The migration half is kept below because the choice may change for a later event, and because the
+`APP_KEY` rule in it is the single most expensive mistake available in this project.
 
 ---
 
-## Before you start: the two things that cannot be undone
+## Clean start — the chosen path
+
+### What a clean start actually costs
+
+Worth reading once before typing anything, because this is authoring work, not data:
+
+| Gone | Live count | Re-creatable? |
+|---|---|---|
+| Questionnaires and their questions | 15 + 15 | Yes, in the admin. Each questionnaire gets a **new QR code** on creation, so **every paper QR has to be reprinted**. |
+| AR Outposts and their 3D objects | 15 + 46 | Yes — but the placement was done **on site**, standing at each booth. That is the expensive one. |
+| Indoor maps and their spots | 10 + 160 | Yes. Tim 01 is authored by hand and the other nine are rotations of it. |
+| `.glb` model library | 4 models | Re-upload the files. |
+| Quest locations, map routes | 7 + routes | Yes; routes also re-import from the tracker app hourly. |
+| Teams, accounts, login cards | 10 cards | Yes — **new cards must be printed**, the old ones stop working. |
+| Finished-event archives | 7 (239 MB) | **No.** This is the only truly unrecoverable item: it is the history of events already run. |
+| Branding/logo, Panduan, hero slides | — | Re-upload / retype. |
+
+Two consequences that catch people out:
+
+- **Every printed QR becomes wrong.** Questionnaire QR codes are UUIDs minted at creation
+  (`QuestionnaireService::generateUniqueQrCode`), and the same code seals the offline copy. New
+  questionnaire, new code, new print run — paper questionnaire QRs *and* login cards.
+- **Every phone has to log in again.** New accounts mean new Sanctum tokens; the app will 401 and
+  ask. It must also re-Sync, because the manifest it holds describes posts that no longer exist.
+
+If what you wanted was a clean *event* rather than a clean *server* — no teams, no attempts, no
+archives, but keep the questionnaires, the AR scenes and the floor plans — say so, because that is a
+third path: import the content tables only and leave the player data behind. It saves the on-site AR
+placement and the reprinting.
+
+**Before you wipe anything: take the export anyway.** `mysqldump` plus a `tar` of `storage/app` is
+370 MB and ten minutes, and it is the difference between "we decided to start clean" and "we cannot
+get the archives back". Keep it somewhere that is not the workstation. The commands are in the
+migration section below — run step 2 of it, then stop.
+
+### The procedure
+
+```bash
+cd docker
+cp .env.docker.example .env
+
+./deploy.sh key            # a FRESH key: correct here, nothing encrypted exists yet
+nano .env                  # paste it, set DB_PASSWORD and MYSQL_ROOT_PASSWORD
+
+./deploy.sh up             # build, start, migrate, optimize, warm
+./deploy.sh install        # defaults + an admin with a real password + the facilitator PIN
+./deploy.sh doctor
+```
+
+`./deploy.sh install` is interactive on purpose — the admin password is typed, not left in shell
+history. It does three things a clean database needs and nothing else provides:
+
+1. **Seeds the defaults** — the feature rows and the hero slides.
+2. **Creates one admin.** There is a `UserSeeder` in the repo that makes `admin@gmail.com` with the
+   password `123`; it is not used here and must not be, on a box 5,000 phones can reach. Twelve
+   characters minimum, asked twice.
+3. **Sets the facilitator PIN.** `FacilitatorPin` **fails closed**: until it is set, every attempt to
+   score a game answers `facilitator_pin_not_set`. Nobody discovers that in testing — they discover
+   it at the first post, with a team waiting.
+
+It refuses to run against a database that already holds an event, and it never deletes anything.
+Verified on this host: it listed the live questionnaires, maps, cards and archives and exited 1
+without touching them.
+
+Then `doctor` should read: both Redis instances reachable, `redis:queue` and `redis:persistent` on
+`[noeviction]`, and `APP_KEY vs encrypted data` → `no login cards to check against`. That last line is
+the correct answer for a clean install; it changes to `matches` once the first login cards are
+printed.
+
+### Then author the event, in this order
+
+`install` prints this list too, because the order matters — a questionnaire cannot be linked to a
+post that does not exist yet:
+
+| Where | What |
+|---|---|
+| `/admin/quest-locations` | Outdoor posts, if this event has any (coordinates + radius) |
+| `/admin/games` | AR Outposts: the 3D scene per post, `access_mode = manual` indoors |
+| `/admin/questionnaires` | The questions. Each gets its QR on creation — **that is the one you print** |
+| `/admin/indoor-maps` | The floor plan per team, each spot linked to its AR Outpost |
+| `/admin/race-start` | The START code and its time limit |
+| `/admin/team-management` | Teams, then Login Cards to print the accounts |
+| `/admin/panduan` + dashboard management | The in-app guide, branding and logo |
+| `/admin/outpost-access` | Nothing to set up — this is the desk the crew runs the event from |
+
+Then walk it once as a team, with one phone, before trusting it: scan START, answer the clue, have
+the crew open a post in Outpost Access, tap the 3D object, scan the questionnaire QR, hand in, and
+check the score lands on `/admin/user-progress` and on the LED board.
+
+---
+
+## Migration — carrying the data across
+
+Not the chosen path for this move, kept for the next one.
+
+### Before you start: the two things that cannot be undone
 
 **1. `APP_KEY` must be copied, never generated.**
 
@@ -37,7 +139,7 @@ stop being an event server. Decide which box owns which event *in writing*, befo
 
 ---
 
-## What actually has to move
+### What actually has to move
 
 Measured on the live host, 5 Oct 2026:
 
@@ -60,9 +162,9 @@ project — the reason it needs care is the key, not the volume.
 
 ---
 
-## The procedure
+### The procedure
 
-### 1. On the workstation: bring the stack up empty and prove it works
+#### 1. On the workstation: bring the stack up empty and prove it works
 
 ```bash
 cd docker
@@ -80,7 +182,7 @@ will say `matches` after the import).
 Open `http://<workstation-ip>/up`. If that answers, nginx → php-fpm → MySQL → Redis is intact and
 every later failure is about data, not about the stack.
 
-### 2. On Hostinger: close the door, then export
+#### 2. On Hostinger: close the door, then export
 
 ```bash
 cd ~/domains/questerra-series.com/public_html/EUREKA_APP
@@ -113,7 +215,7 @@ there.
 > Keep the app down only as long as the copy takes (seconds, at this size). `artisan up` afterwards
 > if you still want Hostinger reachable; leave it down if the workstation is taking over now.
 
-### 3. On the workstation: import
+#### 3. On the workstation: import
 
 ```bash
 cd docker
@@ -132,7 +234,7 @@ docker compose exec app php artisan storage:link
 ./deploy.sh doctor
 ```
 
-### 4. Check it before any phone sees it
+#### 4. Check it before any phone sees it
 
 ```bash
 ./deploy.sh doctor
@@ -170,7 +272,7 @@ curl -s -o/dev/null -w '%{http_code} %{size_download}\n' \
 
 A 200 with ~60 KB means the whole sync path works: sealed questionnaires, scenes, floor plan, assets.
 
-### 5. Only then, point the phones at it
+#### 5. Only then, point the phones at it
 
 This is SCALING-PLAN.md §5, and it is a network job, not an application one: split-horizon DNS for
 `questerra-series.com` on the venue LAN, a certificate valid for that name, and **no internet route
@@ -182,7 +284,7 @@ the APK**: Android blocks cleartext, and the token would travel in the clear any
 
 ---
 
-## If something is wrong
+### If something is wrong
 
 | Symptom | Cause |
 |---|---|
@@ -194,7 +296,7 @@ the APK**: Android blocks cleartext, and the token would travel in the clear any
 | First Sync takes two seconds | `./deploy.sh warm` was not run after a cache clear. Harmless, but do not let it happen during an event. |
 | Admin logged out at random | Sessions on the evicting Redis. `doctor` fails on this; `SESSION_CONNECTION=persistent`. |
 
-## Rolling back
+### Rolling back
 
 Nothing in this procedure writes to Hostinger except `artisan down`. If the workstation is not
 ready, `artisan up` there and you are exactly where you started — which is the reason to do the whole
