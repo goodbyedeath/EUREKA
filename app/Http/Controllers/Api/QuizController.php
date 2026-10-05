@@ -810,9 +810,14 @@ class QuizController extends Controller
             ], 401);
         }
 
+        // The photo stays required unless the client says why it could not be taken (client report #45:
+        // a handset with no working camera, or a refused permission after time-up, could not hand in at all
+        // and the team's answers were lost). The reason is stored and shown to the admin, so the exception
+        // is loud rather than convenient.
         $request->validate([
             'attempt_id' => 'required|integer',
-            'verification_photo' => 'required|string',
+            'verification_photo' => 'required_without:photo_missing_reason|nullable|string',
+            'photo_missing_reason' => 'nullable|in:no_camera,permission_denied,capture_timeout,hardware_error',
         ]);
 
         try {
@@ -921,6 +926,13 @@ class QuizController extends Controller
                 if ($request->verification_photo) {
                     $updateData['verification_photo'] = $request->verification_photo;
                     $updateData['photo_captured_at'] = now();
+                } elseif ($request->filled('photo_missing_reason')) {
+                    $updateData['photo_missing_reason'] = $request->string('photo_missing_reason')->toString();
+                    \Illuminate\Support\Facades\Log::info('Hand-in accepted without a verification photo', [
+                        'attempt_id' => $attempt->id,
+                        'user_id' => Auth::id(),
+                        'reason' => $updateData['photo_missing_reason'],
+                    ]);
                 }
 
                 $attempt->update($updateData);

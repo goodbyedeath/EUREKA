@@ -1224,7 +1224,15 @@
                                             View Photo
                                         </button>
                                     </template>
-                                    <template x-if="!assessment.verification_photo">
+                                    <template x-if="!assessment.verification_photo && assessment.photo_missing_reason">
+                                        {{-- Handed in with no photograph, and the reason the phone gave. Loud on
+                                             purpose: an exception the crew can see is one they can challenge. --}}
+                                        <div class="rounded-md border-2 border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/30 p-3 text-xs text-amber-800 dark:text-amber-200">
+                                            <strong>Tanpa foto verifikasi</strong><br>
+                                            <span x-text="assessment.photo_missing_reason"></span>
+                                        </div>
+                                    </template>
+                                    <template x-if="!assessment.verification_photo && !assessment.photo_missing_reason">
                                         <span class="text-sm text-gray-400">No photo</span>
                                     </template>
                                 </div>

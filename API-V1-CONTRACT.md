@@ -15,6 +15,14 @@ again when the 3D camera first opens), distinguish *needs Google Play Services f
 block login or the rest of the game** over it. Nothing in this API changes. Build guide §9; work order
 §39.
 
+**Latest (5 Oct): `POST /quiz/offline-start` is deprecated — §35 is cancelled, not deferred.** The operator
+ended offline phase 2 (the RFID tap at each post is the direction instead), and the client confirmed it has
+never used the endpoint. It **stays routed and working** rather than being removed: nothing depends on it,
+and if the tap system turns out to need a deferred start after a real event, deleting it today would only
+mean writing it twice. Treat it as unsupported — do not build against it, and expect no further changes to
+it. `started_offline` and `client_token` stay on the attempt for the same reason. The rule from §28 is
+unchanged and still the one that matters: a post scanned with no signal is **named but not opened**.
+
 **Latest (25 Sep, second change): `finished_reason` can be `manual`.** The crew can now stop one team's
 race clock from the admin, for a team that gave up or was pulled out of the venue. `GET /race/status`
 then reports `finished: true`, `finished_at` = the moment the crew stopped it, `elapsed_seconds` frozen
@@ -333,7 +341,7 @@ separate budgets. A 429 from us carries `Retry-After`; honour it.
 
 | Endpoint | Required fields |
 |---|---|
-| `POST /api/v1/quiz/submit` | `attempt_id`, **`verification_photo`** (base64 string) |
+| `POST /api/v1/quiz/submit` | `attempt_id`, and **either `verification_photo`** (base64 string) **or `photo_missing_reason`** (`no_camera` \| `permission_denied` \| `capture_timeout` \| `hardware_error`) — see work order §47 |
 | `POST /api/v1/quiz/save-answer` | `attempt_id`, `question_id`; `answer` optional and may be null — or, for `picture_puzzle` only, **`answers`** `{slot key: text}` with every box |
 | `POST /api/v1/quiz/complete-game` | `attempt_id`, `question_id` |
 | `POST /api/v1/quiz/photo-answer` | `attempt_id`, `question_id`, **`photo`** (base64 JPEG/PNG ≤ 6 MB, frame already drawn in) |
@@ -343,8 +351,10 @@ separate budgets. A 429 from us carries `Retry-After`; honour it.
 | `POST /api/v1/tracking/position` | `latitude`, `longitude`; `accuracy`, `device_info` optional |
 | `POST /api/v1/qr/lookup` | `qr_code` |
 
-`verification_photo` is the one that catches people: it is **required**, so a client that treats
-the photo as optional cannot submit at all.
+`verification_photo` is the one that catches people: it is **required unless `photo_missing_reason` is
+sent**, so a client that treats the photo as optional cannot submit at all — but a handset that genuinely
+cannot take one can, by naming the cause (work order §47, answering client report #45). An unknown reason
+is a 422; the four values above are the whole list.
 
 ## Quiz error keys
 

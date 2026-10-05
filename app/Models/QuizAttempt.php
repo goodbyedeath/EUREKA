@@ -111,6 +111,9 @@ class QuizAttempt extends Model
         'status',
         'verification_photo',
         'photo_captured_at',
+        // Why a hand-in has no photo: no_camera | permission_denied | capture_timeout | hardware_error.
+        // Set only when the client could not take one at all (client report #45); the admin sees it.
+        'photo_missing_reason',
         'timer_workflow_id',
         'timer_started_at',
         'auto_submitted',

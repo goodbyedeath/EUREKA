@@ -908,12 +908,16 @@ class UserProgress extends Component
     {
         $user = User::findOrFail($userId);
         
-        // Get game assessments with verification photos for this user
+        // Assessments whose attempt carries a photo **or** a recorded reason for having none: an attempt
+        // handed in without a photo used to vanish from this list, which is exactly the one the crew needs
+        // to see (client report #45).
         $gameAssessments = GameAssessment::with(['quizAttempt.user', 'quizAttempt.questionnaire'])
             ->whereHas('quizAttempt', function($query) use ($userId) {
                 $query->where('user_id', $userId)
-                      ->whereNotNull('verification_photo')
-                      ->where('verification_photo', '!=', '');
+                      ->where(function ($q) {
+                          $q->where(fn ($w) => $w->whereNotNull('verification_photo')->where('verification_photo', '!=', ''))
+                            ->orWhereNotNull('photo_missing_reason');
+                      });
             })
             ->where('is_assessed', true)
             ->orderBy('created_at', 'desc')
@@ -928,7 +932,16 @@ class UserProgress extends Component
                 'total_deposit' => $assessment->total_deposit ?? 0,
                 'completed_at' => $quizAttempt->completed_at?->format('M d, Y H:i'),
                 'photo_captured_at' => $quizAttempt->photo_captured_at?->format('M d, Y H:i'),
-                'verification_photo' => $quizAttempt->verification_photo
+                'verification_photo' => $quizAttempt->verification_photo,
+                // Why there is no photograph, in the crew's words rather than the wire's.
+                'photo_missing_reason' => match ($quizAttempt->photo_missing_reason) {
+                    'no_camera' => 'HP tidak punya kamera yang bisa dipakai',
+                    'permission_denied' => 'izin kamera ditolak',
+                    'capture_timeout' => 'kamera tidak merespons',
+                    'hardware_error' => 'kamera error',
+                    null, '' => null,
+                    default => $quizAttempt->photo_missing_reason,
+                },
             ];
         });
         

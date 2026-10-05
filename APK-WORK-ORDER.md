@@ -1422,9 +1422,14 @@ key management would be more moving parts than the whole rest of the design.
 | E22 AUX (input, pull-up) | 27 | Buzzer | 14 |
 | LED green | 13 | LED red | 4 |
 
-Radio: channel **73** (923.125 MHz), air rate **9.6 kbps**, fixed transmission to gateway address
-`0x0001`. Confirm the channel against the datasheet revision you receive; the operator is verifying the
-Indonesian allocation separately.
+Radio: **channel 71 (921.125 MHz)**, air rate **9.6 kbps**, fixed transmission to gateway address `0x0001`.
+
+**Changed from 73 on your flag** (report #48): 923.125 MHz sits 125 kHz above the 920–923 MHz edge, and
+there is no engineering reason to be outside it — 921.125 leaves about 1.1 MHz of margin at both ends, which
+is the most defensible of the three in-band candidates you named. The operator has decided not to pursue the
+regulatory question, so this is an engineering choice, not a compliance one; it costs nothing and removes a
+question. Your rule of refusing to start the radio on an unprovisioned channel stays — that is better than
+any default.
 
 ### Wire protocol, node → gateway (26 bytes, little-endian)
 
@@ -1439,14 +1444,21 @@ Indonesian allocation separately.
 20-25  hmac       HMAC-SHA256(node_key, bytes 0..19) truncated to 6 bytes
 ```
 
-Gateway → node, 12 bytes: `ver`, `type` (`0x81` ack · `0x83` time reply), `node_id`, the echoed `seq`,
-`server_ts` (4 bytes), `hmac` (4 bytes). An ack for a `seq` the node is not waiting on is ignored.
+Gateway → node, **16 bytes** (report #47 — my arithmetic was wrong; `ver` 1 + `type` 1 + `node_id` 2 +
+`seq` 4 + `server_ts` 4 + `hmac` 4 is 16, and the echoed `seq` is not optional because an ack for a seq the
+node is not waiting on must be ignored). Your 16 bytes at full width is right; keep it.
 
 Gateway → server, **one JSON line per frame on USB serial at 115200**:
 
 ```json
-{"node":3,"seq":149,"ts":1790500000,"uid":"04A2B3C4","post":117,"rssi":-71,"snr":9.5,"gw":1,"hmac_ok":true}
+{"node":3,"seq":149,"ts":1790500000,"uid":"04A2B3C4","vbat":4015,"rssi":-71,"snr":9.5,"gw":1,"hmac_ok":true}
 ```
+
+**`post` is gone, and you were right to refuse to invent it** (report #48): `post_id` lives in the node's
+NVS and never travels in the 26-byte frame, so the gateway cannot know it. Your option (a) is adopted —
+**omit it; the serial listener maps `node_id` → `post_id` from the booth table this side already holds.**
+That also means a booth can be moved by editing one row here instead of re-provisioning two gateways.
+Keep `post_id` in the node's NVS anyway: it is what a node's own display and logs should say.
 
 Print frames whose HMAC fails too, with `"hmac_ok":false` — a spoofing attempt is something the crew
 should be able to see, not something the gateway silently eats.
@@ -1494,6 +1506,41 @@ Server side is ours and does not exist yet: `rfid_tags`, `post_arrivals`, a seri
 same `game_location_unlocks` row Outpost Access writes, and `POST /api/v1/device/tap` for a future
 network-connected gateway. You do not need any of it to build and test the firmware — the gateway's serial
 output is the contract between us.
+---
+
+## 47 — A hand-in with no photograph, and why  ·  answering your report #45
+
+You asked the right question and waited a week for an answer; sorry it took that long.
+
+**Yes — a hand-in without `verification_photo` is now accepted, but only when you say why.** Losing a team's
+answers because a camera is broken is worse than losing the photograph, and the Finish pane having no way
+back into the room (§8–§10) is what turns a dead camera into lost work.
+
+`POST /quiz/submit` gains **`photo_missing_reason`**, one of exactly:
+
+```
+no_camera · permission_denied · capture_timeout · hardware_error
+```
+
+- `verification_photo` is now `required_without:photo_missing_reason`. Send one or the other; sending the
+  photo is still the normal path and nothing about it changed.
+- An unknown reason is a `422`, so do not invent values. If you hit a case none of the four describe, report
+  it and the list grows — that is cheaper than a free-text field nobody reads.
+- **No marker value, no fake image.** We deliberately did not take the sentinel-string option you offered:
+  a viewer that tries to render "no photo available" as an image is a bug waiting to happen, and a reason
+  belongs in a field of its own.
+- It is **not** limited to attempts past their deadline. A camera that fails at minute five strands the
+  attempt exactly as badly, and the deadline is not evidence of anything about the camera.
+
+What happens on this side, so you can tell the operator what he will see: the reason is stored on the
+attempt, logged, and the admin's verification-photo viewer now **lists the attempt instead of hiding it**,
+with a bordered panel reading *"Tanpa foto verifikasi — izin kamera ditolak"* in the crew's words. An
+attempt handed in without a photo used to disappear from that list, which is the one the crew most needs to
+see. Loud on purpose: an exception the crew can see is one they can challenge at the booth.
+
+**Done when:** a handset with the camera permission refused can hand in, the answers land, the score is
+scored, and the admin can tell at a glance which attempts came in without a photograph and why.
+
 ---
 
 ## Talking back — the channel runs both ways now
