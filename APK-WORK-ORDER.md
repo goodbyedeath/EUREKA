@@ -1509,10 +1509,34 @@ should be able to see, not something the gateway silently eats.
 - The README states the measured idle current and the battery hours behind it.
 - One node, one gateway and fifteen tags run an hour-long rehearsal without a manual reset.
 
-Server side is ours and does not exist yet: `rfid_tags`, `post_arrivals`, a serial listener that writes the
+Server side is ours: `rfid_tags`, `post_arrivals`, a serial listener that writes the
 same `game_location_unlocks` row Outpost Access writes, and `POST /api/v1/device/tap` for a future
 network-connected gateway. You do not need any of it to build and test the firmware — the gateway's serial
 output is the contract between us.
+**Server side now exists (5 Oct).** Nothing you build changes — the gateway's serial output is still
+the contract between us — but the other end is no longer a promise:
+
+- `tap_nodes` maps `node_id` → post, which is why the frame does not carry `post` and your refusal to
+  invent one was right. Moving a booth is one row here.
+- `rfid_tags` maps UID → team; `post_arrivals` keeps every tap, refusals included, with the **node's**
+  timestamp.
+- `php artisan eureka:tap-listen /dev/ttyUSB0 --gateway=1` reads your JSON lines and opens the post.
+  Run two instances for two gateways; the unique `(node_id, seq)` makes the second a no-op, which is
+  the dedupe you were asked to make possible by never reusing a `seq`.
+- A line that is not JSON is printed and skipped, so boot banners and diagnostics cost nothing. A
+  frame with `"hmac_ok":false` is recorded as `bad_signature` and logged as a warning — printing those
+  rather than eating them, as §46 asks, is what makes that visible.
+- `POST /api/v1/device/tap` exists for a future network gateway, authenticated by the node's HMAC key
+  rather than a player's token. It accepts a signature truncated to your 6 bytes as well as a full
+  one; the signed string is `node|seq|UID|ts|type`, and `rssi`/`snr`/`gw` are deliberately outside it
+  because the node cannot know what the gateway will observe.
+- `/admin/tap-nodes` is where the crew maps readers to posts and cards to teams, and it shows
+  `vbat` from your heartbeat, so a booth about to go dark is visible before a queue forms.
+
+Verified against the real database, in the words of the "done when" list: a tap opens the post for
+**every account of the team**; the same frame twice, and the same frame from two gateways, is one
+arrival; twenty taps flushed after a gateway outage all arrive once each with the timestamps they were
+taken at, and flushing the same queue twice changes nothing.
 ---
 
 ## 47 — A hand-in with no photograph, and why  ·  answering your report #45

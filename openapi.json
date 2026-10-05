@@ -7,7 +7,7 @@
         "x-behaviour-guides": {
             "API-V1-CONTRACT.md": "852e8cde9277f181",
             "APK-BUILD-GUIDE.md": "ee4559a6a987b433",
-            "APK-WORK-ORDER.md": "e5cbbc226a41257f"
+            "APK-WORK-ORDER.md": "adb24d40924ad84f"
         }
     },
     "servers": [
@@ -494,6 +494,102 @@
                 "x-auth": "public",
                 "x-access-window": false,
                 "x-rate-limit": "kiosk",
+                "responses": {
+                    "200": {
+                        "description": "Not probed — POST endpoints are not called by the generator"
+                    }
+                }
+            }
+        },
+        "/api/v1/device/tap": {
+            "post": {
+                "operationId": "api.v1.device.tap",
+                "summary": "api.v1.device.tap",
+                "x-auth": "public",
+                "x-access-window": false,
+                "x-rate-limit": "device",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "gw": {
+                                        "nullable": true,
+                                        "type": "integer",
+                                        "minimum": 0,
+                                        "maximum": 255,
+                                        "x-laravel-rules": "nullable|integer|min:0|max:255"
+                                    },
+                                    "hmac": {
+                                        "type": "string",
+                                        "minLength": 8,
+                                        "maxLength": 64,
+                                        "x-laravel-rules": "required|string|min:8|max:64"
+                                    },
+                                    "node": {
+                                        "type": "integer",
+                                        "minimum": 0,
+                                        "maximum": 65535,
+                                        "x-laravel-rules": "required|integer|min:0|max:65535"
+                                    },
+                                    "rssi": {
+                                        "nullable": true,
+                                        "type": "integer",
+                                        "minimum": -200,
+                                        "maximum": 50,
+                                        "x-laravel-rules": "nullable|integer|min:-200|max:50"
+                                    },
+                                    "seq": {
+                                        "type": "integer",
+                                        "minimum": 0,
+                                        "x-laravel-rules": "required|integer|min:0"
+                                    },
+                                    "snr": {
+                                        "nullable": true,
+                                        "type": "number",
+                                        "x-laravel-rules": "nullable|numeric"
+                                    },
+                                    "ts": {
+                                        "nullable": true,
+                                        "type": "integer",
+                                        "minimum": 0,
+                                        "x-laravel-rules": "nullable|integer|min:0"
+                                    },
+                                    "type": {
+                                        "nullable": true,
+                                        "type": "integer",
+                                        "x-laravel-rules": "nullable|integer|in:1,2,3"
+                                    },
+                                    "uid": {
+                                        "nullable": true,
+                                        "type": "string",
+                                        "maxLength": 32,
+                                        "x-laravel-rules": "nullable|string|max:32"
+                                    },
+                                    "vbat": {
+                                        "nullable": true,
+                                        "type": "integer",
+                                        "minimum": 0,
+                                        "maximum": 65535,
+                                        "x-laravel-rules": "nullable|integer|min:0|max:65535"
+                                    }
+                                },
+                                "required": [
+                                    "hmac",
+                                    "node",
+                                    "seq"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "x-unparsed-rules": {
+                    "type": [
+                        "in:1,2,3"
+                    ]
+                },
                 "responses": {
                     "200": {
                         "description": "Not probed — POST endpoints are not called by the generator"

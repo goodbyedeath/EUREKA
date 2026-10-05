@@ -335,10 +335,47 @@ unlocks are manual), and a paper QR **can be photographed and shared** — an op
 - **A tap writes the same `game_location_unlocks` row Outpost Access writes today.** The rest of the
   system needs no change: the AR outpost opens, the station gate passes, the questionnaire opens. The
   reader becomes another way to produce a fact that already exists.
-- Server side: `POST /api/v1/device/tap {device_id, tag_uid, ts, nonce, hmac}` behind a **device-token
-  guard** (not a player's Sanctum token) and its own limiter; tables `rfid_tags` (uid → team, active
-  window) and `post_arrivals` (audit, and real per-booth queue data). Load: 7,500 taps over two hours ≈
-  **1 req/s**.
+- Server side: `POST /api/v1/device/tap` behind a **device guard** (not a player's Sanctum token) and
+  its own limiter; tables `rfid_tags` (uid → team, active window) and `post_arrivals` (audit, and real
+  per-booth queue data). Load: 7,500 taps over two hours ≈ **1 req/s**.
+
+  > **Built 5 Oct (phase 6).** `App\Services\TapService` is the whole of it, and the design is one
+  > sentence: **a tap writes the row Outpost Access writes.** Not a second notion of "open" — the same
+  > `game_location_unlocks` row, for every account of the team, so the AR outpost, the station gate and
+  > the questionnaire behave exactly as they do when a crew member clicks. `granted_by` stays null
+  > because no admin decided it; which node did is in the arrival.
+  >
+  > The three properties this phase is judged on, and where each lives:
+  >
+  > - **A tap opens the post** — verified against the real database, including that it opens for every
+  >   account of the team and not just the leader's phone.
+  > - **A replayed tap does not double** — the unique `(node_id, seq)` on `post_arrivals`, and
+  >   deliberately not a check-then-insert, which two gateways delivering the same frame in the same
+  >   millisecond would both pass. That one constraint is also how two gateways collapse into one
+  >   arrival, which is why the firmware is told never to reuse a `seq`.
+  > - **A dead gateway loses nothing** — nothing on this side cares when a frame arrived. `tapped_at`
+  >   is the node's own clock; verified by flushing twenty taps after a simulated outage and finding
+  >   them all once each, with the times they were taken at, and flushing the same queue twice to find
+  >   nothing changed.
+  >
+  > A third table was needed that the plan had not named: `tap_nodes`, mapping `node_id` → post. The
+  > client agent was right to refuse to invent a `post` field for the 26-byte frame (report #48) — the
+  > gateway cannot know it — so it lives here, and moving a booth is editing one row instead of
+  > re-provisioning two gateways.
+  >
+  > Every refusal is recorded and named rather than dropped: `unknown_tag`, `tag_unassigned`,
+  > `tag_expired`, `unknown_node`, `node_unplaced`, `node_inactive`, `not_on_plan`, `no_accounts`,
+  > `bad_signature`. A card that does not work is exactly what the crew needs to see, and
+  > `/admin/tap-nodes` shows it in their own language alongside the readers' battery voltages.
+  >
+  > `eureka:tap-listen /dev/ttyUSB0 --gateway=1` is the venue path — one JSON line per frame over USB,
+  > no IP, nothing to knock off the air. `POST /api/v1/device/tap` is the promised network path and
+  > authenticates with the node's HMAC key rather than a player's token: something that can open posts
+  > must not be authenticated as one of the teams it opens them for. A node with no key cannot use it
+  > at all.
+  >
+  > **Still owed: the hardware.** One booth end to end on LoRa is the acceptance criterion and needs
+  > the nodes the operator is assembling.
 - **Outpost Access stays** as the manual override — the fallback when a reader dies mid-event.
 
 **Radio: LoRa point-to-point (AS923, 920–923 MHz), 15 nodes → 2 wired gateways at the server rack.**
@@ -448,7 +485,7 @@ changes shape for the app.
 | 3 | ~~§3b leaderboard cache, §3c manifest cache + ETag + static assets~~ **done 5 Oct** — grouped scoring, shared board, split manifest, 304s, `eureka:warm` | Board: 11 queries at any team count. Manifest: 91 → 15 queries, 26 ms, 304 when unchanged. **Still to measure under load** |
 | 4 | §3d photos out of MySQL, thumbnails in a queue job — **built, then parked by the operator 5 Oct**; on branch `phase-4-photos-on-disk` | ~~`quiz_attempts` holds no base64; submit latency independent of photo size~~ **met on that branch** (45 bytes in the row for a 187 KB photo). Not on `main`: see §3d for what running without it costs |
 | 5 | ~~§3e login-storm limits~~ **done 5 Oct** — venue-sized ceilings from `config/venue.php`, the password cap keyed per account, failure-counting per address, `TrustProxies` fixed for the API, and `login_sources` so the premise is measured | 5,000 logins in ten minutes from one NAT address, zero 429s. **Still to run** (`login-storm.js`); the discrimination itself is verified |
-| 6 | RFID presence: device endpoint, tags, one booth end to end on LoRa | A tap opens the post, a replayed tap does not double, a dead gateway loses nothing |
+| 6 | §6 RFID presence — **server half done 5 Oct**: `tap_nodes`/`rfid_tags`/`post_arrivals`, `TapService`, `eureka:tap-listen`, `POST /device/tap`, `/admin/tap-nodes` | ~~A tap opens the post, a replayed tap does not double, a dead gateway loses nothing~~ **all three verified against the database.** Still owed: one booth end to end on LoRa, which needs the hardware |
 | 7 | Rehearsal at the venue: walk test, gateway pulled mid-run, restore from backup | The crew has run the failure, not read about it |
 
 ### The harness is the gate, not a nicety

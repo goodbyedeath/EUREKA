@@ -80,6 +80,12 @@ class AppServiceProvider extends ServiceProvider
                 : Limit::perMinute(10)->by($request->ip());
         });
 
+        // Booth readers. Fifteen nodes, a tap each few minutes, plus a heartbeat every five:
+        // the whole venue averages about one message a second (SCALING-PLAN §6), so 120/min per
+        // gateway address is roughly double the busiest minute an event can produce. Keyed on the
+        // address because a gateway is a fixed box at the rack, not a phone in a crowd.
+        RateLimiter::for('device', fn (Request $request) => Limit::perMinute(120)->by('dev:'.$request->ip()));
+
         // Client-agent reports. Generous enough for a build agent working through a task
         // list, tight enough that an open write endpoint cannot be used to fill a table.
         RateLimiter::for('feedback', function (Request $request) {

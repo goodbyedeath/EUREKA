@@ -184,6 +184,9 @@ Route::middleware(['auth', 'preventbackhistory'])->group(function () {
         Route::get('/map-routes', fn () => view('admin.map-routes'))->name('map-routes');
         // Team → plan → post → questionnaire, checked end to end before the event.
         Route::get('/kesiapan', fn () => view('admin.event-readiness'))->name('event-readiness');
+        // Which reader stands at which post, and whose card is whose (SCALING-PLAN §6). A tap writes
+        // the same unlock Outpost Access writes; this page is the mapping, not another way to open.
+        Route::get('/tap-nodes', fn () => view('admin.tap-nodes'))->name('tap-nodes');
         // The player how-to, shown here and on the app's Panduan page.
         Route::get('/panduan/user', fn () => view('admin.user-guide'))->name('user-guide');
         Route::get('/login-cards', fn () => view('admin.login-cards'))->name('login-cards');

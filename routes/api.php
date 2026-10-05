@@ -47,6 +47,13 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
     Route::post('/auth/login-code', [TokenController::class, 'loginCode'])
         ->middleware('throttle:login-code')->name('auth.login-code');
 
+    // A tap at a booth, from a gateway with a network rather than a serial cable
+    // (SCALING-PLAN §6). Not a player route and not a Sanctum one: the device authenticates with
+    // its own HMAC key, because something that can open posts must not be authenticated as one of
+    // the teams it opens them for. The venue path is `eureka:tap-listen` over USB.
+    Route::post('/device/tap', [\App\Http\Controllers\Api\DeviceTapController::class, 'store'])
+        ->middleware('throttle:device')->name('device.tap');
+
     // Public, because the app paints its splash and login screen before anyone has a
     // token — and the web landing page already serves both to anonymous visitors.
     // Throttled like the other open endpoints so they cannot be scraped at speed.

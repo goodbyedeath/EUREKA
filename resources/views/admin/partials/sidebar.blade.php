@@ -48,6 +48,7 @@
             'items' => [
                 ['admin.indoor-maps',          'fa-map',            'Indoor Maps',        'text-teal-500'],
                 ['admin.outpost-access',       'fa-unlock',         'Outpost Access',     'text-amber-500'],
+                ['admin.tap-nodes',            'fa-id-card',        'RFID & Reader',      'text-cyan-500'],
             ],
         ],
         [

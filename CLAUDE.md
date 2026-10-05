@@ -147,6 +147,11 @@ rule is removed. Posts open only through Outpost Access (indoor) or the GPS radi
 - Scoring belongs in `PointsCalculationService`. Read earned points from
   `user_answers.points_earned`, never `questions.points` — `fun_game` answers store 0 and are
   scored later by a facilitator.
+- **A tap at a booth writes the row Outpost Access writes** — `App\Services\TapService`, nothing
+  else. Do not add a second notion of "open": the AR gate, the station gate and the questionnaire all
+  read `game_location_unlocks`, so the reader is another way to produce a fact that already exists.
+  Dedupe is the unique `(node_id, seq)` on `post_arrivals`, never a check-then-insert — two gateways
+  hear every tap. `tapped_at` is the node's clock, never the server's.
 - Feature flags gate UI visibility only, never authorization. Guard access with middleware.
 - **Rate limits are sized from `config/venue.php`**, not from numbers typed into
   `AppServiceProvider`: how many players and over how many minutes, with the ceilings derived. A limit

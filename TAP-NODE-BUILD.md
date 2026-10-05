@@ -126,13 +126,88 @@ against (`APK-WORK-ORDER.md` §46), but here with a multimeter in hand:
    the ESP32 means the regulator or the capacitors are wrong — this is the most common failure on a first
    build.
 
-## 6. What still has to exist on the server
+## 6. The server side — ~~not built yet~~ built 5 Oct
 
-Not built yet; it is phase 6 in `SCALING-PLAN.md`:
+All of it, and the section below says how to use it:
 
-- `rfid_tags` (uid → team, active window) and `post_arrivals` (audit trail and per-booth queue data).
-- A serial listener that reads the gateway's JSON lines and writes the same `game_location_unlocks` row
-  **Outpost Access writes today** — which is why nothing downstream needs to change.
-- Deduplication on `(node_id, seq)` across both gateways.
-- `POST /api/v1/device/tap` for a future network-connected gateway, behind a device-token guard.
-- Outpost Access stays as the manual override for a reader that dies mid-event.
+- ~~`rfid_tags` (uid → team, active window) and `post_arrivals` (audit trail and per-booth queue data).~~
+  Plus a third the plan had not named: `tap_nodes`, mapping `node_id` → post, because the frame cannot
+  carry one.
+- ~~A serial listener~~ `php artisan eureka:tap-listen /dev/ttyUSB0 --gateway=1`, writing the same
+  `game_location_unlocks` row **Outpost Access writes today** — which is why nothing downstream needed
+  to change.
+- ~~Deduplication on `(node_id, seq)` across both gateways.~~ A unique index, so the database refuses
+  the second copy rather than a check that two simultaneous gateways would both pass.
+- ~~`POST /api/v1/device/tap`~~ — authenticated by the node's own HMAC key rather than a player's token.
+- Outpost Access stays as the manual override for a reader that dies mid-event. Unchanged, and it never
+  had to learn about any of this.
+
+## The server side, and how to see a tap arrive
+
+Built 5 Oct. Three tables, one service, one listener — and one rule that makes the rest simple: **a
+tap writes the same `game_location_unlocks` row Outpost Access writes.** There is no second notion of
+an open post, so the AR outpost, the station gate and the questionnaire all behave exactly as they do
+when a crew member clicks.
+
+### Before the first tap: map the readers and the cards
+
+`/admin/tap-nodes` (sidebar: Indoor → RFID & Reader).
+
+1. **Add each reader** with the `node_id` you are going to flash into it. The page generates its HMAC
+   key — write that into the node's NVS during provisioning, and never use one key on two nodes.
+2. **Say which post it stands at.** This lives here, not in the frame: the 26-byte frame has no `post`
+   field, so moving a booth is one row on this page instead of re-provisioning two gateways.
+3. **Assign the cards.** The practical way is the one the page is built around: tap every card once at
+   any booth, then come back — unknown UIDs are listed with the team picker beside them. Choosing the
+   team *is* the assignment.
+
+A card with no team, a reader with no post, a reader switched off and a post that is not on the team's
+floor plan each produce their own named refusal rather than silence.
+
+### Watching it work
+
+```bash
+php artisan eureka:tap-listen /dev/ttyUSB0 --gateway=1
+php artisan eureka:tap-listen /dev/ttyUSB1 --gateway=2    # the second gateway, in another terminal
+```
+
+One line per frame, coloured: green for a post opened, grey for a duplicate or a heartbeat, amber for
+a refusal, red for a bad signature. Two gateways are deliberate — one gateway is one device that can
+silence fifteen booths — and they need no coordination: both write the same arrival and the unique
+`(node_id, seq)` makes the second one a no-op.
+
+Boot banners and diagnostics the firmware prints are passed through in grey and cost nothing. A line
+that looks like a frame and is not is reported and skipped; nothing in the listener exits on bad
+input, because a reader with a loose connection must not stop the listener for the other fourteen.
+
+> `stty` is used to put the port in raw mode, through `exec`. Where `exec` is disabled the listener
+> says so and prints the one command to run by hand. On the workstation stack it is available.
+
+### Testing without hardware
+
+The HTTP path takes the same frame:
+
+```bash
+NODE=3 SEQ=1 UID=04A2B3C4 TS=$(date +%s) KEY=<node_key from /admin/tap-nodes>
+HMAC=$(printf '%s|%s|%s|%s|1' "$NODE" "$SEQ" "$UID" "$TS" | openssl dgst -sha256 -hmac "$KEY" -hex | awk '{print $2}')
+
+curl -s -X POST http://<workstation>/api/v1/device/tap \
+  -H 'Content-Type: application/json' -H 'Accept: application/json' \
+  -d "{\"node\":$NODE,\"seq\":$SEQ,\"uid\":\"$UID\",\"ts\":$TS,\"hmac\":\"$HMAC\"}"
+```
+
+The signed string is `node|seq|UID|ts|type` and nothing else — `rssi`, `snr` and `gw` are outside it
+because the node cannot know what the gateway will observe. A signature truncated to the frame's 6
+bytes (12 hex characters) is accepted as well as a full one.
+
+Or replay a file of gateway lines, which is what the bench harness should produce:
+
+```bash
+cat frames.jsonl | php artisan eureka:tap-listen -
+```
+
+### What a tap is allowed to do, and what it is not
+
+It opens a post for a team. It does not close one, start a race, score anything or create a team. A
+reader that dies mid-event is covered by Outpost Access, which stays exactly as it is — the whole
+point of writing the same row is that the manual path never needed to learn about any of this.
