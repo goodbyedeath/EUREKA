@@ -123,6 +123,58 @@ event if it is not changed.**
 
 ## 4. Infrastructure: Docker Compose on one workstation. Not Kubernetes.
 
+### The end state, in one picture (operator, 5 Oct)
+
+The workstation is not *a* server, it is **the** server. Everything an event needs happens inside the
+venue, on two networks and nothing else:
+
+```
+                 ┌─────────────────────────────────────────┐
+   LoRa 921 MHz  │  WORKSTATION  16 core / 64 GB / 2 TB    │   LAN (wired)
+  ┌──────────────┤  Docker: nginx, app ×2, redis ×2,       ├──────────────┐
+  │              │  mysql, worker ×2, scheduler            │              │
+  │              └─────────────────────────────────────────┘              │
+  │                                                                       │
+  │  gateway node (E22-900T22D)                                     router / APs
+  │        ↕ point-to-point                                               │
+  │                                                                  WiFi (VLANs)
+15 × post node                                                            │
+  ESP32 + PN532 RFID                                              5,000 player phones
+  battery, no mains, no WiFi                                         (the APK)
+```
+
+- **Player phones → LAN.** Split-horizon DNS answers `questerra-series.com` with the workstation's
+  local address, so the APK needs no change (§5). The player VLAN gets **no route to the internet** —
+  that is what makes a second copy of this server unreachable, which is the whole point.
+- **Posts → LoRa.** No mains and no network at a booth (operator, 28 Sep), so each post is an ESP32 +
+  PN532 on a battery, talking point-to-point to one gateway node wired into the workstation. A tap is
+  presence; the workstation does the validating (§6).
+- **Nothing player-facing leaves the venue.** Gameplay, scoring, the gates, the kiosk screens and the
+  admin all answer from this box.
+
+**What still uses the uplink, and none of it is gameplay:** the certificate (DNS-01, renewed while
+online), offsite backup *while the event runs* — the most valuable thing the uplink buys, because one
+box is one point of failure — NTP for the two race clocks and the LoRa nodes, and between events the
+contract channel the Android build agent reads. All of that rides the **crew/server VLAN**, not the
+player one. Gameplay must still stand with the uplink cut, and does.
+
+**Two things this does not need, checked rather than assumed:**
+
+- **APK distribution does not need the public internet.** `config/app_release.php` reads
+  `download_url` straight from `APK_DOWNLOAD_URL`, so it can point at the workstation and teams can
+  install at the briefing over venue WiFi. The version gate (`GET /api/v1/app/release`) is served by
+  this same app, locally.
+- **The GPS Tracker app is not a live dependency.** `TrackerMapSync` *imports* recorded routes into
+  EUREKA's own tables on an hourly schedule and was written so that "it keeps working when the
+  tracker is down". An event never reads it.
+
+**The consequence to decide before the first event, not during it:** once this box owns the data, the
+old shared-hosting copy stops being a spare and becomes the split-brain hazard of §5 — same hostname,
+different database, no way to merge afterwards. One owner per event, written down beforehand. Retiring
+the public copy as an event server (leaving it, at most, the contract channel and APK downloads for
+teams who install before they travel) is the clean version of that.
+
+
 ```
 caddy|nginx   TLS, HTTP/2, brotli, static assets (tiles, .glb, images)
 app           php-fpm 8.3, opcache on, 200–400 workers        ×2–4
