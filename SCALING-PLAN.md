@@ -281,7 +281,7 @@ changes shape for the app.
 
 | Phase | Work | Done when |
 |---|---|---|
-| 0 | Load-test harness (k6): 500 `/race/status`/s + 5,000-Sync burst + login storm | A run produces p95 and error rate per endpoint, repeatably |
+| 0 | ~~Load-test harness~~ **built 5 Oct** — `tools/loadtest/` (k6 scenarios + `loadtest:seed`/`loadtest:purge`) | Writes `summary.md` and per-endpoint p95 per run. **Still to do: one baseline run against the workstation**, pasted into `tools/loadtest/README.md`, before §3 is touched |
 | 1 | Compose stack on the workstation (nginx, app, redis, mysql, worker, scheduler) | The app serves the harness at all, from images built out of git |
 | 2 | §3a Redis for cache/session/queue/limiter | Harness: `cache` table writes gone; p95 of `/race/status` down |
 | 3 | §3b leaderboard cache, §3c manifest cache + ETag + static assets | 5,000-Sync burst costs one computation per plan |
@@ -290,6 +290,21 @@ changes shape for the app.
 | 6 | RFID presence: device endpoint, tags, one booth end to end on LoRa | A tap opens the post, a replayed tap does not double, a dead gateway loses nothing |
 | 7 | Rehearsal at the venue: walk test, gateway pulled mid-run, restore from backup | The crew has run the failure, not read about it |
 
+### The harness is the gate, not a nicety
+
+`tools/loadtest/` exists as of 5 Oct: five k6 scenarios in the proportions of a real event, a seeder that
+mints `LT_` teams, accounts, login cards and API tokens, and a purge that matches on that prefix. Each run
+writes `summary.md` and per-endpoint p95 tagged by endpoint, which is what makes "phase 2 helped" a
+comparison instead of an impression.
+
+Two things about it are deliberate. It **refuses `questerra-series.com`** and has no default target, because
+a single scenario here would take the live event server down rather than measure it. And it counts **429s
+separately from failures**: a login storm full of 429s is the harness working, and the §3e blocker being
+real.
+
+What is still owed: **the baseline run**. Until `all.js` has been run once against the workstation and its
+row pasted into the harness README, every number in §2 of this plan is a single-user floor taken on shared
+hosting, not a forecast.
 ## 8. Open questions that change the design
 
 1. ~~Workstation spec~~ — **answered 28 Sep: 16 cores, 64 GB, 2 TB NVMe.** Allocation in §4.
