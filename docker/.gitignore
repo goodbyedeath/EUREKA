@@ -1,1 +1,5 @@
 .env
+
+# Backups live beside the stack but are not the stack. BACKUP_OFFSITE is what makes them a backup.
+backups/
+backup.log

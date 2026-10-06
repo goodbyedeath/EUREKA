@@ -6,6 +6,10 @@ check-ins, 360° panorama hotspots, facilitator-scored games, big-screen kiosk d
 **Read `ARCHITECTURE.md` for the system design** — stack, request lifecycle, route map, domain
 model, scoring rules, feature flags, timers, and known gaps.
 
+**`REHEARSAL.md` is the run sheet for the venue** — the drills the crew must have done once
+(gateway pulled mid-run, a reader dead, the server restarted, the restore, the uplink cut), and what a
+rehearsal cannot tell you. `./deploy.sh rehearsal` reads back which drills left evidence.
+
 **Read `SCALING-PLAN.md` before touching infrastructure.** It is the plan of record for 5,000
 concurrent players (28 Sep 2026): on-prem Docker rather than Kubernetes and why, the venue LAN with
 split-horizon DNS so the APK needs no change, the five measured application blockers that no hardware

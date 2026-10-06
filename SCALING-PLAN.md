@@ -317,8 +317,17 @@ The real ceiling on this machine is MySQL write concurrency and the venue WiFi �
      rather than 50–80. Ask the WiFi vendor for the 2.4 GHz plan specifically; it is where this will fail.
 - **One box is one point of failure for the whole event.** What softens it: the offline-first design
   already caches the manifest, scenes, tiles and sealed questionnaires on the phones, so a server outage
-  stops the *gates* (START, clue, `qr/lookup`, `quiz/start`), not the whole game. Still required: UPS, a
-  spare box able to take the IP, and a restore that has been rehearsed rather than written down.
+  stops the *gates* (START, clue, `qr/lookup`, `quiz/start`), not the whole game. Still required: UPS and a
+  spare box able to take the IP.
+
+  > **The backup now exists (5 Oct, phase 7).** `docker/backup.sh` dumps the database and `storage/app`,
+  > and then — the part that matters — **restores every dump into a scratch database inside the same
+  > MySQL container and compares every table's row count.** A dump nobody has loaded is a rumour, and
+  > this one has been loaded before you need it. `BACKUP_OFFSITE` copies it off the box, because a
+  > backup on the machine it protects is a copy; a host cron takes one every ten minutes during an
+  > event. `docker/restore.sh` is the other half: it names what it is about to overwrite, counts it,
+  > and makes you type the word. **It has to be run once by the person who will run it on the day** —
+  > that, not the script, is §7.
 
 ## 6. Presence at a post: ESP32 + RFID over LoRa
 
@@ -486,7 +495,7 @@ changes shape for the app.
 | 4 | §3d photos out of MySQL, thumbnails in a queue job — **built, then parked by the operator 5 Oct**; on branch `phase-4-photos-on-disk` | ~~`quiz_attempts` holds no base64; submit latency independent of photo size~~ **met on that branch** (45 bytes in the row for a 187 KB photo). Not on `main`: see §3d for what running without it costs |
 | 5 | ~~§3e login-storm limits~~ **done 5 Oct** — venue-sized ceilings from `config/venue.php`, the password cap keyed per account, failure-counting per address, `TrustProxies` fixed for the API, and `login_sources` so the premise is measured | 5,000 logins in ten minutes from one NAT address, zero 429s. **Still to run** (`login-storm.js`); the discrimination itself is verified |
 | 6 | §6 RFID presence — **server half done 5 Oct**: `tap_nodes`/`rfid_tags`/`post_arrivals`, `TapService`, `eureka:tap-listen`, `POST /device/tap`, `/admin/tap-nodes` | ~~A tap opens the post, a replayed tap does not double, a dead gateway loses nothing~~ **all three verified against the database.** Still owed: one booth end to end on LoRa, which needs the hardware |
-| 7 | Rehearsal at the venue: walk test, gateway pulled mid-run, restore from backup | The crew has run the failure, not read about it |
+| 7 | Rehearsal at the venue — **the tooling is built (5 Oct); the rehearsal itself is the crew's**: `REHEARSAL.md` is the run sheet, `backup.sh`/`restore.sh` the drill, `eureka:walk-test` and `eureka:rehearsal` the readouts | The crew has run the failure, not read about it. **Not done until they have** — and the mark sheet says which drills have left evidence |
 
 ### The harness is the gate, not a nicety
 
@@ -503,6 +512,11 @@ real.
 What is still owed: **the baseline run**. Until `all.js` has been run once against the workstation and its
 row pasted into the harness README, every number in §2 of this plan is a single-user floor taken on shared
 hosting, not a forecast.
+
+And the harness is not the rehearsal. `REHEARSAL.md` covers what fifteen people with fifteen phones can
+find — a reader that will not reach, a gateway pulled mid-run, a restore nobody has done — and says
+plainly what it cannot: load, LoRa airtime with fifteen booths tapping at once, and 2.4 GHz with a full
+room in it. The two answer different questions and neither substitutes for the other.
 ## 8. Open questions that change the design
 
 1. ~~Workstation spec~~ — **answered 28 Sep: 16 cores, 64 GB, 2 TB NVMe.** Allocation in §4.

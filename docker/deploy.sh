@@ -34,6 +34,11 @@ case "${1:-help}" in
   doctor)   need_env; shift; compose exec -T app php artisan eureka:doctor "$@" ;;
   warm)     need_env; compose exec -T app php artisan eureka:warm ;;
 
+  backup)   need_env; shift; ./backup.sh "$@" ;;
+  restore)  need_env; shift; ./restore.sh "$@" ;;
+  rehearsal) need_env; compose exec -T app php artisan eureka:rehearsal ;;
+  walk-test) need_env; shift; compose exec -T app php artisan eureka:walk-test "$@" ;;
+
   install)
     # A clean start: defaults, one admin with a real password, the facilitator PIN. Interactive on
     # purpose (no -T), so the password is typed rather than left in shell history. Refuses to run
@@ -75,6 +80,10 @@ case "${1:-help}" in
 ./deploy.sh doctor [--json]        what the stack is wired to; non-zero only on a real fault
 ./deploy.sh warm                   rebuild the caches a clear emptied (seal keys, manifest, board)
 ./deploy.sh install                clean start: admin account + facilitator PIN + defaults
+./deploy.sh backup [--no-verify]   dump + storage, restored into a scratch DB to prove it loads
+./deploy.sh restore FILE [--with-storage]
+./deploy.sh rehearsal              what each §7 drill left behind, and what is still missing
+./deploy.sh walk-test [--minutes=]  per-booth LoRa margin from the taps that arrived
 ./deploy.sh logs | ps | down       day to day
 ./deploy.sh nuke                   stop AND delete the data volumes
 ./deploy.sh key                    print a fresh APP_KEY
